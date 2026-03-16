@@ -420,7 +420,8 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
             : '<span style="color:var(--green);font-weight:600">✓ Completo</span>'}
         </div>
       </div>
-      ${saldo > 0 ? `<div class="saldo-alert"><span class="l">⚠ Saldo pendiente</span><span class="v">$${saldo.toFixed(2)}</span></div>` : ''}
+      ${saldo > 0 ? `<div class="saldo-alert"><span class="l">⚠ Saldo pendiente</span><span class="v">$${saldo.toFixed(2)}</span></div>
+      <a href="https://clip.mx/@caryera" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;padding:14px 20px;background:linear-gradient(135deg,#4a90d9,#357abd);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.02em">💳 Abonar en línea</a>` : ''}
     </div></div>
 
     ${labHtml}

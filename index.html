@@ -10417,7 +10417,8 @@ function surtStRenderCard(highlightAction) {
   h += '<div style="padding:18px 22px;border-bottom:2px solid rgba(255,255,255,0.06);text-align:center">';
   h += '<div style="font-size:26px;font-weight:800;color:var(--white)">' + nombre.trim() + '</div>';
   h += '<div style="font-size:18px;color:var(--beige);margin-top:4px;font-weight:700">Folio: ' + folio + '</div>';
-  h += '<div style="font-size:14px;color:var(--muted);margin-top:4px">' + (o.material || '') + (o.tratamiento ? ' · ' + o.tratamiento : '') + '</div>';
+  var _surtFColor = (o.tinte && o.tinte.startsWith('Foto Colors:')) ? o.tinte.replace('Foto Colors:','').trim() : '';
+  h += '<div style="font-size:14px;color:var(--muted);margin-top:4px">' + (o.material || '') + (o.tratamiento ? ' · ' + o.tratamiento : '') + (_surtFColor ? ' <span style="display:inline-block;padding:2px 10px;background:rgba(196,162,101,0.15);border:1px solid var(--gold);border-radius:10px;color:var(--gold);font-weight:700;font-size:13px">' + _surtFColor + '</span>' : '') + '</div>';
   if (isPreview) h += '<div style="margin-top:8px;padding:6px 16px;display:inline-block;background:rgba(226,198,166,0.12);border-radius:20px;font-size:14px;font-weight:700;color:var(--beige)">Vista previa</div>';
   h += '</div>';
 
