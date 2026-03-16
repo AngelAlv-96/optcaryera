@@ -11705,6 +11705,9 @@ async function loadReporteMateriales() {
   // ── TOTALIZACIÓN ESTIMADA DE COSTOS ──
   html += await clbEstimarCostosSurtido(ojos, lcItems);
 
+  // ── COMPARATIVO ESTIMADO VS COMPRAS REALES ──
+  html += await clbComparativoCompras(ini, fin);
+
   content.innerHTML = html;
   } catch(renderErr) {
     console.error('[Reporte Materiales] RENDER ERROR:', renderErr);
@@ -19952,6 +19955,112 @@ async function clbGuardarEstimaciones() {
     } catch(err) { console.warn('save pref:', err); }
   }
   toast('✓ ' + saved + ' precios y preferencias guardados');
+}
+
+// ── COMPARATIVO ESTIMADO VS COMPRAS REALES ──
+async function clbComparativoCompras(fechaIni, fechaFin) {
+  try {
+    if (!window._clbEstimaciones || !window._clbEstimaciones.length) return '';
+
+    // Cargar compras del período
+    var comprasRes = await db.from('compras_lab').select('*').gte('fecha', fechaIni).lte('fecha', fechaFin);
+    var compras = comprasRes.data || [];
+    if (!compras.length) return '';
+
+    // Agrupar compras por proveedor
+    var comprasPorProv = {};
+    var totalReal = 0;
+    compras.forEach(function(c) {
+      var prov = (c.proveedor || 'Sin proveedor').toUpperCase();
+      if (!comprasPorProv[prov]) comprasPorProv[prov] = { compras: [], total: 0, items: [] };
+      comprasPorProv[prov].compras.push(c);
+      comprasPorProv[prov].total += parseFloat(c.total) || 0;
+      totalReal += parseFloat(c.total) || 0;
+      // Parsear items para detalle
+      try {
+        var items = typeof c.items === 'string' ? JSON.parse(c.items) : (c.items || []);
+        items.forEach(function(it) { it._folio = c.folio_nota; it._fecha = c.fecha; });
+        comprasPorProv[prov].items = comprasPorProv[prov].items.concat(items);
+      } catch(e) {}
+    });
+
+    // Agrupar estimado por proveedor
+    var estimadoPorProv = {};
+    var totalEstimado = 0;
+    window._clbEstimaciones.forEach(function(e) {
+      var prov = (e.provSeleccionado || 'MANUAL').toUpperCase();
+      if (!estimadoPorProv[prov]) estimadoPorProv[prov] = 0;
+      estimadoPorProv[prov] += e.subtotal || 0;
+      totalEstimado += e.subtotal || 0;
+    });
+
+    // Todos los proveedores (unión)
+    var allProvs = {};
+    Object.keys(comprasPorProv).forEach(function(p) { allProvs[p] = true; });
+    Object.keys(estimadoPorProv).forEach(function(p) { allProvs[p] = true; });
+    var provList = Object.keys(allProvs).sort();
+
+    // Construir HTML
+    var html = '<div style="margin-top:20px" id="clb-comparativo-section">' +
+      '<div style="background:rgba(114,196,126,.1);border:1px solid rgba(114,196,126,.25);border-radius:8px;padding:10px 14px;margin-bottom:8px">' +
+        '<span style="font-weight:700;font-size:15px;color:#72c47e;letter-spacing:.04em">📋 Compras realizadas vs Estimado</span>' +
+        '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + compras.length + ' nota' + (compras.length > 1 ? 's' : '') + ' en este período</span>' +
+      '</div>' +
+      '<div style="overflow-x:auto">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      '<thead><tr style="border-bottom:1px solid rgba(255,255,255,.08)">' +
+        '<th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:10px">PROVEEDOR</th>' +
+        '<th style="padding:5px 8px;text-align:center;color:var(--muted);font-size:10px">NOTAS</th>' +
+        '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">ESTIMADO</th>' +
+        '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">REAL</th>' +
+        '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">DIFERENCIA</th>' +
+      '</tr></thead><tbody>';
+
+    provList.forEach(function(prov, i) {
+      var est = estimadoPorProv[prov] || 0;
+      var real = comprasPorProv[prov] ? comprasPorProv[prov].total : 0;
+      var diff = real - est;
+      var diffPct = est > 0 ? ((diff / est) * 100).toFixed(1) : '—';
+      var diffColor = Math.abs(diff) < 1 ? '#72c47e' : (diff > 0 ? '#e08080' : '#72c47e');
+      var diffSign = diff > 0 ? '+' : '';
+      var diffIcon = Math.abs(diff) < 1 ? '✅' : (diff > 0 ? '⚠️' : '✅');
+      var numNotas = comprasPorProv[prov] ? comprasPorProv[prov].compras.length : 0;
+      var folios = comprasPorProv[prov] ? comprasPorProv[prov].compras.map(function(c) { return c.folio_nota || 'S/F'; }).join(', ') : '—';
+
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,.04);' + (i%2?'background:rgba(255,255,255,.02)':'') + '">' +
+        '<td style="padding:6px 8px;font-weight:600;color:var(--white)">' + prov +
+          '<div style="font-size:9px;color:var(--muted);font-weight:400">' + folios + '</div></td>' +
+        '<td style="padding:6px 8px;text-align:center;color:var(--muted)">' + numNotas + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;color:var(--muted)">' + (est > 0 ? '$' + est.toLocaleString('es-MX') : '—') + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-weight:600;color:var(--white)">' + (real > 0 ? '$' + real.toLocaleString('es-MX') : '—') + '</td>' +
+        '<td style="padding:6px 8px;text-align:right;font-weight:600;color:' + diffColor + '">' +
+          (real > 0 && est > 0 ? diffIcon + ' ' + diffSign + '$' + diff.toFixed(2) + (diffPct !== '—' ? ' (' + diffSign + diffPct + '%)' : '') : (real > 0 ? 'Sin estimado' : 'Sin compra')) +
+        '</td></tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    // Resumen total
+    var totalDiff = totalReal - totalEstimado;
+    var totalDiffPct = totalEstimado > 0 ? ((totalDiff / totalEstimado) * 100).toFixed(1) : '—';
+    var totalDiffColor = Math.abs(totalDiff) < 1 ? '#72c47e' : (totalDiff > 0 ? '#e08080' : '#72c47e');
+    var totalDiffSign = totalDiff > 0 ? '+' : '';
+    var totalIcon = Math.abs(totalDiff) < 1 ? '✅' : (totalDiff > 0 ? '🔴' : '🟢');
+
+    html += '<div style="background:rgba(114,196,126,.06);border:1px solid rgba(114,196,126,.15);border-radius:8px;padding:12px 16px;margin-top:8px">' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">' +
+        '<div><div style="font-size:10px;color:var(--muted)">ESTIMADO</div><div style="font-size:16px;font-weight:700;color:var(--warn);font-family:Outfit">$' + totalEstimado.toLocaleString('es-MX') + '</div></div>' +
+        '<div><div style="font-size:10px;color:var(--muted)">REAL</div><div style="font-size:16px;font-weight:700;color:var(--white);font-family:Outfit">$' + totalReal.toLocaleString('es-MX') + '</div></div>' +
+        '<div><div style="font-size:10px;color:var(--muted)">DIFERENCIA</div><div style="font-size:16px;font-weight:700;color:' + totalDiffColor + ';font-family:Outfit">' + totalIcon + ' ' + totalDiffSign + '$' + Math.abs(totalDiff).toFixed(2) +
+          (totalDiffPct !== '—' ? ' <span style="font-size:11px">(' + totalDiffSign + totalDiffPct + '%)</span>' : '') + '</div></div>' +
+      '</div>' +
+    '</div></div>';
+
+    return html;
+  } catch(e) {
+    console.warn('clbComparativo:', e);
+    return '';
+  }
 }
 
 // ═══════════════════════════════════════════════════
