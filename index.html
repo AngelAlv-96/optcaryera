@@ -16398,6 +16398,9 @@ async function cancelarVentaRegistrada(ventaId, folio) {
   const desglose = {};
   (_pagosVta||[]).forEach(p => { desglose[p.metodo_pago] = (desglose[p.metodo_pago]||0) + Number(p.monto); });
   const desgloseHtml = Object.entries(desglose).map(([m,v]) => `<span style="font-size:10px;padding:2px 6px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--white)">${m}: $${v.toFixed(2)}</span>`).join(' ');
+  // Determinar método de pago principal (mayor monto) para auto-seleccionar devolución
+  const _metodoPrincipal = Object.entries(desglose).sort((a,b) => b[1] - a[1])[0];
+  const _metodoDevDefault = _metodoPrincipal ? _metodoPrincipal[0] : 'Efectivo';
 
   const overlay = document.createElement('div');
   overlay.className = 'm-overlay open';
@@ -16423,13 +16426,15 @@ async function cancelarVentaRegistrada(ventaId, folio) {
           <div>
             <label style="font-size:10px;color:var(--muted)">Método de devolución</label>
             <select id="cancelar-dev-metodo" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--white);font-size:12px;box-sizing:border-box">
-              <option value="Efectivo">💵 Efectivo</option>
-              <option value="Tarjeta">💳 Tarjeta</option>
-              <option value="Transferencia">🏦 Transferencia</option>
+              <option value="Efectivo" ${_metodoDevDefault==='Efectivo'?'selected':''}>💵 Efectivo</option>
+              <option value="Tarjeta" ${_metodoDevDefault==='Tarjeta'?'selected':''}>💳 Tarjeta</option>
+              <option value="Transferencia" ${_metodoDevDefault==='Transferencia'?'selected':''}>🏦 Transferencia</option>
+              <option value="Dólar" ${_metodoDevDefault==='Dólar'?'selected':''}>💲 Dólar</option>
+              <option value="MSI" ${_metodoDevDefault==='MSI'?'selected':''}>📅 MSI</option>
             </select>
           </div>
         </div>
-        <div style="font-size:9px;color:var(--muted)">💡 Solo devoluciones en efectivo se descuentan de la caja automáticamente.</div>
+        <div style="font-size:9px;color:var(--muted)">💡 Auto-seleccionado: <b>${_metodoDevDefault}</b> (método principal de pago). Solo efectivo se descuenta de caja.</div>
       </div>
     </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px">Esta venta no tiene pagos registrados.</div>'}
     <div style="display:flex;gap:8px;justify-content:flex-end">
