@@ -1,0 +1,1423 @@
+// /.netlify/functions/wa-webhook.js
+// WhatsApp Webhook via Twilio — Clari chatbot with AI + order status lookup
+// Env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WA_NUMBER, ANTHROPIC_API_KEY, SUPABASE_SERVICE_ROLE_KEY
+
+const TWILIO_SID   = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_WA    = process.env.TWILIO_WA_NUMBER || 'whatsapp:+5216563110094';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const TWILIO_API_URL = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
+
+function twilioAuth() {
+  return 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+}
+
+// ── CUSTOMER-FRIENDLY STATUS MAPPING ──
+const STATUS_MAP = {
+  'Enviado al lab': { emoji: '📋', msg: 'Tu pedido fue registrado y enviado a nuestro laboratorio. Te avisaremos cuando avance.' },
+  'Recibido en lab': { emoji: '🔬', msg: 'Tu pedido ya está en nuestro laboratorio esperando turno. Te avisamos cuando esté listo.' },
+  'Recibido': { emoji: '🔬', msg: 'Tu pedido ya está en nuestro laboratorio esperando turno. Te avisamos cuando esté listo.' },
+  'Pendiente de surtir': { emoji: '📦', msg: 'Estamos preparando los materiales para tus lentes. Todavía falta un poco, te avisamos cuando avancen.' },
+  'Surtido': { emoji: '✅', msg: 'Los materiales ya se están preparando. Aún falta el proceso de fabricación, te avisamos cuando estén listos.' },
+  'Faltante': { emoji: '⏳', msg: 'Estamos esperando un material especial para tus lentes. En cuanto lo tengamos comenzamos. Te avisaremos.' },
+  'En proceso Máquina 1': { emoji: '⚙️', msg: 'Tus lentes están en proceso de fabricación. Todavía no están listos, te avisamos cuando terminen.' },
+  'En proceso Máquina 2': { emoji: '⚙️', msg: 'Tus lentes están en la etapa final de fabricación. Aún no están listos, te avisamos pronto.' },
+  'Biselado completado': { emoji: '💎', msg: 'Tus lentes ya fueron cortados a la medida y están en revisión de calidad. Te avisamos cuando lleguen a sucursal.' },
+  'Tallando en lab externo': { emoji: '🔬', msg: 'Tus lentes están siendo procesados en un laboratorio especializado. Todavía están en proceso, te avisamos cuando estén listos.' },
+  'Control de calidad': { emoji: '🔍', msg: 'Tus lentes están en revisión de calidad. Aún no puedes recogerlos, te avisamos cuando pasen a sucursal.' },
+  'En camino a sucursal': { emoji: '🚗', msg: 'Tus lentes ya van en camino a la sucursal. Todavía no puedes recogerlos, te avisamos cuando lleguen.' },
+  'Recibido en óptica': { emoji: '🏪', msg: '¡Tus lentes ya llegaron a la sucursal y están listos! Puedes pasar a recogerlos en nuestro horario: lunes a sábado 10am-7pm, domingos 11am-5pm.' },
+  'Listo para entrega': { emoji: '🎉', msg: '¡Tus lentes están listos para que los recojas! Te esperamos en la sucursal: lunes a sábado 10am-7pm, domingos 11am-5pm.' },
+  'Devuelto al lab': { emoji: '🔄', msg: 'Tus lentes regresaron al laboratorio para un ajuste. Queremos que queden perfectos. Te avisamos cuando estén listos.' },
+  'Demorado': { emoji: '⏰', msg: 'Tu pedido tuvo un pequeño retraso, pero estamos trabajando en ello. Disculpa la espera, te avisamos cuando esté listo.' },
+  'Entregado': { emoji: '✨', msg: 'Tus lentes ya fueron entregados. Esperamos que los disfrutes. Recuerda que tienes garantía incluida.' }
+};
+
+// ── DEFAULT PROMPTS ──
+const DEFAULT_PERSONALITY = `Eres Clari, la asistente virtual de Ópticas Car & Era en Ciudad Juárez, Chihuahua. Respondes por WhatsApp.
+
+REGLAS DE ESTILO:
+- Responde en español (o en el idioma que te hablen)
+- Respuestas breves y claras para WhatsApp (máximo 3-4 párrafos cortos)
+- Usa emojis de visión y lentes: 👓 👁️ ✨ 💫 🔍
+- Sé amigable, cálida y profesional
+- NO uses formato markdown (ni negritas **, ni listas con -)
+- Usa saltos de línea para separar ideas
+- Si la pregunta está fuera de tu conocimiento sobre Ópticas Car & Era, rechaza amablemente
+- Si el cliente necesita atención humana o tiene un problema complejo, sugiere que visite la sucursal más cercana o llame al teléfono de la sucursal
+- NUNCA menciones el número 657-299-1038 bajo ninguna circunstancia`;
+
+const DEFAULT_KNOWLEDGE = `SUCURSALES:
+📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
+📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
+📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), entre Casa de Cambio y Trevly, frente a Tostadas El Primo. Tel: (656) 174-8866
+
+⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
+No se necesita cita previa.
+
+PROMOCIONES VIGENTES (MARZO):
+🎁 3x1 en lentes completos: Dos lentes con el material de tu elección + un solar graduado. Desde $600 en armazones seleccionados. Hasta 2 graduaciones diferentes. Válida hasta 31 de marzo.
+✨ Armazones con antirreflejante Blue o Hi AR por $1,200
+💫 30% descuento en bifocales y progresivos | 20% en armazones
+☀️ Lente solar graduado adicional por $249 (combinable con cualquier promo)
+🎁 Estuches y soluciones GRATIS
+💳 Meses sin intereses
+💰 5% de reembolso en Opti Coins
+🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio)
+Las promociones deben ser aprovechadas por la misma persona.
+
+PRODUCTOS Y SERVICIOS:
+👓 Armazones (desde $300)
+👁️ Lentes oftálmicos con tratamientos
+🕶️ Lentes de contacto
+🛍️ Accesorios ópticos, lentes clip-on solar
+👨‍⚕️ Examen de la vista GRATUITO (incluido al comprar lentes)
+⏱️ Tiempo de entrega: desde 35 minutos hasta 48 horas según el tipo de lente
+
+FORMAS DE PAGO:
+Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Aplazo (pagos a plazos sin tarjeta)
+Abonos en línea: https://clip.mx/@caryera
+
+APLAZO (crédito a plazos):
+1. Regístrate en https://customer.aplazo.mx/register/credentials
+2. Visita cualquier sucursal
+3. Paga solo 20% inicial, resto en 4 pagos quincenales
+
+APARTADO: 30% de pago inicial, se mantiene precio de promoción por 40 días.
+
+GARANTÍA: Todas las compras incluyen garantía. Examen de vista con garantía hasta 40 días.
+
+VISIÓN SEGURA (protección extra):
+💙 Básico $499: 1 cambio de micas gratis + 50% desc. reposición por daño
+💚 Plus $999: 2 eventos/año + 1 reposición gratis por daño
+❤️ Premium $1999: Cambios ilimitados (cada 50 días) + 2 reposiciones gratis
+Precio especial solo válido el día de compra o recogida.
+
+REGLAS IMPORTANTES:
+1. EXAMEN DE VISTA: Gratuito SOLO al comprar lentes. NO ofrezcas examen solo ni receta sin compra.
+2. SERVICIO A DOMICILIO: No lo ofrecemos. El servicio a domicilio no es una práctica ética en optometría ya que se requiere equipo especializado.
+3. CURRÍCULUM: admon.caryera@gmail.com (solo optometristas certificados)
+
+VENTA DE LENTES DE CONTACTO POR WHATSAPP:
+Puedes vender lentes de contacto por WhatsApp. Cuando un cliente quiera comprar LC:
+1. Pregunta qué marca/tipo usa o necesita. Si no sabe, pregunta si son esféricos, tóricos, multifocales, o de color.
+2. Busca en el catálogo y muestra opciones con precio.
+3. Pregunta cuántas cajas necesita.
+4. Pregunta en qué sucursal quiere recoger (Américas, Pinocelli, o Magnolia).
+5. Da el resumen con total y ofrece formas de pago:
+   - Link de pago rápido: https://clip.mx/@caryera
+   - Transferencia BBVA: Cuenta 0485220280 / CLABE 012164004852202892
+   Si preguntan por el nombre del beneficiario, aparece como "Ivonne Yamilez Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era, es la cuenta de la empresa.
+6. Cuando el cliente confirme que quiere proceder, usa el comando especial CREAR_VENTA al final de tu respuesta (el sistema lo detectará).
+   Formato exacto: CREAR_VENTA|nombre del cliente|producto|cantidad|total|sucursal_entrega
+   Ejemplo: CREAR_VENTA|Juan Pérez|AIR OPTIX HYDRAGLYDE (ESFERICOS)|2|2080|Américas
+IMPORTANTE: NUNCA muestres el comando CREAR_VENTA al cliente. Solo inclúyelo en tu mensaje cuando el cliente confirme la compra.
+NUNCA crees una venta sin que el cliente haya confirmado explícitamente que quiere comprar.`;
+
+// ── SUPABASE HELPERS ──
+async function supaFetch(path, opts) {
+  if (!SERVICE_KEY) return null;
+  opts = opts || {};
+  var res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    method: opts.method || 'GET',
+    headers: {
+      'apikey': SERVICE_KEY,
+      'Authorization': 'Bearer ' + SERVICE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || 'return=representation'
+    },
+    body: opts.body || undefined
+  });
+  if (!res.ok) return null;
+  var text = await res.text();
+  if (!text || !text.trim()) return null;
+  try { return JSON.parse(text); } catch(e) { return null; }
+}
+
+async function getClariConfig() {
+  try {
+    var data = await supaFetch('app_config?id=eq.clari_config&select=value');
+    if (data && data[0] && data[0].value) {
+      var v = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
+      return { personality: v.personality || DEFAULT_PERSONALITY, knowledge: v.knowledge || DEFAULT_KNOWLEDGE };
+    }
+  } catch(e) { console.error('[Config Error]', e); }
+  return { personality: DEFAULT_PERSONALITY, knowledge: DEFAULT_KNOWLEDGE };
+}
+
+// ── ORDER STATUS LOOKUP ──
+async function lookupOrders(phone, text) {
+  if (!SERVICE_KEY) return null;
+  var results = [];
+
+  // 1. Try by phone number (the sender's WhatsApp number)
+  var cleanPhone = phone.replace(/^\+?52/, '').replace(/^1/, '');
+  if (cleanPhone.length === 10) {
+    // Find patient by phone
+    var patients = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id,nombre,apellidos,telefono&limit=5');
+    if (patients && patients.length > 0) {
+      var patIds = patients.map(function(p) { return p.id; });
+      // Get active orders for these patients
+      var orders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + patIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=10');
+      if (orders && orders.length > 0) results = results.concat(orders);
+    }
+  }
+
+  // 2. Try by folio if message contains a number
+  var folioMatch = text.match(/\b(\d{4,6})\b/);
+  if (folioMatch) {
+    var folio = folioMatch[1];
+    var byFolio = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + folio + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
+    if (byFolio && byFolio.length > 0) {
+      // Add only if not already found by phone
+      byFolio.forEach(function(o) {
+        if (!results.find(function(r) { return r.id === o.id; })) results.push(o);
+      });
+    }
+  }
+
+  // 3. Try by name if message has a name-like text (only if no results yet)
+  if (results.length === 0) {
+    var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) { return w.length >= 3; });
+    if (nameWords.length >= 1) {
+      for (var i = 0; i < Math.min(nameWords.length, 2); i++) {
+        var word = nameWords[i];
+        var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=5');
+        if (byName && byName.length > 0 && byName.length <= 3) {
+          var nameIds = byName.map(function(p) { return p.id; });
+          var nameOrders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + nameIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
+          if (nameOrders && nameOrders.length > 0) results = results.concat(nameOrders);
+          break;
+        }
+      }
+    }
+  }
+
+  if (results.length === 0) return null;
+
+  // Deduplicate
+  var seen = {};
+  results = results.filter(function(o) {
+    if (seen[o.id]) return false;
+    seen[o.id] = true;
+    return true;
+  });
+
+  // Format for AI context
+  return results.map(function(o) {
+    var nombre = o.pacientes ? (o.pacientes.nombre + ' ' + (o.pacientes.apellidos || '')).trim() : 'Cliente';
+    var notas = o.notas_laboratorio || '';
+    var folio = (notas.match(/Folio: ([^\s|]+)/) || [])[1] || 'S/N';
+    var estado = o.estado_lab || 'Desconocido';
+    var statusInfo = STATUS_MAP[estado] || { emoji: '📋', msg: 'Tu pedido está siendo procesado.' };
+    var sucursal = o.sucursal || '';
+    var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
+    return {
+      nombre: nombre,
+      folio: folio,
+      estado: estado,
+      emoji: statusInfo.emoji,
+      mensaje_cliente: statusInfo.msg,
+      sucursal: sucursal,
+      fecha: fecha
+    };
+  });
+}
+
+function isAskingAboutOrder(text) {
+  var lower = text.toLowerCase();
+  var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo'];
+  return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
+}
+
+// ── CONVERSATION HISTORY ──
+async function getConversationHistory(phone) {
+  if (!SERVICE_KEY) return [];
+  try {
+    var data = await supaFetch('clari_conversations?phone=eq.' + phone + '&select=role,content,created_at&order=created_at.desc&limit=10');
+    if (!data) return [];
+    return data.reverse().map(function(m) { return { role: m.role, content: m.content }; });
+  } catch(e) { return []; }
+}
+
+async function saveMessage(phone, role, content, userName, viaPhoneId) {
+  if (!SERVICE_KEY) return;
+  try {
+    var payload = { phone: phone, role: role, content: content, user_name: userName || null };
+    if (viaPhoneId) payload.via_phone_id = viaPhoneId;
+    await supaFetch('clari_conversations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      prefer: 'return=minimal'
+    });
+  } catch(e) { console.error('[Save Error]', e); }
+}
+
+async function cleanOldMessages() {
+  if (!SERVICE_KEY) return;
+  try {
+    var cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    await supaFetch('clari_conversations?created_at=lt.' + cutoff, { method: 'DELETE', prefer: 'return=minimal' });
+  } catch(e) {}
+}
+
+// ── AI RESPONSE ──
+async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
+  var config = await getClariConfig();
+  var systemPrompt = config.personality + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
+
+  // Check if asking about order and lookup
+  var orderContext = '';
+  if (isAskingAboutOrder(userMessage)) {
+    var orders = await lookupOrders(phone, userMessage);
+    if (orders && orders.length > 0) {
+      orderContext = '\n\nPEDIDOS ENCONTRADOS PARA ESTE CLIENTE:\n';
+      orders.forEach(function(o, i) {
+        orderContext += (i + 1) + '. ' + o.nombre + ' — Folio: ' + o.folio + '\n';
+        orderContext += '   Estado: ' + o.emoji + ' ' + o.mensaje_cliente + '\n';
+        orderContext += '   Sucursal: ' + o.sucursal + ' | Fecha: ' + o.fecha + '\n';
+      });
+      orderContext += '\nINSTRUCCIONES IMPORTANTES SOBRE PEDIDOS:\n- Usa el mensaje_cliente como base para responder. NO inventes información adicional.\n- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n- NUNCA menciones el número 657-299-1038 ni envíes al cliente a otro número. Tú tienes la información.\n- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n- Sé honesta sobre el tiempo: si están en proceso, di que están en proceso. No generes falsas expectativas.\n- Incluye el folio para referencia del cliente.';
+    } else {
+      orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos activos para este número de teléfono ni con la información proporcionada. Pide amablemente al cliente su número de folio (aparece en su ticket de compra) o su nombre completo para buscarlo. Si ya proporcionó datos y no hay resultados, dile que no encontraste pedidos activos y que visite la sucursal más cercana para más información. NUNCA menciones el número 657-299-1038.';
+    }
+    systemPrompt += orderContext;
+  }
+
+  // Check if asking about LC — add catalog context
+  if (isAskingAboutLC(userMessage)) {
+    var lcProducts = await lookupLCCatalog(userMessage);
+    if (lcProducts && lcProducts.length > 0) {
+      var lcContext = '\n\nCATÁLOGO LENTES DE CONTACTO ENCONTRADOS:\n';
+      lcProducts.forEach(function(p, i) {
+        var info = (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja';
+        if (p.pares_por_caja) info += ' (' + p.pares_por_caja + ' pares, cambio c/' + (p.frecuencia_cambio_dias||30) + 'd)';
+        if (p.stock !== null && p.stock !== undefined) info += p.stock > 0 ? ' ✅ En stock' : ' ⏳ Sobre pedido';
+        lcContext += info + '\n';
+      });
+      lcContext += '\nMuestra los productos relevantes con precio. Si el cliente quiere comprar, sigue el flujo de venta de LC por WhatsApp.';
+      systemPrompt += lcContext;
+    }
+  }
+
+  // Get conversation history
+  var history = await getConversationHistory(phone);
+  var messages = [];
+  for (var i = 0; i < history.length; i++) {
+    messages.push({ role: history[i].role, content: history[i].content });
+  }
+  var greeting = userName ? '[Cliente: ' + userName + '] ' : '';
+  messages.push({ role: 'user', content: greeting + userMessage });
+
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 800,
+      system: systemPrompt,
+      messages: messages
+    })
+  });
+
+  var data = await res.json();
+  if (!res.ok) {
+    console.error('[AI Error]', data);
+    return '¡Hola! 👋 En este momento tengo una pequeña dificultad técnica. Te invito a llamar directamente a cualquiera de nuestras sucursales para atenderte. ¡Disculpa la molestia! 🙏';
+  }
+
+  var textBlock = data.content ? data.content.find(function(b) { return b.type === 'text'; }) : null;
+  var reply = (textBlock && textBlock.text) ? textBlock.text : 'Gracias por tu mensaje 😊 Un momento por favor...';
+
+  await saveMessage(phone, 'user', greeting + userMessage, userName, viaPhoneId);
+  await saveMessage(phone, 'assistant', reply, null, viaPhoneId);
+  if (Math.random() < 0.05) cleanOldMessages();
+
+  return reply;
+}
+
+// ── SEND REPLY VIA TWILIO ──
+async function sendWhatsAppReply(to, text) {
+  var toNum = to.replace(/[\s\-\(\)\+]/g, '');
+  if (toNum.length === 10) toNum = '521' + toNum;
+  if (toNum.length === 12 && toNum.startsWith('52') && toNum[2] !== '1') toNum = '521' + toNum.slice(2);
+
+  var chunks = [];
+  var remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= 1500) { chunks.push(remaining); break; }
+    var breakAt = remaining.lastIndexOf('\n', 1500);
+    if (breakAt < 500) breakAt = remaining.lastIndexOf('. ', 1500);
+    if (breakAt < 500) breakAt = 1500;
+    chunks.push(remaining.substring(0, breakAt));
+    remaining = remaining.substring(breakAt).trim();
+  }
+
+  for (var i = 0; i < chunks.length; i++) {
+    var params = new URLSearchParams();
+    params.append('From', TWILIO_WA);
+    params.append('To', 'whatsapp:+' + toNum);
+    params.append('Body', chunks[i]);
+    await fetch(TWILIO_API_URL, {
+      method: 'POST',
+      headers: { 'Authorization': twilioAuth(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+  }
+}
+
+// ── PARSE TWILIO WEBHOOK (form-urlencoded) ──
+function parseBody(raw) {
+  var params = {};
+  (raw || '').split('&').forEach(function(pair) {
+    var parts = pair.split('=');
+    if (parts.length === 2) params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1].replace(/\+/g, ' '));
+  });
+  return params;
+}
+
+// ── ADMIN PHONE CHECK HELPER ──
+async function isAdminPhone(phoneNum) {
+  try {
+    var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+    if (cfgData && cfgData[0] && cfgData[0].value) {
+      var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+      var adminPhones = (cfg.admin_phones || cfg.recipients_corte || []).map(function(p) { return p.replace(/[\s\-\(\)\+]/g, ''); });
+      var clean = phoneNum.replace(/[\s\-\(\)\+]/g, '');
+      return adminPhones.some(function(ap) { return clean.endsWith(ap.slice(-10)) || ap.endsWith(clean.slice(-10)); });
+    }
+  } catch(e) { console.warn('[AdminCheck] Error:', e.message); }
+  return false;
+}
+
+function hoyLocal() {
+  return new Date().toLocaleDateString('en-CA');
+}
+
+// ── ADMIN COMMAND: VENTAS ──
+async function cmdVentas() {
+  var today = hoyLocal();
+  var utcStart = new Date(today + 'T00:00:00').toISOString();
+  var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+  var ventas = await supaFetch('ventas?select=sucursal,total,pagado,estado&created_at=gte.' + utcStart + '&created_at=lte.' + utcEnd + '&estado=neq.Cancelada');
+  ventas = ventas || [];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var totalGeneral = 0;
+  var totalPagado = 0;
+  var lines = ['📊 *VENTAS HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
+  sucs.forEach(function(s) {
+    var sv = ventas.filter(function(v) { return v.sucursal === s; });
+    var st = sv.reduce(function(a, v) { return a + Number(v.total); }, 0);
+    var sp = sv.reduce(function(a, v) { return a + Number(v.pagado); }, 0);
+    totalGeneral += st;
+    totalPagado += sp;
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    lines.push(emoji + ' ' + s + ': ' + sv.length + ' ventas');
+    lines.push('   💰 $' + st.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' vendido · $' + sp.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' cobrado');
+  });
+  lines.push('\n🏪 TOTAL: ' + ventas.length + ' ventas');
+  lines.push('💰 $' + totalGeneral.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' vendido');
+  lines.push('✅ $' + totalPagado.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' cobrado');
+  return lines.join('\n');
+}
+
+// ── ADMIN COMMAND: CAJA ──
+async function cmdCaja() {
+  var today = hoyLocal();
+  var utcStart = new Date(today + 'T00:00:00').toISOString();
+  var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+  var cajas = await supaFetch('cortes_caja?select=*&fecha=eq.' + today + '&order=created_at.desc');
+  cajas = cajas || [];
+  var pagos = await supaFetch('venta_pagos?select=monto,metodo_pago,ventas(sucursal)&created_at=gte.' + utcStart + '&created_at=lte.' + utcEnd);
+  pagos = pagos || [];
+  var retiros = await supaFetch('retiros_caja?select=monto,sucursal&fecha=eq.' + today);
+  retiros = retiros || [];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var lines = ['🏦 *CAJA HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
+  sucs.forEach(function(s) {
+    var caja = cajas.find(function(c) { return c.sucursal === s; });
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    if (!caja) {
+      lines.push(emoji + ' ' + s + ': ⚪ Sin abrir');
+      return;
+    }
+    var estado = caja.estado === 'abierta' ? '🟢 Abierta' : '✅ Cortada';
+    var fondo = Number(caja.fondo_inicial) || 0;
+    var sucPagos = pagos.filter(function(p) { return p.ventas && p.ventas.sucursal === s; });
+    var ingreso = sucPagos.reduce(function(a, p) { return a + Number(p.monto); }, 0);
+    var sucRetiros = retiros.filter(function(r) { return r.sucursal === s; });
+    var totalRetiros = sucRetiros.reduce(function(a, r) { return a + Number(r.monto); }, 0);
+    // Payment method breakdown
+    var desglose = {};
+    sucPagos.forEach(function(p) {
+      var m = p.metodo_pago || 'Otro';
+      desglose[m] = (desglose[m] || 0) + Number(p.monto);
+    });
+    lines.push(emoji + ' ' + s + ': ' + estado);
+    lines.push('   💵 Fondo: $' + fondo.toFixed(0) + ' · Ingreso: $' + ingreso.toFixed(0));
+    if (totalRetiros > 0) lines.push('   📤 Retiros: $' + totalRetiros.toFixed(0));
+    var metodos = Object.entries(desglose).sort(function(a, b) { return b[1] - a[1]; });
+    if (metodos.length > 0) {
+      var desgloseStr = metodos.map(function(e) { return e[0] + ' $' + e[1].toFixed(0); }).join(' · ');
+      lines.push('   📋 ' + desgloseStr);
+    }
+    if (caja.estado === 'cortada' && caja.diferencia !== undefined) {
+      var dif = Number(caja.diferencia);
+      lines.push('   ' + (dif === 0 ? '✅ Cuadra perfecto' : (dif > 0 ? '⬆️ Sobrante: $' + dif.toFixed(2) : '⬇️ Faltante: $' + Math.abs(dif).toFixed(2))));
+    }
+  });
+  return lines.join('\n');
+}
+
+// ── ADMIN COMMAND: PENDIENTES LAB ──
+async function cmdPendientes() {
+  var ordenes = await supaFetch('ordenes_laboratorio?select=id,estado_lab,sucursal&estado_lab=neq.Entregado');
+  ordenes = ordenes || [];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var estados = {
+    'En cola': ['Enviado al lab', 'Recibido en lab', 'Recibido', 'Pendiente de surtir'],
+    'Surtido': ['Surtido'],
+    'En máquinas': ['En proceso Máquina 1', 'En proceso Máquina 2'],
+    'Biselado/CC': ['Biselado completado', 'Control de calidad'],
+    'Lab externo': ['Tallando en lab externo'],
+    'En camino': ['En camino a sucursal'],
+    'Listo': ['Recibido en óptica', 'Listo para entrega'],
+    'Faltante': ['Faltante'],
+    'Demorado': ['Demorado'],
+    'Devuelto': ['Devuelto al lab']
+  };
+  var lines = ['🔬 *PENDIENTES LAB*\n'];
+  lines.push('📦 Total activas: ' + ordenes.length + '\n');
+  // Summary by status
+  Object.keys(estados).forEach(function(grupo) {
+    var count = ordenes.filter(function(o) { return estados[grupo].includes(o.estado_lab); }).length;
+    if (count > 0) {
+      var emoji = grupo === 'En cola' ? '📋' : grupo === 'Surtido' ? '✅' : grupo === 'En máquinas' ? '⚙️' : grupo === 'Biselado/CC' ? '💎' : grupo === 'Lab externo' ? '🔬' : grupo === 'En camino' ? '🚗' : grupo === 'Listo' ? '🎉' : grupo === 'Faltante' ? '⏳' : grupo === 'Demorado' ? '⏰' : '🔄';
+      lines.push(emoji + ' ' + grupo + ': ' + count);
+    }
+  });
+  // By branch
+  lines.push('\n🏪 Por sucursal:');
+  sucs.forEach(function(s) {
+    var sv = ordenes.filter(function(o) { return o.sucursal === s; });
+    var listo = sv.filter(function(o) { return ['Recibido en óptica', 'Listo para entrega'].includes(o.estado_lab); }).length;
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    lines.push(emoji + ' ' + s + ': ' + sv.length + ' órdenes' + (listo > 0 ? ' (' + listo + ' listas para entregar)' : ''));
+  });
+  return lines.join('\n');
+}
+
+// ── ADMIN COMMAND: PROMO ──
+async function cmdPromo(newPromoText, userName) {
+  // Read current clari_config
+  var configData = await supaFetch('app_config?id=eq.clari_config&select=value');
+  var config = {};
+  if (configData && configData[0] && configData[0].value) {
+    config = typeof configData[0].value === 'string' ? JSON.parse(configData[0].value) : configData[0].value;
+  }
+  var knowledge = config.knowledge || '';
+  // Replace the PROMOCIONES section
+  var promoRegex = /PROMOCIONES VIGENTES[^]*?(?=\n[A-ZÁÉÍÓÚÑ]{3,}|\n$)/;
+  if (promoRegex.test(knowledge)) {
+    knowledge = knowledge.replace(promoRegex, 'PROMOCIONES VIGENTES:\n' + newPromoText + '\n');
+  } else {
+    // Append if no section found
+    knowledge += '\n\nPROMOCIONES VIGENTES:\n' + newPromoText + '\n';
+  }
+  config.knowledge = knowledge;
+  var result = await supaFetch('app_config?id=eq.clari_config', {
+    method: 'PATCH',
+    body: JSON.stringify({ value: JSON.stringify(config) }),
+    prefer: 'return=representation'
+  });
+  if (result) {
+    return '✅ Promociones actualizadas en Clari.\n\n📝 Nuevo texto:\n' + newPromoText + '\n\n👤 Por: ' + (userName || 'Admin');
+  }
+  return '❌ Error al actualizar promociones. Intenta de nuevo.';
+}
+
+// ── LC CATALOG LOOKUP ──
+async function lookupLCCatalog(searchText) {
+  if (!SERVICE_KEY) return null;
+  var terms = searchText.toLowerCase().split(/\s+/).filter(function(w) { return w.length >= 2; });
+  // Build ilike filters
+  var products = [];
+  try {
+    // Search by name — get all LC products
+    var all = await supaFetch('productos?categoria=eq.Lente de contacto&select=id,nombre,precio_venta,pares_por_caja,frecuencia_cambio_dias,duracion_dias,stock&order=nombre&limit=200');
+    if (all && all.length) {
+      // Filter by search terms
+      if (terms.length > 0) {
+        products = all.filter(function(p) {
+          var n = p.nombre.toLowerCase();
+          return terms.every(function(t) { return n.includes(t); });
+        });
+        // If no exact match, try partial
+        if (!products.length) {
+          products = all.filter(function(p) {
+            var n = p.nombre.toLowerCase();
+            return terms.some(function(t) { return n.includes(t); });
+          });
+        }
+      } else {
+        products = all.slice(0, 20);
+      }
+    }
+  } catch(e) { console.error('[LC Catalog]', e.message); }
+  return products.slice(0, 15);
+}
+
+function isAskingAboutLC(text) {
+  var lower = text.toLowerCase();
+  var keywords = ['lente de contacto', 'lentes de contacto', 'contacto', 'acuvue', 'air optix', 'freshlook', 'biofinity', 'dailies', 'soflens', 'biomedics', 'biotrue', 'clariti', 'oasys', 'comprar lentes', 'precio lentes', 'cuanto cuestan', 'cuánto cuestan', 'cotizar', 'cotización'];
+  return keywords.some(function(kw) { return lower.includes(kw); });
+}
+
+// ── LC SALE CREATION ──
+async function generateOnlineFolio() {
+  // Read folio config
+  var cfgData = await supaFetch('app_config?id=eq.folio_ventas&select=value');
+  var folioConfig = {};
+  if (cfgData && cfgData[0] && cfgData[0].value) {
+    folioConfig = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+  }
+  if (!folioConfig['Online']) folioConfig['Online'] = { prefijo: 'ONL', siguiente: 1 };
+  var onCfg = folioConfig['Online'];
+  // Get last folio
+  var lastVenta = await supaFetch('ventas?sucursal=eq.Online&select=folio&order=created_at.desc&limit=1');
+  var nextNum = onCfg.siguiente || 1;
+  if (lastVenta && lastVenta[0] && lastVenta[0].folio) {
+    var m = lastVenta[0].folio.match(/(\d+)$/);
+    if (m) nextNum = Math.max(nextNum, parseInt(m[1]) + 1);
+  }
+  folioConfig['Online'] = { prefijo: 'ONL', siguiente: nextNum + 1 };
+  await supaFetch('app_config?id=eq.folio_ventas', {
+    method: 'PATCH',
+    body: JSON.stringify({ value: JSON.stringify(folioConfig) }),
+    prefer: 'return=minimal'
+  });
+  return 'ONL-' + String(nextNum).padStart(4, '0');
+}
+
+async function findOrCreatePatient(name, phone) {
+  var cleanPhone = phone.replace(/^\+?521?/, '').replace(/\D/g, '');
+  if (cleanPhone.length === 10) {
+    // Search by phone
+    var byPhone = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id,nombre,apellidos,telefono&limit=3');
+    if (byPhone && byPhone.length > 0) return byPhone[0];
+  }
+  // Search by name
+  if (name) {
+    var parts = name.trim().split(/\s+/);
+    var nombre = parts[0] || '';
+    var apellidos = parts.slice(1).join(' ') || '';
+    if (nombre.length >= 2) {
+      var byName = await supaFetch('pacientes?nombre=ilike.*' + nombre + '*&select=id,nombre,apellidos,telefono&limit=5');
+      if (byName && byName.length > 0) {
+        // Try to match by apellido too
+        if (apellidos && byName.length > 1) {
+          var exact = byName.find(function(p) { return (p.apellidos||'').toLowerCase().includes(apellidos.toLowerCase().split(' ')[0]); });
+          if (exact) return exact;
+        }
+        if (byName.length === 1) return byName[0];
+      }
+    }
+    // Create new patient
+    var newPac = await supaFetch('pacientes', {
+      method: 'POST',
+      body: JSON.stringify({ nombre: nombre, apellidos: apellidos, telefono: cleanPhone.length === 10 ? cleanPhone : null, estado: 'activo' }),
+      prefer: 'return=representation'
+    });
+    if (newPac && newPac.length > 0) {
+      console.log('[LC Sale] Nuevo paciente creado: ' + nombre + ' ' + apellidos);
+      return newPac[0];
+    }
+  }
+  return null;
+}
+
+async function createLCSale(customerName, productName, qty, total, sucursalEntrega, customerPhone) {
+  // 1. Find or create patient
+  var patient = await findOrCreatePatient(customerName, customerPhone);
+  if (!patient) throw new Error('No se pudo encontrar o crear paciente');
+  
+  // 2. Find product
+  var prods = await supaFetch('productos?categoria=eq.Lente de contacto&nombre=ilike.*' + encodeURIComponent(productName.split(' ')[0]) + '*&select=id,nombre,precio_venta,pares_por_caja,frecuencia_cambio_dias&limit=10');
+  var prod = null;
+  if (prods && prods.length) {
+    // Try exact match first
+    prod = prods.find(function(p) { return p.nombre.toLowerCase() === productName.toLowerCase(); });
+    if (!prod) prod = prods.find(function(p) { return p.nombre.toLowerCase().includes(productName.toLowerCase().substring(0, 15)); });
+    if (!prod) prod = prods[0];
+  }
+  
+  // 3. Generate folio
+  var folio = await generateOnlineFolio();
+  
+  // 4. Create venta
+  var ventaData = {
+    folio: folio,
+    paciente_id: patient.id,
+    asesor: 'Clari (WA)',
+    sucursal: 'Online',
+    canal_venta: 'WhatsApp',
+    sucursal_entrega: sucursalEntrega || 'Américas',
+    subtotal: total,
+    descuento: 0,
+    total: total,
+    pagado: 0,
+    saldo: total,
+    estado: 'Apartado',
+    fecha_entrega: null,
+    hora_entrega: null,
+    notas: '🌐 Venta generada por Clari vía WhatsApp'
+  };
+  var ventaResult = await supaFetch('ventas', {
+    method: 'POST',
+    body: JSON.stringify(ventaData),
+    prefer: 'return=representation'
+  });
+  if (!ventaResult || !ventaResult.length) throw new Error('Error creando venta');
+  var venta = ventaResult[0];
+  
+  // 5. Create venta item
+  var precioUnit = prod ? Number(prod.precio_venta) : Math.round(total / qty);
+  await supaFetch('venta_items', {
+    method: 'POST',
+    body: JSON.stringify({
+      venta_id: venta.id,
+      producto_id: prod ? prod.id : null,
+      descripcion: productName,
+      cantidad: qty,
+      precio_unitario: precioUnit,
+      descuento_item: 0,
+      subtotal: total
+    }),
+    prefer: 'return=minimal'
+  });
+  
+  // 6. Register in LC CRM tracking
+  if (prod) {
+    var pares = prod.pares_por_caja || 3;
+    var freq = prod.frecuencia_cambio_dias || 30;
+    var duracion = pares * freq * qty;
+    var hoy = new Date().toISOString().slice(0, 10);
+    var fechaRecompra = new Date();
+    fechaRecompra.setDate(fechaRecompra.getDate() + duracion);
+    await supaFetch('lc_seguimiento', {
+      method: 'POST',
+      body: JSON.stringify({
+        paciente_id: patient.id,
+        venta_id: venta.id,
+        producto: productName,
+        producto_id: prod.id,
+        sucursal: 'Online',
+        canal_venta: 'WhatsApp',
+        fecha_compra: hoy,
+        duracion_dias: duracion,
+        cantidad_cajas: qty,
+        fecha_recompra: fechaRecompra.toISOString().slice(0, 10),
+        estado: 'activo'
+      }),
+      prefer: 'return=minimal'
+    });
+  }
+  
+  console.log('[LC Sale] Venta creada: ' + folio + ' · ' + customerName + ' · ' + productName + ' x' + qty + ' · $' + total);
+  return { folio: folio, venta_id: venta.id, paciente: patient, total: total, sucursal: sucursalEntrega };
+}
+
+// ── PENDING SALE (approval flow) ──
+async function savePendingSale(phone, saleData) {
+  // Store pending sale in app_config with key 'clari_pending_sale_PHONE'
+  var key = 'clari_pending_' + phone.replace(/\D/g, '').slice(-10);
+  await supaFetch('app_config', {
+    method: 'POST',
+    body: JSON.stringify({ id: key, value: JSON.stringify(saleData) }),
+    prefer: 'return=minimal'
+  });
+}
+
+async function getPendingSale(phone) {
+  var key = 'clari_pending_' + phone.replace(/\D/g, '').slice(-10);
+  var data = await supaFetch('app_config?id=eq.' + key + '&select=value');
+  if (data && data[0] && data[0].value) {
+    return typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
+  }
+  return null;
+}
+
+async function deletePendingSale(phone) {
+  var key = 'clari_pending_' + phone.replace(/\D/g, '').slice(-10);
+  await supaFetch('app_config?id=eq.' + key, { method: 'DELETE', prefer: 'return=minimal' });
+}
+
+async function notifyAdminPendingSale(saleData, customerPhone) {
+  // Get admin phones
+  var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+  var adminPhones = [];
+  if (cfgData && cfgData[0] && cfgData[0].value) {
+    var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+    adminPhones = cfg.admin_phones || cfg.recipients_corte || [];
+  }
+  if (!adminPhones.length) { console.warn('[LC Sale] No admin phones configured'); return; }
+  
+  var msg = '🛒 *NUEVA VENTA CLARI (pendiente)*\n\n'
+    + '👤 Cliente: ' + saleData.customerName + '\n'
+    + '📱 Tel: ' + customerPhone + '\n'
+    + '👁 Producto: ' + saleData.productName + '\n'
+    + '📦 Cantidad: ' + saleData.qty + ' cajas\n'
+    + '💰 Total: $' + saleData.total + '\n'
+    + '🏪 Entrega: ' + saleData.sucursalEntrega + '\n\n'
+    + 'Responde:\n'
+    + '✅ *APROBAR 3 dias* (o la fecha/tiempo)\n'
+    + '❌ *RECHAZAR*';
+  
+  for (var i = 0; i < adminPhones.length; i++) {
+    await sendWhatsAppReply(adminPhones[i], msg);
+  }
+}
+
+// ── MAIN HANDLER ──
+exports.handler = async function(event) {
+  var H = { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' };
+
+  // Twilio sends POST with form-urlencoded body
+  if (event.httpMethod === 'POST') {
+    try {
+      var tw = parseBody(event.body);
+      var from = (tw.From || '').replace('whatsapp:+', '');
+      var userText = (tw.Body || '').trim();
+      var userName = tw.ProfileName || '';
+      var messageSid = tw.MessageSid || '';
+      var numMedia = parseInt(tw.NumMedia || '0');
+
+      if (!from || !userText) {
+        // Media message without text (or empty text)
+        if (from && numMedia > 0) {
+          console.log('[Media] from=' + from + ' numMedia=' + numMedia + ' MediaUrl0=' + (tw.MediaUrl0||'NONE') + ' MediaContentType0=' + (tw.MediaContentType0||'NONE'));
+          var isAdminMedia = await isAdminPhone(from);
+          console.log('[Media] isAdmin=' + isAdminMedia);
+          // Twilio WA sends MediaUrl0, MediaContentType0
+          var mediaUrl = tw.MediaUrl0 || tw['MediaUrl0'] || '';
+          var mediaType = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
+
+          // Admin sends photo → Lab Assistant OCR
+          if (isAdminMedia && mediaUrl) {
+            await saveMessage(from, 'user', '📸 Foto nota de compra', userName);
+            try {
+              var ocrResult = await labAssistantOCR(mediaUrl, mediaType, userName);
+              await sendWhatsAppReply(from, ocrResult.reply);
+              await saveMessage(from, 'assistant', ocrResult.reply);
+            } catch(ocrErr) {
+              console.error('[LabOCR Error]', ocrErr.message, ocrErr.stack);
+              await sendWhatsAppReply(from, '❌ Error procesando la foto: ' + ocrErr.message);
+            }
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
+
+          // Admin but no mediaUrl — log and reply
+          if (isAdminMedia && !mediaUrl) {
+            console.log('[Media] Admin pero sin MediaUrl. Params:', JSON.stringify(Object.keys(tw)));
+            await sendWhatsAppReply(from, '⚠ Recibí tu foto pero no pude obtener la URL. Intenta de nuevo.');
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
+
+          // Non-admin media
+          await saveMessage(from, 'user', '📷 Media recibida', userName);
+          var mediaReply = '¡Gracias por tu mensaje! 😊 Por el momento solo puedo leer mensajes de texto. Si tienes alguna pregunta sobre nuestros servicios, lentes o promociones, escríbela y con gusto te ayudo 👓✨';
+          await sendWhatsAppReply(from, mediaReply);
+          await saveMessage(from, 'assistant', mediaReply);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
+        return { statusCode: 200, headers: H, body: '<Response></Response>' };
+      }
+
+      // Check if admin sent text WITH media (photo + caption)
+      if (numMedia > 0) {
+        console.log('[MediaWithText] from=' + from + ' text=' + userText.substring(0,50) + ' MediaUrl0=' + (tw.MediaUrl0||'NONE'));
+        var isAdminWithMedia = await isAdminPhone(from);
+        var mediaUrl2 = tw.MediaUrl0 || tw['MediaUrl0'] || '';
+        var mediaType2 = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
+        if (isAdminWithMedia && mediaUrl2) {
+          await saveMessage(from, 'user', '📸 ' + userText, userName);
+          try {
+            var ocrResult2 = await labAssistantOCR(mediaUrl2, mediaType2, userName, userText);
+            await sendWhatsAppReply(from, ocrResult2.reply);
+            await saveMessage(from, 'assistant', ocrResult2.reply);
+          } catch(ocrErr2) {
+            console.error('[LabOCR2 Error]', ocrErr2.message);
+            await sendWhatsAppReply(from, '❌ Error procesando: ' + ocrErr2.message);
+          }
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
+      }
+
+      console.log('[Incoming] ' + from + ' (' + userName + '): ' + userText);
+
+      // ── CHECK IF ADMIN PHONE (single check, reused) ──
+      var isAdmin = await isAdminPhone(from);
+
+      // ── AUTHORIZATION RESPONSE (SI/NO) ──
+      var isAuthResponse = false;
+      var lowerText = userText.toLowerCase().trim();
+
+      // ── APROBAR/RECHAZAR VENTA CLARI ──
+      if (isAdmin && !isAuthResponse) {
+        var aprobarMatch = userText.match(/^aprobar\s+(.+)/i);
+        var isRechazar = lowerText === 'rechazar';
+        
+        if (aprobarMatch || isRechazar) {
+          var pendingKeys = await supaFetch('app_config?id=like.clari_pending_*&select=id,value&limit=5');
+          if (pendingKeys && pendingKeys.length > 0) {
+            var pendEntry = pendingKeys[0];
+            var pendData = typeof pendEntry.value === 'string' ? JSON.parse(pendEntry.value) : pendEntry.value;
+            var custPhone = pendData.customerPhone || '';
+            
+            if (aprobarMatch) {
+              var tiempoEntrega = aprobarMatch[1].trim();
+              // Save delivery time and mark as approved-pending-customer
+              pendData.tiempoEntrega = tiempoEntrega;
+              pendData.adminApproved = true;
+              await supaFetch('app_config?id=eq.' + pendEntry.id, {
+                method: 'PATCH',
+                body: JSON.stringify({ value: JSON.stringify(pendData) }),
+                prefer: 'return=minimal'
+              });
+              // Notify customer with delivery time
+              if (custPhone) {
+                await sendWhatsAppReply(custPhone, '¡Hola! 👋 Tenemos novedades sobre tu pedido de lentes de contacto.\n\n👁 ' + pendData.productName + ' x' + pendData.qty + '\n💰 Total: $' + pendData.total + '\n🏪 Recoger en: ' + pendData.sucursalEntrega + '\n📅 Tiempo de entrega: ' + tiempoEntrega + '\n\n¿Deseas confirmar tu pedido? Responde *SI* para proceder o *NO* para cancelar.');
+                await saveMessage(custPhone, 'assistant', 'Tiempo de entrega: ' + tiempoEntrega + '. Esperando confirmación del cliente.');
+              }
+              await sendWhatsAppReply(from, '✅ Tiempo de entrega enviado al cliente: ' + tiempoEntrega + '\n⏳ Esperando confirmación del cliente...');
+              await saveMessage(from, 'user', userText, userName);
+              console.log('[LC Sale] Admin approved with delivery: ' + tiempoEntrega);
+            } else {
+              // Rechazar
+              if (custPhone) {
+                await sendWhatsAppReply(custPhone, 'Hola 👋 Lamentamos informarte que no pudimos procesar tu pedido de lentes de contacto en este momento. Te invitamos a visitar cualquiera de nuestras sucursales para atenderte personalmente. ¡Disculpa la molestia! 🙏');
+              }
+              await supaFetch('app_config?id=eq.' + pendEntry.id, { method: 'DELETE', prefer: 'return=minimal' });
+              await sendWhatsAppReply(from, '❌ Venta rechazada. Se notificó al cliente.');
+              await saveMessage(from, 'user', userText, userName);
+              console.log('[LC Sale] Rejected: ' + pendData.customerName);
+            }
+            isAuthResponse = true;
+          }
+        }
+      }
+
+      // ── CUSTOMER CONFIRMS PENDING SALE (SI/NO after delivery time) ──
+      if (!isAdmin && !isAuthResponse && (lowerText === 'si' || lowerText === 'sí' || lowerText === 'no')) {
+        var custPending = await getPendingSale(from);
+        if (custPending && custPending.adminApproved) {
+          if (lowerText === 'si' || lowerText === 'sí') {
+            try {
+              var saleResult = await createLCSale(custPending.customerName, custPending.productName, custPending.qty, custPending.total, custPending.sucursalEntrega, from);
+              // Notify customer
+              await sendWhatsAppReply(from, '¡Pedido confirmado! 🎉\n\n📋 Folio: ' + saleResult.folio + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 Total: $' + custPending.total + '\n🏪 Recoger en: ' + custPending.sucursalEntrega + '\n📅 Entrega: ' + custPending.tiempoEntrega + '\n\nRealiza tu pago:\n💳 Link: https://clip.mx/@caryera\n🏦 BBVA: Cuenta 0485220280 / CLABE 012164004852202892\n\nEnvíanos tu comprobante por este chat cuando lo hagas. ¡Gracias por tu preferencia! 👓✨');
+              // Notify admin
+              var cfgData2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+              if (cfgData2 && cfgData2[0]) {
+                var cfg2 = typeof cfgData2[0].value === 'string' ? JSON.parse(cfgData2[0].value) : cfgData2[0].value;
+                var admPhones = cfg2.admin_phones || cfg2.recipients_corte || [];
+                for (var ap = 0; ap < admPhones.length; ap++) {
+                  await sendWhatsAppReply(admPhones[ap], '✅ Cliente confirmó venta\n📋 Folio: ' + saleResult.folio + '\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 $' + custPending.total + '\n🏪 ' + custPending.sucursalEntrega + '\n📅 ' + custPending.tiempoEntrega);
+                }
+              }
+              await deletePendingSale(from);
+              console.log('[LC Sale] Customer confirmed: ' + saleResult.folio);
+            } catch(saleErr) {
+              await sendWhatsAppReply(from, 'Lo siento, hubo un error procesando tu pedido. Por favor intenta de nuevo o visita nuestra sucursal. 🙏');
+              console.error('[LC Sale] Error:', saleErr.message);
+            }
+          } else {
+            await sendWhatsAppReply(from, 'Entendido, tu pedido ha sido cancelado. Si cambias de opinión o necesitas algo más, aquí estamos. 😊👓');
+            await deletePendingSale(from);
+            // Notify admin
+            var cfgData3 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+            if (cfgData3 && cfgData3[0]) {
+              var cfg3 = typeof cfgData3[0].value === 'string' ? JSON.parse(cfgData3[0].value) : cfgData3[0].value;
+              var admPhones2 = cfg3.admin_phones || cfg3.recipients_corte || [];
+              for (var ap2 = 0; ap2 < admPhones2.length; ap2++) {
+                await sendWhatsAppReply(admPhones2[ap2], '❌ Cliente canceló la venta\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName);
+              }
+            }
+            console.log('[LC Sale] Customer declined');
+          }
+          await saveMessage(from, 'user', userText, userName);
+          isAuthResponse = true;
+        }
+      }
+
+      if ((lowerText === 'si' || lowerText === 'sí' || lowerText === 'no') && isAdmin && !isAuthResponse) {
+          var pendingAuth = await supaFetch('autorizaciones?estado=eq.pendiente&order=created_at.desc&limit=1');
+          if (pendingAuth && pendingAuth.length > 0) {
+            var auth = pendingAuth[0];
+            var isApprove = lowerText === 'si' || lowerText === 'sí';
+            var newEstado = isApprove ? 'aprobada' : 'rechazada';
+            await supaFetch('autorizaciones?id=eq.' + auth.id, {
+              method: 'PATCH',
+              body: JSON.stringify({ estado: newEstado, respondido_por: userName || 'Admin WA' }),
+              prefer: 'return=minimal'
+            });
+            var authReply = isApprove 
+              ? '✅ Autorización APROBADA\n📋 ' + (auth.tipo||'') + ': ' + (auth.descripcion||'') + '\n👤 Solicitado por: ' + (auth.solicitado_por||'') + ' (' + (auth.sucursal||'') + ')'
+              : '❌ Autorización RECHAZADA\n📋 ' + (auth.tipo||'') + ': ' + (auth.descripcion||'') + '\n👤 Solicitado por: ' + (auth.solicitado_por||'');
+            await sendWhatsAppReply(from, authReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', authReply);
+            console.log('[Auth] ' + newEstado + ' by ' + userName + ' for code ' + auth.codigo);
+            isAuthResponse = true;
+          }
+      }
+
+      // ── ADMIN COMMANDS ──
+      var cmdHandled = false;
+      if (!isAuthResponse && isAdmin) {
+          // DOLAR command
+          var dolarMatch = userText.match(/^d[oó]lar\s+(\d+\.?\d*)/i);
+          if (dolarMatch) {
+            var newRate = parseFloat(dolarMatch[1]);
+            if (newRate > 0 && newRate < 100) {
+              var tcPayload = JSON.stringify({ rate: newRate, updated: new Date().toISOString(), by: userName || 'Admin WA' });
+              var tcResult = await supaFetch('app_config?id=eq.tipo_cambio', {
+                method: 'PATCH',
+                body: JSON.stringify({ value: tcPayload }),
+                prefer: 'return=representation'
+              });
+              var dolarReply = tcResult
+                ? '✅ Tipo de cambio actualizado a $' + newRate.toFixed(2) + ' MXN por dólar.\n📅 ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) + '\n👤 Por: ' + (userName || 'Admin')
+                : '❌ Error al actualizar el tipo de cambio. Intenta de nuevo.';
+              await sendWhatsAppReply(from, dolarReply);
+              await saveMessage(from, 'user', userText, userName);
+              await saveMessage(from, 'assistant', dolarReply);
+              console.log('[Dolar] Rate updated to ' + newRate + ' by ' + userName);
+            } else {
+              await sendWhatsAppReply(from, '⚠️ Valor inválido. Usa: Dolar 18.50 (entre 1 y 99)');
+            }
+            cmdHandled = true;
+          }
+
+          // VENTAS command
+          if (!cmdHandled && /^ventas(\s+hoy)?$/i.test(lowerText)) {
+            var ventasReply = await cmdVentas();
+            await sendWhatsAppReply(from, ventasReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', ventasReply);
+            console.log('[Cmd] Ventas by ' + userName);
+            cmdHandled = true;
+          }
+
+          // CAJA command
+          if (!cmdHandled && /^caja$/i.test(lowerText)) {
+            var cajaReply = await cmdCaja();
+            await sendWhatsAppReply(from, cajaReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', cajaReply);
+            console.log('[Cmd] Caja by ' + userName);
+            cmdHandled = true;
+          }
+
+          // PENDIENTES command
+          if (!cmdHandled && /^pendientes$/i.test(lowerText)) {
+            var pendReply = await cmdPendientes();
+            await sendWhatsAppReply(from, pendReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', pendReply);
+            console.log('[Cmd] Pendientes by ' + userName);
+            cmdHandled = true;
+          }
+
+          // PROMO command (update)
+          if (!cmdHandled && /^promo\s+/i.test(userText)) {
+            var promoText = userText.replace(/^promo\s+/i, '').trim();
+            if (promoText.length > 5) {
+              var promoReply = await cmdPromo(promoText, userName);
+              await sendWhatsAppReply(from, promoReply);
+              await saveMessage(from, 'user', userText, userName);
+              await saveMessage(from, 'assistant', promoReply);
+              console.log('[Cmd] Promo updated by ' + userName);
+            } else {
+              await sendWhatsAppReply(from, '⚠️ Texto de promoción muy corto. Usa:\nPromo [texto completo de la promoción]');
+            }
+            cmdHandled = true;
+          }
+
+          // VER PROMO command (read current)
+          if (!cmdHandled && /^ver\s*promo$/i.test(lowerText)) {
+            var vpConfig = await supaFetch('app_config?id=eq.clari_config&select=value');
+            var vpText = '(No configurada)';
+            if (vpConfig && vpConfig[0] && vpConfig[0].value) {
+              var vpVal = typeof vpConfig[0].value === 'string' ? JSON.parse(vpConfig[0].value) : vpConfig[0].value;
+              var vpKnow = vpVal.knowledge || '';
+              var vpMatch = vpKnow.match(/PROMOCIONES VIGENTES[^]*?(?=\n[A-ZÁÉÍÓÚÑ]{3,}|\n$)/);
+              if (vpMatch) vpText = vpMatch[0].replace('PROMOCIONES VIGENTES', '').replace(/^[:\s]+/, '').trim();
+            }
+            var vpReply = '📢 *PROMOCIONES ACTUALES EN CLARI:*\n\n' + vpText;
+            await sendWhatsAppReply(from, vpReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', vpReply);
+            cmdHandled = true;
+          }
+
+          // HELP/COMANDOS command
+          if (!cmdHandled && /^(comandos|ayuda|help|menu|menú)$/i.test(lowerText)) {
+            var helpReply = '🛠️ *COMANDOS ADMIN*\n\n'
+              + '💵 *Dolar 18.50* — Actualizar tipo de cambio\n'
+              + '📊 *Ventas* — Resumen ventas del día\n'
+              + '🏦 *Caja* — Estado de caja por sucursal\n'
+              + '🔬 *Pendientes* — Órdenes lab activas\n'
+              + '📢 *Promo [texto]* — Actualizar promos Clari\n'
+              + '👀 *Ver promo* — Ver promos actuales\n'
+              + '✅ *Aprobar / ❌ Rechazar* — Ventas Clari\n'
+              + '\n📦 *LAB ASSISTANT*\n'
+              + '📸 *Enviar foto* — Registra nota de compra\n'
+              + '💰 *Gastos / Cuánto gasté* — Resumen gastos\n'
+              + '🔍 *Precio del [material]* — Consultar precio\n'
+              + '📝 *[material] ya vale $X* — Actualizar precio\n'
+              + '❓ *Comandos* — Ver esta ayuda';
+            await sendWhatsAppReply(from, helpReply);
+            await saveMessage(from, 'user', userText, userName);
+            await saveMessage(from, 'assistant', helpReply);
+            cmdHandled = true;
+          }
+
+          // ── LAB ASSISTANT (materiales, precios, gastos) ──
+          if (!cmdHandled && isLabAssistantQuery(lowerText)) {
+            await saveMessage(from, 'user', userText, userName);
+            try {
+              var labReply = await labAssistantText(userText, userName);
+              await sendWhatsAppReply(from, labReply);
+              await saveMessage(from, 'assistant', labReply);
+            } catch(labErr) {
+              console.error('[LabAssistant Error]', labErr);
+              await sendWhatsAppReply(from, '❌ Error: ' + labErr.message);
+            }
+            cmdHandled = true;
+          }
+      }
+
+      // ── CLARI AI (default for non-admin or unmatched commands) ──
+      if (!isAuthResponse && !cmdHandled) {
+        var reply = await getAIResponse(userText, userName, from);
+        
+        // Check if AI response contains CREAR_VENTA command
+        var saleMatch = reply.match(/CREAR_VENTA\|([^|]+)\|([^|]+)\|(\d+)\|(\d+\.?\d*)\|([^|\n]+)/);
+        if (saleMatch) {
+          // Remove the command from the visible reply
+          reply = reply.replace(/CREAR_VENTA\|[^\n]+/g, '').trim();
+          
+          // Parse sale data
+          var saleData = {
+            customerName: saleMatch[1].trim(),
+            productName: saleMatch[2].trim(),
+            qty: parseInt(saleMatch[3]),
+            total: parseFloat(saleMatch[4]),
+            sucursalEntrega: saleMatch[5].trim(),
+            customerPhone: from
+          };
+          
+          // Save pending sale and notify admin
+          try {
+            await savePendingSale(from, saleData);
+            await notifyAdminPendingSale(saleData, from);
+            console.log('[LC Sale] Pending sale saved: ' + saleData.customerName + ' · $' + saleData.total);
+            // Add note to customer reply
+            reply += '\n\n⏳ Estamos verificando disponibilidad y te daremos un tiempo de entrega en unos minutos. ¡Gracias por tu paciencia!';
+          } catch(saleErr) {
+            console.error('[LC Sale] Error saving pending:', saleErr.message);
+          }
+        }
+        
+        console.log('[Reply] -> ' + from + ': ' + reply.substring(0, 100) + '...');
+        await sendWhatsAppReply(from, reply);
+      }
+
+      return { statusCode: 200, headers: H, body: '<Response></Response>' };
+    } catch (err) {
+      console.error('[Webhook Error]', err);
+      return { statusCode: 200, headers: H, body: '<Response></Response>' };
+    }
+  }
+
+  // GET request — Twilio doesn't need verification like Meta, but handle gracefully
+  if (event.httpMethod === 'GET') {
+    return { statusCode: 200, body: 'OK' };
+  }
+
+  return { statusCode: 405, headers: H, body: 'Method not allowed' };
+};
+
+// ═══════════════════════════════════════════════════
+//  LAB ASSISTANT — Compras de materiales por WhatsApp
+// ═══════════════════════════════════════════════════
+
+const LAB_KEYWORDS = [
+  'gast','compr','material','precio','costo','cuesta','vale','poli','cr39','cr-39',
+  'hi index','ultra','bifocal','progresivo','anti blue','blue light','antirreflejante',
+  'foto ar','fotocromatico','blanco','nota','factura','proveedor','mica','lente',
+  'subi','subio','subió','baj','cuánto','cuanto','análisis','analisis','surtido',
+  'tratamiento','ar ','armazón','armazon','donde','dónde','cómo se llama','como se llama'
+];
+
+function isLabAssistantQuery(text) {
+  var lower = text.toLowerCase();
+  for (var i = 0; i < LAB_KEYWORDS.length; i++) {
+    if (lower.includes(LAB_KEYWORDS[i])) return true;
+  }
+  return false;
+}
+
+async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
+  // 1. Download image from Twilio
+  console.log('[LabOCR] Downloading from Twilio:', mediaUrl);
+  var imgResp = await fetch(mediaUrl, {
+    headers: { 'Authorization': twilioAuth() }
+  });
+  if (!imgResp.ok) throw new Error('No pude descargar la imagen de Twilio');
+
+  var imgBuffer = await imgResp.arrayBuffer();
+  var base64 = Buffer.from(imgBuffer).toString('base64');
+  var mType = mediaType || 'image/jpeg';
+
+  // 2. Send to Anthropic Vision
+  console.log('[LabOCR] Sending to Vision API, size:', base64.length);
+  var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: 'Eres un asistente de óptica que extrae datos de notas/tickets/facturas de compra de materiales ópticos.\n' +
+        'Extrae TODA la información: proveedor, folio, fecha, y cada material con cantidad y precio.\n' +
+        'RESPONDE ÚNICAMENTE con JSON object:\n' +
+        '{"proveedor":"NOMBRE","folio":"12345","fecha":"2026-03-15","items":[{"material":"NOMBRE","cantidad":1,"precio_unitario":123.45,"subtotal":123.45}]}\n' +
+        'Precios SIN IVA (si incluye IVA dividir entre 1.16). Si no puedes leer algo, usa null.',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mType, data: base64 } },
+          { type: 'text', text: caption || 'Extrae proveedor, folio, fecha y materiales de esta nota de compra. Responde solo JSON.' }
+        ]
+      }]
+    })
+  });
+
+  if (!aiResp.ok) {
+    var aiErr = await aiResp.json();
+    throw new Error(aiErr.error?.message || 'Error de Vision API');
+  }
+
+  var aiData = await aiResp.json();
+  var aiText = '';
+  if (aiData.content) aiData.content.forEach(function(c) { if (c.type === 'text') aiText += c.text; });
+
+  // 3. Parse response
+  var parsed = null;
+  var objMatch = aiText.match(/\{[\s\S]*\}/);
+  if (objMatch) try { parsed = JSON.parse(objMatch[0]); } catch(e) {}
+  if (!parsed) {
+    var arrMatch = aiText.match(/\[[\s\S]*\]/);
+    if (arrMatch) try { parsed = { items: JSON.parse(arrMatch[0]) }; } catch(e) {}
+  }
+  if (!parsed || !parsed.items || !parsed.items.length) {
+    return { reply: '⚠ No pude leer materiales de esta foto. Intenta con una foto más clara o de más cerca.' };
+  }
+
+  var items = parsed.items.filter(function(i) { return i.material && !(i.material||'').toUpperCase().includes('TOTAL'); });
+  var total = items.reduce(function(s,i) { return s + ((i.cantidad||1) * (i.precio_unitario||0)); }, 0);
+  var fecha = parsed.fecha || hoyLocal();
+  var proveedor = parsed.proveedor || 'Sin proveedor';
+  var folio = parsed.folio || null;
+
+  // 4. Load mapeos to translate material names
+  var mapeos = await supaFetch('mapeo_materiales?activo=eq.true&select=nombre_proveedor,nuestro_material,nuestro_tratamiento&limit=500') || [];
+
+  // 5. Save to compras_lab
+  var saveItems = items.map(function(i) {
+    var mat = (i.material||'').trim();
+    var mapped = mapeos.find(function(m) {
+      var alias = (m.nombre_proveedor||'').toUpperCase();
+      return alias === mat.toUpperCase() || mat.toUpperCase().includes(alias) || alias.includes(mat.toUpperCase());
+    });
+    return {
+      material: mat,
+      material_nuestro: mapped ? (mapped.nuestro_material + (mapped.nuestro_tratamiento ? ' · ' + mapped.nuestro_tratamiento : '')) : null,
+      cantidad: parseInt(i.cantidad) || 1,
+      precio_unitario: parseFloat(i.precio_unitario) || 0,
+      subtotal: (parseInt(i.cantidad)||1) * (parseFloat(i.precio_unitario)||0)
+    };
+  });
+
+  var compraData = {
+    fecha: fecha,
+    proveedor: proveedor,
+    folio_nota: folio,
+    items: JSON.stringify(saveItems),
+    total: total,
+    sucursal: 'Todas',
+    usuario: userName || 'WhatsApp'
+  };
+
+  var saveResult = await supaFetch('compras_lab', {
+    method: 'POST',
+    body: JSON.stringify(compraData),
+    prefer: 'return=representation'
+  });
+  var compraId = (saveResult && saveResult[0]) ? saveResult[0].id : null;
+
+  // 6. Save precios_materiales
+  for (var pi = 0; pi < saveItems.length; pi++) {
+    var si = saveItems[pi];
+    if (si.precio_unitario > 0) {
+      var matName = si.material_nuestro || si.material;
+      await supaFetch('precios_materiales', {
+        method: 'POST',
+        body: JSON.stringify({
+          material: matName,
+          proveedor: proveedor,
+          precio: si.precio_unitario,
+          fecha: fecha,
+          fuente: 'whatsapp',
+          compra_id: compraId
+        })
+      });
+    }
+  }
+
+  // 7. Build reply
+  var reply = '✅ *Compra registrada*\n'
+    + '🏪 ' + proveedor + (folio ? ' #' + folio : '') + '\n'
+    + '📅 ' + fecha + '\n\n';
+
+  saveItems.forEach(function(si) {
+    var mappedTag = si.material_nuestro ? ' → _' + si.material_nuestro + '_' : '';
+    reply += '• ' + si.material + mappedTag + ' x' + si.cantidad + ' = $' + si.subtotal.toFixed(0) + '\n';
+  });
+
+  reply += '\n💰 *Total: $' + total.toLocaleString('es-MX', {minimumFractionDigits: 0}) + '*';
+
+  var unmapped = saveItems.filter(function(s) { return !s.material_nuestro; });
+  if (unmapped.length) {
+    reply += '\n\n⚠ ' + unmapped.length + ' material(es) sin mapear. Abre *Compras Lab* en el sistema para asignar equivalencias.';
+  }
+
+  console.log('[LabOCR] Saved compra #' + compraId + ': $' + total + ' (' + items.length + ' items)');
+  return { reply: reply };
+}
+
+async function labAssistantText(userText, userName) {
+  // Load context from BD
+  var hoy = hoyLocal();
+  var hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+  var mesIni = hoy.substring(0,8) + '01';
+  var hace7 = new Date(); hace7.setDate(hace7.getDate() - 7);
+
+  var [comprasMes, preciosRecientes, mapeos] = await Promise.all([
+    supaFetch('compras_lab?fecha=gte.' + mesIni + '&select=fecha,proveedor,total,items&order=fecha.desc&limit=50'),
+    supaFetch('precios_materiales?fecha=gte.' + hace30.toLocaleDateString('en-CA') + '&select=material,proveedor,precio,fecha&order=fecha.desc&limit=200'),
+    supaFetch('mapeo_materiales?activo=eq.true&select=nombre_proveedor,nuestro_material,nuestro_tratamiento&limit=200')
+  ]);
+
+  comprasMes = comprasMes || [];
+  preciosRecientes = preciosRecientes || [];
+  mapeos = mapeos || [];
+
+  // Build context string
+  var totalMes = comprasMes.reduce(function(s,c) { return s + (parseFloat(c.total)||0); }, 0);
+  var totalSem = comprasMes.filter(function(c) { return c.fecha >= hace7.toLocaleDateString('en-CA'); })
+    .reduce(function(s,c) { return s + (parseFloat(c.total)||0); }, 0);
+
+  var precioMap = {};
+  preciosRecientes.forEach(function(p) {
+    var key = p.material.toUpperCase();
+    if (!precioMap[key]) precioMap[key] = [];
+    precioMap[key].push({ precio: p.precio, proveedor: p.proveedor, fecha: p.fecha });
+  });
+
+  var mapeoStr = mapeos.map(function(m) {
+    return m.nombre_proveedor + ' → ' + m.nuestro_material + (m.nuestro_tratamiento ? ' · ' + m.nuestro_tratamiento : '');
+  }).join('\n');
+
+  var precioStr = Object.keys(precioMap).map(function(k) {
+    var entries = precioMap[k];
+    return k + ': $' + entries[0].precio + ' (' + (entries[0].proveedor||'?') + ', ' + entries[0].fecha + ')';
+  }).join('\n');
+
+  var comprasStr = comprasMes.slice(0,15).map(function(c) {
+    return c.fecha + ' | ' + (c.proveedor||'?') + ' | $' + (parseFloat(c.total)||0).toFixed(0);
+  }).join('\n');
+
+  // Check if user wants to update a price
+  var priceUpdateMatch = userText.match(/(?:ya vale|ahora vale|subió? a|bajo? a|cuesta|vale)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+
+  var context = 'DATOS DE COMPRAS DEL LABORATORIO:\n'
+    + 'Hoy: ' + hoy + '\n'
+    + 'Gastos esta semana: $' + totalSem.toFixed(0) + '\n'
+    + 'Gastos este mes: $' + totalMes.toFixed(0) + ' (' + comprasMes.length + ' compras)\n\n'
+    + 'ÚLTIMOS PRECIOS POR MATERIAL:\n' + (precioStr || 'Sin datos aún') + '\n\n'
+    + 'MAPEO PROVEEDOR → NUESTRO:\n' + (mapeoStr || 'Sin mapeos aún') + '\n\n'
+    + 'ÚLTIMAS COMPRAS:\n' + (comprasStr || 'Sin compras registradas');
+
+  var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: 'Eres el asistente de compras del laboratorio de Ópticas Car & Era en Ciudad Juárez.\n'
+        + 'Respondes preguntas sobre materiales ópticos, precios, proveedores y gastos.\n'
+        + 'Responde conciso en español, usando emojis. Máximo 500 caracteres.\n'
+        + 'Si el usuario quiere actualizar un precio, extrae el material y precio nuevo y responde con:\n'
+        + 'ACTUALIZAR_PRECIO|material|precio_nuevo\n'
+        + 'seguido de tu mensaje de confirmación.\n'
+        + 'Si no tienes datos suficientes, dilo honestamente.\n\n'
+        + context,
+      messages: [{ role: 'user', content: userText }]
+    })
+  });
+
+  if (!aiResp.ok) throw new Error('Error AI');
+  var aiData = await aiResp.json();
+  var reply = '';
+  if (aiData.content) aiData.content.forEach(function(c) { if (c.type === 'text') reply += c.text; });
+
+  // Handle price update command from AI
+  var updateMatch = reply.match(/ACTUALIZAR_PRECIO\|([^|]+)\|(\d+(?:\.\d+)?)/);
+  if (updateMatch) {
+    reply = reply.replace(/ACTUALIZAR_PRECIO\|[^\n]+/g, '').trim();
+    var matUpdate = updateMatch[1].trim();
+    var precioUpdate = parseFloat(updateMatch[2]);
+    if (precioUpdate > 0) {
+      await supaFetch('precios_materiales', {
+        method: 'POST',
+        body: JSON.stringify({
+          material: matUpdate,
+          precio: precioUpdate,
+          fecha: hoy,
+          fuente: 'whatsapp-manual',
+          proveedor: null
+        })
+      });
+      console.log('[LabAssistant] Price updated: ' + matUpdate + ' = $' + precioUpdate);
+    }
+  }
+
+  return reply || 'No tengo información suficiente. Sube notas de compra para que pueda aprender los precios.';
+}

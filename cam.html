@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Escáner · Car & Era</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+
+#video{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;transform:translateZ(0);}
+#canvas{display:none;}
+
+/* UI OVERLAY */
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;}
+
+/* TOP BAR */
+#top-bar{
+  pointer-events:all;
+  background:linear-gradient(to bottom,rgba(0,0,0,.8) 0%,transparent 100%);
+  padding:env(safe-area-inset-top,14px) 16px 20px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+#top-left{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;}
+#top-title{font-size:13px;font-weight:700;color:#fff;letter-spacing:.04em;}
+#top-sesion{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.06em;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#btn-stop{background:rgba(240,74,106,.2);border:1px solid rgba(240,74,106,.5);color:#f04a6a;font-size:12px;font-weight:700;padding:7px 13px;border-radius:20px;cursor:pointer;flex-shrink:0;}
+
+/* QUALITY BAR */
+#quality-bar{
+  pointer-events:none;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:0 16px;margin-top:-10px;
+}
+#quality-label{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.06em;font-family:monospace;}
+#quality-track{width:80px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden;}
+#quality-fill{height:100%;width:0%;border-radius:2px;background:#c8f04a;transition:width .3s,background .3s;}
+#quality-hint{font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.04em;min-width:70px;}
+
+/* VIEWFINDER */
+#finder{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;}
+#finder-box{
+  width:min(290px,82vw);height:min(210px,52vw);
+  border-radius:16px;box-shadow:0 0 0 4000px rgba(0,0,0,.3);
+  position:relative;transition:border-color .3s;
+}
+/* dynamic border via box-shadow on pseudo - use outline instead */
+#finder-box{outline:2px solid rgba(200,240,74,.6);outline-offset:0;}
+#finder-box.quality-low{outline-color:rgba(240,74,106,.7);}
+#finder-box.quality-mid{outline-color:rgba(240,180,74,.8);}
+#finder-box.quality-ok{outline-color:rgba(200,240,74,.9);}
+
+.corner{position:absolute;width:22px;height:22px;}
+.corner-tl{top:-2px;left:-2px;border-top:3px solid currentColor;border-left:3px solid currentColor;border-radius:12px 0 0 0;}
+.corner-tr{top:-2px;right:-2px;border-top:3px solid currentColor;border-right:3px solid currentColor;border-radius:0 12px 0 0;}
+.corner-bl{bottom:-2px;left:-2px;border-bottom:3px solid currentColor;border-left:3px solid currentColor;border-radius:0 0 0 12px;}
+.corner-br{bottom:-2px;right:-2px;border-bottom:3px solid currentColor;border-right:3px solid currentColor;border-radius:0 0 12px 0;}
+.corner{color:#c8f04a;transition:color .3s;}
+#finder-box.quality-low .corner{color:#f04a6a;}
+#finder-box.quality-mid .corner{color:#f0b44a;}
+
+#scan-line{position:absolute;left:8px;right:8px;height:2px;background:linear-gradient(90deg,transparent,#c8f04a,transparent);border-radius:2px;opacity:0;}
+#scan-line.active{animation:scan 2s ease-in-out infinite;}
+@keyframes scan{0%{top:8%;opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{top:92%;opacity:0;}}
+
+/* countdown ring inside finder */
+#ring-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;display:none;}
+#ring-wrap svg{transform:rotate(-90deg);}
+#ring-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:700;color:#c8f04a;}
+
+/* quality warning inside finder */
+#finder-warn{
+  position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-weight:600;color:rgba(255,255,255,.85);
+  background:rgba(0,0,0,.55);padding:3px 10px;border-radius:10px;
+  white-space:nowrap;display:none;letter-spacing:.03em;
+}
+
+/* BOTTOM BAR */
+#bottom-bar{
+  pointer-events:all;
+  background:linear-gradient(to top,rgba(0,0,0,.88) 0%,transparent 100%);
+  padding:20px 16px env(safe-area-inset-bottom,18px);
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+#last-card{
+  width:100%;max-width:320px;
+  background:rgba(255,255,255,.07);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.1);border-radius:12px;
+  padding:10px 13px;display:none;
+}
+#last-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:3px;}
+#last-content{font-size:14px;font-weight:700;color:#fff;}
+#last-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px;}
+
+/* Manual entry button */
+#btn-manual{
+  pointer-events:all;
+  background:rgba(200,240,74,.12);border:1px solid rgba(200,240,74,.3);
+  color:#c8f04a;font-size:12px;font-weight:700;
+  padding:8px 18px;border-radius:20px;cursor:pointer;letter-spacing:.04em;
+  display:none;
+}
+
+#status-pill{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.1);border-radius:30px;
+  padding:7px 15px;
+}
+#status-dot{width:8px;height:8px;border-radius:50%;background:#6b6b78;flex-shrink:0;transition:background .3s;}
+#status-dot.wait{background:#6b6b78;}
+#status-dot.scanning{background:#c8f04a;animation:blink 1.2s infinite;}
+#status-dot.low{background:#f04a6a;animation:blink .6s infinite;}
+#status-dot.mid{background:#f0b44a;animation:blink .8s infinite;}
+#status-dot.processing{background:#f0b44a;animation:blink .4s infinite;}
+#status-dot.sent{background:#4af0c8;}
+#status-dot.error{background:#f04a6a;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+#status-text{font-size:12px;color:#fff;font-weight:500;}
+#counter{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.04em;}
+
+/* OVERLAYS */
+#processing-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.55);z-index:20;
+  display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;
+}
+#processing-overlay.show{display:flex;}
+.spinner{width:38px;height:38px;border:3px solid rgba(200,240,74,.2);border-top-color:#c8f04a;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#proc-text{font-size:13px;color:#fff;font-weight:500;}
+
+#flash{position:fixed;top:0;left:0;width:100%;height:100%;background:#c8f04a;z-index:30;opacity:0;pointer-events:none;transition:opacity .07s;}
+
+#success-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:35;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  opacity:0;
+}
+#success-ring{position:relative;width:86px;height:86px;display:flex;align-items:center;justify-content:center;}
+#success-ring > svg:first-child{position:absolute;top:0;left:0;}
+#success-check{position:absolute;}
+#success-circle{transition:stroke-dashoffset .35s ease-out;}
+#success-check polyline{transition:stroke-dashoffset .3s ease-out .18s;}
+#success-name{font-size:18px;font-weight:700;color:#c8f04a;letter-spacing:.02em;text-align:center;text-shadow:0 2px 14px rgba(0,0,0,.9);max-width:260px;padding:0 20px;}
+#success-conf{font-size:11px;color:rgba(200,240,74,.6);letter-spacing:.05em;}
+
+#warn-overlay{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  z-index:35;pointer-events:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  opacity:0;
+}
+#warn-box{
+  background:rgba(240,74,106,.15);border:1.5px solid rgba(240,74,106,.4);
+  border-radius:16px;padding:14px 22px;text-align:center;
+}
+#warn-icon{font-size:28px;}
+#warn-text{font-size:13px;font-weight:600;color:#fff;margin-top:4px;}
+
+/* MANUAL MODAL */
+#manual-modal{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(8px);
+  z-index:50;display:none;align-items:flex-end;justify-content:center;
+}
+#manual-modal.open{display:flex;}
+#manual-sheet{
+  width:100%;max-width:420px;
+  background:#1a1a1e;border-radius:20px 20px 0 0;
+  padding:20px 20px env(safe-area-inset-bottom,20px);
+  display:flex;flex-direction:column;gap:14px;
+}
+#manual-preview-img{width:100%;max-height:140px;object-fit:cover;border-radius:10px;display:none;}
+#manual-title{font-size:14px;font-weight:700;color:#fff;letter-spacing:.02em;}
+#manual-hint{font-size:11px;color:rgba(255,255,255,.4);margin-top:-8px;}
+.manual-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mfg{display:flex;flex-direction:column;gap:5px;}
+.mlabel{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);}
+.minput{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;color:#fff;font-size:14px;padding:10px 12px;outline:none;
+  font-family:-apple-system,sans-serif;
+}
+.minput:focus{border-color:rgba(200,240,74,.5);}
+#manual-actions{display:flex;gap:10px;margin-top:4px;}
+#btn-manual-send{flex:1;background:#c8f04a;color:#0e0e10;font-size:13px;font-weight:700;padding:13px;border-radius:12px;border:none;cursor:pointer;}
+#btn-manual-cancel{background:rgba(255,255,255,.08);color:#fff;font-size:13px;font-weight:600;padding:13px 18px;border-radius:12px;border:none;cursor:pointer;}
+
+/* ERROR SCREEN */
+#error-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0e0e10;z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:32px;text-align:center;}
+#error-screen h2{font-size:18px;color:#fff;font-weight:700;}
+#error-screen p{font-size:13px;color:#6b6b78;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div id="error-screen">
+  <div style="font-size:40px">📷</div>
+  <h2>Escáner Car &amp; Era</h2>
+  <p>Esta página se abre desde el sistema.<br><br>Ve a <b>Productos → Alta Masiva → 📱 Sync celular</b><br>y escanea el QR.</p>
+</div>
+
+<canvas id="canvas"></canvas>
+<video id="video" autoplay playsinline muted></video>
+
+<div id="processing-overlay"><div class="spinner"></div><div id="proc-text">Identificando…</div></div>
+<div id="flash"></div>
+
+<div id="success-overlay">
+  <div id="success-ring">
+    <svg viewBox="0 0 86 86" width="86" height="86">
+      <circle cx="43" cy="43" r="37" fill="none" stroke="rgba(200,240,74,.2)" stroke-width="4"/>
+      <circle cx="43" cy="43" r="37" fill="none" stroke="#c8f04a" stroke-width="4"
+        stroke-dasharray="232" stroke-dashoffset="232" id="success-circle"/>
+    </svg>
+    <svg id="success-check" viewBox="0 0 44 44" width="44" height="44">
+      <polyline points="9,22 19,32 35,13" fill="none" stroke="#c8f04a" stroke-width="4.5"
+        stroke-linecap="round" stroke-linejoin="round"
+        stroke-dasharray="44" stroke-dashoffset="44"/>
+    </svg>
+  </div>
+  <div id="success-name"></div>
+  <div id="success-conf"></div>
+</div>
+
+<div id="warn-overlay">
+  <div id="warn-box">
+    <div id="warn-icon">⚠️</div>
+    <div id="warn-text">Ajusta el ángulo</div>
+  </div>
+</div>
+
+<!-- MANUAL ENTRY MODAL -->
+<div id="manual-modal">
+  <div id="manual-sheet">
+    <img id="manual-preview-img" alt="captura">
+    <div id="manual-title">✏️ Captura manual</div>
+    <div id="manual-hint">La IA no pudo leer la etiqueta. Escríbela tú.</div>
+    <div class="manual-row">
+      <div class="mfg"><div class="mlabel">Marca</div><input class="minput" id="m-marca" placeholder="Ej. Ray-Ban" autocomplete="off"></div>
+      <div class="mfg"><div class="mlabel">Modelo</div><input class="minput" id="m-modelo" placeholder="Ej. RB5154" autocomplete="off"></div>
+    </div>
+    <div class="manual-row">
+      <div class="mfg"><div class="mlabel">Color (opcional)</div><input class="minput" id="m-color" placeholder="Ej. Negro mate" autocomplete="off"></div>
+      <div class="mfg"><div class="mlabel">Talla (opcional)</div><input class="minput" id="m-talla" placeholder="Ej. 52-21-145" autocomplete="off"></div>
+    </div>
+    <div id="manual-actions">
+      <button id="btn-manual-cancel" onclick="cerrarManual()">Cancelar</button>
+      <button id="btn-manual-send" onclick="enviarManual()">Enviar ✓</button>
+    </div>
+  </div>
+</div>
+
+<div id="ui">
+  <div id="top-bar">
+    <div id="top-left">
+      <div id="top-title">📷 Escáner · Car &amp; Era</div>
+      <div id="top-sesion">—</div>
+    </div>
+    <button id="btn-stop" onclick="detener()">⏹ Detener</button>
+  </div>
+
+  <div id="quality-bar">
+    <div id="quality-label">CALIDAD</div>
+    <div id="quality-track"><div id="quality-fill"></div></div>
+    <div id="quality-hint">—</div>
+  </div>
+
+  <div id="finder">
+    <div id="finder-box" class="quality-ok">
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+      <div id="scan-line"></div>
+      <div id="ring-wrap">
+        <svg viewBox="0 0 48 48" width="48" height="48">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(200,240,74,.2)" stroke-width="3"/>
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#c8f04a" stroke-width="3"
+            stroke-dasharray="126" stroke-dashoffset="126" id="ring-circle"/>
+        </svg>
+        <div id="ring-num">3</div>
+      </div>
+      <div id="finder-warn"></div>
+    </div>
+  </div>
+
+  <div id="bottom-bar">
+    <div id="last-card">
+      <div id="last-label">Último detectado</div>
+      <div id="last-content">—</div>
+      <div id="last-sub"></div>
+    </div>
+    <button id="btn-manual" onclick="abrirManual(false)">✏️ Captura manual</button>
+    <div id="status-pill">
+      <div id="status-dot" class="wait"></div>
+      <span id="status-text">Iniciando…</span>
+    </div>
+    <div id="counter">0 armazones enviados</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+// ═══ CONFIG ═══
+var SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+var SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+var db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ═══ STATE ═══
+var sesionId = null;
+var marcasSesion = []; // predictive brands from URL param
+var stream = null;
+var intervalId = null;
+var qualityId = null;
+var processing = false;
+var sentCount = 0;
+var active = false;
+var intervalSecs = 3;
+var retryCount = 0;
+var MAX_RETRIES = 2;
+var lastCaptureB64 = null; // for manual fallback
+
+// ═══ INIT ═══
+(function init() {
+  var params = new URLSearchParams(window.location.search);
+  sesionId = params.get('am_sesion');
+  if (!sesionId) {
+    document.getElementById('error-screen').style.display = 'flex';
+    document.getElementById('ui').style.display = 'none';
+    document.getElementById('video').style.display = 'none';
+    return;
+  }
+  document.getElementById('top-sesion').textContent = 'SESIÓN · ' + sesionId;
+  // Parse declared brands from URL
+  var marcasParam = params.get('marcas');
+  if (marcasParam) {
+    marcasSesion = marcasParam.split(',').map(function(m){ return m.trim(); }).filter(Boolean);
+    if (marcasSesion.length) {
+      document.getElementById('top-title').textContent = '📷 ' + marcasSesion.join(' · ');
+    }
+  }
+  startCamera();
+})();
+
+// ═══ CAMERA ═══
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} },
+      audio: false
+    });
+    var video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    active = true;
+    setStatus('scanning', 'Escaneando…');
+    document.getElementById('scan-line').classList.add('active');
+    document.getElementById('ring-wrap').style.display = '';
+    document.getElementById('btn-manual').style.display = '';
+    startQualityMonitor();
+    startCountdown();
+  } catch(e) {
+    setStatus('error', 'Sin acceso a cámara');
+  }
+}
+
+function detener() {
+  active = false; processing = false;
+  if (intervalId)  { clearInterval(intervalId);  intervalId  = null; }
+  if (qualityId)   { clearInterval(qualityId);   qualityId   = null; }
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  setStatus('wait', 'Detenido');
+  document.getElementById('scan-line').classList.remove('active');
+  document.getElementById('ring-wrap').style.display = 'none';
+  if (sesionId) fetch('/.netlify/functions/am-sync', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'close', sesion_id:sesionId})
+  }).catch(function(){});
+}
+
+// ═══ QUALITY MONITOR ═══
+// Runs every 500ms, samples the canvas and computes a sharpness score (Laplacian variance)
+// + brightness check. Updates UI in real time.
+var _qualityScore = 1.0;
+
+function startQualityMonitor() {
+  qualityId = setInterval(function() {
+    if (!active) return;
+    var score = measureQuality();
+    _qualityScore = score;
+    updateQualityUI(score);
+  }, 500);
+}
+
+function measureQuality() {
+  var video = document.getElementById('video');
+  if (!video.videoWidth) return 1.0;
+
+  // Sample a small region from center for speed
+  var W = 160, H = 90;
+  var tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = W; tmpCanvas.height = H;
+  var ctx = tmpCanvas.getContext('2d');
+  // Draw center crop
+  var vw = video.videoWidth, vh = video.videoHeight;
+  var sx = (vw - vw*0.6)/2, sy = (vh - vh*0.6)/2;
+  ctx.drawImage(video, sx, sy, vw*0.6, vh*0.6, 0, 0, W, H);
+  var pixels = ctx.getImageData(0, 0, W, H).data;
+
+  // Grayscale + compute brightness + laplacian variance (sharpness)
+  var gray = [];
+  var totalBrightness = 0;
+  for (var i = 0; i < pixels.length; i += 4) {
+    var g = 0.299*pixels[i] + 0.587*pixels[i+1] + 0.114*pixels[i+2];
+    gray.push(g);
+    totalBrightness += g;
+  }
+  var avgBrightness = totalBrightness / gray.length; // 0-255
+
+  // Laplacian: sum of |center - neighbors| variance
+  var laplacianVals = [];
+  for (var y = 1; y < H-1; y++) {
+    for (var x = 1; x < W-1; x++) {
+      var idx = y*W + x;
+      var lap = Math.abs(4*gray[idx] - gray[idx-1] - gray[idx+1] - gray[idx-W] - gray[idx+W]);
+      laplacianVals.push(lap);
+    }
+  }
+  // Variance of laplacian
+  var mean = laplacianVals.reduce(function(a,b){return a+b;},0) / laplacianVals.length;
+  var variance = laplacianVals.reduce(function(a,b){return a+(b-mean)*(b-mean);},0) / laplacianVals.length;
+  var sharpness = Math.min(variance / 120, 1.0); // normalize: >120 = sharp
+
+  // Brightness score: penalize too dark (<40) or too bright (>220, likely reflection)
+  var brightScore;
+  if (avgBrightness < 30) brightScore = 0.1;       // too dark
+  else if (avgBrightness < 60) brightScore = 0.5;  // dark
+  else if (avgBrightness > 230) brightScore = 0.2; // overexposed/reflection
+  else if (avgBrightness > 200) brightScore = 0.6; // bright
+  else brightScore = 1.0;                           // good range
+
+  return Math.min(sharpness, brightScore);
+}
+
+function updateQualityUI(score) {
+  var fill  = document.getElementById('quality-fill');
+  var hint  = document.getElementById('quality-hint');
+  var box   = document.getElementById('finder-box');
+  var warn  = document.getElementById('finder-warn');
+  var dot   = document.getElementById('status-dot');
+  var pct   = Math.round(score * 100);
+
+  fill.style.width = pct + '%';
+
+  if (score < 0.25) {
+    fill.style.background = '#f04a6a';
+    box.className = 'quality-low';
+    dot.className = 'low';
+    if (score < 0.1) {
+      hint.textContent = 'Muy oscuro';
+      warn.textContent = '🌑 Muy oscuro';
+    } else {
+      hint.textContent = 'Borroso / reflejo';
+      warn.textContent = '✨ Evita el reflejo';
+    }
+    warn.style.display = '';
+  } else if (score < 0.55) {
+    fill.style.background = '#f0b44a';
+    box.className = 'quality-mid';
+    dot.className = processing ? 'processing' : 'mid';
+    hint.textContent = 'Mejora el ángulo';
+    warn.textContent = '↻ Ajusta el ángulo';
+    warn.style.display = '';
+  } else {
+    fill.style.background = '#c8f04a';
+    box.className = 'quality-ok';
+    dot.className = processing ? 'processing' : 'scanning';
+    hint.textContent = 'Lista para escanear';
+    warn.style.display = 'none';
+  }
+}
+
+// ═══ COUNTDOWN ═══
+function startCountdown() {
+  var t = intervalSecs;
+  var circle = document.getElementById('ring-circle');
+  var num    = document.getElementById('ring-num');
+  var circ   = 126;
+
+  function reset() {
+    t = intervalSecs;
+    circle.style.transition = 'none';
+    circle.style.strokeDashoffset = String(circ);
+    setTimeout(function(){
+      circle.style.transition = 'stroke-dashoffset ' + intervalSecs + 's linear';
+      circle.style.strokeDashoffset = '0';
+    }, 40);
+  }
+  reset();
+
+  intervalId = setInterval(async function() {
+    if (!active || processing) return;
+    t -= 0.1;
+    if (num) num.textContent = Math.max(1, Math.ceil(t));
+    if (t <= 0) {
+      reset(); t = intervalSecs;
+      // Only capture if quality is acceptable
+      if (_qualityScore >= 0.25) {
+        await capturar();
+      } else {
+        // Quality too low — skip this frame, show nudge
+        playQualityWarn();
+        setStatus('low', _qualityScore < 0.1 ? 'Muy oscuro' : 'Reflejo — ajusta');
+        setTimeout(function(){ if(active) setStatus('scanning','Escaneando…'); }, 1500);
+      }
+    }
+  }, 100);
+}
+
+// ═══ CAPTURE ═══
+async function capturar(isRetry) {
+  if (!active || processing) return;
+  processing = true;
+  if (!isRetry) retryCount = 0;
+  setStatus('processing', retryCount > 0 ? 'Reintentando…' : 'Analizando…');
+  showProcessing(true);
+
+  try {
+    var video  = document.getElementById('video');
+    var canvas = document.getElementById('canvas');
+    canvas.width  = video.videoWidth  || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    var base64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+    lastCaptureB64 = base64; // save for manual fallback
+
+    var marcasCtx = await getMarcas();
+    // Declared brands get priority in the prompt
+    var marcasPriority = marcasSesion.length
+      ? 'MARCAS PRIORITARIAS HOY (analiza primero estas): ' + marcasSesion.join(', ') + '\nOtras marcas en el sistema: ' + marcasCtx
+      : 'Marcas en el sistema: ' + marcasCtx;
+
+    var resp = await fetch('/.netlify/functions/ia-chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        system:
+          'Eres un asistente experto en identificar armazones ópticos desde fotos.\n' +
+          marcasPriority + '\n' +
+          'REGLAS ESTRICTAS:\n' +
+          '- Si ves una etiqueta legible: extrae marca y modelo exactos\n' +
+          '- Si la marca no es legible pero el modelo sí: infiere la marca de la lista del sistema\n' +
+          '- Si hay reflejos pero aún lees texto: intenta igualmente\n' +
+          '- Si la imagen es completamente borrosa/irreconocible: devuelve {"marca":null,"razon":"borroso"}\n' +
+          '- Si no hay armazón: devuelve {"marca":null,"razon":"sin_armazon"}\n' +
+          '- Confianza "alta" = etiqueta clara y legible; "media" = inferida/parcial; "baja" = muy dudosa\n' +
+          'Responde SOLO JSON sin markdown:\n' +
+          '{"marca":"Nombre","modelo":"CODIGO","nombre":"Marca Modelo Color","color":"color","talla":"52-21-148","confianza":"alta|media|baja"}',
+        messages: [{
+          role: 'user',
+          content: [
+            {type:'image', source:{type:'base64', media_type:'image/jpeg', data:base64}},
+            {type:'text',  text:'Identifica el armazón. Intenta leer la etiqueta aunque haya algo de reflejo.'}
+          ]
+        }]
+      })
+    });
+
+    var data = await resp.json();
+    var rawText = (data.content && data.content[0] && data.content[0].text) || '';
+    var result = null;
+    try { result = JSON.parse(rawText.replace(/```json|```/g,'').trim()); }
+    catch(e) { var m = rawText.match(/\{[\s\S]*\}/); if(m) try{ result=JSON.parse(m[0]); }catch(e2){} }
+
+    showProcessing(false);
+
+    // ── No detection ──
+    if (!result || !result.marca) {
+      retryCount++;
+      if (retryCount <= MAX_RETRIES) {
+        // Auto-retry after 1.5s
+        processing = false;
+        var msg = retryCount === 1 ? 'Reintentando…' : 'Último intento…';
+        setStatus('mid', msg);
+        setTimeout(function(){ if(active && !processing) capturar(true); }, 1500);
+        return;
+      }
+      // All retries exhausted → offer manual
+      retryCount = 0;
+      playWarn();
+      showWarn(result && result.razon);
+      setStatus('scanning', 'No detectado — captura manual');
+      processing = false;
+      return;
+    }
+
+    retryCount = 0;
+
+    // ── Confidence check: baja → still send but flag ──
+    var sent = await pushRow(result);
+    if (!sent) { processing = false; return; } // was dup
+    sentCount++;
+
+    // ── Feedback ──
+    var label = (result.marca||'') + ' ' + (result.modelo||'');
+    showSuccess(label, result.confianza);
+    playSuccess();
+    if (navigator.vibrate) navigator.vibrate(result.confianza === 'baja' ? [40,30,40,30,40] : [60,40,60]);
+
+    // ── Update last card ──
+    var conf = result.confianza === 'alta' ? '✓' : result.confianza === 'baja' ? '⚠ Baja confianza' : '~';
+    document.getElementById('last-card').style.display = '';
+    document.getElementById('last-content').textContent = result.marca + ' ' + result.modelo + (result.color ? ' · ' + result.color : '');
+    document.getElementById('last-sub').textContent = (result.talla||'') + (result.talla ? ' · ' : '') + conf;
+    document.getElementById('counter').textContent = sentCount + ' armazón' + (sentCount!==1?'es':'') + ' enviado' + (sentCount!==1?'s':'');
+    setStatus('sent', 'Enviado ✓');
+    setTimeout(function(){ if(active) setStatus('scanning','Escaneando…'); }, 1800);
+
+  } catch(e) {
+    showProcessing(false);
+    retryCount++;
+    if (retryCount <= MAX_RETRIES) {
+      processing = false;
+      setStatus('mid', 'Error de red, reintentando…');
+      setTimeout(function(){ if(active && !processing) capturar(true); }, 2000);
+      return;
+    }
+    retryCount = 0;
+    playError();
+    setStatus('error', 'Error: ' + (e.message||'reintentando…'));
+    setTimeout(function(){ if(active) setStatus('scanning','Escaneando…'); }, 2500);
+  }
+  processing = false;
+}
+
+// ═══ PUSH ROW ═══
+async function pushRow(result) {
+  var newRow = {
+    marca:    result.marca  || '',
+    modelo:   result.modelo || '',
+    nombre:   result.nombre || ((result.marca||'') + ' ' + (result.modelo||'') + (result.color?' '+result.color:'')),
+    categoria:'Armazón', precio:0, costo:0, stock:1,
+    codigo:   genCodigo(result.marca, result.modelo),
+    confianza:result.confianza || 'media',
+    fuente:   'cam'
+  };
+  var resp = await fetch('/.netlify/functions/am-sync', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'push_row', sesion_id:sesionId, row:newRow})
+  });
+  var data = await resp.json();
+  if (data.dup) { playDup(); setStatus('scanning','Duplicado · '+newRow.modelo); return false; }
+  if (!resp.ok) throw new Error(data.error || 'Error sync');
+  return true;
+}
+
+// ═══ MANUAL ENTRY ═══
+function abrirManual(isFromFail) {
+  var modal = document.getElementById('manual-modal');
+  var img   = document.getElementById('manual-preview-img');
+  var hint  = document.getElementById('manual-hint');
+  // Show frozen frame if we have one
+  if (lastCaptureB64) {
+    img.src = 'data:image/jpeg;base64,' + lastCaptureB64;
+    img.style.display = '';
+  } else {
+    img.style.display = 'none';
+  }
+  hint.textContent = isFromFail
+    ? 'La IA no pudo leer la etiqueta. Escríbela tú.'
+    : 'Ingresa los datos manualmente.';
+  document.getElementById('m-marca').value  = '';
+  document.getElementById('m-modelo').value = '';
+  document.getElementById('m-color').value  = '';
+  document.getElementById('m-talla').value  = '';
+  modal.classList.add('open');
+  setTimeout(function(){ document.getElementById('m-marca').focus(); }, 200);
+}
+
+function cerrarManual() {
+  document.getElementById('manual-modal').classList.remove('open');
+}
+
+async function enviarManual() {
+  var marca  = document.getElementById('m-marca').value.trim();
+  var modelo = document.getElementById('m-modelo').value.trim();
+  if (!marca || !modelo) {
+    document.getElementById('m-marca').style.borderColor = !marca ? 'rgba(240,74,106,.7)' : '';
+    document.getElementById('m-modelo').style.borderColor = !modelo ? 'rgba(240,74,106,.7)' : '';
+    return;
+  }
+  var result = {
+    marca: marca, modelo: modelo,
+    color: document.getElementById('m-color').value.trim(),
+    talla: document.getElementById('m-talla').value.trim(),
+    confianza: 'alta', fuente: 'manual'
+  };
+  cerrarManual();
+  var sent = await pushRow(result);
+  if (sent) {
+    sentCount++;
+    showSuccess(marca + ' ' + modelo, 'alta');
+    playSuccess();
+    if (navigator.vibrate) navigator.vibrate([60,40,60]);
+    document.getElementById('last-card').style.display = '';
+    document.getElementById('last-content').textContent = marca + ' ' + modelo + (result.color?' · '+result.color:'');
+    document.getElementById('last-sub').textContent = (result.talla||'') + ' · Manual ✏️';
+    document.getElementById('counter').textContent = sentCount + ' armazón' + (sentCount!==1?'es':'') + ' enviado' + (sentCount!==1?'s':'');
+  }
+}
+
+// ═══ WARN OVERLAY ═══
+function showWarn(razon) {
+  var overlay = document.getElementById('warn-overlay');
+  var icon    = document.getElementById('warn-icon');
+  var text    = document.getElementById('warn-text');
+  if (razon === 'borroso') {
+    icon.textContent = '🌫️'; text.textContent = 'Imagen borrosa — acércate más';
+  } else if (razon === 'sin_armazon') {
+    icon.textContent = '🔍'; text.textContent = 'Sin armazón — centra la etiqueta';
+  } else {
+    icon.textContent = '⚠️'; text.textContent = '¿Captura manual?';
+    // Auto-open manual after short delay
+    setTimeout(function(){ abrirManual(true); }, 700);
+    return;
+  }
+  overlay.style.transition = 'none'; overlay.style.opacity = '0.9';
+  setTimeout(function(){
+    overlay.style.transition = 'opacity .5s'; overlay.style.opacity = '0';
+  }, 1800);
+}
+
+// ═══ MARCAS ═══
+var _marcasCache = null;
+async function getMarcas() {
+  if (_marcasCache) return _marcasCache;
+  try {
+    var res = await db.from('productos').select('marca').eq('activo',true).eq('categoria','Armazón').limit(300);
+    if (res.data && res.data.length) {
+      var set = [];
+      res.data.forEach(function(p){ if(p.marca&&!set.includes(p.marca)) set.push(p.marca); });
+      _marcasCache = set.slice(0,60).join(', ');
+    }
+  } catch(e) {}
+  return _marcasCache || 'Ray-Ban, Vogue, Oakley, Tom Ford, Funky Fred, Gucci, Michael Kors, Prada';
+}
+
+// ═══ HELPERS ═══
+function genCodigo(marca, modelo) {
+  var m   = (marca||'').replace(/[^a-zA-Z0-9]/g,'').substring(0,6).toUpperCase();
+  var mod = (modelo||'').replace(/[^a-zA-Z0-9]/g,'').toUpperCase();
+  return m + '-' + mod;
+}
+
+function setStatus(cls, txt) {
+  document.getElementById('status-dot').className = cls;
+  document.getElementById('status-text').textContent = txt;
+}
+
+function showProcessing(show) {
+  document.getElementById('processing-overlay').classList.toggle('show', show);
+}
+
+// ═══ VISUAL FEEDBACK ═══
+function showSuccess(nombre, confianza) {
+  var fl = document.getElementById('flash');
+  fl.style.opacity = '0.18'; setTimeout(function(){ fl.style.opacity='0'; }, 90);
+
+  var overlay = document.getElementById('success-overlay');
+  var circle  = document.getElementById('success-circle');
+  var check   = document.getElementById('success-check').querySelector('polyline');
+  var nameEl  = document.getElementById('success-name');
+  var confEl  = document.getElementById('success-conf');
+
+  circle.style.transition = 'none'; circle.style.strokeDashoffset = '232';
+  check.style.transition  = 'none'; check.style.strokeDashoffset  = '44';
+  overlay.style.transition = 'none'; overlay.style.opacity = '1';
+  if (nameEl) nameEl.textContent = nombre || '';
+  if (confEl) confEl.textContent = confianza === 'baja' ? '⚠ Confianza baja — revisa en desktop' : '';
+
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    circle.style.transition = 'stroke-dashoffset .35s ease-out'; circle.style.strokeDashoffset = '0';
+    check.style.transition  = 'stroke-dashoffset .3s ease-out .18s'; check.style.strokeDashoffset = '0';
+  }); });
+  setTimeout(function(){
+    overlay.style.transition = 'opacity .45s ease'; overlay.style.opacity = '0';
+  }, confianza === 'baja' ? 2200 : 1400);
+}
+
+// ═══ AUDIO ═══
+var _ctx = null;
+function getACtx() {
+  if (!_ctx) _ctx = new (window.AudioContext||window.webkitAudioContext)();
+  if (_ctx.state === 'suspended') _ctx.resume();
+  return _ctx;
+}
+function playTone(freq, type, vol, dur, delay) {
+  try {
+    var ctx = getACtx(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type || 'sine'; o.frequency.value = freq;
+    var t = ctx.currentTime + (delay||0);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol||0.3, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    o.start(t); o.stop(t+dur);
+  } catch(e) {}
+}
+function playSuccess()     { playTone(880,  'sine',   0.32, 0.17, 0);    playTone(1320, 'sine',   0.28, 0.17, 0.13); }
+function playError()       { playTone(200,  'square', 0.12, 0.28, 0); }
+function playDup()         { playTone(600,  'sine',   0.18, 0.14, 0); }
+function playWarn()        { playTone(440,  'sine',   0.15, 0.12, 0);    playTone(350,  'sine',   0.12, 0.14, 0.10); }
+function playQualityWarn() { playTone(300,  'sine',   0.08, 0.10, 0); }
+
+// ═══ SYSTEM ═══
+document.addEventListener('visibilitychange', function(){ if(document.hidden && active) detener(); });
+if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(function(){});
+// Unlock audio on first touch (iOS)
+document.addEventListener('touchstart', function ul(){ getACtx(); document.removeEventListener('touchstart',ul); }, {once:true});
+document.addEventListener('click',      function ul(){ getACtx(); document.removeEventListener('click',ul);      }, {once:true});
+</script>
+</body>
+</html>

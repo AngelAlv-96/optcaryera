@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Car & Era — Pre-Registro</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --beige: #e2c6a6;
+  --beige-light: #f0dfc8;
+  --beige-dim: rgba(226,198,166,0.12);
+  --beige-border: rgba(226,198,166,0.2);
+  --black: #111110;
+  --surface: #1c1b19;
+  --surface2: #252420;
+  --surface3: #2e2c28;
+  --white: #f5f2ee;
+  --muted: #7a7570;
+  --muted2: #3e3c38;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { font-size: 16px; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--black);
+  color: var(--white);
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ─── HEADER ─── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--beige-border);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-mark {
+  width: 38px; height: 38px;
+  background: var(--beige);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-text h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--beige);
+  line-height: 1.1;
+}
+
+.header-text p {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+/* ─── PROGRESS BAR ─── */
+.progress-wrap {
+  background: var(--surface);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 14px 20px 16px;
+  position: sticky;
+  top: 70px;
+  z-index: 9;
+}
+
+.progress-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 10px;
+}
+
+.ps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.ps-dot {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--muted2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+
+.ps.done .ps-dot { background: var(--beige); border-color: var(--beige); color: var(--black); }
+.ps.active .ps-dot { border-color: var(--beige); color: var(--beige); }
+
+.ps-label {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  display: none;
+}
+
+@media (min-width: 480px) { .ps-label { display: block; } }
+
+.ps.done .ps-label, .ps.active .ps-label { color: var(--beige); }
+
+.ps-line {
+  flex: 1;
+  height: 2px;
+  background: var(--muted2);
+  border-radius: 2px;
+  margin: 0 4px;
+  transition: background 0.3s;
+  min-width: 12px;
+}
+.ps-line.done { background: var(--beige); }
+
+.progress-bar-track {
+  height: 3px;
+  background: var(--muted2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: var(--beige);
+  border-radius: 3px;
+  transition: width 0.4s cubic-bezier(.4,0,.2,1);
+  width: 25%;
+}
+
+/* ─── CONTAINER ─── */
+.container {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 16px 0;
+}
+
+/* ─── STEP VIEWS ─── */
+.step-view { display: none; animation: fadeUp 0.28s ease; }
+.step-view.active { display: block; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(10px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ─── SECTION CARD ─── */
+.scard {
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.scard h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--beige);
+  margin-bottom: 4px;
+}
+
+.scard > p {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+/* ─── FIELDS ─── */
+.fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+
+.fg label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.fg input,
+.fg select,
+.fg textarea {
+  background: var(--surface2);
+  border: 1.5px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 13px 14px;
+  color: var(--white);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.18s, background 0.18s;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+}
+
+.fg input:focus,
+.fg select:focus,
+.fg textarea:focus {
+  border-color: var(--beige);
+  background: var(--surface3);
+}
+
+.fg textarea { resize: none; min-height: 90px; line-height: 1.5; }
+
+.fg select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7570' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+}
+
+.fg select option { background: #252420; }
+
+/* ─── ROW ─── */
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ─── CHIP OPTIONS ─── */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+.chip {
+  padding: 9px 16px;
+  border-radius: 100px;
+  border: 1.5px solid rgba(255,255,255,0.1);
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: 'Outfit', sans-serif;
+  background: var(--surface2);
+  user-select: none;
+}
+
+.chip:hover { border-color: var(--beige-border); color: var(--beige-light); }
+.chip.sel { background: var(--beige-dim); border-color: var(--beige); color: var(--beige); font-weight: 500; }
+
+/* ─── TOGGLE SWITCHES ─── */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.toggle-row:last-child { border-bottom: none; }
+
+.toggle-label { font-size: 14px; }
+.toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.toggle {
+  position: relative;
+  width: 44px; height: 24px;
+  flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--muted2);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle input:checked + .toggle-track { background: var(--beige); }
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  background: white;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform 0.2s;
+}
+.toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+/* ─── NAVIGATION BUTTONS ─── */
+.nav-btns {
+  display: flex;
+  gap: 10px;
+  padding: 16px 0 0;
+  position: sticky;
+  bottom: 0;
+  background: var(--black);
+  padding: 14px 0 20px;
+  border-top: 1px solid rgba(255,255,255,0.04);
+  margin-top: 8px;
+}
+
+.btn-back {
+  flex: 1;
+  padding: 15px;
+  background: var(--surface);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: rgba(245,242,238,0.6);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-back:hover { background: var(--surface2); color: var(--white); }
+
+.btn-next {
+  flex: 2;
+  padding: 15px;
+  background: var(--beige);
+  border: none;
+  border-radius: 12px;
+  color: var(--black);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.02em;
+}
+.btn-next:hover { background: var(--beige-light); }
+.btn-next:active { transform: scale(0.98); }
+.btn-next:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── SUCCESS SCREEN ─── */
+#screen-success {
+  display: none;
+  min-height: 80vh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 32px 24px;
+  animation: fadeUp 0.4s ease;
+}
+#screen-success.show { display: flex; }
+
+.success-icon {
+  width: 80px; height: 80px;
+  background: rgba(107,158,107,0.15);
+  border: 2px solid rgba(107,158,107,0.4);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 24px;
+  animation: popIn 0.5s cubic-bezier(.175,.885,.32,1.275) 0.2s both;
+}
+
+@keyframes popIn {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.success-icon svg { color: #8fbf8f; }
+
+#screen-success h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  color: var(--white);
+  margin-bottom: 10px;
+}
+
+#screen-success p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 320px;
+  margin: 0 auto 28px;
+}
+
+.success-card {
+  background: var(--surface);
+  border: 1px solid var(--beige-border);
+  border-radius: 14px;
+  padding: 18px 24px;
+  width: 100%;
+  max-width: 340px;
+  margin-bottom: 20px;
+}
+
+.success-card p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 0;
+  text-align: left;
+}
+
+.success-card .s-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  color: var(--beige);
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-align: left;
+}
+
+.btn-nuevo {
+  padding: 13px 28px;
+  background: transparent;
+  border: 1.5px solid var(--beige-border);
+  border-radius: 12px;
+  color: var(--beige);
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.btn-nuevo:hover { background: var(--beige-dim); }
+
+/* ─── INFO BOX ─── */
+.info-box {
+  background: rgba(226,198,166,0.07);
+  border: 1px solid var(--beige-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.info-box svg { flex-shrink: 0; margin-top: 1px; }
+.info-box p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.info-box strong { color: var(--beige); }
+
+/* ─── PRIVACY NOTICE ─── */
+.privacy {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.5;
+  padding: 0 8px 8px;
+}
+.privacy a { color: var(--beige); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ─── CONSENT CHECKBOX ─── */
+.consent-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px;
+  background: var(--surface2);
+  border: 1.5px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.consent-row:hover { border-color: var(--beige-border); }
+.consent-row.required { border-color: rgba(200,100,100,0.5); }
+.consent-row input[type=checkbox] {
+  width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
+  accent-color: var(--beige);
+  cursor: pointer;
+}
+.consent-row .consent-text { font-size: 12px; color: var(--muted); line-height: 1.55; }
+.consent-row .consent-text a { color: var(--beige); text-decoration: underline; text-underline-offset: 2px; }
+.consent-row .consent-text strong { color: var(--white); font-weight: 500; }
+
+/* ─── PRIVACY MODAL ─── */
+.priv-modal-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(3px);
+  padding: 16px;
+  overflow-y: auto;
+}
+.priv-modal-overlay.show { display: flex; align-items: flex-start; justify-content: center; }
+.priv-modal {
+  background: var(--surface);
+  border: 1px solid var(--beige-border);
+  border-radius: 16px;
+  max-width: 560px; width: 100%;
+  margin: 24px 0;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.priv-modal-head {
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.priv-modal-head h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px; font-weight: 600; color: var(--beige);
+}
+.priv-modal-close {
+  background: none; border: none; color: var(--muted); font-size: 22px;
+  cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+.priv-modal-body {
+  padding: 20px;
+  max-height: 70vh; overflow-y: auto;
+  font-size: 12.5px; line-height: 1.7; color: rgba(245,242,238,0.8);
+}
+.priv-modal-body h4 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px; font-weight: 600; color: var(--beige);
+  margin: 18px 0 6px 0;
+}
+.priv-modal-body h4:first-child { margin-top: 0; }
+.priv-modal-body p { margin-bottom: 10px; }
+
+/* ─── MINI PRIVACY BANNER ─── */
+.priv-banner {
+  background: rgba(226,198,166,0.06);
+  border: 1px solid var(--beige-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 11px; line-height: 1.55; color: var(--muted);
+}
+.priv-banner a { color: var(--beige); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.priv-banner svg { vertical-align: middle; margin-right: 4px; }
+
+/* ─── RATING STARS (síntomas visuales) ─── */
+.severity {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.sev-btn {
+  flex: 1;
+  padding: 9px 4px;
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.16s;
+  font-family: 'Outfit', sans-serif;
+}
+.sev-btn:hover { border-color: var(--beige-border); color: var(--beige); }
+.sev-btn.sel { background: var(--beige-dim); border-color: var(--beige); color: var(--beige); }
+
+/* ─── REQUIRED INDICATOR ─── */
+.req { color: var(--beige); margin-left: 2px; }
+
+/* ─── TOAST ─── */
+.toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface2);
+  border: 1px solid var(--beige-border);
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-size: 13px; color: var(--beige);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.25s;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: rgba(158,92,92,0.4); color: #d49090; }
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: var(--muted2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ HEADER ══ -->
+<div class="header">
+  <div class="header-mark">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M20.188 10.934C19.236 7.808 15.888 5 12 5c-3.889 0-7.236 2.808-8.188 5.934A8.98 8.98 0 0 0 3.5 13c0 .709.112 1.445.312 2.066C4.764 18.192 8.112 21 12 21c3.888 0 7.236-2.808 8.188-5.934A8.98 8.98 0 0 0 20.5 13c0-.709-.112-1.445-.312-2.066Z"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Car &amp; Era</h1>
+    <p>Pre-Registro de Paciente</p>
+  </div>
+</div>
+
+<!-- ══ PROGRESS ══ -->
+<div class="progress-wrap" id="progress-wrap">
+  <div class="progress-steps">
+    <div class="ps active" id="ps-1">
+      <div class="ps-dot">1</div>
+      <span class="ps-label">Personal</span>
+    </div>
+    <div class="ps-line" id="pl-1"></div>
+    <div class="ps" id="ps-2">
+      <div class="ps-dot">2</div>
+      <span class="ps-label">Consulta</span>
+    </div>
+    <div class="ps-line" id="pl-2"></div>
+    <div class="ps" id="ps-3">
+      <div class="ps-dot">3</div>
+      <span class="ps-label">Salud</span>
+    </div>
+    <div class="ps-line" id="pl-3"></div>
+    <div class="ps" id="ps-4">
+      <div class="ps-dot">4</div>
+      <span class="ps-label">Confirmar</span>
+    </div>
+  </div>
+  <div class="progress-bar-track">
+    <div class="progress-bar-fill" id="pbar"></div>
+  </div>
+</div>
+
+<!-- ══ FORM CONTAINER ══ -->
+<div class="container" id="form-container">
+
+  <!-- ═══ PASO 1: DATOS PERSONALES ═══ -->
+  <div class="step-view active" id="step-1">
+    <div class="scard">
+      <h2>Datos Personales</h2>
+      <p>Necesitamos tus datos para crear tu expediente clínico en Car &amp; Era.</p>
+
+      <div class="priv-banner">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--beige)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Tus datos personales ser&aacute;n tratados por <strong style="color:var(--beige)">&Oacute;pticas Car &amp; Era</strong> con domicilio en Cd. Ju&aacute;rez, Chih., &uacute;nicamente para fines de atenci&oacute;n optom&eacute;trica y gesti&oacute;n de tu expediente cl&iacute;nico. Puedes ejercer tus derechos ARCO en cualquier momento.
+        <a onclick="showPrivacyModal()">Leer aviso de privacidad completo →</a>
+      </div>
+
+      <div class="fg">
+        <label>Nombre(s) <span class="req">*</span></label>
+        <input type="text" id="p-nom" placeholder="María Elena" autocomplete="given-name" inputmode="text">
+      </div>
+      <div class="fg">
+        <label>Apellidos <span class="req">*</span></label>
+        <input type="text" id="p-ape" placeholder="González Pérez" autocomplete="family-name">
+      </div>
+      <div class="row">
+        <div class="fg">
+          <label>Fecha de nacimiento</label>
+          <input type="date" id="p-nac" autocomplete="bday" min="1920-01-01">
+        </div>
+        <div class="fg">
+          <label>Sexo</label>
+          <select id="p-sex">
+            <option value="">—</option>
+            <option>Femenino</option>
+            <option>Masculino</option>
+            <option>Prefiero no decir</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Teléfono / WhatsApp <span class="req">*</span></label>
+        <input type="tel" id="p-tel" placeholder="+52 656 000 0000" autocomplete="tel" inputmode="tel">
+      </div>
+      <div class="fg">
+        <label>Correo electrónico</label>
+        <input type="email" id="p-ema" placeholder="correo@ejemplo.com" autocomplete="email" inputmode="email">
+      </div>
+      <div class="fg">
+        <label>Ocupación</label>
+        <input type="text" id="p-ocu" placeholder="Ej. Maestro, Contador, Estudiante..." autocomplete="organization-title">
+      </div>
+
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-next" onclick="nextStep(1)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PASO 2: MOTIVO DE CONSULTA ═══ -->
+  <div class="step-view" id="step-2">
+    <div class="scard">
+      <h2>Motivo de Consulta</h2>
+      <p>¿Cuál es la razón principal de tu visita hoy?</p>
+
+      <div class="fg">
+        <label>Selecciona tu motivo</label>
+        <div class="chips" id="chips-motivo">
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Primera consulta</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Control / Revisión</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Renovar receta</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Dolor de cabeza</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Visión borrosa</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Cansancio visual</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Fotofobia</div>
+          <div class="chip" onclick="selectChip(this,'chips-motivo')">Otro</div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:6px">
+        <label>¿Cómo describirías tu visión actualmente?</label>
+        <div class="chips" id="chips-vision">
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Buena</div>
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Regular</div>
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Borrosa de lejos</div>
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Borrosa de cerca</div>
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Borrosa todo</div>
+          <div class="chip" onclick="selectChip(this,'chips-vision')">Con destellos</div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:6px">
+        <label>¿Usas lentes actualmente?</label>
+        <div class="chips" id="chips-lentes">
+          <div class="chip" onclick="selectChip(this,'chips-lentes')">No</div>
+          <div class="chip" onclick="selectChip(this,'chips-lentes')">Sí, armazón</div>
+          <div class="chip" onclick="selectChip(this,'chips-lentes')">Sí, contacto</div>
+          <div class="chip" onclick="selectChip(this,'chips-lentes')">Ambos</div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:8px">
+        <label>¿Hace cuánto tiempo tienes esta molestia?</label>
+        <div class="chips" id="chips-tiempo">
+          <div class="chip" onclick="selectChip(this,'chips-tiempo')">Días</div>
+          <div class="chip" onclick="selectChip(this,'chips-tiempo')">Semanas</div>
+          <div class="chip" onclick="selectChip(this,'chips-tiempo')">Meses</div>
+          <div class="chip" onclick="selectChip(this,'chips-tiempo')">Años</div>
+          <div class="chip" onclick="selectChip(this,'chips-tiempo')">No tengo molestia</div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-top:8px">
+        <label>Descripción adicional (opcional)</label>
+        <textarea id="p-des" placeholder="Cuéntanos más sobre tu situación..."></textarea>
+      </div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevStep(2)">← Atrás</button>
+      <button class="btn-next" onclick="nextStep(2)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PASO 3: ANTECEDENTES DE SALUD ═══ -->
+  <div class="step-view" id="step-3">
+    <div class="scard">
+      <h2>Antecedentes de Salud</h2>
+      <p>Esta información ayuda al optometrista a darte una mejor atención.</p>
+
+      <div class="info-box">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--beige)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p>Tu información médica es <strong>confidencial</strong> y solo será vista por el optometrista de Car &amp; Era para brindarte una mejor atención clínica.</p>
+      </div>
+
+      <label class="consent-row" id="consent-salud-row">
+        <input type="checkbox" id="consent-salud">
+        <div class="consent-text">
+          <strong>Autorizo el tratamiento de mis datos sensibles de salud</strong> (antecedentes m&eacute;dicos, padecimientos y medicamentos) por &Oacute;pticas Car &amp; Era, exclusivamente para fines de diagn&oacute;stico y atenci&oacute;n optom&eacute;trica.
+          <a onclick="event.preventDefault();event.stopPropagation();showPrivacyModal()">Ver aviso de privacidad</a>
+        </div>
+      </label>
+
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Diabetes</div>
+          <div class="toggle-sub">Tipo 1 o Tipo 2</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-dia"><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Hipertensión arterial</div>
+          <div class="toggle-sub">Presión alta</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-hip"><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Alergias</div>
+          <div class="toggle-sub">A medicamentos, polvo, etc.</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-ale"><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Tiroides</div>
+          <div class="toggle-sub">Hipo o hipertiroidismo</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-tir"><div class="toggle-track"></div></label>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Glaucoma familiar</div>
+          <div class="toggle-sub">Antecedente en familia</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="t-gla"><div class="toggle-track"></div></label>
+      </div>
+    </div>
+
+    <div class="scard" style="margin-top:0">
+      <div class="fg">
+        <label>Antecedentes oculares previos</label>
+        <div class="chips" id="chips-ocular">
+          <div class="chip" onclick="selectMultiChip(this)">Ninguno</div>
+          <div class="chip" onclick="selectMultiChip(this)">Cirugía ocular</div>
+          <div class="chip" onclick="selectMultiChip(this)">Cataratas</div>
+          <div class="chip" onclick="selectMultiChip(this)">Estrabismo</div>
+          <div class="chip" onclick="selectMultiChip(this)">Ojo vago (ambliopía)</div>
+          <div class="chip" onclick="selectMultiChip(this)">Desprendimiento de retina</div>
+        </div>
+      </div>
+      <div class="fg" style="margin-top:4px">
+        <label>Medicamentos que toma actualmente</label>
+        <input type="text" id="p-med" placeholder="Ej. metformina, enalapril... o Ninguno">
+      </div>
+    </div>
+
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevStep(3)">← Atrás</button>
+      <button class="btn-next" onclick="nextStep(3)">Continuar →</button>
+    </div>
+  </div>
+
+  <!-- ═══ PASO 4: CONFIRMACIÓN ═══ -->
+  <div class="step-view" id="step-4">
+    <div class="scard">
+      <h2>Confirmar datos</h2>
+      <p>Revisa tu información antes de enviar.</p>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Datos personales</div>
+        <div id="rev-personal" style="font-size:14px;line-height:2;color:var(--white)"></div>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Motivo de consulta</div>
+        <div id="rev-consulta" style="font-size:14px;line-height:2;color:var(--white)"></div>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:14px">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;font-weight:600">Antecedentes de salud</div>
+        <div id="rev-salud" style="font-size:14px;line-height:2;color:var(--white)"></div>
+      </div>
+    </div>
+
+    <p class="privacy" style="margin-bottom:10px">
+      Antes de enviar, confirma que est&aacute;s de acuerdo:
+    </p>
+
+    <label class="consent-row" id="consent-general-row">
+      <input type="checkbox" id="consent-general">
+      <div class="consent-text">
+        He le&iacute;do y acepto el <a onclick="event.preventDefault();event.stopPropagation();showPrivacyModal()">Aviso de Privacidad</a> de &Oacute;pticas Car &amp; Era. Autorizo que mis datos personales sean tratados conforme a las finalidades descritas en dicho aviso.
+      </div>
+    </label>
+
+    <p class="privacy">
+      Puedes ejercer tus derechos ARCO (Acceso, Rectificaci&oacute;n, Cancelaci&oacute;n y Oposici&oacute;n) contactando a &Oacute;pticas Car &amp; Era directamente en sucursal o al tel&eacute;fono que aparece en el aviso de privacidad.
+    </p>
+
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevStep(4)">← Atrás</button>
+      <button class="btn-next" onclick="submitForm()" id="btn-submit">Enviar Pre-Registro ✓</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ SUCCESS ══ -->
+<div id="screen-success">
+  <div class="success-icon">
+    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  </div>
+  <h2>¡Registro enviado!</h2>
+  <p>Tu información fue recibida. El equipo de Car &amp; Era ya puede preparar tu atención.</p>
+  <div class="success-card">
+    <div class="s-name" id="suc-nombre">—</div>
+    <p id="suc-info">—</p>
+  </div>
+  <button class="btn-nuevo" onclick="resetForm()">Registrar otro paciente</button>
+</div>
+
+<!-- ══ AVISO DE PRIVACIDAD MODAL ══ -->
+<div class="priv-modal-overlay" id="privacy-modal" onclick="if(event.target===this)closePrivacyModal()">
+  <div class="priv-modal">
+    <div class="priv-modal-head">
+      <h3>Aviso de Privacidad Integral</h3>
+      <button class="priv-modal-close" onclick="closePrivacyModal()">&times;</button>
+    </div>
+    <div class="priv-modal-body">
+      <h4>I. Identidad del Responsable</h4>
+      <p><strong>&Oacute;pticas Car &amp; Era</strong>, con domicilio en Cd. Ju&aacute;rez, Chihuahua, M&eacute;xico, es responsable del tratamiento de sus datos personales conforme a la Ley Federal de Protecci&oacute;n de Datos Personales en Posesi&oacute;n de los Particulares (LFPDPPP) vigente.</p>
+
+      <h4>II. Datos personales que recabamos</h4>
+      <p><strong>Datos de identificaci&oacute;n:</strong> Nombre completo, apellidos, fecha de nacimiento, sexo, tel&eacute;fono, correo electr&oacute;nico, ocupaci&oacute;n.</p>
+      <p><strong>Datos sensibles de salud:</strong> Antecedentes sist&eacute;micos (diabetes, hipertensi&oacute;n, alergias, tiroides, glaucoma familiar), antecedentes oculares, medicamentos actuales, motivo de consulta, agudeza visual, graduaci&oacute;n y dem&aacute;s datos cl&iacute;nicos generados durante la consulta optom&eacute;trica.</p>
+
+      <h4>III. Finalidades del tratamiento</h4>
+      <p><strong>Finalidades necesarias (requieren sus datos):</strong></p>
+      <p>&bull; Crear y administrar su expediente cl&iacute;nico optom&eacute;trico.<br>
+      &bull; Realizar la consulta, diagn&oacute;stico y prescripci&oacute;n de lentes.<br>
+      &bull; Gestionar &oacute;rdenes de laboratorio, garant&iacute;as y seguimiento de pedidos.<br>
+      &bull; Contactarlo sobre el estado de sus pedidos y citas.</p>
+      <p><strong>Finalidades secundarias (opcionales):</strong></p>
+      <p>&bull; Enviar recordatorios de revisi&oacute;n peri&oacute;dica (recall).<br>
+      &bull; Informarle sobre promociones y servicios de &Oacute;pticas Car &amp; Era.<br>
+      Si no desea que sus datos sean tratados para finalidades secundarias, puede manifestarlo al momento del registro o en cualquier momento posterior.</p>
+
+      <h4>IV. Consentimiento para datos sensibles</h4>
+      <p>Los datos de salud que usted proporciona son considerados <strong>datos personales sensibles</strong> conforme a la ley. Su tratamiento requiere su <strong>consentimiento expreso</strong>, el cual usted otorga al marcar la casilla correspondiente en el formulario de pre-registro y/o al firmar el formato de consentimiento en la &oacute;ptica.</p>
+
+      <h4>V. Transferencia de datos</h4>
+      <p>Sus datos personales <strong>no ser&aacute;n transferidos</strong> a terceros, salvo en los casos previstos por la ley (requerimientos de autoridades competentes). Los datos cl&iacute;nicos podr&aacute;n ser compartidos con laboratorios &oacute;pticos &uacute;nicamente para la fabricaci&oacute;n de sus lentes (sin incluir datos de identificaci&oacute;n m&aacute;s all&aacute; de un n&uacute;mero de folio).</p>
+
+      <h4>VI. Derechos ARCO</h4>
+      <p>Usted tiene derecho a <strong>Acceder</strong> a sus datos, <strong>Rectificarlos</strong>, <strong>Cancelarlos</strong> u <strong>Oponerse</strong> a su tratamiento (derechos ARCO). Para ejercer estos derechos, puede acudir directamente a cualquier sucursal de &Oacute;pticas Car &amp; Era en Cd. Ju&aacute;rez o enviar su solicitud al correo o tel&eacute;fono de contacto de la &oacute;ptica. Su solicitud ser&aacute; atendida en un plazo m&aacute;ximo de 20 d&iacute;as h&aacute;biles.</p>
+
+      <h4>VII. Medidas de seguridad</h4>
+      <p>&Oacute;pticas Car &amp; Era implementa medidas de seguridad administrativas, t&eacute;cnicas y f&iacute;sicas para proteger sus datos personales contra da&ntilde;o, p&eacute;rdida, alteraci&oacute;n, acceso o tratamiento no autorizado. La informaci&oacute;n se almacena en servidores con cifrado y acceso restringido.</p>
+
+      <h4>VIII. Cambios al aviso de privacidad</h4>
+      <p>Cualquier modificaci&oacute;n a este aviso de privacidad ser&aacute; comunicada a trav&eacute;s de la p&aacute;gina de pre-registro o en las instalaciones de &Oacute;pticas Car &amp; Era.</p>
+
+      <p style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);color:var(--muted);font-size:11px">
+        &Uacute;ltima actualizaci&oacute;n: febrero 2026 &bull; &Oacute;pticas Car &amp; Era, Cd. Ju&aacute;rez, Chihuahua, M&eacute;xico.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── SUPABASE ───
+const SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+const SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+let currentStep = 1;
+const TOTAL = 4;
+
+// ─── TOAST ───
+function toast(msg, err=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (err ? ' err' : '');
+  setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ─── CHIPS ───
+function selectChip(el, groupId) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(c => c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function selectMultiChip(el) {
+  if (el.textContent === 'Ninguno') {
+    document.querySelectorAll('#chips-ocular .chip').forEach(c => c.classList.remove('sel'));
+    el.classList.add('sel');
+  } else {
+    document.querySelector('#chips-ocular .chip')?.classList.remove('sel'); // remove "Ninguno"
+    el.classList.toggle('sel');
+  }
+}
+
+function getChip(groupId) {
+  return document.querySelector(`#${groupId} .chip.sel`)?.textContent || '—';
+}
+
+function getMultiChips(groupId) {
+  const sels = [...document.querySelectorAll(`#${groupId} .chip.sel`)].map(c => c.textContent);
+  return sels.length ? sels.join(', ') : '—';
+}
+
+// ─── PRIVACY MODAL ───
+function showPrivacyModal() {
+  document.getElementById('privacy-modal').classList.add('show');
+}
+function closePrivacyModal() {
+  document.getElementById('privacy-modal').classList.remove('show');
+}
+
+// ─── STEP NAVIGATION ───
+function updateProgress(step) {
+  for (let i = 1; i <= 4; i++) {
+    const ps = document.getElementById('ps-' + i);
+    ps.classList.remove('done','active');
+    if (i < step) { ps.classList.add('done'); ps.querySelector('.ps-dot').textContent = '✓'; }
+    else if (i === step) { ps.classList.add('active'); ps.querySelector('.ps-dot').textContent = i; }
+    else { ps.querySelector('.ps-dot').textContent = i; }
+  }
+  for (let i = 1; i <= 3; i++) {
+    const pl = document.getElementById('pl-' + i);
+    pl.classList.toggle('done', i < step);
+  }
+  document.getElementById('pbar').style.width = ((step / TOTAL) * 100) + '%';
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('step-' + n).classList.add('active');
+  currentStep = n;
+  updateProgress(n);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextStep(from) {
+  if (from === 1) {
+    const nom = document.getElementById('p-nom').value.trim();
+    const ape = document.getElementById('p-ape').value.trim();
+    const tel = document.getElementById('p-tel').value.trim();
+    if (!nom || !ape || !tel) {
+      toast('Completa nombre, apellidos y teléfono', true);
+      return;
+    }
+  }
+  if (from === 3) {
+    // Validate sensitive data consent
+    const consentSalud = document.getElementById('consent-salud');
+    const row = document.getElementById('consent-salud-row');
+    if (!consentSalud.checked) {
+      row.classList.add('required');
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      toast('Debes autorizar el tratamiento de datos de salud para continuar', true);
+      setTimeout(() => row.classList.remove('required'), 3000);
+      return;
+    }
+    buildReview();
+  }
+  if (from === 4) { submitForm(); return; }
+  showStep(from + 1);
+}
+
+function prevStep(from) {
+  if (from > 1) showStep(from - 1);
+}
+
+// ─── BUILD REVIEW ───
+function buildReview() {
+  // Personal
+  const nom = document.getElementById('p-nom').value;
+  const ape = document.getElementById('p-ape').value;
+  const tel = document.getElementById('p-tel').value;
+  const ema = document.getElementById('p-ema').value;
+  const nac = document.getElementById('p-nac').value;
+  document.getElementById('rev-personal').innerHTML = `
+    <b>${nom} ${ape}</b><br>
+    📞 ${tel || '—'}<br>
+    ✉️ ${ema || '—'}<br>
+    📅 ${nac ? new Date(nac+'T12:00').toLocaleDateString('es-MX') : '—'}
+  `;
+
+  // Consulta
+  const mot = getChip('chips-motivo');
+  const vis = getChip('chips-vision');
+  const len = getChip('chips-lentes');
+  const tie = getChip('chips-tiempo');
+  document.getElementById('rev-consulta').innerHTML = `
+    <b>${mot}</b><br>
+    Visión: ${vis}<br>
+    Lentes: ${len}<br>
+    Evolución: ${tie}
+  `;
+
+  // Salud
+  const conds = [];
+  if (document.getElementById('t-dia').checked) conds.push('Diabetes');
+  if (document.getElementById('t-hip').checked) conds.push('Hipertensión');
+  if (document.getElementById('t-ale').checked) conds.push('Alergias');
+  if (document.getElementById('t-tir').checked) conds.push('Tiroides');
+  if (document.getElementById('t-gla').checked) conds.push('Glaucoma familiar');
+  const ant = getMultiChips('chips-ocular');
+  const med = document.getElementById('p-med').value;
+  document.getElementById('rev-salud').innerHTML = `
+    ${conds.length ? '<b>' + conds.join(', ') + '</b>' : 'Sin condiciones sistémicas'}<br>
+    Ant. oculares: ${ant}<br>
+    Medicamentos: ${med || '—'}
+  `;
+}
+
+// ─── SUBMIT ───
+async function submitForm() {
+  // Validate general consent
+  const consentGeneral = document.getElementById('consent-general');
+  const row = document.getElementById('consent-general-row');
+  if (!consentGeneral.checked) {
+    row.classList.add('required');
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast('Debes aceptar el aviso de privacidad para enviar', true);
+    setTimeout(() => row.classList.remove('required'), 3000);
+    return;
+  }
+
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  const nom = document.getElementById('p-nom').value.trim();
+  const ape = document.getElementById('p-ape').value.trim();
+
+  // Build antecedentes string
+  const conds = [];
+  if (document.getElementById('t-dia').checked) conds.push('Diabetes');
+  if (document.getElementById('t-hip').checked) conds.push('Hipertensión');
+  if (document.getElementById('t-ale').checked) conds.push('Alergias');
+  if (document.getElementById('t-tir').checked) conds.push('Tiroides');
+  if (document.getElementById('t-gla').checked) conds.push('Glaucoma familiar');
+
+  const motivo = getChip('chips-motivo');
+  const vision = getChip('chips-vision');
+  const lentes = getChip('chips-lentes');
+  const tiempo = getChip('chips-tiempo');
+  const descripcion = `Visión: ${vision}. Lentes: ${lentes}. Evolución: ${tiempo}. ${document.getElementById('p-des').value}`.trim();
+
+  const payload = {
+    nombre:    nom,
+    apellidos: ape,
+    fecha_nacimiento: document.getElementById('p-nac').value || null,
+    sexo:      document.getElementById('p-sex').value,
+    telefono:  document.getElementById('p-tel').value.trim(),
+    email:     document.getElementById('p-ema').value.trim(),
+    ocupacion: document.getElementById('p-ocu').value.trim(),
+
+    motivo_consulta:   motivo === '—' ? 'No especificado' : motivo,
+    usa_lentes:        lentes,
+    descripcion_motivo: descripcion,
+    diabetes:    document.getElementById('t-dia').checked ? 'Sí' : 'No',
+    hipertension: document.getElementById('t-hip').checked ? 'Sí' : 'No',
+    alergias:    document.getElementById('t-ale').checked ? 'Sí' : 'No',
+    tiroides:    document.getElementById('t-tir').checked ? 'Sí' : 'No',
+    glaucoma_familiar: document.getElementById('t-gla').checked ? 'Sí' : 'No',
+    antecedentes_oculares: getMultiChips('chips-ocular'),
+    medicamentos: document.getElementById('p-med').value.trim(),
+    estado: 'pre-registro',
+    aviso_privacidad_aceptado: new Date().toISOString()
+  };
+
+  // Insert with auto-retry: remove missing columns gracefully
+  let error = null;
+  let insertPayload = { ...payload };
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const res = await db.from('pacientes').insert(insertPayload);
+    error = res.error;
+    if (!error) break;
+    const colMatch = error.message?.match(/Could not find the '(\w+)' column/);
+    if (colMatch) {
+      console.warn('[PreRegistro] Columna faltante, reintentando sin:', colMatch[1]);
+      delete insertPayload[colMatch[1]];
+    } else {
+      break;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Enviar Pre-Registro ✓';
+
+  if (error) {
+    toast('Error al guardar: ' + error.message, true);
+    return;
+  }
+
+  // Show success
+  document.getElementById('form-container').style.display = 'none';
+  document.getElementById('progress-wrap').style.display = 'none';
+  document.getElementById('suc-nombre').textContent = `${nom} ${ape}`;
+  document.getElementById('suc-info').textContent = `Motivo: ${motivo === '—' ? 'Primera consulta' : motivo} · Tel: ${document.getElementById('p-tel').value}`;
+  document.getElementById('screen-success').classList.add('show');
+}
+
+// ─── RESET ───
+function resetForm() {
+  document.getElementById('form-container').style.display = 'block';
+  document.getElementById('progress-wrap').style.display = 'block';
+  document.getElementById('screen-success').classList.remove('show');
+  document.querySelectorAll('input:not([type=checkbox])').forEach(i => i.value = '');
+  document.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+  document.querySelectorAll('textarea').forEach(t => t.value = '');
+  document.querySelectorAll('.chip.sel').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+  showStep(1);
+}
+
+// init
+updateProgress(1);
+</script>
+</body>
+</html>

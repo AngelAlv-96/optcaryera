@@ -1,0 +1,27 @@
+[build]
+  functions = "netlify/functions"
+
+[build.processing]
+  skip_processing = true
+
+# LC CRM auto-reminder — runs daily at 10:00 AM CST (16:00 UTC)
+[functions."lc-cron"]
+  schedule = "0 16 * * *"
+
+# Dynamic landing pages: /l/slug → function
+[[redirects]]
+  from = "/l/*"
+  to = "/.netlify/functions/landing"
+  status = 200
+
+# Tienda online LC
+[[redirects]]
+  from = "/tienda"
+  to = "/tienda.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
+    Cache-Control = "no-cache, no-store, must-revalidate"

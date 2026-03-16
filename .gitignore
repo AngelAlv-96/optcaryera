@@ -1,0 +1,21 @@
+# Claude Code (config local por máquina)
+.claude/
+
+# Dependencies
+node_modules/
+
+# Netlify local
+.netlify/
+
+# Backups
+*.bak
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ZIP backups (se mantienen locales, no en el repo)
+*.zip
+
+# Subcarpeta extraída del ZIP (ya no se necesita)
+optcaryera-v138 (2)/

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mi Ticket · Ópticas Car & Era</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0c14;
+  --surface: #13131f;
+  --surface2: #1a1a2a;
+  --gold: #c4a265;
+  --gold-light: #e2c6a6;
+  --gold-dim: rgba(196,162,101,0.12);
+  --white: #f0ede8;
+  --muted: #7a7a8e;
+  --green: #4ade80;
+  --red: #f87171;
+  --yellow: #fbbf24;
+  --radius: 16px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'DM Sans',system-ui,sans-serif; background:var(--bg); color:var(--white); min-height:100vh; overflow-x:hidden; }
+
+/* Background grain */
+body::before { content:''; position:fixed; inset:0; background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events:none; z-index:0; }
+
+.wrap { max-width:460px; margin:0 auto; padding:20px 16px 40px; position:relative; z-index:1; }
+
+/* ── Header ── */
+.header { text-align:center; padding:36px 20px 28px; position:relative; }
+.header::before { content:''; position:absolute; top:-60px; left:50%; transform:translateX(-50%); width:300px; height:300px; background:radial-gradient(ellipse,rgba(196,162,101,0.06) 0%,transparent 70%); pointer-events:none; }
+.h-line { width:40px; height:1px; background:var(--gold); margin:0 auto 14px; opacity:0; animation:fadeUp .6s .2s forwards; }
+.h-optica { font-size:10px; letter-spacing:.35em; text-transform:uppercase; color:var(--gold); font-weight:600; opacity:0; animation:fadeUp .6s .3s forwards; }
+.h-brand { font-family:'DM Serif Display',serif; font-size:32px; color:var(--white); letter-spacing:.01em; margin:4px 0; opacity:0; animation:fadeUp .6s .4s forwards; }
+.h-city { font-size:11px; color:var(--muted); opacity:0; animation:fadeUp .6s .5s forwards; }
+.h-folio { display:inline-block; margin-top:18px; padding:8px 28px; background:var(--gold-dim); border:1px solid rgba(196,162,101,0.2); border-radius:30px; font-size:15px; font-weight:700; color:var(--gold); letter-spacing:.05em; opacity:0; animation:scaleIn .5s .6s forwards; }
+.h-status { display:inline-flex; align-items:center; gap:4px; margin-top:10px; padding:5px 16px; border-radius:20px; font-size:12px; font-weight:600; opacity:0; animation:fadeUp .5s .7s forwards; }
+
+/* ── Cards ── */
+.card { background:var(--surface); border:1px solid rgba(255,255,255,0.04); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; opacity:0; animation:fadeUp .5s forwards; }
+.card:nth-child(1) { animation-delay:.5s } .card:nth-child(2) { animation-delay:.6s } .card:nth-child(3) { animation-delay:.7s } .card:nth-child(4) { animation-delay:.8s }
+.card-inner { padding:18px 20px; }
+.slbl { font-size:9px; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:12px; }
+
+/* ── Meta grid ── */
+.meta { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.meta-item { font-size:11px; color:var(--muted); }
+.meta-item strong { display:block; font-size:13px; color:var(--white); font-weight:600; margin-top:2px; }
+
+/* ── Items ── */
+.item-row { display:flex; align-items:center; justify-content:space-between; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.item-row:last-child { border-bottom:none; }
+.item-name { font-weight:600; font-size:13px; color:var(--white); }
+.item-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+.item-price { font-weight:700; font-size:14px; color:var(--gold-light); padding-left:12px; white-space:nowrap; }
+
+/* ── Total block ── */
+.total-block { background:linear-gradient(145deg,#1a1a2e 0%,#22223a 100%); border:1px solid rgba(196,162,101,0.1); border-radius:12px; padding:16px 20px; margin:14px 0; display:flex; align-items:center; justify-content:space-between; }
+.total-lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.12em; }
+.total-amt { font-size:32px; font-weight:700; color:var(--white); letter-spacing:-.02em; }
+
+/* ── Payments ── */
+.pago-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.pago-row:last-child { border-bottom:none; }
+.pago-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.pago-info { flex:1; min-width:0; }
+.pago-label { font-weight:600; font-size:12px; color:var(--white); }
+.pago-meta { font-size:10px; color:var(--muted); margin-top:1px; }
+.pago-monto { font-weight:700; font-size:14px; color:var(--green); white-space:nowrap; }
+
+/* ── Progress ── */
+.prog { margin:14px 0 6px; }
+.prog-bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--green),#86efac); width:0%; transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+.prog-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px; }
+.prog-labels strong { font-weight:700; }
+
+/* ── Saldo alert ── */
+.saldo-alert { background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.15); border-radius:10px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; margin:10px 0; }
+.saldo-alert .l { font-size:12px; font-weight:600; color:var(--yellow); }
+.saldo-alert .v { font-size:18px; font-weight:800; color:var(--yellow); }
+
+/* ── Monedero ── */
+.mon-info { background:rgba(74,222,128,0.06); border:1px solid rgba(74,222,128,0.12); border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--green); margin:8px 0; }
+.mon-info strong { font-weight:700; }
+
+/* ── Digital Card / QR ── */
+.digi-card { background:linear-gradient(145deg,#1a1a2e 0%,#0c0c14 50%,#1a1a2e 100%); border:1px solid rgba(196,162,101,0.15); border-radius:20px; overflow:hidden; position:relative; }
+.digi-card::before { content:''; position:absolute; top:-40%; right:-20%; width:200px; height:200px; background:radial-gradient(ellipse,rgba(196,162,101,0.06),transparent 70%); pointer-events:none; }
+.digi-card-header { padding:20px 20px 0; position:relative; }
+.digi-card-logo { font-size:9px; letter-spacing:.3em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+.digi-card-name { font-family:'DM Serif Display',serif; font-size:20px; color:var(--white); margin:6px 0 2px; }
+.digi-card-member { font-size:10px; color:var(--muted); }
+.digi-card-balance { padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+.digi-card-balance .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+.digi-card-balance .amt { font-size:36px; font-weight:700; color:var(--green); letter-spacing:-.02em; }
+.digi-card-qr { display:flex; flex-direction:column; align-items:center; padding:0 20px 20px; }
+.digi-card-qr canvas, .digi-card-qr img { border-radius:12px; }
+.qr-wrap { background:#fff; border-radius:14px; padding:10px; display:inline-block; }
+.qr-label { font-size:10px; color:var(--muted); margin-top:10px; text-align:center; }
+.qr-hint { font-size:11px; color:var(--gold); font-weight:600; margin-bottom:12px; text-align:center; }
+.digi-card-txns { padding:0 20px 16px; }
+.digi-card-txns .slbl { margin-bottom:6px; }
+
+/* ── Lab Timeline ── */
+.timeline { position:relative; padding-left:24px; margin:8px 0; }
+.timeline::before { content:''; position:absolute; left:7px; top:4px; bottom:4px; width:2px; background:rgba(255,255,255,0.06); border-radius:1px; }
+.tl-step { position:relative; padding:8px 0 8px 16px; }
+.tl-dot { position:absolute; left:-20px; top:12px; width:12px; height:12px; border-radius:50%; border:2px solid var(--surface); }
+.tl-dot.active { box-shadow:0 0 0 3px rgba(74,222,128,0.2); }
+.tl-label { font-size:13px; font-weight:600; color:var(--white); }
+.tl-label.dim { color:var(--muted); font-weight:400; }
+.tl-date { font-size:10px; color:var(--muted); margin-top:1px; }
+
+/* ── Footer ── */
+.footer { text-align:center; padding:24px 0 8px; opacity:0; animation:fadeUp .5s 1s forwards; }
+.footer .thanks { font-family:'DM Serif Display',serif; font-size:18px; color:var(--gold-light); margin-bottom:6px; }
+.footer .sub { font-size:11px; color:var(--muted); }
+.footer .tiny { font-size:9px; color:rgba(255,255,255,0.15); margin-top:8px; }
+
+/* Refresh button */
+.refresh-btn { display:flex; align-items:center; justify-content:center; gap:6px; margin:0 auto 16px; padding:8px 20px; background:var(--surface); border:1px solid rgba(255,255,255,0.06); border-radius:20px; color:var(--muted); font-size:11px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .2s; }
+.refresh-btn:hover { border-color:rgba(196,162,101,0.2); color:var(--gold); }
+
+/* Loading */
+.loading { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:16px; }
+.loading .spinner { width:32px; height:32px; border:2px solid var(--surface2); border-top-color:var(--gold); border-radius:50%; animation:spin 1s linear infinite; }
+.loading p { font-size:13px; color:var(--muted); }
+
+/* Error */
+.error-state { text-align:center; padding:80px 20px; }
+.error-state .icon { font-size:48px; margin-bottom:16px; opacity:0.5; }
+.error-state h2 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--white); margin-bottom:8px; }
+.error-state p { font-size:13px; color:var(--muted); max-width:280px; margin:0 auto; }
+
+/* Animations */
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes scaleIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Warranty */
+.gta-btn{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 auto 16px;padding:10px 24px;background:rgba(217,119,6,0.08);border:1px solid rgba(217,119,6,0.2);border-radius:20px;color:#d4a24a;font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .2s;font-weight:600}
+.gta-btn:hover{background:rgba(217,119,6,0.15);border-color:rgba(217,119,6,0.4)}
+.gta-card{border:1px solid rgba(217,119,6,0.15);background:rgba(217,119,6,0.04)}
+.gta-sec{padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.04)}.gta-sec:last-of-type{border-bottom:none}
+.gta-badge{display:inline-block;background:#d97706;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-bottom:4px}
+.gta-st{font-size:14px;font-weight:700;color:var(--gold-light);margin-bottom:4px}
+.gta-sec p{font-size:11px;color:var(--muted);line-height:1.5;margin:4px 0}
+.gta-notice{text-align:center;font-size:12px;font-weight:700;color:var(--red);padding:14px 0 4px;text-transform:uppercase;letter-spacing:.05em}
+.gta-tip{text-align:center;font-size:10px;color:var(--muted);padding-bottom:4px}
+@media print {
+  body { background:#fff; color:#111; }
+  body::before { display:none; }
+  .card { border:1px solid #ddd; }
+  .refresh-btn,.gta-btn,.gta-card { display:none !important; }
+  .total-block { background:#f5f5f5; border-color:#ddd; }
+  .total-amt, .item-name, .pago-label, .meta-item strong, .tl-label { color:#111; }
+  .slbl { color:#96783c; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Cargando tu ticket...</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script>
+const SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+const SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+const db = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+const params = new URLSearchParams(window.location.search);
+const token = params.get('t');
+
+const ESTADO_COLORS = {
+  'Liquidada': ['#4ade80','rgba(74,222,128,0.08)','✓ Liquidada'],
+  'Apartado': ['#fbbf24','rgba(251,191,36,0.08)','⏳ Apartado'],
+  'Pendiente': ['#60a5fa','rgba(96,165,250,0.08)','⏳ Pendiente'],
+  'Cancelada': ['#f87171','rgba(248,113,113,0.08)','✕ Cancelada']
+};
+
+const PAGO_ICONS = {
+  'Efectivo': ['💵','rgba(74,222,128,0.1)'],
+  'Tarjeta': ['💳','rgba(96,165,250,0.1)'],
+  'Transferencia': ['🔄','rgba(167,139,250,0.1)'],
+  'Aplazo': ['📱','rgba(244,114,182,0.1)'],
+  'MSI': ['⏰','rgba(251,191,36,0.1)'],
+  'Link de pago': ['🔗','rgba(56,189,248,0.1)'],
+  'Monedero': ['🪙','rgba(74,222,128,0.1)']
+};
+
+// Lab order states in sequence for timeline
+const LAB_FLOW = [
+  'En cola','Enviado al lab','Recibido en lab','Pendiente de surtir','Surtido',
+  'En proceso Máquina 1','En proceso Máquina 2','Tallando en lab externo',
+  'Biselado completado','Control de calidad','En camino a sucursal','Recibido en óptica',
+  'Listo para entrega','Entregado'
+];
+const LAB_COLORS = {
+  'En cola':'#8ab0e8','Enviado al lab':'#6ecfcf','Recibido en lab':'#6ecfcf',
+  'Pendiente de surtir':'#e8a84a','Surtido':'#72c47e','Faltante':'#e08080',
+  'En proceso Máquina 1':'#d4b84a','En proceso Máquina 2':'#d4b84a','Tallando en lab externo':'#e8a84a',
+  'Biselado completado':'#72b8c4','Control de calidad':'#b48ad4',
+  'En camino a sucursal':'#d49a6a','Recibido en óptica':'#b48ad4',
+  'Listo para entrega':'#72c47e','Entregado':'#888','Devuelto al lab':'#e08080','Demorado':'#e08080'
+};
+
+async function loadPortal() {
+  if (!token) { showError('Link inválido', 'Este link no contiene un ticket válido.'); return; }
+
+  // Fetch venta by token
+  const { data: v, error } = await db.from('ventas')
+    .select('*, pacientes(nombre, apellidos, telefono)')
+    .eq('token_portal', token)
+    .single();
+
+  if (error || !v) { showError('Ticket no encontrado', 'Verifica que el link sea correcto o contacta a la óptica.'); return; }
+
+  // Fetch items and payments
+  const [{ data: items }, { data: pagos }, { data: promos }] = await Promise.all([
+    db.from('venta_items').select('*').eq('venta_id', v.id).order('created_at'),
+    db.from('venta_pagos').select('*').eq('venta_id', v.id).order('created_at'),
+    db.from('venta_promociones').select('*').eq('venta_id', v.id)
+  ]);
+
+  // Try to find lab orders for this patient
+  let labOrders = [];
+  if (v.paciente_id) {
+    const { data: lo } = await db.from('ordenes_laboratorio')
+      .select('id, folio, estado_lab, tipo_lente, material, tratamiento, armazon, created_at, notas_laboratorio')
+      .eq('paciente_id', v.paciente_id)
+      .neq('estado_lab', 'Entregado')
+      .order('created_at', { ascending: false })
+      .limit(3);
+    labOrders = lo || [];
+  }
+
+  // Monedero balance
+  let monBalance = 0;
+  if (v.paciente_id) {
+    const { data: md } = await db.from('monedero').select('tipo, monto').eq('paciente_id', v.paciente_id);
+    monBalance = (md || []).reduce((s, m) => s + (m.tipo === 'acumulado' ? Number(m.monto) : -Number(m.monto)), 0);
+  }
+
+  render(v, items || [], pagos || [], labOrders, monBalance, promos || []);
+}
+
+function render(v, items, pagos, labOrders, monBalance, promos) {
+  const pac = v.pacientes ? `${v.pacientes.nombre || ''} ${v.pacientes.apellidos || ''}`.trim() : 'Cliente';
+  const fecha = new Date(v.created_at);
+  const fechaStr = fecha.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const total = Number(v.total), pagado = Number(v.pagado), saldo = Number(v.saldo);
+  const pct = total > 0 ? Math.min(100, Math.round((pagado / total) * 100)) : 0;
+  const [ec, ebg, elbl] = ESTADO_COLORS[v.estado] || ['#888','rgba(136,136,136,0.08)', v.estado];
+
+  // Items HTML with folio grouping
+  let itemsHtml = '';
+  const promoInfo = promos.length ? promos[0] : null;
+  const folios = promoInfo?.folios_detalle || [];
+  if (folios.length > 0) {
+    folios.forEach(fd => {
+      itemsHtml += `<div style="margin:8px 0 4px;padding:6px 10px;background:rgba(196,162,101,0.06);border-radius:8px;border-left:3px solid var(--gold)">
+        <div style="font-size:12px;font-weight:700;color:var(--gold)">📋 ${fd.folio}${fd.paciente_nombre ? ' · ' + fd.paciente_nombre : ''}</div>
+      </div>`;
+      if (fd.armazon) { const it = items.find(i => i.descripcion === fd.armazon); const aroPxTag = fd.aro_px ? ' <span style="font-size:10px;padding:1px 5px;background:rgba(212,184,74,0.2);color:#d4b84a;border-radius:4px;font-weight:700">ARO PX</span>' : ''; itemsHtml += `<div class="item-row"><div><div class="item-name">🔲 ${fd.armazon}${aroPxTag}</div></div><div class="item-price">${it ? '$'+Number(it.precio_unitario).toFixed(2) : ''}</div></div>`; }
+      if (fd.material) { const it = items.find(i => i.descripcion === fd.material); itemsHtml += `<div class="item-row"><div><div class="item-name">🔬 ${fd.material}</div></div><div class="item-price">${it ? '$'+Number(it.precio_unitario).toFixed(2) : ''}</div></div>`; }
+    });
+    const unassigned = items.filter(i => !folios.some(fd => fd.armazon === i.descripcion || fd.material === i.descripcion));
+    unassigned.forEach(i => { itemsHtml += `<div class="item-row"><div><div class="item-name">${i.descripcion}</div><div class="item-sub">$${Number(i.precio_unitario).toFixed(2)} × ${i.cantidad}</div></div><div class="item-price">$${Number(i.subtotal).toFixed(2)}</div></div>`; });
+    if (promoInfo) itemsHtml += `<div class="item-row"><div><div class="item-name" style="color:var(--green)">🎁 ${promoInfo.nombre_promo}</div></div><div class="item-price" style="color:var(--green)">-$${Number(promoInfo.descuento_aplicado).toFixed(2)}</div></div>`;
+  } else {
+    itemsHtml = items.map(i => `<div class="item-row"><div><div class="item-name">${i.descripcion}</div><div class="item-sub">$${Number(i.precio_unitario).toFixed(2)} × ${i.cantidad}</div></div><div class="item-price">$${Number(i.subtotal).toFixed(2)}</div></div>`).join('');
+  }
+
+  // Payments HTML
+  const pagosHtml = pagos.map((p, idx) => {
+    const lbl = idx === 0 && pagos.length > 1 ? 'Anticipo' : idx === 0 ? 'Pago' : `Abono ${idx}`;
+    const fp = new Date(p.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+    const [icon, bg] = PAGO_ICONS[p.metodo_pago] || ['💰', 'rgba(136,136,136,0.1)'];
+    return `
+    <div class="pago-row">
+      <div class="pago-icon" style="background:${bg}">${icon}</div>
+      <div class="pago-info"><div class="pago-label">${lbl}</div><div class="pago-meta">${p.metodo_pago}${p.msi_meses ? ' · ' + p.msi_meses + 'm' : ''} · ${fp}</div></div>
+      <div class="pago-monto">+$${Number(p.monto).toFixed(2)}</div>
+    </div>`;
+  }).join('');
+
+  // Lab orders timeline HTML
+  let labHtml = '';
+  if (labOrders.length) {
+    labHtml = `<div class="card"><div class="card-inner">
+      <div class="slbl">Estado de tu pedido</div>
+      ${labOrders.map(lo => {
+        const currentIdx = LAB_FLOW.indexOf(lo.estado_lab);
+        const simplified = [
+          { label: 'Pedido recibido', reached: true, date: new Date(lo.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }) },
+          { label: 'En laboratorio', reached: currentIdx >= 1, states: ['Enviado al lab','Recibido en lab','Pendiente de surtir','Surtido'] },
+          { label: 'En proceso', reached: currentIdx >= 5, states: ['En proceso Máquina 1','En proceso Máquina 2','Tallando en lab externo'] },
+          { label: 'Control de calidad', reached: currentIdx >= 9 },
+          { label: 'En camino a sucursal', reached: currentIdx >= 10 },
+          { label: 'Listo para entrega', reached: currentIdx >= 12 },
+        ];
+        const color = LAB_COLORS[lo.estado_lab] || '#888';
+        const desc = lo.tipo_lente ? `${lo.tipo_lente}${lo.material ? ' · ' + lo.material : ''}` : '';
+        return `
+          <div style="margin-bottom:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <div style="font-size:13px;font-weight:700;color:var(--gold)">${lo.folio || 'Orden'}</div>
+              <span style="font-size:10px;padding:3px 8px;background:${color}18;color:${color};border-radius:10px;font-weight:600">${lo.estado_lab}</span>
+            </div>
+            ${desc ? `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">${desc}</div>` : ''}
+            <div class="timeline">
+              ${simplified.map((step, i) => {
+                const isActive = step.reached && (!simplified[i + 1] || !simplified[i + 1].reached);
+                return `<div class="tl-step">
+                  <div class="tl-dot ${isActive ? 'active' : ''}" style="background:${step.reached ? color : 'var(--surface2)'}"></div>
+                  <div class="tl-label ${step.reached ? '' : 'dim'}">${step.label}</div>
+                  ${step.date ? `<div class="tl-date">${step.date}</div>` : ''}
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('')}
+    </div></div>`;
+  }
+
+  // Monedero card (now with QR digital card)
+  let monHtml = '';
+  if (v.paciente_id) {
+    // Always show digital card for identified patients
+    const pacNombre = v.pacientes ? `${v.pacientes.nombre || ''} ${v.pacientes.apellidos || ''}`.trim() : 'Cliente';
+    const pacTel = v.pacientes?.telefono || '';
+    
+    // Transaction and balance info
+    let txnHtml = '';
+    if (Number(v.monedero_usado) > 0) txnHtml += `<div class="mon-info">🪙 Aplicado en esta compra: <strong>-$${Number(v.monedero_usado).toFixed(2)}</strong></div>`;
+    if (Number(v.monedero_generado) > 0) txnHtml += `<div class="mon-info">🪙 Acumulado por esta compra: <strong>+$${Number(v.monedero_generado).toFixed(2)}</strong></div>`;
+
+    monHtml = `<div class="card digi-card">
+      <div class="digi-card-header">
+        <div class="digi-card-logo">Ópticas Car & Era</div>
+        <div class="digi-card-name">${pacNombre}</div>
+        <div class="digi-card-member">Cliente registrado${pacTel ? ' · ' + pacTel : ''}</div>
+      </div>
+      <div class="digi-card-balance">
+        <div><div class="lbl">Saldo monedero</div><div class="amt">$${monBalance.toFixed(2)}</div></div>
+      </div>
+      ${txnHtml ? `<div class="digi-card-txns">${txnHtml}</div>` : ''}
+      <div class="digi-card-qr">
+        <div class="qr-hint">Muestra este código en la óptica</div>
+        <div class="qr-wrap" id="qr-container"></div>
+        <div class="qr-label">Escanear para identificarse · Usar monedero</div>
+      </div>
+    </div>`;
+  } else if (monBalance > 0 || Number(v.monedero_usado) > 0 || Number(v.monedero_generado) > 0) {
+    monHtml = '<div class="card"><div class="card-inner"><div class="slbl">Monedero electrónico</div>';
+    if (Number(v.monedero_usado) > 0) monHtml += `<div class="mon-info">🪙 Aplicado en esta compra: <strong>-$${Number(v.monedero_usado).toFixed(2)}</strong></div>`;
+    if (Number(v.monedero_generado) > 0) monHtml += `<div class="mon-info">🪙 Acumulado por esta compra: <strong>+$${Number(v.monedero_generado).toFixed(2)}</strong></div>`;
+    if (monBalance > 0) monHtml += `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding:10px 14px;background:rgba(74,222,128,0.04);border:1px solid rgba(74,222,128,0.08);border-radius:10px"><span style="font-size:12px;color:var(--muted)">Tu saldo disponible</span><span style="font-size:20px;font-weight:700;color:var(--green)">$${monBalance.toFixed(2)}</span></div>`;
+    monHtml += '</div></div>';
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="header">
+      <div class="h-line"></div>
+      <div class="h-optica">Óptica</div>
+      <div class="h-brand">Car & Era</div>
+      <div class="h-city">Cd. Juárez, Chihuahua${v.sucursal ? ' · Suc. ' + v.sucursal : ''}</div>
+      <br><div class="h-folio">${v.folio}</div>
+      <br><span class="h-status" style="background:${ebg};color:${ec}">${elbl}</span>
+    </div>
+
+    <button class="refresh-btn" onclick="location.reload()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Actualizar
+    </button>
+
+    <div class="card"><div class="card-inner">
+      <div class="meta">
+        <div class="meta-item">Cliente<strong>${pac}</strong></div>
+        <div class="meta-item">Fecha<strong>${fechaStr}</strong></div>
+        <div class="meta-item">Hora<strong>${horaStr}</strong></div>
+        <div class="meta-item">Atendió<strong>${v.asesor || '—'}</strong></div>
+        ${v.fecha_entrega ? `<div class="meta-item">Entrega<strong>${new Date(v.fecha_entrega+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'})}${v.hora_entrega ? ' · ' + v.hora_entrega : ''}</strong></div>` : ''}
+      </div>
+    </div></div>
+
+    ${saldo <= 0 ? monHtml : ""}
+
+    <div class="card"><div class="card-inner">
+      <div class="slbl">Productos</div>
+      ${itemsHtml}
+      ${Number(v.descuento) > 0 ? `<div class="item-row"><div><div class="item-name" style="color:var(--red)">Descuento</div></div><div class="item-price" style="color:var(--red)">-$${Number(v.descuento).toFixed(2)}</div></div>` : ''}
+      <div class="total-block">
+        <div class="total-lbl">Total</div>
+        <div class="total-amt">$${total.toFixed(2)}</div>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="card-inner">
+      <div class="slbl">Historial de pagos</div>
+      ${pagosHtml || '<div style="padding:12px 0;color:var(--muted);font-size:12px;text-align:center">Sin pagos registrados</div>'}
+      <div class="prog">
+        <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+        <div class="prog-labels">
+          <span>Pagado: <strong style="color:var(--green)">$${pagado.toFixed(2)}</strong></span>
+          ${saldo > 0
+            ? `<span>Saldo: <strong style="color:var(--red)">$${saldo.toFixed(2)}</strong></span>`
+            : '<span style="color:var(--green);font-weight:600">✓ Completo</span>'}
+        </div>
+      </div>
+      ${saldo > 0 ? `<div class="saldo-alert"><span class="l">⚠ Saldo pendiente</span><span class="v">$${saldo.toFixed(2)}</span></div>` : ''}
+    </div></div>
+
+    ${labHtml}
+    ${saldo > 0 ? monHtml : ""}
+
+    <button class="gta-btn" onclick="var c=this.nextElementSibling;c.style.display=c.style.display==='none'?'':'none';this.textContent=this.textContent.includes('Ver')?'✕ Cerrar garantías':'🛡 Ver garantías'">🛡 Ver garantías</button>
+    <div class="card gta-card" style="display:none"><div class="card-inner">
+      <div class="slbl" style="color:#d4a24a">🛡 Políticas de Garantía</div>
+      <div class="gta-sec"><div class="gta-badge">90 días</div><div class="gta-st">Armazones</div><p>CUBRE UNICAMENTE DEFECTOS DE FABRICACION; COMO PUNTOS DE SOLDADURA Y ENSAMBLES. NO CUBRE DAÑOS OCASIONADOS POR LA MANIPULACION INADECUADA, POR EL USO EN CONDICIONES ANORMALES O POR EL DESGASTE NATURAL CAUSADO POR SU USO O POR LA ACIDEZ DEL SUDOR (PH) DEL USUARIO. NO ES VALIDA SI SU ARMAZON PRESENTA DAÑOS CAUSADOS POR MALOS HABITOS; POR EJEMPLO MORDEDURAS EN CUALQUIERA DE SUS PARTES, FALTA DE HIGIENE EN EL ARMAZON, EVIDENCIA DE QUE EL ARMAZON NO ES PROTEGIDO POR SU ESTUCHE CUANDO NO SE UTILIZA, O MICAS CON EVIDENCIA DE MALTRATO. SERA VALIDA UNICAMENTE SI EL ARMAZON CUENTA CON TODAS LAS PIEZAS ORIGINALES Y SIN REPARACIONES PREVIAS: SOLDADURAS, PEGAMENTO, ALGUN ADHESIVO, SOLVENTES, REPINTADO, PULIDO O CUALQUIER INTENTO DE REPARACION EN TORNILLOS, PLAQUETAS O TERMINALES NO ORIGINALES. ESTA GARANTIA NO APLICA EN ARMAZONES VENDIDOS EN EL OUTLET, SALDOS O PIEZAS UNICAS. SI EL ARMAZON ES SUJETO A GARANTIA ESTE SERA REPARADO, EN CASO DE NO PODER SER REPARADO ESTE SERA SUSTITUIDO POR UN ARMAZON IGUAL O SIMILAR EN FORMA Y PRECIO; PARA CUBRIR LA GARANTIA SE TENDRA QUE DEJAR EL ARMAZON PARA REVISION DEL PROVEEDOR.</p></div>
+      <div class="gta-sec"><div class="gta-badge">60 días</div><div class="gta-st">Lentes</div><p>LA GARANTIA CUBRE UNICAMENTE DEFECTOS DE FABRICA, MONTAJE DE LAS LENTES O ANOMALIA EN LOS TRATAMIENTOS DE FOTOCROMIA, ANTIRREFLEJOS O ENTINTADO. LA GARANTIA NO CUBRE DAÑOS OCASIONADOS POR EL MALTRATO COMO DESPOSTILLADAS, RAYAS O RAYONES EN LA SUPERFICIE, POR EL USO EN CONDICIONES ANORMALES O POR EL DESGASTE NATURAL CAUSADO POR SU USO O POR EVIDENCIA DE QUE NO SON GUARDADOS EN SU ESTUCHE CUANDO NO SE UTILIZAN.</p></div>
+      <div class="gta-sec"><div class="gta-badge">40 días</div><div class="gta-st">Graduación</div><p>LA GRADUACION QUE LE FUE PRESCRITA TIENE UNA GARANTIA DE 40 DIAS A PARTIR DE LA FECHA EN QUE SE REALIZO SU EXAMEN. SI LA GRADUACION ES PROPORCIONADA POR EL CLIENTE, ESTA GARANTIA NO APLICA.</p></div>
+      <div class="gta-notice">NO HAY CAMBIOS NI DEVOLUCIONES.</div>
+      <div class="gta-tip">RECUERDE GUARDAR SUS LENTES EN SU ESTUCHE CUANDO NO LOS UTILICE.</div>
+    </div></div>
+
+    <div class="footer">
+      <div class="thanks">¡Gracias por tu preferencia!</div>
+      <div class="sub">Ópticas Car & Era · Cd. Juárez, Chih.</div>
+      <div class="tiny">Última actualización: ${new Date().toLocaleString('es-MX', { day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit', hour12:true })}</div>
+    </div>
+  `;
+
+  // Animate progress bar
+  setTimeout(() => {
+    const pf = document.getElementById('prog-fill');
+    if (pf) pf.style.width = pct + '%';
+  }, 300);
+
+  // Generate QR code for patient identification
+  if (v.paciente_id) {
+    setTimeout(() => {
+      const container = document.getElementById('qr-container');
+      if (container && typeof qrcode !== 'undefined') {
+        const qr = qrcode(0, 'M');
+        qr.addData('CE:' + v.paciente_id);
+        qr.make();
+        container.innerHTML = qr.createImgTag(5, 8);
+        // Style the generated image
+        const img = container.querySelector('img');
+        if (img) { img.style.borderRadius = '8px'; img.style.display = 'block'; }
+      }
+    }, 200);
+  }
+
+  // Update page title
+  document.title = `${v.folio} · Ópticas Car & Era`;
+}
+
+function showError(title, msg) {
+  document.getElementById('app').innerHTML = `
+    <div class="error-state">
+      <div class="icon">🔍</div>
+      <h2>${title}</h2>
+      <p>${msg}</p>
+      <div style="margin-top:24px;font-size:12px;color:var(--muted)">Ópticas Car & Era · Cd. Juárez</div>
+    </div>`;
+}
+
+loadPortal();
+</script>
+</body>
+</html>
