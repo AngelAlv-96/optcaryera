@@ -2365,7 +2365,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="">Todas las categorías</option>
               </select>
               <select id="clb-precio-lab" onchange="clbCargarListaPrecios()" style="padding:9px 12px;background:var(--surface2);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:var(--white);font-size:12px;font-family:'Outfit',sans-serif">
-                <option value="">Selecciona laboratorio</option>
+                <option value="">Selecciona proveedor</option>
               </select>
               <button class="btn btn-p btn-sm" onclick="clbNuevaListaPrecios()" style="white-space:nowrap">+ Nueva lista</button>
             </div>
@@ -18464,7 +18464,7 @@ async function clbCargarListaPrecios() {
   var sel = document.getElementById('clb-precio-lab');
   var labId = sel ? sel.value : '';
   if (!labId) {
-    document.getElementById('clb-precios-lista').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Selecciona un laboratorio para ver su lista de precios</div>';
+    document.getElementById('clb-precios-lista').innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Selecciona un proveedor para ver su lista de precios</div>';
     document.getElementById('clb-precios-count').textContent = '';
     return;
   }
@@ -18552,10 +18552,10 @@ function clbNuevaListaPrecios() {
   var html = '<div class="m-overlay open" id="clb-nueva-lista-modal" style="z-index:9999">' +
     '<div class="m-box" style="max-width:700px;max-height:85vh;overflow-y:auto">' +
     '<h3 style="margin-bottom:4px">+ Nueva lista de precios</h3>' +
-    '<p style="font-size:11px;color:var(--muted);margin-bottom:14px">Agrega la lista de precios de un proveedor/laboratorio. Puedes capturar manualmente o subir una foto.</p>' +
+    '<p style="font-size:11px;color:var(--muted);margin-bottom:14px">Agrega la lista de precios de un proveedor. Puedes capturar manualmente o subir una foto.</p>' +
 
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">' +
-    '<div class="fg"><label>Nombre del laboratorio/proveedor</label><input type="text" id="clb-nl-nombre" placeholder="Ej: MARINA, SALES, QUALITY..."></div>' +
+    '<div class="fg"><label>Nombre del proveedor</label><input type="text" id="clb-nl-nombre" placeholder="Ej: MARINA, SALES, QUALITY..."></div>' +
     '<div class="fg"><label>Notas (opcional)</label><input type="text" id="clb-nl-notas" placeholder="Ej: Vigente marzo 2026"></div>' +
     '</div>' +
 
@@ -18700,7 +18700,7 @@ async function clbNLProcesarFoto(input) {
 
 async function clbNLGuardar() {
   var nombre = (document.getElementById('clb-nl-nombre')?.value || '').trim();
-  if (!nombre) { toast('Escribe el nombre del laboratorio', true); return; }
+  if (!nombre) { toast('Escribe el nombre del proveedor', true); return; }
   if (!_clbNuevaListaItems.length) { toast('Agrega al menos un material', true); return; }
 
   var btn = document.getElementById('clb-nl-guardar');
@@ -19726,11 +19726,13 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
         }
       }
 
-      // Si no hay preferencia, usar mejor precio
+      // Si no hay preferencia, preferir SALES > mejor precio
       if (!precio && opciones.length > 0) {
-        precio = opciones[0].precio;
-        fuente = opciones[0].lab + ' S' + serie;
-        provSeleccionado = opciones[0].lab;
+        var salesMatch = opciones.find(function(o) { return o.lab.toUpperCase().includes('SALES'); });
+        var best = salesMatch || opciones[0];
+        precio = best.precio;
+        fuente = best.lab + ' S' + serie;
+        provSeleccionado = best.lab;
       }
 
       // Fallback historial

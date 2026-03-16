@@ -25,7 +25,7 @@ const ALLOWED_TABLES = [
   'autorizaciones','lc_seguimiento','am_sesiones',
   'config_precios','lotes_compra','proveedores',
   'compras_lab','precios_materiales','proveedores_lab',
-  'mapeo_materiales','catalogo_tienda'
+  'mapeo_materiales','catalogo_tienda','reglas_materiales'
 ];
 
 async function supaREST(method, path, body, extraHeaders) {
