@@ -136,16 +136,22 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 ## 📸 COMPRAS LAB
 - Registro de compras con foto (OCR vía Anthropic)
 - Lab Assistant en wa-webhook.js procesa fotos de admin_phones
-- Lista de precios SALES en app_config id='precios_lab_sales'
-- Tabs: Compras | Lista de Precios
-- PENDIENTE: mapeo materiales Anti Blue/Blue Light, matching inteligente OCR→precios, detección series por graduación
+- Listas de precios en app_config id='precios_lab_*' (SALES, y cualquier otro lab)
+- Mapeos material→producto de lista en app_config id='mapeo_productos_lab' (JSON)
+- Tabs: Compras | Lista de Precios (con botón "+ Nueva lista" para agregar labs por foto o manual)
+- OCR extrae serie (S1/S2/S3) de notas de compra
+- Validación de precios: cruza cada item contra listas oficiales, reporta discrepancias (WA y web)
+- Modal de mapeo: aparece solo si un material no coincide con ninguna lista; incluye selector de serie
+- Serie se determina por CIL: ≤-2.00=S1, ≤-4.00=S2, ≤-6.00=S3
+- Estimado de compra en Reporte de Materiales usa listas oficiales (con serie por CIL) con fallback a historial
 
 ## 🧪 USUARIO DEMO
 - Login: demo/demo2024, rol admin
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v138
+## 📊 VERSIÓN ACTIVA: v139
+Cambios v139: validación precios SALES en Lab Assistant (WA) y Compras Lab (web), OCR extrae serie, modal mapeo con selector de serie, agregar nuevas listas de precios por foto/manual, estimado de compra en Reporte Materiales usa listas oficiales con serie por CIL.
 Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_phones separado de admin_phones, lista precios SALES en Compras Lab.
 
 ## ⚠️ PENDIENTES
@@ -156,9 +162,10 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 5. Recompra automática wa-webhook
 6. Promo "Material a $1"
 7. SEGURIDAD: RLS Supabase + proxy lectura por fases
-8. Mapeo materiales + matching inteligente compras lab
+8. ~~Mapeo materiales + matching inteligente compras lab~~ ✅ HECHO (2026-03-16)
 9. Precios Marina pendientes de confirmar
 10. ~~Configurar GitHub para sincronizar entre computadoras~~ ✅ HECHO (2026-03-16)
+11. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:

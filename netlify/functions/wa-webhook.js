@@ -1201,9 +1201,10 @@ async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
       system: 'Eres un asistente de óptica que extrae datos de notas/tickets/facturas de compra de materiales ópticos.\n' +
-        'Extrae TODA la información: proveedor, folio, fecha, y cada material con cantidad y precio.\n' +
+        'Extrae TODA la información: proveedor, folio, fecha, y cada material con cantidad, precio y serie.\n' +
+        'La "serie" indica el rango de graduación del lente (Serie 1, Serie 2, Serie 3, etc). Si la nota dice "S1","S2","S3" o "Serie 1","Serie 2","Serie 3", extrae el número. Si no aparece serie, usa null.\n' +
         'RESPONDE ÚNICAMENTE con JSON object:\n' +
-        '{"proveedor":"NOMBRE","folio":"12345","fecha":"2026-03-15","items":[{"material":"NOMBRE","cantidad":1,"precio_unitario":123.45,"subtotal":123.45}]}\n' +
+        '{"proveedor":"NOMBRE","folio":"12345","fecha":"2026-03-15","items":[{"material":"NOMBRE","serie":1,"cantidad":1,"precio_unitario":123.45,"subtotal":123.45}]}\n' +
         'Precios SIN IVA (si incluye IVA dividir entre 1.16). Si no puedes leer algo, usa null.',
       messages: [{
         role: 'user',
@@ -1242,25 +1243,100 @@ async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
   var proveedor = parsed.proveedor || 'Sin proveedor';
   var folio = parsed.folio || null;
 
-  // 4. Load mapeos to translate material names
-  var mapeos = await supaFetch('mapeo_materiales?activo=eq.true&select=nombre_proveedor,nuestro_material,nuestro_tratamiento&limit=500') || [];
+  // 4. Load mapeos + all price lists + product mappings
+  var [mapeos, precioLists, mapeoProductosRaw] = await Promise.all([
+    supaFetch('mapeo_materiales?activo=eq.true&select=nombre_proveedor,nuestro_material,nuestro_tratamiento&limit=500'),
+    supaFetch("app_config?id=like.precios_lab_*&select=id,value"),
+    supaFetch("app_config?id=eq.mapeo_productos_lab&select=value")
+  ]);
+  mapeos = mapeos || [];
+  precioLists = precioLists || [];
+  var mapeoProductos = {};
+  if (mapeoProductosRaw && mapeoProductosRaw[0] && mapeoProductosRaw[0].value) {
+    try { mapeoProductos = typeof mapeoProductosRaw[0].value === 'string' ? JSON.parse(mapeoProductosRaw[0].value) : mapeoProductosRaw[0].value; } catch(e) {}
+  }
 
-  // 5. Save to compras_lab
+  // Build flat index of all price list products for matching
+  var precioIndex = []; // { lab, labId, material, rangos[] }
+  precioLists.forEach(function(row) {
+    var val = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
+    var labName = val.laboratorio || row.id.replace('precios_lab_', '').toUpperCase();
+    var cats = val.categorias || {};
+    Object.values(cats).forEach(function(prods) {
+      (prods || []).forEach(function(p) {
+        precioIndex.push({ lab: labName, labId: row.id, material: p.material, rangos: p.rangos || [] });
+      });
+    });
+  });
+
+  // Helper: find price list product by name (direct or via mapeoProductos)
+  function findPrecioProduct(matName) {
+    var upper = (matName || '').toUpperCase().trim();
+    // 1. Direct match against price list products
+    var direct = precioIndex.find(function(p) {
+      var pUp = p.material.toUpperCase().trim();
+      return pUp === upper || upper.includes(pUp) || pUp.includes(upper);
+    });
+    if (direct) return direct;
+    // 2. Via mapeoProductos (saved mappings)
+    var mapped = mapeoProductos[upper] || mapeoProductos[matName];
+    if (mapped) {
+      var mappedProduct = precioIndex.find(function(p) {
+        return p.material.toUpperCase().trim() === (mapped.producto || '').toUpperCase().trim();
+      });
+      if (mappedProduct) return mappedProduct;
+    }
+    return null;
+  }
+
+  // Helper: get price from rangos by serie number
+  function getPrecioBySerie(rangos, serie) {
+    if (!rangos || !rangos.length) return null;
+    if (!serie || serie < 1) return rangos[0]; // default to first range
+    var idx = Math.min(serie - 1, rangos.length - 1);
+    return rangos[idx];
+  }
+
+  // 5. Build saveItems with price validation
   var saveItems = items.map(function(i) {
     var mat = (i.material||'').trim();
+    var serie = i.serie ? parseInt(i.serie) : null;
     var mapped = mapeos.find(function(m) {
       var alias = (m.nombre_proveedor||'').toUpperCase();
       return alias === mat.toUpperCase() || mat.toUpperCase().includes(alias) || alias.includes(mat.toUpperCase());
     });
+
+    // Try to find price list match — check saved mappings for serie too
+    var precioMatch = findPrecioProduct(mat);
+    var savedMap = mapeoProductos[(mat).toUpperCase().trim()];
+    if (!serie && savedMap && savedMap.serie) serie = savedMap.serie;
+    if (!precioMatch && mapped) {
+      var nuestro = mapped.nuestro_material + (mapped.nuestro_tratamiento ? ' ' + mapped.nuestro_tratamiento : '');
+      precioMatch = findPrecioProduct(nuestro);
+    }
+
+    var precioEsperado = null;
+    var rangoInfo = null;
+    if (precioMatch) {
+      rangoInfo = getPrecioBySerie(precioMatch.rangos, serie);
+      if (rangoInfo) precioEsperado = parseFloat(rangoInfo.precio || rangoInfo.precio_par) || null;
+    }
+
     return {
       material: mat,
       material_nuestro: mapped ? (mapped.nuestro_material + (mapped.nuestro_tratamiento ? ' · ' + mapped.nuestro_tratamiento : '')) : null,
+      serie: serie,
       cantidad: parseInt(i.cantidad) || 1,
       precio_unitario: parseFloat(i.precio_unitario) || 0,
-      subtotal: (parseInt(i.cantidad)||1) * (parseFloat(i.precio_unitario)||0)
+      subtotal: (parseInt(i.cantidad)||1) * (parseFloat(i.precio_unitario)||0),
+      precio_lista: precioEsperado,
+      producto_lista: precioMatch ? precioMatch.material : null,
+      lab_lista: precioMatch ? precioMatch.lab : null,
+      rango_texto: rangoInfo ? rangoInfo.rango : null
     };
   });
 
+  // 6. Save to compras_lab
   var compraData = {
     fecha: fecha,
     proveedor: proveedor,
@@ -1278,7 +1354,7 @@ async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
   });
   var compraId = (saveResult && saveResult[0]) ? saveResult[0].id : null;
 
-  // 6. Save precios_materiales
+  // 7. Save precios_materiales
   for (var pi = 0; pi < saveItems.length; pi++) {
     var si = saveItems[pi];
     if (si.precio_unitario > 0) {
@@ -1297,24 +1373,47 @@ async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
     }
   }
 
-  // 7. Build reply
+  // 8. Build reply with price validation
   var reply = '✅ *Compra registrada*\n'
     + '🏪 ' + proveedor + (folio ? ' #' + folio : '') + '\n'
     + '📅 ' + fecha + '\n\n';
 
+  var alertas = 0;
   saveItems.forEach(function(si) {
     var mappedTag = si.material_nuestro ? ' → _' + si.material_nuestro + '_' : '';
-    reply += '• ' + si.material + mappedTag + ' x' + si.cantidad + ' = $' + si.subtotal.toFixed(0) + '\n';
+    var serieTag = si.serie ? ' (S' + si.serie + ')' : '';
+    reply += '• ' + si.material + mappedTag + serieTag + ' x' + si.cantidad + ' = $' + si.subtotal.toFixed(0) + '\n';
+
+    // Price validation line
+    if (si.precio_lista !== null && si.precio_unitario > 0) {
+      var diff = si.precio_unitario - si.precio_lista;
+      var tolerance = si.precio_lista * 0.02; // 2% tolerance
+      if (Math.abs(diff) <= tolerance) {
+        reply += '  ✅ Precio correcto ($' + si.precio_lista.toFixed(0) + ' ' + (si.lab_lista||'') + ')\n';
+      } else {
+        alertas++;
+        var signo = diff > 0 ? '+' : '';
+        reply += '  ⚠️ Lista dice $' + si.precio_lista.toFixed(0) + ' (' + (si.lab_lista||'') + ')';
+        if (si.rango_texto) reply += ' [' + si.rango_texto + ']';
+        reply += ' → dif ' + signo + '$' + diff.toFixed(0) + '\n';
+      }
+    } else if (!si.producto_lista && si.precio_unitario > 0) {
+      reply += '  ❓ Sin precio de referencia en listas\n';
+    }
   });
 
   reply += '\n💰 *Total: $' + total.toLocaleString('es-MX', {minimumFractionDigits: 0}) + '*';
 
-  var unmapped = saveItems.filter(function(s) { return !s.material_nuestro; });
+  if (alertas > 0) {
+    reply += '\n\n🔴 *' + alertas + ' alerta(s) de precio* — revisa las diferencias arriba';
+  }
+
+  var unmapped = saveItems.filter(function(s) { return !s.material_nuestro && !s.producto_lista; });
   if (unmapped.length) {
     reply += '\n\n⚠ ' + unmapped.length + ' material(es) sin mapear. Abre *Compras Lab* en el sistema para asignar equivalencias.';
   }
 
-  console.log('[LabOCR] Saved compra #' + compraId + ': $' + total + ' (' + items.length + ' items)');
+  console.log('[LabOCR] Saved compra #' + compraId + ': $' + total + ' (' + items.length + ' items, ' + alertas + ' price alerts)');
   return { reply: reply };
 }
 
