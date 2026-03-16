@@ -15795,7 +15795,19 @@ function renderDetalleVenta() {
   document.getElementById('mvta-title').textContent=v.folio;
   const entregaStr = v.fecha_entrega ? new Date(v.fecha_entrega+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long'}) : '';
   const onlineInfo = v.sucursal === 'Online' ? `<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.12);color:#38bdf8;border-radius:4px;font-weight:700">🌐 Venta Online</span>${v.canal_venta?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">'+v.canal_venta+'</span>':''}${v.sucursal_entrega?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">🏪 Recoger: '+v.sucursal_entrega+'</span>':''}</div>` : '';
-  document.getElementById('mvta-info').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div><div style="font-size:14px;font-weight:600;color:var(--white)">${pac}</div><div style="font-size:11px;color:var(--muted)">${fecha} · ${v.asesor||'—'}${entregaStr?' · 📅 Entrega: '+entregaStr:''}</div>${onlineInfo}</div><span style="font-size:10px;padding:3px 8px;background:${c}18;color:${c};border-radius:5px;font-weight:600">${v.estado}</span></div>`;
+  // Extraer motivo de cancelación de notas si existe
+  let cancelInfo = '';
+  if (v.estado === 'Cancelada' && v.notas) {
+    const match = v.notas.match(/\[CANCELADA ([^\]]+)\] Motivo: ([^|]+)(?:\| Efectivo devuelto: ([^|]+))?(?:\| Por: (.+))?/);
+    if (match) {
+      cancelInfo = `<div style="margin-top:8px;padding:8px 10px;background:rgba(224,128,128,0.08);border:1px solid rgba(224,128,128,0.15);border-radius:8px">
+        <div style="font-size:10px;color:#e08080;font-weight:600;margin-bottom:4px">🚫 VENTA CANCELADA</div>
+        <div style="font-size:11px;color:var(--white)">${match[2].trim()}</div>
+        <div style="font-size:9px;color:var(--muted);margin-top:3px">${match[1]}${match[4]?' · '+match[4].trim():''}${match[3]?' · 💵 '+match[3].trim():''}</div>
+      </div>`;
+    }
+  }
+  document.getElementById('mvta-info').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div><div style="font-size:14px;font-weight:600;color:var(--white)">${pac}</div><div style="font-size:11px;color:var(--muted)">${fecha} · ${v.asesor||'—'}${entregaStr?' · 📅 Entrega: '+entregaStr:''}</div>${onlineInfo}</div><span style="font-size:10px;padding:3px 8px;background:${c}18;color:${c};border-radius:5px;font-weight:600">${v.estado}</span></div>${cancelInfo}`;
   const pagado=Number(v.pagado),total=Number(v.total),saldo=Number(v.saldo);
   const pct=total>0?Math.min(100,Math.round((pagado/total)*100)):0;
   document.getElementById('mvta-pagado').textContent='$'+pagado.toFixed(2);
@@ -15847,7 +15859,7 @@ function renderDetalleVenta() {
   acts.push(`<button class="btn btn-g btn-sm" onclick="compartirTicketDigital('${v.id}')" style="display:flex;align-items:center;gap:4px;font-size:10px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>WA${_telDisplay}</button>`);
   acts.push(`<button class="btn btn-g btn-sm" onclick="verTicketDigital('${v.id}')" style="display:flex;align-items:center;gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Digital</button>`);
   acts.push(`<button class="btn btn-g btn-sm" onclick="copiarLinkPortal('${v.id}')" style="display:flex;align-items:center;gap:4px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Link</button>`);
-  if (v.estado!=='Cancelada'&&v.estado!=='Liquidada') acts.push(`<button class="btn btn-g btn-sm" onclick="cancelarVentaRegistrada('${v.id}')" style="color:#e08080">🚫 Cancelar</button>`);
+  if (v.estado!=='Cancelada') acts.push(`<button class="btn btn-g btn-sm" onclick="cancelarVentaRegistrada('${v.id}','${v.folio}')" style="color:#e08080">🚫 Cancelar</button>`);
   // Check for pending promo pairs
   var _pendingPairs = [];
   (v.promos||[]).forEach(pr => {
@@ -15856,7 +15868,7 @@ function renderDetalleVenta() {
   if (_pendingPairs.length > 0) {
     acts.push(`<button class="btn btn-sm" onclick="completarParPendiente('${v.id}')" style="background:rgba(212,184,74,0.15);border:1px solid rgba(212,184,74,0.3);color:#d4b84a;font-weight:700;display:flex;align-items:center;gap:4px">🔬 Completar par pendiente (${_pendingPairs.length})</button>`);
   }
-  acts.push(`<button class="btn btn-g btn-sm" onclick="borrarVentaCompleta('${v.id}','${v.folio}')" style="color:#e08080">🗑 Borrar</button>`);
+  if (currentUser?.rol==='admin') acts.push(`<button class="btn btn-g btn-sm" onclick="borrarVentaCompleta('${v.id}','${v.folio}')" style="color:#e08080">🗑 Borrar</button>`);
   acts.push('<button class="btn btn-g btn-sm" onclick="cerrarDetalleVenta()">Cerrar</button>');
   document.getElementById('mvta-acciones').innerHTML=acts.join('');
 }
@@ -16318,20 +16330,87 @@ async function _ejecutarBorrarVenta(ventaId, folio) {
   } catch(e) { toast('Error borrando: ' + e.message, true); }
 }
 
-async function cancelarVentaRegistrada(ventaId) {
-  if (currentUser?.rol !== 'admin') {
-    solicitarAutorizacion('Cancelar venta', 'Cancelar venta y restaurar stock', function() { _ejecutarCancelarVenta(ventaId); });
-    return;
-  }
-  _ejecutarCancelarVenta(ventaId);
+async function cancelarVentaRegistrada(ventaId, folio) {
+  // Modal para pedir motivo de cancelación
+  const overlay = document.createElement('div');
+  overlay.className = 'm-overlay open';
+  overlay.style.zIndex = '10010';
+  overlay.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;max-width:400px;width:90%">
+    <h3 style="margin:0 0 12px;font-size:15px;color:var(--white)">🚫 Cancelar venta ${folio||''}</h3>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">La venta quedará marcada como cancelada. Si se recibió efectivo, se registrará la devolución y se descontará de la caja.</p>
+    <label style="font-size:11px;color:var(--beige);font-weight:600">Motivo de cancelación *</label>
+    <textarea id="cancelar-motivo" rows="3" style="width:100%;margin:6px 0 14px;padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;resize:vertical" placeholder="Ej: Paciente cambió de opinión, error en captura, etc."></textarea>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-g btn-sm" id="cancelar-venta-cancelar-btn" style="font-size:11px">Cancelar</button>
+      <button class="btn btn-sm" id="cancelar-venta-confirmar-btn" style="background:#e08080;color:#fff;font-size:11px;font-weight:600">Confirmar cancelación</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('cancelar-motivo').focus();
+  document.getElementById('cancelar-venta-cancelar-btn').onclick = () => overlay.remove();
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.getElementById('cancelar-venta-confirmar-btn').onclick = () => {
+    const motivo = document.getElementById('cancelar-motivo').value.trim();
+    if (!motivo) { toast('Escribe el motivo de cancelación', true); document.getElementById('cancelar-motivo').focus(); return; }
+    overlay.remove();
+    if (currentUser?.rol !== 'admin') {
+      solicitarAutorizacion('Cancelar venta', 'Cancelar venta ' + (folio||'') + ': ' + motivo, function() { _ejecutarCancelarVenta(ventaId, motivo); });
+    } else {
+      _ejecutarCancelarVenta(ventaId, motivo);
+    }
+  };
 }
-async function _ejecutarCancelarVenta(ventaId) {
-  if (!confirm('¿Cancelar esta venta?\nStock se restaurará.')) return;
-  await db.from('ventas').update({estado:'Cancelada',updated_at:new Date().toISOString()}).eq('id',ventaId);
-  const {data:items}=await db.from('venta_items').select('producto_id,cantidad').eq('venta_id',ventaId);
-  for (const i of (items||[])) { if(!i.producto_id) continue; const {data:p}=await db.from('productos').select('stock').eq('id',i.producto_id).single(); if(p) await db.from('productos').update({stock:p.stock+i.cantidad,updated_at:new Date().toISOString()}).eq('id',i.producto_id); }
-  toast('✓ Venta cancelada · Stock restaurado');
-  await verDetalleVenta(ventaId); if (histVentasData.length) cargarHistorialVentas(); cargarVtaPendientes();
+async function _ejecutarCancelarVenta(ventaId, motivo) {
+  try {
+    toast('Cancelando venta...');
+    // 1. Cargar datos de la venta y sus pagos
+    const {data:venta} = await db.from('ventas').select('*, venta_items(producto_id,cantidad)').eq('id',ventaId).single();
+    if (!venta) { toast('Venta no encontrada', true); return; }
+    const {data:pagos} = await db.from('venta_pagos').select('*').eq('venta_id',ventaId);
+
+    // 2. Calcular efectivo a devolver (solo pagos en efectivo)
+    const efectivoDevolver = (pagos||[]).filter(p => p.metodo_pago === 'Efectivo').reduce((sum, p) => sum + Number(p.monto), 0);
+
+    // 3. Marcar venta como cancelada con motivo y datos de devolución
+    const cancelData = {
+      estado: 'Cancelada',
+      notas: (venta.notas ? venta.notas + '\n' : '') + '[CANCELADA ' + new Date().toLocaleString('es-MX') + '] Motivo: ' + motivo + (efectivoDevolver > 0 ? ' | Efectivo devuelto: $' + efectivoDevolver.toFixed(2) : '') + ' | Por: ' + (currentUser?.nombre || 'Admin'),
+      updated_at: new Date().toISOString()
+    };
+    await db.from('ventas').update(cancelData).eq('id', ventaId);
+
+    // 4. Restaurar stock
+    for (const i of (venta.venta_items || [])) {
+      if (!i.producto_id) continue;
+      const {data:p} = await db.from('productos').select('stock').eq('id', i.producto_id).single();
+      if (p) await db.from('productos').update({ stock: p.stock + i.cantidad, updated_at: new Date().toISOString() }).eq('id', i.producto_id);
+    }
+
+    // 5. Si hubo efectivo, registrar retiro en caja para la devolución
+    if (efectivoDevolver > 0) {
+      const suc = venta.sucursal || currentUser?.sucursal || '';
+      const hoy = new Date().toISOString().slice(0,10);
+      // Buscar caja abierta de hoy para esta sucursal
+      const {data:cajaHoy} = await db.from('cajas').select('id').eq('sucursal', suc).eq('fecha', hoy).eq('estado','abierta').maybeSingle();
+      await db.from('retiros_caja').insert({
+        corte_id: cajaHoy?.id || null,
+        sucursal: suc,
+        fecha: hoy,
+        monto: Math.round(efectivoDevolver * 100) / 100,
+        observaciones: '🚫 Devolución por cancelación venta ' + (venta.folio || '') + ' — ' + motivo,
+        registrado_por: currentUser?.nombre || ''
+      });
+    }
+
+    // 6. Resumen
+    let msg = '✓ Venta cancelada · Stock restaurado';
+    if (efectivoDevolver > 0) msg += ' · Devolución $' + efectivoDevolver.toFixed(2) + ' registrada en caja';
+    toast(msg);
+    await verDetalleVenta(ventaId);
+    if (typeof histVentasData !== 'undefined' && histVentasData.length) cargarHistorialVentas();
+    if (typeof cargarVtaPendientes === 'function') cargarVtaPendientes();
+    if (typeof cargarDatosCaja === 'function' && cajaData) cargarDatosCaja();
+  } catch(e) { toast('Error cancelando: ' + e.message, true); }
 }
 
 let cajaData = null; // Current open caja for this sucursal
