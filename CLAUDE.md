@@ -150,7 +150,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v140
+## 📊 VERSIÓN ACTIVA: v141
+Cambios v141: Foto Colors requiere selector de color (Gris/Rosa/Cafe/Azul/Morado/Verde) en POS y Orden Lab — se guarda en tinte como "Foto Colors: Color", aparece en surtido/reporte distinguido por color. Fix folio slots: items con cantidad > 1 ahora se pueden asignar a múltiples folios (antes se bloqueaba después del primero).
 Cambios v140: Cancelar ventas con autorización WA (motivo, devolución dinero, retiro caja), estimado compra con selector proveedor por fila (aprende preferencias), VS medios, TIPO badges, comparativo estimado vs compras reales, total nota editable en Compras Lab, terminología laboratorio→proveedor, Hi Index · Foto AR · VS (S1: $2,199, S2: $2,499), botón "+ Agregar material" en Catálogo (admin only) con modal para insertar en reglas_materiales.
 Cambios v139: validación precios SALES en Lab Assistant (WA) y Compras Lab (web), OCR extrae serie, modal mapeo con selector de serie, agregar nuevas listas de precios por foto/manual, estimado de compra en Reporte Materiales usa listas oficiales con serie por CIL.
 Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_phones separado de admin_phones, lista precios SALES en Compras Lab.
