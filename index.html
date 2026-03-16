@@ -1874,7 +1874,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     </select>
                   </div>
                   <div class="fg"><label>Tratamiento</label>
-                    <select class="ord-input" id="o-tra" onchange="syncTicket();cascadeSerie()">
+                    <select class="ord-input" id="o-tra" onchange="syncTicket();cascadeSerie();syncTinte()">
                       <option value="">— Seleccionar —</option>
                     </select>
                   </div>
@@ -1908,6 +1908,17 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                       <option>75%</option>
                       <option>100%</option>
                       <option>DESVANECIDO</option>
+                    </select>
+                  </div>
+                  <div class="fg" id="o-fcolor-wrap" style="display:none"><label style="color:#a855f7">🎨 Color Foto Colors</label>
+                    <select class="ord-input" id="o-fcolor" onchange="syncTinte()">
+                      <option value="">— Color —</option>
+                      <option value="Gris">Gris</option>
+                      <option value="Rosa">Rosa</option>
+                      <option value="Cafe">Cafe</option>
+                      <option value="Azul">Azul</option>
+                      <option value="Morado">Morado</option>
+                      <option value="Verde">Verde</option>
                     </select>
                   </div>
                   <div class="fg"><label>Urgencia</label>
@@ -3261,6 +3272,19 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                         </select>
                       </div>
                     </div>
+                  </div>
+                  <!-- Foto Colors selector -->
+                  <div id="vta-cfg-fcolor-wrap" style="display:none;margin-top:8px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.15);border-radius:8px;padding:10px">
+                    <label style="font-size:11px;color:#a855f7;font-weight:600;display:block;margin-bottom:6px">🎨 Color Foto Colors</label>
+                    <select id="vta-cfg-fcolor" onchange="vtaShowPrecio()" style="width:100%;padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid rgba(168,85,247,0.2);border-radius:6px;color:var(--white)">
+                      <option value="">— Seleccionar color —</option>
+                      <option value="Gris">Gris</option>
+                      <option value="Rosa">Rosa</option>
+                      <option value="Cafe">Cafe</option>
+                      <option value="Azul">Azul</option>
+                      <option value="Morado">Morado</option>
+                      <option value="Verde">Verde</option>
+                    </select>
                   </div>
                   <div id="vta-cfg-result" style="display:none;margin-top:10px;padding:10px;background:rgba(226,198,166,0.08);border-radius:8px">
                     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -8160,12 +8184,13 @@ function toggleLCMismaRx() {
 function limpiarOrden() {
   ['ord-search','ord-folio','ord-entrega','ord-hora-entrega',
    'o-od-esf','o-od-cil','o-od-eje','o-od-add','o-oi-esf','o-oi-cil','o-oi-eje','o-oi-add',
-   'o-dip','o-alt','o-tip','o-mat','o-tra','o-tin-color','o-tin-tono','o-tin','o-not','o-armazon','o-urg',
+   'o-dip','o-alt','o-tip','o-mat','o-tra','o-tin-color','o-tin-tono','o-tin','o-fcolor','o-not','o-armazon','o-urg',
    'lc-od-marca','lc-od-modelo','lc-od-poder','lc-od-bc','lc-od-dia','lc-od-cil','lc-od-eje','lc-od-add',
    'lc-oi-marca','lc-oi-modelo','lc-oi-poder','lc-oi-bc','lc-oi-dia','lc-oi-cil','lc-oi-eje','lc-oi-add',
    'lc-adaptacion','lc-vigencia'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('o-urg').value = 'Normal';
+  var _fcolorWrap = document.getElementById('o-fcolor-wrap'); if(_fcolorWrap) _fcolorWrap.style.display = 'none';
   var _aroPxCb = document.getElementById('o-aro-px'); if(_aroPxCb) { _aroPxCb.checked = false; }
   var _armazonEl = document.getElementById('o-armazon'); if(_armazonEl) { _armazonEl.readOnly=false; _armazonEl.style.background=''; _armazonEl.style.color=''; }
   // Pre-fill fecha entrega con hoy + 3 días
@@ -8247,7 +8272,19 @@ function syncTinte() {
   const color = document.getElementById('o-tin-color').value;
   const tonoSel = document.getElementById('o-tin-tono');
   const tinHidden = document.getElementById('o-tin');
-  if (!color) {
+  const tra = document.getElementById('o-tra')?.value || '';
+  const fcolorWrap = document.getElementById('o-fcolor-wrap');
+  const fcolorSel = document.getElementById('o-fcolor');
+  // Show/hide Foto Colors picker
+  if (fcolorWrap) {
+    fcolorWrap.style.display = tra === 'Foto Colors' ? '' : 'none';
+    if (tra !== 'Foto Colors' && fcolorSel) fcolorSel.value = '';
+  }
+  // Build tinte value
+  var fcolor = (tra === 'Foto Colors' && fcolorSel) ? fcolorSel.value : '';
+  if (fcolor) {
+    tinHidden.value = 'Foto Colors: ' + fcolor;
+  } else if (!color) {
     tonoSel.disabled = true;
     tonoSel.value = '';
     tinHidden.value = 'Sin tinte';
@@ -9286,6 +9323,8 @@ async function guardarEImprimir() {
 
     const tinColor = v('o-tin-color'), tinTono = v('o-tin-tono');
     if (tinColor && !tinTono) { toast('Si selecciona tinte, el tono es obligatorio', true); document.getElementById('o-tin-tono').focus(); return; }
+    // Foto Colors requires color selection
+    if (v('o-tra') === 'Foto Colors' && !v('o-fcolor')) { toast('Foto Colors requiere seleccionar el color', true); document.getElementById('o-fcolor').focus(); return; }
   }
 
   const folioRaw = document.getElementById('ord-folio').value.trim();
@@ -11518,7 +11557,13 @@ async function loadReporteMateriales() {
       .replace(/^Fotocromatico$/i, 'Fotocromatico')
       .replace(/^Fotocrom.tico$/i, 'Fotocromatico')
       .replace(/bco/i, 'Blanco') : '';
-    const matTrat = normTrat ? `${normMat} · ${normTrat}` : normMat;
+    // Append Foto Colors color to differentiate in reports
+    var _tinte = (o.tinte || '').trim();
+    var _fcolorLabel = '';
+    if (normTrat.toLowerCase().includes('foto colors') && _tinte.includes('Foto Colors:')) {
+      _fcolorLabel = ' (' + _tinte.replace('Foto Colors:', '').trim() + ')';
+    }
+    const matTrat = normTrat ? `${normMat} · ${normTrat}${_fcolorLabel}` : normMat;
     const tipo = TIPO_ABREV[o.tipo_lente] || o.tipo_lente || 'Visión Sencilla';
     const odEsf = (o.od_esfera || '').trim();
     const odCil = (o.od_cilindro || '').trim();
@@ -17508,19 +17553,21 @@ function renderFolioSlots() {
   if (!vtaFolioSlots.length) { panel.style.display = 'none'; return; }
   panel.style.display = '';
   const titular = vtaPaciente ? `${vtaPaciente.nombre || ''} ${vtaPaciente.apellidos || ''}`.trim() : 'Sin paciente';
-  const arms = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal})).filter((_,i)=>(vtaItems[i].categoria||'')==='Armazón');
-  const mats = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal})).filter((_,i)=>(vtaItems[i].categoria||'')==='Material');
+  const arms = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Armazón');
+  const mats = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Material');
   cont.innerHTML = vtaFolioSlots.map((slot, s) => {
     const isPrincipal = s === 0;
     const borderColor = isPrincipal ? 'rgba(114,196,126,0.25)' : 'rgba(212,184,74,0.2)';
     const bgColor = isPrincipal ? 'rgba(114,196,126,0.04)' : 'rgba(212,184,74,0.03)';
     const armOpts = arms.map(a => {
-      const tk = vtaFolioSlots.some((sl,si)=>si!==s&&sl.armazonIdx===a.i);
-      return `<option value="${a.i}" ${a.i===slot.armazonIdx?'selected':''} ${tk?'disabled':''}>${a.d} · $${a.p.toFixed(2)}${tk?' ✓':''}</option>`;
+      const usedCount = vtaFolioSlots.filter((sl,si)=>si!==s&&sl.armazonIdx===a.i).length;
+      const tk = usedCount >= a.q;
+      return `<option value="${a.i}" ${a.i===slot.armazonIdx?'selected':''} ${tk?'disabled':''}>${a.d}${a.q>1?' (x'+a.q+')':''} · $${(a.p/a.q).toFixed(2)}${tk?' ✓':''}</option>`;
     }).join('');
     const matOpts = mats.map(m => {
-      const tk = vtaFolioSlots.some((sl,si)=>si!==s&&sl.materialIdx===m.i);
-      return `<option value="${m.i}" ${m.i===slot.materialIdx?'selected':''} ${tk?'disabled':''}>${m.d} · $${m.p.toFixed(2)}${tk?' ✓':''}</option>`;
+      const usedCount = vtaFolioSlots.filter((sl,si)=>si!==s&&sl.materialIdx===m.i).length;
+      const tk = usedCount >= m.q;
+      return `<option value="${m.i}" ${m.i===slot.materialIdx?'selected':''} ${tk?'disabled':''}>${m.d}${m.q>1?' (x'+m.q+')':''} · $${(m.p/m.q).toFixed(2)}${tk?' ✓':''}</option>`;
     }).join('');
     const armIt = slot.armazonIdx>=0?vtaItems[slot.armazonIdx]:null;
     const matIt = slot.materialIdx>=0?vtaItems[slot.materialIdx]:null;
@@ -17809,6 +17856,12 @@ async function vtaShowPrecio() {
     if (document.getElementById('vta-cfg-tinte-check')?.checked && tinteColor) {
       tinteTxt = ' + Tinte ' + tinteColor + (tinteTono ? ' ' + tinteTono : '');
     }
+    // Foto Colors: append color to description
+    var fotoColor = '';
+    if (tra === 'Foto Colors') {
+      fotoColor = document.getElementById('vta-cfg-fcolor')?.value || '';
+      if (fotoColor) tinteTxt += (tinteTxt ? '' : '') + ' (' + fotoColor + ')';
+    }
     var desc = mat+' '+tra+' (S'+serie+') '+tv+tinteTxt;
     document.getElementById('vta-cfg-desc').textContent = desc;
     document.getElementById('vta-cfg-nota').textContent = matches[0].nota || '';
@@ -17822,7 +17875,7 @@ async function vtaShowPrecio() {
     result.style.display = '';
     window._vtaCfgPrecio = basePrice;
     window._vtaCfgDesc = desc;
-    window._vtaCfgMeta = { tipo_vision: tv, material: mat, tratamiento: tra, serie: serie, tinte_color: tinteColor || null, tinte_tono: tinteTono || null };
+    window._vtaCfgMeta = { tipo_vision: tv, material: mat, tratamiento: tra, serie: serie, tinte_color: tinteColor || null, tinte_tono: tinteTono || null, foto_color: fotoColor || null };
   } else { result.style.display='none'; }
 }
 
@@ -17836,6 +17889,13 @@ function vtaCheckTinte() {
     document.getElementById('vta-cfg-tinte-check').checked = false;
     document.getElementById('vta-cfg-tinte-fields').style.display = 'none';
   }
+  // Foto Colors: show color picker
+  var fcolorWrap = document.getElementById('vta-cfg-fcolor-wrap');
+  if (fcolorWrap) {
+    var isFotoColors = tra === 'Foto Colors';
+    fcolorWrap.style.display = isFotoColors ? '' : 'none';
+    if (!isFotoColors) document.getElementById('vta-cfg-fcolor').value = '';
+  }
 }
 
 function vtaToggleTinte() {
@@ -17846,6 +17906,11 @@ function vtaToggleTinte() {
 
 function agregarMaterialConfigVta() {
   if (!window._vtaCfgPrecio || !window._vtaCfgDesc) return;
+  // Validate Foto Colors requires color selection
+  var _tra = document.getElementById('vta-cfg-tra')?.value || '';
+  if (_tra === 'Foto Colors' && !(document.getElementById('vta-cfg-fcolor')?.value)) {
+    toast('Selecciona el color de Foto Colors', true); return;
+  }
   var isAroPx = document.getElementById('vta-cfg-aro-px')?.checked || false;
   vtaItems.push({producto_id:null, descripcion:window._vtaCfgDesc, cantidad:1, precio_unitario:window._vtaCfgPrecio, descuento_item:0, subtotal:window._vtaCfgPrecio, categoria:'Material', material_meta: window._vtaCfgMeta || null, aro_px: isAroPx});
   renderVtaItems();
@@ -17861,6 +17926,8 @@ function agregarMaterialConfigVta() {
   document.getElementById('vta-cfg-tinte-color').value = '';
   document.getElementById('vta-cfg-tinte-tono').value = '';
   document.getElementById('vta-cfg-aro-px').checked = false;
+  document.getElementById('vta-cfg-fcolor-wrap').style.display = 'none';
+  document.getElementById('vta-cfg-fcolor').value = '';
   window._vtaCfgMeta = null;
   toast('Material agregado a la venta' + (isAroPx ? ' (ARO PX)' : ''));
 }
