@@ -4,7 +4,7 @@
 
 const CLIP_API_KEY = process.env.CLIP_API_KEY;
 const CLIP_API_SECRET = process.env.CLIP_API_SECRET;
-const CLIP_API_URL = 'https://api-gw.payclip.com/checkout';
+const CLIP_API_URL = 'https://api.payclip.com/v2/checkout';
 const SITE_URL = process.env.URL || 'https://optcaryera.netlify.app';
 
 exports.handler = async (event) => {
@@ -54,7 +54,7 @@ exports.handler = async (event) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(CLIP_API_KEY + ':' + CLIP_API_SECRET)}`
+        'Authorization': `Basic ${Buffer.from(CLIP_API_KEY + ':' + CLIP_API_SECRET).toString('base64')}`
       },
       body: JSON.stringify(clipBody)
     });
