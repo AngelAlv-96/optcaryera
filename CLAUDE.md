@@ -6,7 +6,7 @@
 2. **NUNCA hacer regex para eliminar comentarios** — `//` aparece en URLs (`https://...`) y en template strings. Regex los destroza.
 3. **NUNCA modificar funciones ZPL** (impresión de etiquetas) — están BLINDADAS y funcionan perfectamente. No tocar.
 4. **NUNCA borrar ni reemplazar archivos completos sin respaldo** — siempre hacer copia antes: `cp archivo.html archivo.html.bak`
-5. **NUNCA hacer deploy sin que Angel lo pida explícitamente** — el comando es `netlify deploy --prod --dir=.` pero SOLO cuando Angel diga "deploy".
+5. **NUNCA hacer deploy sin que Angel lo pida explícitamente** — Netlify auto-deploys desde GitHub (cada push a main = deploy). Manual: `netlify deploy --prod --dir=.` solo si es necesario.
 6. **NUNCA modificar el Supabase schema desde código** — cambios de DB (ALTER TABLE, INSERT en app_config, etc.) se hacen en el dashboard de Supabase manualmente.
 
 ## 🛟 PROTOCOLO DE SEGURIDAD
@@ -158,7 +158,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 7. SEGURIDAD: RLS Supabase + proxy lectura por fases
 8. Mapeo materiales + matching inteligente compras lab
 9. Precios Marina pendientes de confirmar
-10. Configurar GitHub para sincronizar entre computadoras
+10. ~~Configurar GitHub para sincronizar entre computadoras~~ ✅ HECHO (2026-03-16)
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
@@ -172,7 +172,8 @@ Este archivo es la FUENTE DE VERDAD del proyecto. Las conversaciones de Claude C
 ## 💻 MULTI-DISPOSITIVO
 Angel trabaja desde 2 computadoras (casa y trabajo). Las conversaciones de Claude Code son locales por máquina y NO se sincronizan. Por eso:
 - CLAUDE.md debe estar siempre actualizado (es el contexto compartido)
-- Los archivos se sincronizan vía GitHub (pendiente configurar)
-- Antes de empezar a trabajar en una máquina: `git pull` para bajar cambios
-- Al terminar de trabajar: `git push` para subir cambios
-- Si no hay GitHub aún: Angel copia manualmente la carpeta entre PCs
+- **Repo GitHub**: https://github.com/AngelAlv-96/optcaryera (PRIVADO)
+- **Netlify**: auto-deploy desde branch `main` (cada push = deploy)
+- Antes de empezar a trabajar en una máquina: `git pull`
+- Al terminar de trabajar: `git add . && git commit -m "msg" && git push`
+- En la otra PC (primera vez): `git clone https://github.com/AngelAlv-96/optcaryera.git`
