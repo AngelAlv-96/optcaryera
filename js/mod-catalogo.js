@@ -149,7 +149,96 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-function loadCatalogoView() { loadCatalogoTab('VS'); }
+function loadCatalogoView() {
+  // Show "+ Agregar material" button for admin users
+  var addBtn = document.getElementById('catv-btn-add');
+  if (addBtn) addBtn.style.display = (currentUser && currentUser.rol === 'admin') ? '' : 'none';
+  loadCatalogoTab('VS');
+}
+
+// ── Agregar nuevo material al catálogo ──
+function catAbrirNuevoMaterial() {
+  var matOpts = ['CR-39','Hi Index','Policarbonato','Ultra-thin 1.67','Super Ultra-thin 1.74'];
+  var traOpts = ['Blanco','AR','Anti-Blue AR','Blue Light','Foto AR','Foto Sin AR','Foto Anti-Blue AR','Foto Blue Light','Foto Blue Light Gen 9','Foto Colors','Polarizado','Panoramic 360 Blue','Panoramic 360 Foto','Tinte Solar'];
+  var tvOpts = ['VS','Bif F/T','Bif Semi-invisible','Progresivo'];
+
+  var matOptionsHtml = matOpts.map(function(m){ return '<option value="'+m+'">'+m+'</option>'; }).join('');
+  var traOptionsHtml = traOpts.map(function(t){ return '<option value="'+t+'">'+t+'</option>'; }).join('');
+  var tvOptionsHtml = tvOpts.map(function(v){ return '<option value="'+v+'">'+v+'</option>'; }).join('');
+
+  var html = '<div class="m-overlay open" id="cat-nuevo-overlay" onclick="if(event.target===this)this.classList.remove(\'open\')">';
+  html += '<div class="m-box" style="max-width:420px;width:95%">';
+  html += '<h3 style="margin:0 0 16px;color:var(--beige)">+ Agregar Material al Catálogo</h3>';
+
+  html += '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Tipo de visión</label>';
+  html += '<select id="cat-new-tv" class="ipt" style="margin-bottom:12px;width:100%">' + tvOptionsHtml + '</select>';
+
+  html += '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Material</label>';
+  html += '<div style="display:flex;gap:6px;margin-bottom:12px">';
+  html += '<select id="cat-new-mat" class="ipt" style="flex:1" onchange="document.getElementById(\'cat-new-mat-custom\').style.display=this.value===\'__custom__\'?\'block\':\'none\'"><option value="">— Seleccionar —</option>' + matOptionsHtml + '<option value="__custom__">✏️ Otro (escribir)</option></select>';
+  html += '<input type="text" id="cat-new-mat-custom" class="ipt" placeholder="Nombre del material" style="flex:1;display:none">';
+  html += '</div>';
+
+  html += '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Tratamiento</label>';
+  html += '<div style="display:flex;gap:6px;margin-bottom:12px">';
+  html += '<select id="cat-new-tra" class="ipt" style="flex:1" onchange="document.getElementById(\'cat-new-tra-custom\').style.display=this.value===\'__custom__\'?\'block\':\'none\'"><option value="">— Seleccionar —</option>' + traOptionsHtml + '<option value="__custom__">✏️ Otro (escribir)</option></select>';
+  html += '<input type="text" id="cat-new-tra-custom" class="ipt" placeholder="Nombre del tratamiento" style="flex:1;display:none">';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:12px;margin-bottom:12px">';
+  html += '<div style="flex:1"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Precio Serie 1</label>';
+  html += '<input type="number" id="cat-new-s1" class="ipt" placeholder="$0.00" style="width:100%"></div>';
+  html += '<div style="flex:1"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Precio Serie 2</label>';
+  html += '<input type="number" id="cat-new-s2" class="ipt" placeholder="$0.00" style="width:100%"></div>';
+  html += '</div>';
+
+  html += '<label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Nota (opcional)</label>';
+  html += '<input type="text" id="cat-new-nota" class="ipt" placeholder="Ej: Solo disponible en ciertos rangos" style="width:100%;margin-bottom:16px">';
+
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end">';
+  html += '<button class="btn btn-sm" onclick="document.getElementById(\'cat-nuevo-overlay\').classList.remove(\'open\')" style="background:var(--surface);color:var(--muted)">Cancelar</button>';
+  html += '<button class="btn btn-g btn-sm" onclick="catGuardarNuevoMaterial()">Guardar</button>';
+  html += '</div>';
+
+  html += '</div></div>';
+
+  // Remove existing modal if any
+  var existing = document.getElementById('cat-nuevo-overlay');
+  if (existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+async function catGuardarNuevoMaterial() {
+  var tv = document.getElementById('cat-new-tv').value;
+  var matSel = document.getElementById('cat-new-mat').value;
+  var mat = matSel === '__custom__' ? document.getElementById('cat-new-mat-custom').value.trim() : matSel;
+  var traSel = document.getElementById('cat-new-tra').value;
+  var tra = traSel === '__custom__' ? document.getElementById('cat-new-tra-custom').value.trim() : traSel;
+  var s1 = parseFloat(document.getElementById('cat-new-s1').value) || 0;
+  var s2 = parseFloat(document.getElementById('cat-new-s2').value) || 0;
+  var nota = document.getElementById('cat-new-nota').value.trim();
+
+  if (!tv || !mat || !tra) { toast('Completa tipo de visión, material y tratamiento', true); return; }
+  if (!s1 && !s2) { toast('Agrega al menos un precio (Serie 1 o Serie 2)', true); return; }
+
+  var records = [];
+  if (s1 > 0) records.push({ material: mat, tipo_vision: tv, tratamiento: tra, serie: 1, precio: s1, nota: nota, activo: true });
+  if (s2 > 0) records.push({ material: mat, tipo_vision: tv, tratamiento: tra, serie: 2, precio: s2, nota: nota, activo: true });
+
+  try {
+    var resp = await db.from('reglas_materiales').insert(records);
+    if (resp.error) { toast('Error: ' + (resp.error.message || resp.error), true); return; }
+    toast(mat + ' · ' + tra + ' agregado a ' + tv);
+    _reglasCache = null; // Clear cache to reload
+    document.getElementById('cat-nuevo-overlay').classList.remove('open');
+    // Reload current tab
+    var activeTab = document.querySelector('#catv-tabs button[style*="var(--beige)"]');
+    if (activeTab) activeTab.click();
+    else loadCatalogoTab(tv);
+  } catch(e) {
+    toast('Error guardando: ' + e.message, true);
+  }
+}
 
 async function loadCatalogoTab(tv) {
   document.querySelectorAll('#catv-tabs button').forEach(function(b) {
