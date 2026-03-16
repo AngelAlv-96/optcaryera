@@ -2332,9 +2332,14 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <tbody id="clb-items-tbody"></tbody>
                   <tfoot>
                     <tr style="border-top:2px solid rgba(255,255,255,.1)">
-                      <td colspan="4" style="padding:8px;text-align:right;font-weight:700;color:var(--white)">TOTAL:</td>
+                      <td colspan="4" style="padding:8px;text-align:right;font-weight:700;color:var(--white)">TOTAL ITEMS:</td>
                       <td style="padding:8px;font-weight:700;color:var(--accent);font-size:14px" id="clb-total">$0</td>
                       <td></td>
+                    </tr>
+                    <tr style="border-top:1px solid rgba(255,255,255,.05)">
+                      <td colspan="4" style="padding:6px 8px;text-align:right;font-size:11px;color:var(--muted)">TOTAL NOTA (editable):</td>
+                      <td style="padding:6px 8px"><input type="number" id="clb-total-nota" step="0.01" min="0" placeholder="Total de la nota" oninput="clbCompararTotales()" style="width:100px;background:transparent;border:1px solid rgba(240,180,74,.3);border-radius:4px;color:var(--warn);font-size:13px;font-weight:700;font-family:Outfit;padding:4px 6px;text-align:right;outline:none"></td>
+                      <td style="padding:6px 4px"><span id="clb-total-diff" style="font-size:10px"></span></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -18962,8 +18967,14 @@ async function clbProcesarFoto(input) {
     await clbMatchPreciosLista(_clbItems);
 
     var totalOCR = _clbItems.reduce(function(s,i){ return s + i.subtotal; }, 0);
-    st.innerHTML = '<span style="color:var(--accent)">✓ ' + _clbItems.length + ' materiales detectados · Total: $' + totalOCR.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span>' +
-      (totalRow ? ' <span style="color:var(--muted);font-size:10px">(nota dice: $' + (parseFloat(totalRow.subtotal)||0).toLocaleString('es-MX') + ')</span>' : '');
+    st.innerHTML = '<span style="color:var(--accent)">✓ ' + _clbItems.length + ' materiales detectados · Total: $' + totalOCR.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span>';
+
+    // Auto-llenar total de la nota desde OCR
+    var totalNotaEl = document.getElementById('clb-total-nota');
+    if (totalNotaEl) {
+      var totalNotaOCR = totalRow ? (parseFloat(totalRow.subtotal)||0) : totalOCR;
+      if (totalNotaOCR > 0) totalNotaEl.value = totalNotaOCR.toFixed(2);
+    }
 
     clbRenderItems();
   } catch(e) {
@@ -19035,6 +19046,22 @@ function clbActualizarTotal() {
   var total = _clbItems.reduce(function(s,i){ return s + (i.subtotal||0); }, 0);
   var el = document.getElementById('clb-total');
   if (el) el.textContent = '$' + total.toLocaleString('es-MX',{minimumFractionDigits:2});
+  clbCompararTotales();
+}
+function clbCompararTotales() {
+  var diffEl = document.getElementById('clb-total-diff');
+  var notaEl = document.getElementById('clb-total-nota');
+  if (!diffEl || !notaEl) return;
+  var totalNota = parseFloat(notaEl.value) || 0;
+  if (!totalNota) { diffEl.textContent = ''; return; }
+  var totalItems = _clbItems.reduce(function(s,i){ return s + (i.subtotal||0); }, 0);
+  var diff = totalItems - totalNota;
+  if (Math.abs(diff) < 0.01) {
+    diffEl.innerHTML = '<span style="color:#72c47e">✅ Coincide</span>';
+  } else {
+    var sign = diff > 0 ? '+' : '';
+    diffEl.innerHTML = '<span style="color:#e08080">⚠️ ' + sign + '$' + diff.toFixed(2) + '</span>';
+  }
 }
 
 function clbAgregarItem() {
@@ -19057,7 +19084,10 @@ async function clbGuardarCompra() {
   // Revisar mapeos — puede mostrar modal para enseñar al sistema
   items = await clbRevisarMapeos(items);
 
-  var total = items.reduce(function(s,i){ return s + (i.subtotal||0); }, 0);
+  var totalItems = items.reduce(function(s,i){ return s + (i.subtotal||0); }, 0);
+  var totalNotaEl = document.getElementById('clb-total-nota');
+  var totalNota = totalNotaEl ? (parseFloat(totalNotaEl.value)||0) : 0;
+  var total = totalNota > 0 ? totalNota : totalItems;
 
   try {
     var res = await fetch('/.netlify/functions/dbwrite', {
@@ -19071,6 +19101,7 @@ async function clbGuardarCompra() {
           folio_nota: folio || null,
           items: JSON.stringify(items),
           total: total,
+          total_items: totalItems,
           sucursal: currentUser?.sucursal || 'Todas',
           usuario: currentUser?.nombre || currentUser?.id || 'admin'
         }
@@ -19464,30 +19495,24 @@ async function clbMostrarMapeoModal(items, indices, callback) {
     opciones.map(function(o){ return '<option value="' + o + '">' + o + '</option>'; }).join('') +
     '</optgroup>';
 
-  var serieOptsHtml = '<option value="">—</option><option value="1">S1</option><option value="2">S2</option><option value="3">S3</option><option value="4">S4</option><option value="5">S5</option>';
-
   var rows = indices.map(function(idx) {
     var it = items[idx];
-    var currentSerie = it.serie || '';
     return '<tr style="border-bottom:1px solid rgba(255,255,255,.05)">' +
       '<td style="padding:8px;font-weight:600;color:var(--warn)">' + (it.material||'?') + '</td>' +
       '<td style="padding:8px"><span style="font-size:16px">→</span></td>' +
       '<td style="padding:8px"><select id="clb-mapeo-' + idx + '" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:7px 10px;color:var(--white);font-size:12px;font-family:Outfit,sans-serif">' +
-        optsHtml + '</select></td>' +
-      '<td style="padding:8px;width:65px"><select id="clb-mapeo-serie-' + idx + '" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:7px 8px;color:var(--white);font-size:12px;font-family:Outfit,sans-serif">' +
-        serieOptsHtml.replace('value="' + currentSerie + '"', 'value="' + currentSerie + '" selected') + '</select></td></tr>';
+        optsHtml + '</select></td></tr>';
   }).join('');
 
   var html = '<div class="m-overlay open" id="clb-mapeo-modal" style="z-index:9999">' +
     '<div class="m-box" style="max-width:700px;max-height:80vh;overflow-y:auto">' +
     '<h3 style="margin-bottom:4px">🔗 Mapear materiales del proveedor</h3>' +
-    '<p style="font-size:11px;color:var(--muted);margin-bottom:12px">Estos materiales no los reconocemos. Selecciona a cuál de nuestros materiales corresponde cada uno y la serie. <b>Solo necesitas hacerlo una vez</b> — el sistema lo recuerda.</p>' +
+    '<p style="font-size:11px;color:var(--muted);margin-bottom:12px">Estos materiales no los reconocemos. Selecciona a cuál de nuestros materiales corresponde cada uno. <b>Solo necesitas hacerlo una vez</b> — el sistema lo recuerda. La serie se calcula automáticamente por la graduación.</p>' +
     '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
     '<thead><tr style="border-bottom:1px solid rgba(255,255,255,.1)">' +
     '<th style="padding:6px;text-align:left;color:var(--muted);font-size:10px">PROVEEDOR DICE</th>' +
     '<th style="padding:6px"></th>' +
     '<th style="padding:6px;text-align:left;color:var(--muted);font-size:10px">NUESTRO EQUIVALENTE</th>' +
-    '<th style="padding:6px;text-align:left;color:var(--muted);font-size:10px">SERIE</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>' +
     '<div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">' +
     '<button class="btn btn-g" id="clb-mapeo-skip" onclick="document.getElementById(\'clb-mapeo-modal\').remove()">Omitir por ahora</button>' +
@@ -19505,11 +19530,6 @@ async function clbMostrarMapeoModal(items, indices, callback) {
       var sel = document.getElementById('clb-mapeo-' + idx);
       if (!sel || !sel.value || sel.value === '__ignorar__') continue;
 
-      // Read serie from the serie selector
-      var serieSel = document.getElementById('clb-mapeo-serie-' + idx);
-      var serieVal = serieSel ? (parseInt(serieSel.value) || null) : null;
-      if (serieVal) items[idx].serie = serieVal;
-
       var provMat = items[idx].material;
 
       // Check if selected a price list product
@@ -19517,15 +19537,14 @@ async function clbMostrarMapeoModal(items, indices, callback) {
         var listaParts = sel.value.replace('__lista__:', '').split(':');
         var listaLab = listaParts[0];
         var listaProducto = listaParts.slice(1).join(':');
-        // Save to mapeo_productos_lab in app_config (include serie if set)
+        // Save to mapeo_productos_lab in app_config (serie se calcula automática por CIL)
         var mapEntry = { producto: listaProducto, lab: listaLab };
-        if (serieVal) mapEntry.serie = serieVal;
         _clbMapeoProductos[provMat.toUpperCase().trim()] = mapEntry;
         nuevosMapeoProductos = true;
-        // Also re-match price with the selected serie
+        // Re-match price
         var match = clbFindPrecioProduct(listaProducto);
         if (match) {
-          var rangoInfo = clbGetPrecioBySerie(match.rangos, serieVal || items[idx].serie);
+          var rangoInfo = clbGetPrecioBySerie(match.rangos, items[idx].serie);
           items[idx]._precioLista = rangoInfo ? (parseFloat(rangoInfo.precio || rangoInfo.precio_par) || null) : null;
           items[idx]._productoLista = match.material;
           items[idx]._labLista = match.lab;
@@ -19583,38 +19602,77 @@ async function clbMostrarMapeoModal(items, indices, callback) {
 }
 
 // ── ESTIMACIÓN DE COSTOS EN REPORTE SURTIDO ──
+// Buscar TODOS los proveedores que tienen un material (no solo el primero)
+function clbFindAllPrecioProducts(matName) {
+  var upper = (matName || '').toUpperCase().trim();
+  if (!upper) return [];
+  var results = [];
+  var seen = {};
+  // 1. Direct matches
+  _clbPrecioIndex.forEach(function(p) {
+    var pUp = p.material.toUpperCase().trim();
+    if (pUp === upper || upper.includes(pUp) || pUp.includes(upper)) {
+      var key = p.lab + ':' + p.material;
+      if (!seen[key]) { seen[key] = true; results.push(p); }
+    }
+  });
+  // 2. Via saved mappings
+  var mapped = _clbMapeoProductos[upper] || _clbMapeoProductos[matName];
+  if (mapped) {
+    _clbPrecioIndex.forEach(function(p) {
+      if (p.material.toUpperCase().trim() === (mapped.producto || '').toUpperCase().trim()) {
+        var key = p.lab + ':' + p.material;
+        if (!seen[key]) { seen[key] = true; results.push(p); }
+      }
+    });
+  }
+  return results;
+}
+
 async function clbEstimarCostosSurtido(ojos, lcItems) {
   try {
-    // Cargar precios históricos + listas oficiales + mapeos en paralelo
     await clbCargarPrecioIndex();
     var res = await db.from('precios_materiales').select('material,precio,fecha').limit(2000);
     var precios = res.data || [];
 
-    // Crear mapa histórico: material → último precio conocido (fallback)
+    // Cargar preferencias de proveedor guardadas
+    var prefRes = await db.from('app_config').select('value').eq('id', 'preferencias_proveedor').maybeSingle();
+    var prefProveedor = {};
+    if (prefRes.data && prefRes.data.value) {
+      prefProveedor = typeof prefRes.data.value === 'string' ? JSON.parse(prefRes.data.value) : prefRes.data.value;
+    }
+
     var precioMap = {};
     precios.sort(function(a,b){ return a.fecha > b.fecha ? 1 : -1; });
-    precios.forEach(function(p) {
-      precioMap[p.material.toUpperCase().trim()] = parseFloat(p.precio) || 0;
-    });
+    precios.forEach(function(p) { precioMap[p.material.toUpperCase().trim()] = parseFloat(p.precio) || 0; });
 
-    // Helper: determinar serie por CIL
     function serieFromCil(cilStr) {
       if (!cilStr || cilStr === '—' || cilStr === '0' || cilStr === '+0.00' || cilStr === '-0.00') return 1;
       var cil = Math.abs(parseFloat(cilStr) || 0);
       if (cil <= 2.00) return 1;
       if (cil <= 4.00) return 2;
       if (cil <= 6.00) return 3;
-      return 4; // beyond serie 3
+      return 4;
     }
 
-    // Agrupar ojos por material+serie para contar pares y buscar precios por rango correcto
+    // Agrupar ojos por material+serie+tipo para medios vs pares
     var matGroups = {};
     (ojos||[]).forEach(function(o) {
       var matKey = (o.mat||'').toUpperCase().trim();
       var serie = serieFromCil(o.cil);
+      var tipo = o.tipo || 'Visión Sencilla';
       var groupKey = matKey + '|S' + serie;
-      if (!matGroups[groupKey]) matGroups[groupKey] = { mat: matKey, serie: serie, count: 0 };
-      matGroups[groupKey].count += 0.5; // cada ojo = 0.5 par
+      if (!matGroups[groupKey]) matGroups[groupKey] = { mat: matKey, serie: serie, tipo: tipo, count: 0 };
+      // Heredar tipo más restrictivo (si hay mezcla, Bifocal/Prog gana)
+      if (tipo === 'Bifocal F/T' || tipo === 'Bifocal Blended' || tipo === 'Progresivo') matGroups[groupKey].tipo = tipo;
+      matGroups[groupKey].count += 0.5;
+    });
+
+    // Obtener lista de todos los labs disponibles
+    var labsDisponibles = [];
+    var labSet = {};
+    _clbPrecioIndex.forEach(function(p) {
+      if (!labSet[p.lab]) { labSet[p.lab] = true; labsDisponibles.push(p.lab); }
     });
 
     var estimaciones = [];
@@ -19625,21 +19683,54 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
       var g = matGroups[groupKey];
       var mat = g.mat;
       var serie = g.serie;
-      var pares = g.count;
+      var rawPares = g.count;
+      var esVS = g.tipo === 'Visión Sencilla';
+
+      // VS: permite medios (0.5); Bifocal/Prog: siempre redondea a par completo
+      var paresCompra = esVS ? rawPares : Math.ceil(rawPares);
+      var tienesMedio = esVS && (rawPares % 1 !== 0);
+
+      // Buscar en TODOS los proveedores
+      var allMatches = clbFindAllPrecioProducts(mat);
+      var opciones = []; // {lab, precio, productoLista}
+
+      allMatches.forEach(function(m) {
+        var rangoInfo = clbGetPrecioBySerie(m.rangos, serie);
+        if (rangoInfo) {
+          var p = parseFloat(rangoInfo.precio || rangoInfo.precio_par) || 0;
+          if (p > 0) opciones.push({ lab: m.lab, precio: p, productoLista: m.material });
+        }
+      });
+
+      // Ordenar por precio (más barato primero)
+      opciones.sort(function(a,b) { return a.precio - b.precio; });
+
+      // Seleccionar proveedor: preferencia guardada > mejor precio > historial
       var precio = null;
       var fuente = '';
+      var provSeleccionado = '';
+      var provOpciones = opciones;
 
-      // 1. Buscar en listas oficiales de precios (SALES, etc.)
-      var listaMatch = clbFindPrecioProduct(mat);
-      if (listaMatch) {
-        var rangoInfo = clbGetPrecioBySerie(listaMatch.rangos, serie);
-        if (rangoInfo) {
-          precio = parseFloat(rangoInfo.precio || rangoInfo.precio_par) || null;
-          fuente = listaMatch.lab + ' S' + serie;
+      // Revisar preferencia guardada para este material
+      var prefKey = mat.replace(/\s/g, '_');
+      if (prefProveedor[prefKey] && prefProveedor[prefKey].lab) {
+        var prefLab = prefProveedor[prefKey].lab;
+        var prefMatch = opciones.find(function(o) { return o.lab === prefLab; });
+        if (prefMatch) {
+          precio = prefMatch.precio;
+          fuente = prefMatch.lab + ' S' + serie;
+          provSeleccionado = prefMatch.lab;
         }
       }
 
-      // 2. Si no hay match en lista, buscar en historial de compras (fallback)
+      // Si no hay preferencia, usar mejor precio
+      if (!precio && opciones.length > 0) {
+        precio = opciones[0].precio;
+        fuente = opciones[0].lab + ' S' + serie;
+        provSeleccionado = opciones[0].lab;
+      }
+
+      // Fallback historial
       if (!precio) {
         precio = precioMap[mat];
         if (precio) fuente = 'Historial';
@@ -19647,9 +19738,7 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
           var matKeys = Object.keys(precioMap);
           for (var k = 0; k < matKeys.length; k++) {
             if (mat.includes(matKeys[k]) || matKeys[k].includes(mat)) {
-              precio = precioMap[matKeys[k]];
-              fuente = 'Historial';
-              break;
+              precio = precioMap[matKeys[k]]; fuente = 'Historial'; break;
             }
           }
         }
@@ -19659,63 +19748,103 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
             var matKeys2 = Object.keys(precioMap);
             for (var k2 = 0; k2 < matKeys2.length; k2++) {
               if (matKeys2[k2].includes(firstWord)) {
-                precio = precioMap[matKeys2[k2]];
-                fuente = 'Historial';
-                break;
+                precio = precioMap[matKeys2[k2]]; fuente = 'Historial'; break;
               }
             }
           }
         }
       }
 
+      // Calcular subtotal: pares completos + medio si aplica
+      var subtotal = 0;
       if (precio) {
-        var subtotal = Math.ceil(pares) * precio;
+        var paresEnteros = Math.floor(rawPares);
+        if (tienesMedio) {
+          subtotal = (paresEnteros * precio) + (precio / 2); // medio = mitad de precio
+        } else {
+          subtotal = paresCompra * precio;
+        }
         totalEstimado += subtotal;
-        estimaciones.push({ material: mat + (serie > 1 ? ' (S' + serie + ')' : ''), pares: pares, precio: precio, subtotal: subtotal, fuente: fuente });
       } else {
         sinPrecio++;
-        estimaciones.push({ material: mat + (serie > 1 ? ' (S' + serie + ')' : ''), pares: pares, precio: 0, subtotal: 0, fuente: '' });
       }
+
+      // Texto de pares
+      var paresDisplay = '';
+      if (tienesMedio) {
+        var pe = Math.floor(rawPares);
+        paresDisplay = pe > 0 ? pe + ' par' + (pe > 1 ? 'es' : '') + ' + 1 medio' : '1 medio';
+      } else {
+        paresDisplay = paresCompra + ' par' + (paresCompra > 1 ? 'es' : '');
+      }
+
+      estimaciones.push({
+        material: mat + (serie > 1 ? ' (S' + serie + ')' : ''),
+        matKey: mat, serie: serie, tipo: g.tipo,
+        pares: rawPares, paresCompra: paresCompra, paresDisplay: paresDisplay,
+        tienesMedio: tienesMedio,
+        precio: precio || 0, subtotal: subtotal,
+        fuente: fuente, provSeleccionado: provSeleccionado,
+        provOpciones: opciones, // todas las opciones disponibles
+        labsDisponibles: labsDisponibles
+      });
     });
 
     if (!estimaciones.length) return '';
-
-    // Store for editing
     window._clbEstimaciones = estimaciones;
+    window._clbPrefProveedor = prefProveedor;
 
+    // Generar opciones de proveedor para los selects
     var html = '<div style="margin-top:20px" id="clb-estimacion-section">' +
-      '<div style="background:rgba(240,180,74,.1);border:1px solid rgba(240,180,74,.25);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">' +
+      '<div style="background:rgba(240,180,74,.1);border:1px solid rgba(240,180,74,.25);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">' +
         '<span style="font-weight:700;font-size:15px;color:var(--warn);letter-spacing:.04em">💰 Estimado de compra</span>' +
         '<div style="display:flex;gap:6px;align-items:center">' +
           '<span style="font-size:11px;color:var(--muted)">' + (sinPrecio > 0 ? sinPrecio + ' sin precio' : '✓ Todos con precio') + '</span>' +
-          '<button class="btn btn-g btn-sm" onclick="clbGuardarEstimaciones()" style="font-size:10px;padding:3px 10px" title="Guardar precios ingresados manualmente">💾 Guardar precios</button>' +
+          '<button class="btn btn-g btn-sm" onclick="clbGuardarEstimaciones()" style="font-size:10px;padding:3px 10px" title="Guardar precios y preferencias">💾 Guardar</button>' +
         '</div>' +
       '</div>' +
-      '<div style="margin-left:12px">' +
+      '<div style="overflow-x:auto">' +
       '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
       '<thead><tr style="border-bottom:1px solid rgba(255,255,255,.08)">' +
         '<th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:10px">MATERIAL</th>' +
-        '<th style="padding:5px 8px;text-align:center;color:var(--muted);font-size:10px">PARES</th>' +
-        '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">$/PAR <span style="color:rgba(240,180,74,.5);font-size:8px">(editable)</span></th>' +
+        '<th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:10px">TIPO</th>' +
+        '<th style="padding:5px 8px;text-align:center;color:var(--muted);font-size:10px">CANTIDAD</th>' +
+        '<th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:10px">PROVEEDOR</th>' +
+        '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">$/PAR</th>' +
         '<th style="padding:5px 8px;text-align:right;color:var(--muted);font-size:10px">ESTIMADO</th>' +
-        '<th style="padding:5px 8px;text-align:left;color:var(--muted);font-size:10px">FUENTE</th>' +
       '</tr></thead><tbody>';
 
     estimaciones.sort(function(a,b){ return b.subtotal - a.subtotal; });
     estimaciones.forEach(function(e, i) {
-      var paresStr = e.pares % 1 === 0 ? e.pares.toString() : e.pares.toFixed(1);
-      var pairsCeil = Math.ceil(e.pares);
+      // Construir select de proveedor
+      var provSelectHtml = '<select id="clb-est-prov-' + i + '" onchange="clbCambiarProveedor(' + i + ')" ' +
+        'style="width:100%;min-width:90px;background:transparent;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:var(--white);font-size:10px;font-family:Outfit;padding:3px 4px;outline:none">';
+      // Opciones de proveedores con precio
+      if (e.provOpciones.length) {
+        e.provOpciones.forEach(function(op) {
+          var sel = op.lab === e.provSeleccionado ? ' selected' : '';
+          var isBest = op === e.provOpciones[0] ? ' ⭐' : '';
+          provSelectHtml += '<option value="' + op.lab + ':' + op.precio + '"' + sel + '>' + op.lab + ' $' + op.precio + isBest + '</option>';
+        });
+      }
+      provSelectHtml += '<option value="__manual__"' + (!e.provSeleccionado ? ' selected' : '') + '>✏️ Manual</option>';
+      provSelectHtml += '</select>';
+
+      var tipoAbrev = {'Visión Sencilla':'VS','Bifocal F/T':'BIF','Bifocal Blended':'BIF-B','Progresivo':'PROG'}[e.tipo] || e.tipo;
+      var tipoColor = {'VS':'#8ab0e8','BIF':'#d4b84a','BIF-B':'#d4b84a','PROG':'#c47ed4'}[tipoAbrev] || 'var(--muted)';
+
       html += '<tr style="border-bottom:1px solid rgba(255,255,255,.04);' + (i%2?'background:rgba(255,255,255,.02)':'') + '">' +
         '<td style="padding:5px 8px;font-size:11px">' + e.material + '</td>' +
-        '<td style="padding:5px 8px;text-align:center">' + paresStr + '</td>' +
+        '<td style="padding:5px 4px"><span style="font-size:9px;padding:1px 5px;background:' + tipoColor + '18;color:' + tipoColor + ';border-radius:3px;font-weight:600">' + tipoAbrev + '</span></td>' +
+        '<td style="padding:5px 8px;text-align:center;font-size:11px">' + e.paresDisplay + '</td>' +
+        '<td style="padding:5px 4px">' + provSelectHtml + '</td>' +
         '<td style="padding:5px 8px;text-align:right"><input type="number" value="' + (e.precio||'') + '" id="clb-est-precio-' + i + '" ' +
-          'style="width:70px;background:transparent;border:1px solid ' + (e.precio > 0 ? 'rgba(200,240,74,.2)' : 'rgba(240,180,74,.4)') + ';border-radius:4px;color:var(--white);font-size:11px;font-family:Outfit;padding:3px 6px;text-align:right;outline:none" ' +
-          'placeholder="$?" oninput="clbActualizarEstimacion(' + i + ',' + pairsCeil + ')" ' +
+          'style="width:65px;background:transparent;border:1px solid ' + (e.precio > 0 ? 'rgba(200,240,74,.2)' : 'rgba(240,180,74,.4)') + ';border-radius:4px;color:var(--white);font-size:11px;font-family:Outfit;padding:3px 5px;text-align:right;outline:none" ' +
+          'placeholder="$?" oninput="clbRecalcularFila(' + i + ')" ' +
           'onfocus="this.style.borderColor=\'rgba(240,180,74,.8)\'" onblur="this.style.borderColor=\'rgba(200,240,74,.2)\'">' +
         '</td>' +
         '<td style="padding:5px 8px;text-align:right;font-family:Outfit;font-weight:600;color:' + (e.subtotal > 0 ? 'var(--accent)' : 'var(--muted)') + '" id="clb-est-sub-' + i + '">' +
-          (e.subtotal > 0 ? '$' + e.subtotal.toLocaleString('es-MX') : '—') + '</td>' +
-        '<td style="padding:5px 8px;font-size:9px;color:' + (e.fuente && e.fuente.includes('S') && !e.fuente.includes('Historial') ? '#72c47e' : 'var(--muted)') + '">' + (e.fuente || '') + '</td></tr>';
+          (e.subtotal > 0 ? '$' + e.subtotal.toLocaleString('es-MX') : '—') + '</td></tr>';
     });
 
     html += '</tbody></table></div>' +
@@ -19723,7 +19852,7 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
         '<span style="font-weight:700;font-size:13px;color:var(--white)">TOTAL ESTIMADO COMPRA</span>' +
         '<span style="font-weight:700;font-size:18px;color:var(--warn);font-family:Outfit" id="clb-est-total">$' + totalEstimado.toLocaleString('es-MX') + '</span>' +
       '</div>' +
-      (sinPrecio > 0 ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">Ingresa los precios que conozcas y presiona <b>💾 Guardar precios</b> para recordarlos</div>' : '') +
+      (sinPrecio > 0 ? '<div style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">Ingresa los precios que conozcas y presiona <b>💾 Guardar</b></div>' : '') +
     '</div>';
     return html;
   } catch(e) {
@@ -19732,25 +19861,58 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
   }
 }
 
-function clbActualizarEstimacion(idx, pares) {
+function clbRecalcularFila(idx) {
+  var e = window._clbEstimaciones ? window._clbEstimaciones[idx] : null;
+  if (!e) return;
   var precioEl = document.getElementById('clb-est-precio-' + idx);
   var subEl = document.getElementById('clb-est-sub-' + idx);
   if (!precioEl || !subEl) return;
   var precio = parseFloat(precioEl.value) || 0;
-  var subtotal = pares * precio;
-  if (window._clbEstimaciones && window._clbEstimaciones[idx]) {
-    window._clbEstimaciones[idx].precio = precio;
-    window._clbEstimaciones[idx].subtotal = subtotal;
+  e.precio = precio;
+  // VS con medio: pares enteros * precio + medio * precio/2
+  if (e.tienesMedio) {
+    var pe = Math.floor(e.pares);
+    e.subtotal = (pe * precio) + (precio / 2);
+  } else {
+    e.subtotal = e.paresCompra * precio;
   }
-  subEl.textContent = subtotal > 0 ? '$' + subtotal.toLocaleString('es-MX') : '—';
-  subEl.style.color = subtotal > 0 ? 'var(--accent)' : 'var(--muted)';
-  // Update total
+  subEl.textContent = e.subtotal > 0 ? '$' + e.subtotal.toLocaleString('es-MX') : '—';
+  subEl.style.color = e.subtotal > 0 ? 'var(--accent)' : 'var(--muted)';
   var total = 0;
-  if (window._clbEstimaciones) {
-    window._clbEstimaciones.forEach(function(e){ total += e.subtotal || 0; });
-  }
+  if (window._clbEstimaciones) window._clbEstimaciones.forEach(function(x){ total += x.subtotal || 0; });
   var totalEl = document.getElementById('clb-est-total');
   if (totalEl) totalEl.textContent = '$' + total.toLocaleString('es-MX');
+}
+
+function clbCambiarProveedor(idx) {
+  var e = window._clbEstimaciones ? window._clbEstimaciones[idx] : null;
+  if (!e) return;
+  var sel = document.getElementById('clb-est-prov-' + idx);
+  if (!sel) return;
+  var val = sel.value;
+  if (val === '__manual__') return; // dejar editable manualmente
+  var parts = val.split(':');
+  var newLab = parts[0];
+  var newPrecio = parseFloat(parts[1]) || 0;
+  var oldLab = e.provSeleccionado;
+
+  // Si cambió de proveedor, preguntar por qué (para aprender)
+  if (oldLab && newLab !== oldLab) {
+    var motivo = prompt('¿Por qué cambias de ' + oldLab + ' a ' + newLab + '?\n(Ej: mejor precio, disponibilidad, calidad)\n\nDeja vacío para omitir.');
+    if (motivo !== null) {
+      // Guardar en preferencias
+      var prefKey = e.matKey.replace(/\s/g, '_');
+      if (!window._clbPrefProveedor) window._clbPrefProveedor = {};
+      window._clbPrefProveedor[prefKey] = { lab: newLab, motivo: motivo || '', fecha: new Date().toISOString().slice(0,10) };
+    }
+  }
+
+  e.provSeleccionado = newLab;
+  e.fuente = newLab + ' S' + e.serie;
+  var precioEl = document.getElementById('clb-est-precio-' + idx);
+  if (precioEl) { precioEl.value = newPrecio; }
+  e.precio = newPrecio;
+  clbRecalcularFila(idx);
 }
 
 async function clbGuardarEstimaciones() {
@@ -19768,7 +19930,7 @@ async function clbGuardarEstimaciones() {
           body: JSON.stringify({
             action:'insert', table:'precios_materiales',
             auth:{id:currentUser?.id,pass:currentUser?.pass},
-            data:{ material: e.material, precio: precio, fecha: fecha, fuente: 'manual' }
+            data:{ material: e.material, precio: precio, fecha: fecha, fuente: e.provSeleccionado || 'manual' }
           })
         });
         saved++;
@@ -19776,7 +19938,20 @@ async function clbGuardarEstimaciones() {
       } catch(err) { console.warn('save est:', err); }
     }
   }
-  toast('✓ ' + saved + ' precios guardados — se usarán en futuros reportes');
+  // Guardar preferencias de proveedor
+  if (window._clbPrefProveedor && Object.keys(window._clbPrefProveedor).length > 0) {
+    try {
+      await fetch('/.netlify/functions/dbwrite', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          action:'upsert', table:'app_config',
+          auth:{id:currentUser?.id,pass:currentUser?.pass},
+          data:{ id: 'preferencias_proveedor', value: JSON.stringify(window._clbPrefProveedor) }
+        })
+      });
+    } catch(err) { console.warn('save pref:', err); }
+  }
+  toast('✓ ' + saved + ' precios y preferencias guardados');
 }
 
 // ═══════════════════════════════════════════════════
