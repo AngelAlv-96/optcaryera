@@ -181,6 +181,8 @@ const db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 const params = new URLSearchParams(window.location.search);
 const token = params.get('t');
+const pagoStatus = params.get('pago');
+let _portalVenta = null; // stored for Clip payment button
 
 const ESTADO_COLORS = {
   'Liquidada': ['#4ade80','rgba(74,222,128,0.08)','✓ Liquidada'],
@@ -256,6 +258,7 @@ async function loadPortal() {
 }
 
 function render(v, items, pagos, labOrders, monBalance, promos) {
+  _portalVenta = v;
   const pac = v.pacientes ? `${v.pacientes.nombre || ''} ${v.pacientes.apellidos || ''}`.trim() : 'Cliente';
   const fecha = new Date(v.created_at);
   const fechaStr = fecha.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -381,6 +384,9 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
       <br><span class="h-status" style="background:${ebg};color:${ec}">${elbl}</span>
     </div>
 
+    ${pagoStatus === 'ok' ? '<div style="padding:12px 16px;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);border-radius:12px;text-align:center;margin-bottom:10px;color:var(--green);font-weight:600;font-size:13px">✅ ¡Pago recibido! Tu saldo se actualizará en unos momentos.</div>' : ''}
+    ${pagoStatus === 'error' ? '<div style="padding:12px 16px;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);border-radius:12px;text-align:center;margin-bottom:10px;color:var(--red);font-weight:600;font-size:13px">❌ El pago no se completó. Intenta de nuevo.</div>' : ''}
+
     <button class="refresh-btn" onclick="location.reload()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       Actualizar
@@ -421,7 +427,7 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
         </div>
       </div>
       ${saldo > 0 ? `<div class="saldo-alert"><span class="l">⚠ Saldo pendiente</span><span class="v">$${saldo.toFixed(2)}</span></div>
-      <a href="https://clip.mx/@caryera" target="_blank" rel="noopener" style="display:block;text-align:center;margin-top:10px;padding:14px 20px;background:linear-gradient(135deg,#4a90d9,#357abd);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.02em">💳 Abonar en línea</a>` : ''}
+      <button id="btn-clip-pay" onclick="iniciarPagoClip()" style="display:block;width:100%;text-align:center;margin-top:10px;padding:14px 20px;background:linear-gradient(135deg,#4a90d9,#357abd);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em">💳 Abonar en línea</button>` : ''}
     </div></div>
 
     ${labHtml}
@@ -468,6 +474,42 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
 
   // Update page title
   document.title = `${v.folio} · Ópticas Car & Era`;
+}
+
+async function iniciarPagoClip() {
+  if (!_portalVenta) return;
+  const btn = document.getElementById('btn-clip-pay');
+  if (!btn) return;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando link de pago...';
+  btn.style.opacity = '0.7';
+  try {
+    const pac = _portalVenta.pacientes ? `${_portalVenta.pacientes.nombre || ''} ${_portalVenta.pacientes.apellidos || ''}`.trim() : 'Cliente';
+    const resp = await fetch('/.netlify/functions/clip-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        venta_id: _portalVenta.id,
+        folio: _portalVenta.folio,
+        amount: Number(_portalVenta.saldo),
+        paciente_nombre: pac,
+        token_portal: token
+      })
+    });
+    const data = await resp.json();
+    if (resp.ok && data.payment_url) {
+      window.location.href = data.payment_url;
+    } else {
+      btn.textContent = '❌ Error al generar link';
+      btn.style.background = 'rgba(248,113,113,0.2)';
+      btn.style.color = 'var(--red)';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.style.opacity = '1'; btn.style.background = 'linear-gradient(135deg,#4a90d9,#357abd)'; btn.style.color = '#fff'; }, 3000);
+    }
+  } catch (e) {
+    btn.textContent = '❌ Error de conexión';
+    setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.style.opacity = '1'; }, 3000);
+  }
 }
 
 function showError(title, msg) {
