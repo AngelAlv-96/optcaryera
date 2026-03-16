@@ -1,4 +1,5 @@
 [build]
+  command = "if [ \"$PX_SITE\" = \"1\" ]; then cp preregistro.html index.html; fi"
   functions = "netlify/functions"
 
 [build.processing]
