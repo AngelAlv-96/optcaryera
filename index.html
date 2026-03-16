@@ -15798,12 +15798,19 @@ function renderDetalleVenta() {
   // Extraer motivo de cancelación de notas si existe
   let cancelInfo = '';
   if (v.estado === 'Cancelada' && v.notas) {
-    const match = v.notas.match(/\[CANCELADA ([^\]]+)\] Motivo: ([^|]+)(?:\| Efectivo devuelto: ([^|]+))?(?:\| Por: (.+))?/);
+    const match = v.notas.match(/\[CANCELADA ([^\]]+)\] Motivo: ([^|]+)\|([^|]*)\| Por: (.+)/);
     if (match) {
+      const devInfo = match[3].trim();
+      let devHtml = '';
+      if (devInfo.startsWith('Devolución:')) {
+        devHtml = `<div style="font-size:10px;color:#72c47e;margin-top:3px">💰 ${devInfo}</div>`;
+      } else if (devInfo === 'Sin devolución de dinero') {
+        devHtml = `<div style="font-size:10px;color:var(--muted);margin-top:3px">— Sin devolución de dinero</div>`;
+      }
       cancelInfo = `<div style="margin-top:8px;padding:8px 10px;background:rgba(224,128,128,0.08);border:1px solid rgba(224,128,128,0.15);border-radius:8px">
         <div style="font-size:10px;color:#e08080;font-weight:600;margin-bottom:4px">🚫 VENTA CANCELADA</div>
-        <div style="font-size:11px;color:var(--white)">${match[2].trim()}</div>
-        <div style="font-size:9px;color:var(--muted);margin-top:3px">${match[1]}${match[4]?' · '+match[4].trim():''}${match[3]?' · 💵 '+match[3].trim():''}</div>
+        <div style="font-size:11px;color:var(--white)">${match[2].trim()}</div>${devHtml}
+        <div style="font-size:9px;color:var(--muted);margin-top:3px">${match[1]} · ${match[4].trim()}</div>
       </div>`;
     }
   }
@@ -16331,15 +16338,46 @@ async function _ejecutarBorrarVenta(ventaId, folio) {
 }
 
 async function cancelarVentaRegistrada(ventaId, folio) {
-  // Modal para pedir motivo de cancelación
+  // Cargar pagos de la venta para mostrar desglose
+  const {data:_pagosVta} = await db.from('venta_pagos').select('*').eq('venta_id',ventaId);
+  const totalPagado = (_pagosVta||[]).reduce((s,p) => s + Number(p.monto), 0);
+  const desglose = {};
+  (_pagosVta||[]).forEach(p => { desglose[p.metodo_pago] = (desglose[p.metodo_pago]||0) + Number(p.monto); });
+  const desgloseHtml = Object.entries(desglose).map(([m,v]) => `<span style="font-size:10px;padding:2px 6px;background:rgba(255,255,255,0.05);border-radius:4px;color:var(--white)">${m}: $${v.toFixed(2)}</span>`).join(' ');
+
   const overlay = document.createElement('div');
   overlay.className = 'm-overlay open';
   overlay.style.zIndex = '10010';
-  overlay.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;max-width:400px;width:90%">
+  overlay.innerHTML = `<div class="m-box" style="max-width:420px">
     <h3 style="margin:0 0 12px;font-size:15px;color:var(--white)">🚫 Cancelar venta ${folio||''}</h3>
-    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">La venta quedará marcada como cancelada. Si se recibió efectivo, se registrará la devolución y se descontará de la caja.</p>
     <label style="font-size:11px;color:var(--beige);font-weight:600">Motivo de cancelación *</label>
-    <textarea id="cancelar-motivo" rows="3" style="width:100%;margin:6px 0 14px;padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;resize:vertical" placeholder="Ej: Paciente cambió de opinión, error en captura, etc."></textarea>
+    <textarea id="cancelar-motivo" rows="2" style="width:100%;margin:6px 0 12px;padding:8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;resize:vertical;box-sizing:border-box" placeholder="Ej: Paciente cambió de opinión, error en captura, etc."></textarea>
+    ${totalPagado > 0 ? `
+    <div style="padding:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;margin-bottom:12px">
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Pagos registrados: <b style="color:var(--white)">$${totalPagado.toFixed(2)}</b></div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px">${desgloseHtml}</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cancelar-devolucion-check" style="width:16px;height:16px;accent-color:#e08080">
+        <span style="font-size:12px;color:var(--white);font-weight:600">¿Se realizó devolución de dinero?</span>
+      </label>
+      <div id="cancelar-devolucion-fields" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <label style="font-size:10px;color:var(--muted)">Monto devuelto</label>
+            <input id="cancelar-dev-monto" type="number" step="0.01" min="0" value="${totalPagado.toFixed(2)}" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--white);font-size:12px;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:10px;color:var(--muted)">Método de devolución</label>
+            <select id="cancelar-dev-metodo" style="width:100%;padding:7px 8px;background:var(--bg);border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:var(--white);font-size:12px;box-sizing:border-box">
+              <option value="Efectivo">💵 Efectivo</option>
+              <option value="Tarjeta">💳 Tarjeta</option>
+              <option value="Transferencia">🏦 Transferencia</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--muted)">💡 Solo devoluciones en efectivo se descuentan de la caja automáticamente.</div>
+      </div>
+    </div>` : '<div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px">Esta venta no tiene pagos registrados.</div>'}
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-g btn-sm" id="cancelar-venta-cancelar-btn" style="font-size:11px">Cancelar</button>
       <button class="btn btn-sm" id="cancelar-venta-confirmar-btn" style="background:#e08080;color:#fff;font-size:11px;font-weight:600">Confirmar cancelación</button>
@@ -16347,64 +16385,81 @@ async function cancelarVentaRegistrada(ventaId, folio) {
   </div>`;
   document.body.appendChild(overlay);
   document.getElementById('cancelar-motivo').focus();
+  // Toggle devolución fields + auto-check si venta es de hoy
+  const devCheck = document.getElementById('cancelar-devolucion-check');
+  const _vtaFecha = vtaDetalleData?.created_at ? new Date(vtaDetalleData.created_at).toISOString().slice(0,10) : '';
+  const _esHoy = _vtaFecha === new Date().toISOString().slice(0,10);
+  if (devCheck) {
+    devCheck.onchange = () => { devCheck.dataset.touched = '1'; document.getElementById('cancelar-devolucion-fields').style.display = devCheck.checked ? '' : 'none'; };
+    if (_esHoy && totalPagado > 0) { devCheck.checked = true; devCheck.dataset.touched = '1'; devCheck.dispatchEvent(new Event('change')); }
+  }
   document.getElementById('cancelar-venta-cancelar-btn').onclick = () => overlay.remove();
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
   document.getElementById('cancelar-venta-confirmar-btn').onclick = () => {
     const motivo = document.getElementById('cancelar-motivo').value.trim();
     if (!motivo) { toast('Escribe el motivo de cancelación', true); document.getElementById('cancelar-motivo').focus(); return; }
+    // Si venta de otro día y tiene pagos, obligar a contestar la casilla explícitamente
+    if (!_esHoy && totalPagado > 0 && devCheck && !devCheck.dataset.touched) {
+      toast('Indica si se realizó devolución de dinero', true); devCheck.focus(); return;
+    }
+    // Recopilar datos de devolución
+    const devolucion = { hizo: false, monto: 0, metodo: '' };
+    if (devCheck && devCheck.checked) {
+      devolucion.hizo = true;
+      devolucion.monto = parseFloat(document.getElementById('cancelar-dev-monto').value) || 0;
+      devolucion.metodo = document.getElementById('cancelar-dev-metodo').value || 'Efectivo';
+      if (devolucion.monto <= 0) { toast('Ingresa el monto devuelto', true); return; }
+    }
     overlay.remove();
     if (currentUser?.rol !== 'admin') {
-      solicitarAutorizacion('Cancelar venta', 'Cancelar venta ' + (folio||'') + ': ' + motivo, function() { _ejecutarCancelarVenta(ventaId, motivo); });
+      solicitarAutorizacion('Cancelar venta', 'Cancelar venta ' + (folio||'') + ': ' + motivo + (devolucion.hizo ? ' | Devolución: $' + devolucion.monto.toFixed(2) + ' ' + devolucion.metodo : ''), function() { _ejecutarCancelarVenta(ventaId, motivo, devolucion); });
     } else {
-      _ejecutarCancelarVenta(ventaId, motivo);
+      _ejecutarCancelarVenta(ventaId, motivo, devolucion);
     }
   };
 }
-async function _ejecutarCancelarVenta(ventaId, motivo) {
+async function _ejecutarCancelarVenta(ventaId, motivo, devolucion) {
   try {
     toast('Cancelando venta...');
-    // 1. Cargar datos de la venta y sus pagos
     const {data:venta} = await db.from('ventas').select('*, venta_items(producto_id,cantidad)').eq('id',ventaId).single();
     if (!venta) { toast('Venta no encontrada', true); return; }
-    const {data:pagos} = await db.from('venta_pagos').select('*').eq('venta_id',ventaId);
 
-    // 2. Calcular efectivo a devolver (solo pagos en efectivo)
-    const efectivoDevolver = (pagos||[]).filter(p => p.metodo_pago === 'Efectivo').reduce((sum, p) => sum + Number(p.monto), 0);
-
-    // 3. Marcar venta como cancelada con motivo y datos de devolución
-    const cancelData = {
+    // 1. Marcar venta como cancelada con motivo y datos de devolución
+    let notaCancel = '[CANCELADA ' + new Date().toLocaleString('es-MX') + '] Motivo: ' + motivo;
+    if (devolucion.hizo) notaCancel += ' | Devolución: $' + devolucion.monto.toFixed(2) + ' vía ' + devolucion.metodo;
+    else notaCancel += ' | Sin devolución de dinero';
+    notaCancel += ' | Por: ' + (currentUser?.nombre || 'Admin');
+    await db.from('ventas').update({
       estado: 'Cancelada',
-      notas: (venta.notas ? venta.notas + '\n' : '') + '[CANCELADA ' + new Date().toLocaleString('es-MX') + '] Motivo: ' + motivo + (efectivoDevolver > 0 ? ' | Efectivo devuelto: $' + efectivoDevolver.toFixed(2) : '') + ' | Por: ' + (currentUser?.nombre || 'Admin'),
+      notas: (venta.notas ? venta.notas + '\n' : '') + notaCancel,
       updated_at: new Date().toISOString()
-    };
-    await db.from('ventas').update(cancelData).eq('id', ventaId);
+    }).eq('id', ventaId);
 
-    // 4. Restaurar stock
+    // 2. Restaurar stock
     for (const i of (venta.venta_items || [])) {
       if (!i.producto_id) continue;
       const {data:p} = await db.from('productos').select('stock').eq('id', i.producto_id).single();
       if (p) await db.from('productos').update({ stock: p.stock + i.cantidad, updated_at: new Date().toISOString() }).eq('id', i.producto_id);
     }
 
-    // 5. Si hubo efectivo, registrar retiro en caja para la devolución
-    if (efectivoDevolver > 0) {
+    // 3. Si hubo devolución en efectivo, registrar retiro en caja
+    if (devolucion.hizo && devolucion.metodo === 'Efectivo') {
       const suc = venta.sucursal || currentUser?.sucursal || '';
       const hoy = new Date().toISOString().slice(0,10);
-      // Buscar caja abierta de hoy para esta sucursal
       const {data:cajaHoy} = await db.from('cajas').select('id').eq('sucursal', suc).eq('fecha', hoy).eq('estado','abierta').maybeSingle();
       await db.from('retiros_caja').insert({
         corte_id: cajaHoy?.id || null,
         sucursal: suc,
         fecha: hoy,
-        monto: Math.round(efectivoDevolver * 100) / 100,
-        observaciones: '🚫 Devolución por cancelación venta ' + (venta.folio || '') + ' — ' + motivo,
+        monto: Math.round(devolucion.monto * 100) / 100,
+        observaciones: '🚫 Devolución cancelación ' + (venta.folio || '') + ' — ' + motivo,
         registrado_por: currentUser?.nombre || ''
       });
     }
 
-    // 6. Resumen
+    // 4. Resumen
     let msg = '✓ Venta cancelada · Stock restaurado';
-    if (efectivoDevolver > 0) msg += ' · Devolución $' + efectivoDevolver.toFixed(2) + ' registrada en caja';
+    if (devolucion.hizo) msg += ' · Devolución $' + devolucion.monto.toFixed(2) + ' (' + devolucion.metodo + ')' + (devolucion.metodo === 'Efectivo' ? ' descontada de caja' : '');
     toast(msg);
     await verDetalleVenta(ventaId);
     if (typeof histVentasData !== 'undefined' && histVentasData.length) cargarHistorialVentas();
