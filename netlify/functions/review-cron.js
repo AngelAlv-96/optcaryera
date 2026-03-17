@@ -1,5 +1,5 @@
 // Review CRM — Auto-request Google Maps reviews via WhatsApp
-// Runs daily, sends opinion_servicio template to customers who bought 3-5 days ago
+// Runs daily, sends encuesta_opinion template to customers who bought 3-7 days ago
 // Netlify Scheduled Function
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -8,8 +8,8 @@ const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 
-// Template SID from Twilio Content Builder
-const TEMPLATE_SID = 'HX30905d80304bed820dce55b439f1eca3';
+// Template SID from Twilio Content Builder (encuesta_opinion)
+const TEMPLATE_SID = 'HX80c7577a56dea4c6a675a9a7ea5c5cea';
 
 // Days after purchase to send review request
 const DIAS_MIN = 3;
