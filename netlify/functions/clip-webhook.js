@@ -1,10 +1,14 @@
 // /.netlify/functions/clip-webhook.js
 // Receives Clip checkout webhook when a payment is completed
-// Registers the payment in venta_pagos and updates the venta saldo
-// Env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+// Registers the payment in venta_pagos, updates the venta saldo,
+// and sends WhatsApp notifications to admin + branch
+// Env vars: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WA_NUMBER
 
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_WA = process.env.TWILIO_WA_NUMBER || 'whatsapp:+5216563110094';
 
 async function supaREST(method, path, body, extraHeaders) {
   const headers = {
@@ -20,6 +24,43 @@ async function supaREST(method, path, body, extraHeaders) {
   let data;
   try { data = JSON.parse(text); } catch { data = text; }
   return { ok: res.ok, status: res.status, data };
+}
+
+function normalizePhone(phone) {
+  let num = phone.replace(/[\s\-\(\)\+]/g, '');
+  if (num.length === 10) num = '521' + num;
+  if (num.length === 12 && num.startsWith('52') && num[2] !== '1') num = '521' + num.slice(2);
+  return num;
+}
+
+async function sendWA(to, text) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) return;
+  try {
+    const toNum = normalizePhone(to);
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('From', TWILIO_WA);
+    params.append('To', `whatsapp:+${toNum}`);
+    params.append('Body', text);
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await res.json();
+    if (data.error_code) console.warn('WA send error:', data.message);
+  } catch (e) { console.warn('WA send failed:', e.message); }
+}
+
+async function getWhatsAppConfig() {
+  try {
+    const res = await supaREST('GET', 'app_config?id=eq.whatsapp_config&select=value');
+    if (res.ok && res.data?.[0]?.value) {
+      const v = res.data[0].value;
+      return typeof v === 'string' ? JSON.parse(v) : v;
+    }
+  } catch (e) {}
+  return {};
 }
 
 exports.handler = async (event) => {
@@ -54,8 +95,8 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no reference or amount' }) };
     }
 
-    // Find the venta by folio (reference = folio)
-    const ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=id,total,pagado,saldo`);
+    // Find the venta by folio — include sucursal and paciente for notifications
+    const ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=id,total,pagado,saldo,sucursal,pacientes(nombre,apellidos)`);
     if (!ventaRes.ok || !ventaRes.data?.length) {
       console.error('Clip webhook: venta not found for folio', reference);
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'error', reason: 'venta not found' }) };
@@ -102,10 +143,40 @@ exports.handler = async (event) => {
 
     console.log(`Clip webhook: payment registered — folio=${reference}, amount=$${amount}, new_saldo=$${Math.max(0, newSaldo)}`);
 
+    // --- Send WhatsApp notifications ---
+    const pacNombre = venta.pacientes ? `${venta.pacientes.nombre || ''} ${venta.pacientes.apellidos || ''}`.trim() : 'Cliente';
+    const sucursal = venta.sucursal || 'N/A';
+    const saldoFinal = Math.max(0, newSaldo);
+    const estadoFinal = saldoFinal <= 0 ? '✅ LIQUIDADA' : `⏳ Saldo restante: $${saldoFinal.toFixed(2)}`;
+
+    const msg = `🔗 *Pago en línea recibido*\n\n` +
+      `📋 Folio: *${reference}*\n` +
+      `👤 ${pacNombre}\n` +
+      `🏪 Suc: ${sucursal}\n` +
+      `💰 Abono: *$${amount.toFixed(2)}*\n` +
+      `${estadoFinal}\n\n` +
+      `💳 Vía Clip · Link de pago`;
+
+    try {
+      const waCfg = await getWhatsAppConfig();
+      const notifyPhones = new Set();
+
+      // Admin phones always get notified
+      (waCfg.admin_phones || []).forEach(p => notifyPhones.add(p));
+      // Recipients corte (branch managers) also get notified
+      (waCfg.recipients_corte || []).forEach(p => notifyPhones.add(p));
+
+      const promises = [...notifyPhones].map(phone => sendWA(phone, msg));
+      await Promise.allSettled(promises);
+      console.log(`Clip webhook: WA notifications sent to ${notifyPhones.size} recipients`);
+    } catch (waErr) {
+      console.warn('Clip webhook: WA notification failed:', waErr.message);
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ received: true, action: 'payment_registered', folio: reference, amount, new_saldo: Math.max(0, newSaldo) })
+      body: JSON.stringify({ received: true, action: 'payment_registered', folio: reference, amount, new_saldo: saldoFinal })
     };
 
   } catch (err) {
