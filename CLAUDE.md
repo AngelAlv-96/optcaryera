@@ -53,7 +53,8 @@ Si algo se rompe gravemente:
     ├── landing.js        — Servidor de landing pages dinámicas
     ├── lc-cron.js        — Cron recordatorios LC por WA
     ├── clip-payment.js   — Genera links de pago Clip checkout (portal pacientes)
-    └── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
+    ├── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
+    └── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST)
 ```
 
 ## 🔧 TECH STACK
@@ -158,12 +159,27 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Webhook URL configurado en Clip: `https://optcaryera.netlify.app/.netlify/functions/clip-webhook`
 - Duplicate detection: referencia `clip_{paymentId}` evita doble registro
 
+## ⭐ ENCUESTA DE OPINIÓN / GOOGLE MAPS REVIEWS
+- `review-cron.js`: cron diario 12pm CST, envía template `opinion_servicio` a clientes que compraron hace 3-7 días
+- Template WA: `HX30905d80304bed820dce55b439f1eca3` (Quick Reply, 3 botones: Todo excelente / Buenas promos / Podría mejorar)
+- Variable `{{1}}`: nombre del cliente
+- Respuestas manejadas en `wa-webhook.js`:
+  - "Todo excelente" / "Buenas promos" → agradece + envía link Google Maps de la sucursal donde compró
+  - "Podría mejorar" → Clari pide detalles + notifica admin_phones con alerta
+- Links Google Maps por sucursal:
+  - Américas: https://maps.app.goo.gl/HdEKPf2R8bL6tbvA9
+  - Pinocelli: https://maps.app.goo.gl/HPZYupPVjy9aZ4j38
+  - Magnolia: https://maps.app.goo.gl/HBomFDEfJJNPna697
+- Tracking: `[Review]` tag en `clari_conversations` (evita re-envío en 30 días)
+- Máx 20 encuestas por ejecución, rate limit 1.5s entre mensajes
+
 ## 🧪 USUARIO DEMO
 - Login: demo/demo2024, rol admin
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v142
+## 📊 VERSIÓN ACTIVA: v143
+Cambios v143: Sistema de encuestas de opinión Google Maps — review-cron.js envía template opinion_servicio (Quick Reply con 3 botones) a clientes 3-7 días después de compra. Respuestas positivas reciben link de Google Maps de su sucursal. Respuestas negativas activan modo atención de Clari + alerta a admin. Links por sucursal (Américas, Pinocelli, Magnolia). Tracking via [Review] tag en clari_conversations.
 Cambios v142: Pagos en línea Clip — portal pacientes permite seleccionar monto (Total/Mitad/Otro) antes de pagar, clip-payment.js genera links dinámicos de Clip checkout, clip-webhook.js recibe webhook de Clip al completarse pago y auto-registra en venta_pagos (método "Link de pago"), actualiza saldo/pagado de la venta, y envía notificación WA a admin_phones + recipients_corte. Credenciales producción Clip configuradas en Netlify env vars. Pagos online NO afectan cuadre de caja (solo "Efectivo" cuenta para cuadre).
 Cambios v141: Foto Colors requiere selector de color (Gris/Rosa/Cafe/Azul/Morado/Verde) en POS y Orden Lab — se guarda en tinte como "Foto Colors: Color", aparece en surtido/reporte distinguido por color. Fix folio slots: items con cantidad > 1 ahora se pueden asignar a múltiples folios (antes se bloqueaba después del primero).
 Cambios v140: Cancelar ventas con autorización WA (motivo, devolución dinero, retiro caja), estimado compra con selector proveedor por fila (aprende preferencias), VS medios, TIPO badges, comparativo estimado vs compras reales, total nota editable en Compras Lab, terminología laboratorio→proveedor, Hi Index · Foto AR · VS (S1: $2,199, S2: $2,499), botón "+ Agregar material" en Catálogo (admin only) con modal para insertar en reglas_materiales.

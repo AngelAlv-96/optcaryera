@@ -1105,6 +1105,54 @@ exports.handler = async function(event) {
           }
       }
 
+      // ── REVIEW/NPS RESPONSE HANDLING ──
+      // Quick Reply buttons from opinion_servicio template
+      if (!isAuthResponse && !cmdHandled) {
+        var reviewButtons = ['todo excelente', 'buenas promos', 'podría mejorar', 'podria mejorar'];
+        if (reviewButtons.includes(lowerText)) {
+          // Check if this customer has a recent [Review] entry (last 7 days)
+          var reviewCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+          var reviewHistory = await supaFetch('clari_conversations?phone=eq.' + from + '&content=ilike.*[Review]*&created_at=gte.' + reviewCutoff + '&select=content&order=created_at.desc&limit=1');
+          if (reviewHistory && reviewHistory.length > 0) {
+            await saveMessage(from, 'user', userText, userName);
+            // Extract sucursal from [Review] log
+            var sucMatch = (reviewHistory[0].content || '').match(/Sucursal:\s*([^\n,]+)/);
+            var reviewSuc = sucMatch ? sucMatch[1].trim() : '';
+            // Google Maps links per sucursal
+            var mapsLinks = {
+              'Américas': 'https://maps.app.goo.gl/HdEKPf2R8bL6tbvA9',
+              'Pinocelli': 'https://maps.app.goo.gl/HPZYupPVjy9aZ4j38',
+              'Magnolia': 'https://maps.app.goo.gl/HBomFDEfJJNPna697'
+            };
+            var mapsLink = mapsLinks[reviewSuc] || mapsLinks['Américas'];
+            var reviewReply;
+            if (lowerText === 'todo excelente') {
+              reviewReply = '¡Muchas gracias! 🎉 Nos da mucho gusto saber que te fue excelente.\n\n¿Nos ayudarías con una reseña en Google? Tu opinión nos ayuda muchísimo a seguir creciendo 🙏\n\n👉 ' + mapsLink + '\n\n¡Gracias por ser parte de Car & Era! 👓✨';
+            } else if (lowerText === 'buenas promos') {
+              reviewReply = '¡Qué bueno que te gustan nuestras promociones! 🎁 Siempre buscamos darte el mejor precio.\n\n¿Nos regalarías una reseña en Google? Nos ayuda mucho a que más personas nos conozcan 🙏\n\n👉 ' + mapsLink + '\n\n¡Gracias! 👓✨';
+            } else {
+              // "Podría mejorar" — enter care mode
+              reviewReply = 'Lamentamos que tu experiencia no haya sido la mejor 😔\n\nQueremos mejorar. ¿Podrías contarnos qué te gustaría que hiciéramos diferente? Tu opinión es muy valiosa para nosotros.\n\nSi prefieres, también puedes visitarnos en cualquier sucursal y con gusto te atendemos personalmente 🤝';
+              // Notify admin about negative feedback
+              try {
+                var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+                if (cfgData && cfgData[0] && cfgData[0].value) {
+                  var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+                  var adminPhones = cfg.admin_phones || [];
+                  var alertMsg = '⚠️ *Opinión negativa recibida*\n\n👤 ' + (userName || from) + '\n📱 +' + from + '\n🏪 Sucursal: ' + (reviewSuc || 'N/A') + '\n\nEl cliente respondió "Podría mejorar" a la encuesta de opinión. Por favor dale seguimiento.';
+                  for (var ap = 0; ap < adminPhones.length; ap++) {
+                    await sendWhatsAppReply(adminPhones[ap], alertMsg);
+                  }
+                }
+              } catch(alertErr) { console.warn('[Review] Alert error:', alertErr.message); }
+            }
+            await sendWhatsAppReply(from, reviewReply);
+            await saveMessage(from, 'assistant', '[Review Response] ' + reviewReply);
+            cmdHandled = true;
+          }
+        }
+      }
+
       // ── CLARI AI (default for non-admin or unmatched commands) ──
       if (!isAuthResponse && !cmdHandled) {
         var reply = await getAIResponse(userText, userName, from);

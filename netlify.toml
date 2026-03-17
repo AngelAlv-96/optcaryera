@@ -9,6 +9,10 @@
 [functions."lc-cron"]
   schedule = "0 16 * * *"
 
+# Review/NPS — sends opinion survey daily at 12:00 PM CST (18:00 UTC)
+[functions."review-cron"]
+  schedule = "0 18 * * *"
+
 # Dynamic landing pages: /l/slug → function
 [[redirects]]
   from = "/l/*"
