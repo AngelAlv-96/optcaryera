@@ -12220,6 +12220,8 @@ let clariPage = 0;
 const CLARI_PER_PAGE = 500;
 let clariHasMore = false;
 let clariAutoRefresh = null;
+let clariOpenPhone = null;
+let clariRealtimeSub = null;
 
 function clariTab(tab) {
   document.getElementById('clari-panel-conv').style.display = tab === 'conv' ? '' : 'none';
@@ -12250,6 +12252,25 @@ async function loadClariConversations(append) {
     clariConversations = data || [];
   }
   renderClariConversations();
+  // Realtime subscription — instant updates, no polling
+  if (!clariRealtimeSub) {
+    clariRealtimeSub = db.channel('clari-live')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clari_conversations' }, function(payload) {
+        if (document.getElementById('view-clari')?.style.display !== 'none') {
+          // Add new message to top of array and re-render
+          clariConversations.unshift(payload.new);
+          renderClariConversations();
+        }
+      })
+      .subscribe(function(status) {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Clari] Realtime conectado');
+          // Stop polling if realtime is working
+          if (clariAutoRefresh) { clearInterval(clariAutoRefresh); clariAutoRefresh = null; }
+        }
+      });
+  }
+  // Fallback polling in case Realtime is not enabled on the table
   if (clariAutoRefresh) clearInterval(clariAutoRefresh);
   clariAutoRefresh = setInterval(function() {
     if (document.getElementById('view-clari')?.style.display !== 'none') {
@@ -12258,7 +12279,7 @@ async function loadClariConversations(append) {
       clearInterval(clariAutoRefresh);
       clariAutoRefresh = null;
     }
-  }, 15000);
+  }, 30000);
 }
 
 const CLARI_PID_MAIN = '1081895598321902';
@@ -12344,6 +12365,21 @@ function renderClariConversations() {
     html += '<div style="text-align:center;padding:16px"><button class="btn btn-g" onclick="clariPage++;loadClariConversations(true)" style="font-size:12px">Cargar m\u00e1s conversaciones...</button></div>';
   }
   list.innerHTML = html;
+  // Re-open conversation that was open before refresh
+  if (clariOpenPhone) {
+    var cards = list.querySelectorAll('.clari-card');
+    cards.forEach(function(card) {
+      var input = card.querySelector('.clari-reply-input');
+      if (input && input.dataset.phone === clariOpenPhone) {
+        var msgs = card.querySelector('.clari-msgs');
+        if (msgs) {
+          msgs.style.display = '';
+          var scroll = msgs.querySelector('.clari-msgs-scroll');
+          if (scroll) setTimeout(function() { scroll.scrollTop = scroll.scrollHeight; }, 50);
+        }
+      }
+    });
+  }
 }
 
 function escH(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -12355,10 +12391,13 @@ function toggleClariConvo(card, phone) {
   document.querySelectorAll('.clari-msgs').forEach(function(m) { m.style.display = 'none'; });
   if (!isOpen) {
     msgs.style.display = '';
+    clariOpenPhone = phone;
     var scroll = msgs.querySelector('.clari-msgs-scroll');
     if (scroll) setTimeout(function() { scroll.scrollTop = scroll.scrollHeight; }, 50);
     var input = msgs.querySelector('.clari-reply-input');
     if (input) setTimeout(function() { input.focus(); }, 100);
+  } else {
+    clariOpenPhone = null;
   }
 }
 
