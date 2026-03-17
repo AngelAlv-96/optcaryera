@@ -968,14 +968,27 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 }
 #vta-fab-add { display:none;position:fixed;bottom:20px;right:20px;z-index:9998;width:52px;height:52px;border-radius:50%;background:var(--beige);color:var(--bg);border:none;font-size:24px;font-weight:700;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);cursor:pointer }
 /* WA CRM Kanban */
-.wcrm-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;min-height:400px}
+.wcrm-board{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;min-height:400px;scroll-behavior:smooth}
+.wcrm-board::-webkit-scrollbar{height:6px}
+.wcrm-board::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:3px}
+.wcrm-board::-webkit-scrollbar-thumb{background:rgba(226,198,166,0.15);border-radius:3px}
 .wcrm-col{min-width:260px;max-width:300px;flex-shrink:0;background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:10px;display:flex;flex-direction:column;max-height:calc(100vh - 280px)}
 .wcrm-col-head{padding:10px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .wcrm-col-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
-.wcrm-card{background:var(--surface2);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;transition:border-color .15s}
-.wcrm-card:hover{border-color:rgba(226,198,166,0.25)}
+.wcrm-col-body::-webkit-scrollbar{width:4px}
+.wcrm-col-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
+.wcrm-card{background:var(--surface2);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s}
+.wcrm-card:hover{border-color:rgba(226,198,166,0.25);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.2)}
 .wcrm-badge{font-size:8px;padding:1px 5px;border-radius:4px;font-weight:700;display:inline-block;margin-right:3px;margin-top:4px}
-@media(max-width:600px){.wcrm-board{flex-direction:column}.wcrm-col{min-width:100%;max-width:100%;max-height:none}}
+/* CRM Detail Modal */
+.wcrm-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);overflow-y:auto;padding:16px}
+.wcrm-modal.open{display:flex;align-items:flex-start;justify-content:center}
+.wcrm-modal-box{width:100%;max-width:520px;margin:20px auto;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:16px;display:flex;flex-direction:column;max-height:calc(100vh - 60px);overflow:hidden}
+.wcrm-modal-head{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.06);background:rgba(226,198,166,0.04);flex-shrink:0}
+.wcrm-modal-msgs{flex:1;overflow-y:auto;padding:14px;min-height:200px}
+.wcrm-modal-reply{padding:10px 14px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center;flex-shrink:0}
+@media(max-width:768px){.wcrm-board{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.wcrm-col{min-width:85vw;max-width:85vw;scroll-snap-align:start}}
+@media(max-width:480px){.wcrm-col{min-width:92vw;max-width:92vw}.wcrm-modal-box{margin:8px;max-height:calc(100vh - 20px);border-radius:12px}}
 </style>
 </head>
 <body>
@@ -3056,6 +3069,24 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             </div>
             <div id="wcrm-board" class="wcrm-board">
               <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Cargando CRM...</div>
+            </div>
+            <!-- CRM Detail Modal -->
+            <div class="wcrm-modal" id="wcrm-modal" onclick="if(event.target===this)cerrarWaCrmModal()">
+              <div class="wcrm-modal-box">
+                <div class="wcrm-modal-head">
+                  <div>
+                    <div id="wcrm-modal-name" style="font-size:14px;font-weight:600;color:var(--beige)"></div>
+                    <div id="wcrm-modal-info" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+                  </div>
+                  <button class="btn btn-sm btn-g" onclick="cerrarWaCrmModal()" style="font-size:11px">Cerrar &times;</button>
+                </div>
+                <div id="wcrm-modal-badges" style="padding:8px 18px 0;display:flex;flex-wrap:wrap;gap:4px"></div>
+                <div class="wcrm-modal-msgs" id="wcrm-modal-msgs"></div>
+                <div class="wcrm-modal-reply">
+                  <input class="ord-input" id="wcrm-modal-input" placeholder="Responder..." style="flex:1;font-size:12px;padding:8px 12px" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarWaCrmReply()}">
+                  <button class="btn btn-p btn-sm" onclick="enviarWaCrmReply()" style="font-size:11px;white-space:nowrap">Enviar &#9993;&#65039;</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -12510,16 +12541,17 @@ function _wcrmNorm10(phone) {
 
 async function cargarWaCrm() {
   var board = document.getElementById('wcrm-board');
-  if (board) board.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Cargando datos del CRM...</div>';
+  if (board) board.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">&#9203; Cargando CRM...</div>';
   var statsEl = document.getElementById('wcrm-stats');
   if (statsEl) statsEl.innerHTML = '';
+  var t0 = Date.now();
 
   try {
     var dias = parseInt(document.getElementById('wcrm-filtro-dias')?.value || '30');
     var cutoff = new Date(); cutoff.setDate(cutoff.getDate() - dias);
     var cutoffISO = cutoff.toISOString();
 
-    // Step 1: Load conversations
+    // Step 1: Load conversations (paginated)
     var allMsgs = [];
     var page = 0;
     while (true) {
@@ -12534,74 +12566,100 @@ async function cargarWaCrm() {
       page++;
     }
 
-    // Step 2: Group by phone
+    // Step 2: Group by phone — keep only last msg + tags for board, full msgs stored for modal
     var grouped = {};
+    var adminPhones = ['5216564269961','5216563110094'];
     allMsgs.forEach(function(m) {
-      if (!m.phone) return;
-      if (!grouped[m.phone]) grouped[m.phone] = { phone: m.phone, name: '', messages: [], last: m.created_at, via_phone_id: '' };
+      if (!m.phone || adminPhones.includes(m.phone)) return;
+      if (!grouped[m.phone]) grouped[m.phone] = { phone: m.phone, name: '', messages: [], last: m.created_at, via_phone_id: '', msgCount: 0 };
       grouped[m.phone].messages.push(m);
+      grouped[m.phone].msgCount++;
       if (m.user_name && m.role === 'user' && !grouped[m.phone].name) grouped[m.phone].name = m.user_name;
       if (m.created_at > grouped[m.phone].last) grouped[m.phone].last = m.created_at;
       if (m.via_phone_id) grouped[m.phone].via_phone_id = m.via_phone_id;
     });
 
-    // Filter out system/admin phones
-    var adminPhones = ['5216564269961','5216563110094'];
-    var phones = Object.keys(grouped).filter(function(p) { return !adminPhones.includes(p); });
+    var phones = Object.keys(grouped);
 
-    // Step 3: Normalize and batch-query pacientes
+    // Step 3: Batch-query pacientes using .in() (much faster than ilike)
     var phoneMap = {};
     phones.forEach(function(p) { phoneMap[_wcrmNorm10(p)] = p; });
     var norm10s = Object.keys(phoneMap);
 
     var pacMap = {};
-    for (var i = 0; i < norm10s.length; i += 50) {
-      var batch = norm10s.slice(i, i + 50);
+    // Fast pass: exact .in() match (handles clean 10-digit phones)
+    for (var i = 0; i < norm10s.length; i += 80) {
+      var batch = norm10s.slice(i, i + 80);
       var { data: pacs } = await db.from('pacientes')
         .select('id,nombre,apellidos,telefono')
-        .or(batch.map(function(t) { return 'telefono.ilike.*' + t.slice(-10) + '*'; }).join(','));
+        .in('telefono', batch);
       if (pacs) pacs.forEach(function(p) {
-        var n10 = _wcrmNorm10(p.telefono);
-        pacMap[n10] = p;
+        pacMap[_wcrmNorm10(p.telefono)] = p;
       });
     }
+    // Fallback: for unmatched phones, try ilike (catches phones stored with dashes/spaces)
+    var unmatched = norm10s.filter(function(n) { return !pacMap[n]; });
+    if (unmatched.length > 0 && unmatched.length <= 100) {
+      for (var i = 0; i < unmatched.length; i += 40) {
+        var batch = unmatched.slice(i, i + 40);
+        var { data: pacs2 } = await db.from('pacientes')
+          .select('id,nombre,apellidos,telefono')
+          .or(batch.map(function(t) { return 'telefono.ilike.*' + t.slice(-10) + '*'; }).join(','));
+        if (pacs2) pacs2.forEach(function(p) {
+          pacMap[_wcrmNorm10(p.telefono)] = p;
+        });
+      }
+    }
 
-    // Step 4: Query ventas for matched pacientes
+    // Step 4 & 5: Query ventas + lc_seguimiento in PARALLEL
     var pacIds = [];
-    var pacIdToPhone = {};
     Object.keys(pacMap).forEach(function(n10) {
       var pac = pacMap[n10];
-      if (pac && pac.id) {
-        pacIds.push(pac.id);
-        pacIdToPhone[pac.id] = n10;
-      }
+      if (pac && pac.id) pacIds.push(pac.id);
     });
 
     var ventasMap = {};
-    for (var i = 0; i < pacIds.length; i += 50) {
-      var batch = pacIds.slice(i, i + 50);
-      var { data: ventas } = await db.from('ventas')
-        .select('id,folio,estado,sucursal,paciente_id,canal_venta,created_at')
-        .in('paciente_id', batch)
-        .order('created_at', { ascending: false });
-      if (ventas) ventas.forEach(function(v) {
-        if (!ventasMap[v.paciente_id]) ventasMap[v.paciente_id] = [];
-        ventasMap[v.paciente_id].push(v);
-      });
+    var lcMap = {};
+
+    // Build parallel promises for ventas
+    var ventasPromises = [];
+    for (var i = 0; i < pacIds.length; i += 80) {
+      (function(batch) {
+        ventasPromises.push(
+          db.from('ventas')
+            .select('id,folio,estado,sucursal,paciente_id,canal_venta,created_at')
+            .in('paciente_id', batch)
+            .order('created_at', { ascending: false })
+            .then(function(r) {
+              if (r.data) r.data.forEach(function(v) {
+                if (!ventasMap[v.paciente_id]) ventasMap[v.paciente_id] = [];
+                ventasMap[v.paciente_id].push(v);
+              });
+            })
+        );
+      })(pacIds.slice(i, i + 80));
     }
 
-    // Step 5: Query lc_seguimiento
-    var lcMap = {};
-    for (var i = 0; i < pacIds.length; i += 50) {
-      var batch = pacIds.slice(i, i + 50);
-      var { data: lc } = await db.from('lc_seguimiento')
-        .select('paciente_id,producto,estado,fecha_recompra')
-        .in('paciente_id', batch);
-      if (lc) lc.forEach(function(r) {
-        if (!lcMap[r.paciente_id]) lcMap[r.paciente_id] = [];
-        lcMap[r.paciente_id].push(r);
-      });
+    // Build parallel promises for lc_seguimiento
+    var lcPromises = [];
+    for (var i = 0; i < pacIds.length; i += 80) {
+      (function(batch) {
+        lcPromises.push(
+          db.from('lc_seguimiento')
+            .select('paciente_id,producto,estado,fecha_recompra')
+            .in('paciente_id', batch)
+            .then(function(r) {
+              if (r.data) r.data.forEach(function(lc) {
+                if (!lcMap[lc.paciente_id]) lcMap[lc.paciente_id] = [];
+                lcMap[lc.paciente_id].push(lc);
+              });
+            })
+        );
+      })(pacIds.slice(i, i + 80));
     }
+
+    // Run all ventas + LC queries in parallel
+    await Promise.all(ventasPromises.concat(lcPromises));
 
     // Step 6: Classify
     var lcKeywords = ['lente de contacto','lentes de contacto','acuvue','air optix','biofinity','dailies','pupilentes','cooper vision'];
@@ -12614,19 +12672,24 @@ async function cargarWaCrm() {
       var lc = pac ? (lcMap[pac.id] || []) : [];
       var activeSales = ventas.filter(function(v) { return v.estado === 'Liquidada' || v.estado === 'Apartado'; });
 
-      // Tags
-      var hasReviewSent = conv.messages.some(function(m) { return m.content.includes('[Review]') && !m.content.includes('[Review Response]'); });
-      var hasReviewResponse = conv.messages.some(function(m) { return m.content.includes('[Review Response]'); });
-      var needsAttention = conv.messages.some(function(m) {
-        return m.content.includes('[Review Response]') && (m.content.toLowerCase().includes('podría mejorar') || m.content.toLowerCase().includes('podria mejorar') || m.content.toLowerCase().includes('lamentamos'));
-      });
+      // Tags — scan messages for classification
+      var hasReviewSent = false, hasReviewResponse = false, needsAttention = false, hasLCInterest = lc.length > 0;
+      for (var mi = 0; mi < conv.messages.length; mi++) {
+        var mc = conv.messages[mi].content;
+        if (mc.includes('[Review]') && !mc.includes('[Review Response]')) hasReviewSent = true;
+        if (mc.includes('[Review Response]')) {
+          hasReviewResponse = true;
+          var mcl = mc.toLowerCase();
+          if (mcl.includes('podría mejorar') || mcl.includes('podria mejorar') || mcl.includes('lamentamos')) needsAttention = true;
+        }
+        if (!hasLCInterest && conv.messages[mi].role === 'user') {
+          var lower = mc.toLowerCase();
+          for (var ki = 0; ki < lcKeywords.length; ki++) {
+            if (lower.includes(lcKeywords[ki])) { hasLCInterest = true; break; }
+          }
+        }
+      }
       var reviewOK = hasReviewResponse && !needsAttention;
-
-      var hasLCInterest = lc.length > 0 || conv.messages.some(function(m) {
-        if (m.role !== 'user') return false;
-        var lower = m.content.toLowerCase();
-        return lcKeywords.some(function(kw) { return lower.includes(kw); });
-      });
 
       var column;
       if (needsAttention) column = 'atencion';
@@ -12649,6 +12712,7 @@ async function cargarWaCrm() {
 
     _wcrmData = phones.map(function(p) { return grouped[p]; });
     _wcrmLoaded = true;
+    console.log('[WCRM] Cargado en ' + ((Date.now() - t0) / 1000).toFixed(1) + 's — ' + phones.length + ' contactos');
     filtrarWaCrm();
 
   } catch (e) {
@@ -12750,26 +12814,96 @@ function renderWaCrm() {
 }
 
 function abrirWaCrmDetalle(phone) {
-  // Switch to conversations tab and open this conversation
-  clariTab('conv');
-  // Wait for render, then find and open the card
-  setTimeout(function() {
-    var cards = document.querySelectorAll('.clari-card');
-    for (var i = 0; i < cards.length; i++) {
-      var input = cards[i].querySelector('.clari-reply-input');
-      if (input && input.dataset.phone === phone) {
-        toggleClariConvo(cards[i], phone);
-        cards[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
-    }
-    // If not found in current page, search by phone
-    var searchEl = document.getElementById('clari-search');
-    if (searchEl) {
-      searchEl.value = phone.slice(-10);
-      searchEl.dispatchEvent(new Event('input'));
-    }
-  }, 300);
+  var conv = _wcrmData.find(function(c) { return c.phone === phone; });
+  if (!conv) return;
+  var modal = document.getElementById('wcrm-modal');
+  var nameEl = document.getElementById('wcrm-modal-name');
+  var infoEl = document.getElementById('wcrm-modal-info');
+  var badgesEl = document.getElementById('wcrm-modal-badges');
+  var msgsEl = document.getElementById('wcrm-modal-msgs');
+  var inputEl = document.getElementById('wcrm-modal-input');
+  if (!modal) return;
+
+  // Name & info
+  var displayName = conv.name || 'Sin nombre';
+  var displayPhone = phone.length > 10 ? '+' + phone.substring(0, 2) + ' ' + phone.substring(2, 5) + ' ' + phone.substring(5, 8) + ' ' + phone.substring(8) : phone;
+  nameEl.textContent = displayName;
+  var infoText = displayPhone;
+  if (conv.sucursal) infoText += ' \u00b7 ' + conv.sucursal;
+  if (conv.ventas && conv.ventas.length) infoText += ' \u00b7 ' + conv.ventas.length + ' venta(s)';
+  infoEl.textContent = infoText;
+
+  // Badges
+  var bhtml = '';
+  var colDef = WCRM_COLS.find(function(c) { return c.id === conv.column; });
+  if (colDef) bhtml += '<span class="wcrm-badge" style="background:' + colDef.color + '22;color:' + colDef.color + ';border:1px solid ' + colDef.color + '33;font-size:9px;padding:2px 8px">' + colDef.icon + ' ' + colDef.label + '</span>';
+  if (conv.ventas) conv.ventas.forEach(function(v) { bhtml += '<span class="wcrm-badge" style="background:#d4b84a22;color:#d4b84a;border:1px solid #d4b84a33;font-size:9px;padding:2px 8px">' + v.folio + '</span>'; });
+  if (conv.lc && conv.lc.length) bhtml += '<span class="wcrm-badge" style="background:#8ab0e822;color:#8ab0e8;border:1px solid #8ab0e833;font-size:9px;padding:2px 8px">\ud83d\udc41 LC</span>';
+  badgesEl.innerHTML = bhtml;
+
+  // Messages (reuse bubble style from renderClariConversations)
+  var msgs = conv.messages.slice().sort(function(a, b) { return a.created_at > b.created_at ? 1 : -1; });
+  var mhtml = '';
+  msgs.forEach(function(m) {
+    var isBot = m.role === 'assistant';
+    var isSistema = isBot && m.content.startsWith('[Sistema]');
+    var isAdmin = isBot && m.content.startsWith('[Admin]');
+    var isCorte = isBot && m.content.startsWith('[Corte]');
+    var isReview = isBot && (m.content.includes('[Review]') || m.content.includes('[Review Response]'));
+    var t = new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    var d = new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : isReview ? 'rgba(114,196,126,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
+    var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : isReview ? '\u2b50 Review' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
+    var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
+    mhtml += '<div style="display:flex;justify-content:' + (isBot ? 'flex-start' : 'flex-end') + ';margin-bottom:6px">';
+    mhtml += '<div style="max-width:85%;padding:8px 12px;border-radius:' + (isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+    mhtml += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
+    mhtml += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
+    mhtml += '</div></div>';
+  });
+  msgsEl.innerHTML = mhtml;
+
+  // Store phone for reply
+  inputEl.dataset.phone = phone;
+  inputEl.dataset.phoneId = conv.via_phone_id || '';
+  inputEl.value = '';
+
+  // Open modal
+  modal.classList.add('open');
+  setTimeout(function() { msgsEl.scrollTop = msgsEl.scrollHeight; inputEl.focus(); }, 100);
+}
+
+function cerrarWaCrmModal() {
+  var modal = document.getElementById('wcrm-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+async function enviarWaCrmReply() {
+  var input = document.getElementById('wcrm-modal-input');
+  if (!input) return;
+  var phone = input.dataset.phone;
+  var phoneId = input.dataset.phoneId || '';
+  var text = input.value.trim();
+  if (!text || !phone) return;
+  input.disabled = true;
+  try {
+    var payload = { action:'send', phone:formatWAPhone(phone), message:text, auth:{id:currentUser?.id,pass:currentUser?.pass}, source:'admin-clari' };
+    if (phoneId) payload.phone_id = phoneId;
+    var res = await fetch('/.netlify/functions/whatsapp', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    var data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Error enviando');
+    await db.from('clari_conversations').insert({ phone:phone, role:'assistant', content:'[Admin] '+text, user_name:null, via_phone_id:phoneId||null });
+    toast('\u2713 Mensaje enviado');
+    // Refresh modal messages
+    setTimeout(function() {
+      _wcrmLoaded = false;
+      cargarWaCrm().then(function() { abrirWaCrmDetalle(phone); });
+    }, 500);
+  } catch(e) {
+    toast('Error al enviar: ' + e.message, true);
+  }
+  input.disabled = false;
+  input.value = '';
 }
 
 async function loadClariConfig() {
