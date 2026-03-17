@@ -1460,11 +1460,12 @@ return{cx:cx,cy:cy,rx:rx*1.3,ry:ry*1.3};
 
 function drawLensOnIris(mainCtx,lm,centerIdx,w,h){
 var col=tryOnColor;if(!col)return;
+var video=document.getElementById('tryon-video');if(!video)return;
 var iris=irisEllipse(lm,centerIdx,w,h);
 var cx=iris.cx,cy=iris.cy,rx=iris.rx,ry=iris.ry;
-var r=Math.max(rx,ry); /* for circular operations, use the larger */
+var r=Math.max(rx,ry);
 
-/* ── Initialize offscreen buffer (same size as main canvas) ── */
+/* ── Offscreen buffer (isolated per-eye, prevents cross-eye bleed) ── */
 if(!_eyeBuf||_eyeBuf.width!==w||_eyeBuf.height!==h){
 _eyeBuf=document.createElement('canvas');_eyeBuf.width=w;_eyeBuf.height=h;
 _eyeCtx=_eyeBuf.getContext('2d');
@@ -1473,111 +1474,119 @@ var ctx=_eyeCtx;
 ctx.clearRect(0,0,w,h);
 ctx.save();
 
-/* ── Step 1: Eyelid clipping ── */
+/* ── Clip: eyelid contour ── */
 var eidx=(centerIdx===468)?EYE_L:EYE_R;
 var ep=eidx.map(function(idx){return{x:lm[idx].x*w,y:lm[idx].y*h}});
 ctx.beginPath();
 ctx.moveTo(ep[0].x,ep[0].y);
-for(var i=1;i<ep.length;i++)ctx.lineTo(ep[i].x,ep[i].y);
+for(var i=1;i<ep.length;i++){
+var mx=(ep[i-1].x+ep[i].x)/2,my=(ep[i-1].y+ep[i].y)/2;
+ctx.quadraticCurveTo(ep[i-1].x,ep[i-1].y,mx,my);
+}
+ctx.quadraticCurveTo(ep[ep.length-1].x,ep[ep.length-1].y,ep[0].x,ep[0].y);
 ctx.closePath();
 ctx.clip();
 
-/* ── Step 2: Clip to iris ellipse ── */
-ctx.beginPath();
-ctx.ellipse(cx,cy,rx*1.1,ry*1.1,0,0,Math.PI*2);
-ctx.clip();
+/* ── Clip: iris ellipse ── */
+ctx.beginPath();ctx.ellipse(cx,cy,rx*1.05,ry*1.05,0,0,Math.PI*2);ctx.clip();
 
-/* ── Step 3: Base color fill with radial gradient ── */
+/* ── 1) Draw REAL video pixels (natural eye as base) ── */
 ctx.globalCompositeOperation='source-over';
 ctx.globalAlpha=1;
-/* Draw with full alpha, will composite to main canvas with lens opacity */
-var baseGrad=ctx.createRadialGradient(cx,cy,r*0.15,cx,cy,r);
-baseGrad.addColorStop(0,'rgb('+col.inner.join(',')+')');
-baseGrad.addColorStop(0.35,'rgb('+col.inner.join(',')+')');
-baseGrad.addColorStop(0.55,'rgb('+col.mid.join(',')+')');
-baseGrad.addColorStop(0.78,'rgb('+col.outer.join(',')+')');
-baseGrad.addColorStop(0.92,'rgb('+col.limbal.join(',')+')');
-baseGrad.addColorStop(1,'rgb('+Math.round(col.limbal[0]*0.4)+','+Math.round(col.limbal[1]*0.4)+','+Math.round(col.limbal[2]*0.4)+')');
-ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-ctx.fillStyle=baseGrad;ctx.fill();
+ctx.drawImage(video,0,0,w,h);
 
-/* ── Step 4: Radial fiber pattern (iris texture) ── */
+/* ── 2) COLOR blend: tint preserving natural luminance ── */
+/* This is how real colored contacts work — they filter light, not cover */
+ctx.globalCompositeOperation='color';
+ctx.globalAlpha=col.op*0.85;
+var tintGrad=ctx.createRadialGradient(cx,cy,r*0.18,cx,cy,r);
+tintGrad.addColorStop(0,'rgb('+col.inner.join(',')+')');
+tintGrad.addColorStop(0.4,'rgb('+col.mid.join(',')+')');
+tintGrad.addColorStop(0.75,'rgb('+col.outer.join(',')+')');
+tintGrad.addColorStop(1,'rgb('+col.limbal.join(',')+')');
+ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+ctx.fillStyle=tintGrad;ctx.fill();
+
+/* ── 3) SOFT-LIGHT: deepen color naturally ── */
+ctx.globalCompositeOperation='soft-light';
+ctx.globalAlpha=col.op*0.45;
+ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
+ctx.fillStyle=tintGrad;ctx.fill();
+
+/* ── 4) OVERLAY: subtle iris fiber texture ── */
 ctx.globalCompositeOperation='overlay';
-ctx.globalAlpha=0.5;
-var nFibers=100;
-for(var i=0;i<nFibers;i++){
-var angle=(Math.PI*2/nFibers)*i+(Math.random()-0.5)*0.08;
-var ri=r*0.22,ro=r*(0.55+Math.random()*0.38);
+ctx.globalAlpha=0.18;
+var nF=80;
+for(var i=0;i<nF;i++){
+var a=(Math.PI*2/nF)*i,ri2=r*0.24,ro2=r*(0.5+Math.random()*0.4);
 ctx.beginPath();
-ctx.moveTo(cx+Math.cos(angle)*ri,cy+Math.sin(angle)*ri);
-ctx.lineTo(cx+Math.cos(angle)*ro,cy+Math.sin(angle)*ro);
-ctx.lineWidth=0.4+Math.random()*0.8;
-var bright=Math.random()>0.5;
-ctx.strokeStyle=bright?
-'rgba('+col.fiber.join(',')+','+(0.15+Math.random()*0.15)+')':
-'rgba('+col.limbal.join(',')+','+(0.1+Math.random()*0.12)+')';
+ctx.moveTo(cx+Math.cos(a)*ri2,cy+Math.sin(a)*ri2);
+ctx.lineTo(cx+Math.cos(a)*ro2,cy+Math.sin(a)*ro2);
+ctx.lineWidth=0.3+Math.random()*0.6;
+ctx.strokeStyle=Math.random()>0.5?
+'rgba(255,255,255,'+(0.08+Math.random()*0.1)+')':
+'rgba(0,0,0,'+(0.05+Math.random()*0.08)+')';
 ctx.stroke();
 }
 
-/* ── Step 5: Limbal ring (dark outer boundary) ── */
-ctx.globalCompositeOperation='source-over';
-ctx.globalAlpha=0.6;
+/* ── 5) Limbal ring (dark outer edge) ── */
+ctx.globalCompositeOperation='multiply';
+ctx.globalAlpha=0.45;
+var limG=ctx.createRadialGradient(cx,cy,r*0.7,cx,cy,r);
+limG.addColorStop(0,'rgb(255,255,255)');
+limG.addColorStop(0.6,'rgb(180,180,180)');
+limG.addColorStop(0.88,'rgb('+col.limbal.join(',')+')');
+limG.addColorStop(1,'rgb('+Math.round(col.limbal[0]*0.3)+','+Math.round(col.limbal[1]*0.3)+','+Math.round(col.limbal[2]*0.3)+')');
 ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-var limGrad=ctx.createRadialGradient(cx,cy,r*0.72,cx,cy,r*1.02);
-limGrad.addColorStop(0,'rgba(0,0,0,0)');
-limGrad.addColorStop(0.6,'rgba(0,0,0,0.1)');
-limGrad.addColorStop(0.85,'rgba('+col.limbal.join(',')+',0.5)');
-limGrad.addColorStop(1,'rgba(0,0,0,0.7)');
-ctx.fillStyle=limGrad;ctx.fill();
+ctx.fillStyle=limG;ctx.fill();
 
-/* ── Step 6: Pupil cutout (fully transparent center) ── */
+/* ── 6) Pupil: transparent center (shows real pupil) ── */
 ctx.globalCompositeOperation='destination-out';
 ctx.globalAlpha=1;
-var pupRx=rx*0.34,pupRy=ry*0.34;
-var pupGrad=ctx.createRadialGradient(cx,cy,Math.min(pupRx,pupRy)*0.3,cx,cy,Math.max(pupRx,pupRy));
-pupGrad.addColorStop(0,'rgba(0,0,0,1)');
-pupGrad.addColorStop(0.7,'rgba(0,0,0,0.95)');
-pupGrad.addColorStop(1,'rgba(0,0,0,0)');
+var pupRx=rx*0.30,pupRy=ry*0.30;
+var pupG=ctx.createRadialGradient(cx,cy,Math.min(pupRx,pupRy)*0.15,cx,cy,Math.max(pupRx,pupRy));
+pupG.addColorStop(0,'rgba(0,0,0,1)');
+pupG.addColorStop(0.65,'rgba(0,0,0,0.9)');
+pupG.addColorStop(1,'rgba(0,0,0,0)');
 ctx.beginPath();ctx.ellipse(cx,cy,pupRx,pupRy,0,0,Math.PI*2);
-ctx.fillStyle=pupGrad;ctx.fill();
+ctx.fillStyle=pupG;ctx.fill();
 
-/* ── Step 7: Soft edge fadeout ── */
+/* ── 7) Soft edge fadeout ── */
 ctx.globalCompositeOperation='destination-out';
-var fadeGrad=ctx.createRadialGradient(cx,cy,r*0.75,cx,cy,r*1.05);
-fadeGrad.addColorStop(0,'rgba(0,0,0,0)');
-fadeGrad.addColorStop(0.5,'rgba(0,0,0,0.08)');
-fadeGrad.addColorStop(0.8,'rgba(0,0,0,0.45)');
-fadeGrad.addColorStop(1,'rgba(0,0,0,1)');
-ctx.beginPath();ctx.ellipse(cx,cy,rx*1.05,ry*1.05,0,0,Math.PI*2);
-ctx.fillStyle=fadeGrad;ctx.fill();
+var fadeG=ctx.createRadialGradient(cx,cy,r*0.72,cx,cy,r*1.02);
+fadeG.addColorStop(0,'rgba(0,0,0,0)');
+fadeG.addColorStop(0.55,'rgba(0,0,0,0.1)');
+fadeG.addColorStop(0.82,'rgba(0,0,0,0.5)');
+fadeG.addColorStop(1,'rgba(0,0,0,1)');
+ctx.beginPath();ctx.ellipse(cx,cy,rx*1.02,ry*1.02,0,0,Math.PI*2);
+ctx.fillStyle=fadeG;ctx.fill();
 
-/* ── Step 8: Specular highlights ── */
-ctx.globalCompositeOperation='source-over';
-ctx.globalAlpha=0.35;
-ctx.beginPath();
-ctx.ellipse(cx-rx*0.2,cy-ry*0.25,rx*0.1,ry*0.07,-0.3,0,Math.PI*2);
-var spec=ctx.createRadialGradient(cx-rx*0.2,cy-ry*0.25,0,cx-rx*0.2,cy-ry*0.25,rx*0.1);
-spec.addColorStop(0,'rgba(255,255,255,0.9)');
-spec.addColorStop(0.5,'rgba(255,255,255,0.3)');
-spec.addColorStop(1,'rgba(255,255,255,0)');
-ctx.fillStyle=spec;ctx.fill();
-
-/* ── Step 9: Upper eyelid shadow ── */
-ctx.globalAlpha=0.15;
-var shGrad=ctx.createLinearGradient(cx,cy-ry,cx,cy-ry*0.1);
-shGrad.addColorStop(0,'rgba(0,0,0,1)');
-shGrad.addColorStop(1,'rgba(0,0,0,0)');
+/* ── 8) Eyelid shadow (depth) ── */
+ctx.globalCompositeOperation='multiply';
+ctx.globalAlpha=0.18;
+var shG=ctx.createLinearGradient(cx,cy-ry,cx,cy-ry*0.1);
+shG.addColorStop(0,'rgb(30,25,20)');shG.addColorStop(1,'rgb(255,255,255)');
 ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);
-ctx.fillStyle=shGrad;ctx.fill();
+ctx.fillStyle=shG;ctx.fill();
+
+/* ── 9) Specular highlight (corneal reflection) ── */
+ctx.globalCompositeOperation='screen';
+ctx.globalAlpha=0.5;
+ctx.beginPath();
+ctx.ellipse(cx-rx*0.18,cy-ry*0.22,rx*0.08,ry*0.055,-0.3,0,Math.PI*2);
+var spG=ctx.createRadialGradient(cx-rx*0.18,cy-ry*0.22,0,cx-rx*0.18,cy-ry*0.22,rx*0.08);
+spG.addColorStop(0,'rgba(255,255,255,0.7)');
+spG.addColorStop(0.5,'rgba(255,255,255,0.2)');
+spG.addColorStop(1,'rgba(255,255,255,0)');
+ctx.fillStyle=spG;ctx.fill();
 
 ctx.restore();
 
-/* ── Step 10: Composite offscreen → main canvas with lens opacity ── */
-/* This is the KEY: entire eye rendered in isolation, then blended once */
+/* ── 10) Composite offscreen → main canvas ── */
+/* Isolated buffer prevents any cross-eye interference */
 mainCtx.globalCompositeOperation='source-over';
-mainCtx.globalAlpha=col.op;
-mainCtx.drawImage(_eyeBuf,0,0);
 mainCtx.globalAlpha=1;
+mainCtx.drawImage(_eyeBuf,0,0);
 }
 
 function tryOnPhoto(){
