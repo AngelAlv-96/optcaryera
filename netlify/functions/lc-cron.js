@@ -41,7 +41,8 @@ async function enviarWA(to, message) {
 
   const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
   const params = new URLSearchParams();
-  params.append('From', `whatsapp:${TWILIO_WA}`);
+  const fromNum = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : `whatsapp:${TWILIO_WA}`;
+  params.append('From', fromNum);
   params.append('To', `whatsapp:+${cleanTo}`);
   params.append('Body', message);
 
