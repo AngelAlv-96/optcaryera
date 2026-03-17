@@ -261,6 +261,49 @@ async function getConversationHistory(phone) {
   } catch(e) { return []; }
 }
 
+// ── Upload Twilio media to Supabase Storage for persistent chat images ──
+var CHAT_BUCKET = 'chat-media';
+async function ensureChatBucket() {
+  try {
+    var check = await fetch(SUPA_URL + '/storage/v1/bucket/' + CHAT_BUCKET, {
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY }
+    });
+    if (check.ok) return;
+    await fetch(SUPA_URL + '/storage/v1/bucket', {
+      method: 'POST',
+      headers: { 'apikey': SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: CHAT_BUCKET, name: CHAT_BUCKET, public: true })
+    });
+  } catch(e) { console.error('[ChatBucket]', e.message); }
+}
+
+async function uploadChatMedia(twilioUrl, contentType, phone) {
+  try {
+    // Download from Twilio (requires auth)
+    var imgRes = await fetch(twilioUrl, {
+      headers: { 'Authorization': twilioAuth() }
+    });
+    if (!imgRes.ok) { console.error('[UploadMedia] Twilio download failed:', imgRes.status); return null; }
+    var imgBuf = Buffer.from(await imgRes.arrayBuffer());
+    // Generate filename
+    var ext = (contentType || 'image/jpeg').includes('png') ? 'png' : 'jpg';
+    var fname = phone.replace(/\D/g,'') + '_' + Date.now() + '.' + ext;
+    await ensureChatBucket();
+    // Upload to Supabase Storage
+    var upRes = await fetch(SUPA_URL + '/storage/v1/object/' + CHAT_BUCKET + '/' + fname, {
+      method: 'POST',
+      headers: {
+        'apikey': SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY,
+        'Content-Type': contentType || 'image/jpeg',
+        'x-upsert': 'true'
+      },
+      body: imgBuf
+    });
+    if (!upRes.ok) { console.error('[UploadMedia] Storage upload failed:', upRes.status); return null; }
+    return SUPA_URL + '/storage/v1/object/public/' + CHAT_BUCKET + '/' + fname;
+  } catch(e) { console.error('[UploadMedia]', e.message); return null; }
+}
+
 async function saveMessage(phone, role, content, userName, viaPhoneId) {
   if (!SERVICE_KEY) return;
   try {
@@ -975,7 +1018,8 @@ exports.handler = async function(event) {
 
           // Admin sends photo → Lab Assistant OCR
           if (isAdminMedia && mediaUrl) {
-            await saveMessage(from, 'user', '📸 Foto nota de compra', userName);
+            var adminImgUrl = await uploadChatMedia(mediaUrl, mediaType, from);
+            await saveMessage(from, 'user', '📸 Foto nota de compra' + (adminImgUrl ? '\n[IMG:' + adminImgUrl + ']' : ''), userName);
             try {
               var ocrResult = await labAssistantOCR(mediaUrl, mediaType, userName);
               await sendWhatsAppReply(from, ocrResult.reply);
@@ -998,7 +1042,8 @@ exports.handler = async function(event) {
           var custMediaUrl = tw.MediaUrl0 || tw['MediaUrl0'] || '';
           var custMediaType = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
           if (custMediaUrl && (custMediaType||'').startsWith('image/')) {
-            await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)', userName);
+            var custImgUrl = await uploadChatMedia(custMediaUrl, custMediaType, from);
+            await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)' + (custImgUrl ? '\n[IMG:' + custImgUrl + ']' : ''), userName);
             try {
               console.log('[LC-OCR] Processing photo from customer ' + from);
               var lcResult = await processLCPhoto(custMediaUrl, custMediaType, from, userName);
@@ -1028,7 +1073,8 @@ exports.handler = async function(event) {
         var mediaUrl2 = tw.MediaUrl0 || tw['MediaUrl0'] || '';
         var mediaType2 = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
         if (isAdminWithMedia && mediaUrl2) {
-          await saveMessage(from, 'user', '📸 ' + userText, userName);
+          var adminImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
+          await saveMessage(from, 'user', '📸 ' + userText + (adminImgUrl2 ? '\n[IMG:' + adminImgUrl2 + ']' : ''), userName);
           try {
             var ocrResult2 = await labAssistantOCR(mediaUrl2, mediaType2, userName, userText);
             await sendWhatsAppReply(from, ocrResult2.reply);
@@ -1041,7 +1087,8 @@ exports.handler = async function(event) {
         }
         // Non-admin sent photo WITH text → LC OCR + pass text to context
         if (!isAdminWithMedia && mediaUrl2 && (mediaType2||'').startsWith('image/')) {
-          await saveMessage(from, 'user', '📷 ' + userText, userName);
+          var custImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
+          await saveMessage(from, 'user', '📷 ' + userText + (custImgUrl2 ? '\n[IMG:' + custImgUrl2 + ']' : ''), userName);
           try {
             console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
             var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);

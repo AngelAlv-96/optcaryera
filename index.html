@@ -12420,8 +12420,13 @@ function renderClariConversations() {
       var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
       var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
       var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
+      /* Extract image URL if present [IMG:url] */
+      var chatImg = null;
+      var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+      if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
       html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-start' : 'flex-end') + ';margin-bottom:6px">';
       html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+      if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
       html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
       html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
       html += '</div></div>';
@@ -12964,8 +12969,12 @@ function abrirWaCrmDetalle(phone) {
     var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : isReview ? 'rgba(114,196,126,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
     var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : isReview ? '\u2b50 Review' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
     var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
+    var chatImg2 = null;
+    var imgMatch2 = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+    if (imgMatch2) { chatImg2 = imgMatch2[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
     mhtml += '<div style="display:flex;justify-content:' + (isBot ? 'flex-start' : 'flex-end') + ';margin-bottom:6px">';
     mhtml += '<div style="max-width:85%;padding:8px 12px;border-radius:' + (isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+    if (chatImg2) mhtml += '<img src="' + chatImg2 + '" style="max-width:100%;max-height:250px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
     mhtml += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
     mhtml += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
     mhtml += '</div></div>';
