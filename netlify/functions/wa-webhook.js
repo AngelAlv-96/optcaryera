@@ -103,19 +103,28 @@ REGLAS IMPORTANTES:
 
 VENTA DE LENTES DE CONTACTO POR WHATSAPP:
 Puedes vender lentes de contacto por WhatsApp. Cuando un cliente quiera comprar LC:
-1. Pregunta qué marca/tipo usa o necesita. Si no sabe, pregunta si son esféricos, tóricos, multifocales, o de color.
-2. Busca en el catálogo y muestra opciones con precio.
-3. Pregunta cuántas cajas necesita.
-4. Pregunta en qué sucursal quiere recoger (Américas, Pinocelli, o Magnolia).
-5. Da el resumen con total y ofrece formas de pago:
-   - Link de pago rápido: https://clip.mx/@caryera
-   - Transferencia BBVA: Cuenta 0485220280 / CLABE 012164004852202892
+1. Pregunta qué marca/tipo usa. Invítalo a enviar FOTO de su caja de LC o receta (el sistema lee fotos automáticamente).
+2. Si el sistema detectó datos de foto (verás "[LC-OCR]" en el historial), usa esos datos para recomendar el producto exacto o la alternativa más cercana.
+3. Busca en el catálogo y muestra opciones con precio.
+4. Pregunta cuántas cajas necesita. Recomienda cantidad según frecuencia: mensuales=6 cajas/año mínimo, quincenales=12/año.
+5. Pregunta en qué sucursal quiere recoger (Américas, Pinocelli, o Magnolia).
+6. Da el resumen con total y ofrece formas de pago. SIEMPRE ofrece PRIMERO la transferencia (sin comisiones):
+   💰 Transferencia BBVA (sin comisión): Cuenta 0485220280 / CLABE 012164004852202892
+   💳 O pago con tarjeta: https://clip.mx/@caryera
    Si preguntan por el nombre del beneficiario, aparece como "Ivonne Yamilez Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era, es la cuenta de la empresa.
-6. Cuando el cliente confirme que quiere proceder, usa el comando especial CREAR_VENTA al final de tu respuesta (el sistema lo detectará).
+7. Cuando el cliente confirme que quiere proceder, usa el comando especial CREAR_VENTA al final de tu respuesta (el sistema lo detectará).
    Formato exacto: CREAR_VENTA|nombre del cliente|producto|cantidad|total|sucursal_entrega
    Ejemplo: CREAR_VENTA|Juan Pérez|AIR OPTIX HYDRAGLYDE (ESFERICOS)|2|2080|Américas
 IMPORTANTE: NUNCA muestres el comando CREAR_VENTA al cliente. Solo inclúyelo en tu mensaje cuando el cliente confirme la compra.
-NUNCA crees una venta sin que el cliente haya confirmado explícitamente que quiere comprar.`;
+NUNCA crees una venta sin que el cliente haya confirmado explícitamente que quiere comprar.
+
+FOTOS DE LC: Si un cliente envía foto, el sistema la procesa automáticamente y muestra los datos extraídos + productos del catálogo.
+Si ves "[LC-OCR]" en el historial, significa que se extrajo graduación de una foto. Usa esos datos para hacer recomendaciones precisas.
+Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana y explica por qué es similar.
+
+RECORDATORIO DE RECOMPRA: Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
+El sistema registra automáticamente la fecha de recompra y enviará recordatorio por WhatsApp 7 días antes.
+Menciona esto al cliente: "Te recordaremos cuando sea tiempo de renovar tus lentes 😊"`;
 
 // ── SUPABASE HELPERS ──
 async function supaFetch(path, opts) {
@@ -580,6 +589,148 @@ function isAskingAboutLC(text) {
   return keywords.some(function(kw) { return lower.includes(kw); });
 }
 
+// ── LC BOX/PRESCRIPTION OCR (for ALL users, not just admin) ──
+async function lcPhotoOCR(mediaUrl, mediaType) {
+  // 1. Download image from Twilio
+  console.log('[LC-OCR] Downloading image...');
+  var imgResp = await fetch(mediaUrl, {
+    headers: { 'Authorization': twilioAuth() }
+  });
+  if (!imgResp.ok) throw new Error('No pude descargar la imagen');
+  var imgBuffer = await imgResp.arrayBuffer();
+  var base64 = Buffer.from(imgBuffer).toString('base64');
+  var mType = mediaType || 'image/jpeg';
+
+  // 2. Send to Anthropic Vision for LC-specific extraction
+  var aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: 'Eres un experto óptico que extrae datos de cajas de lentes de contacto, recetas oftalmológicas, y empaques de LC.\n' +
+        'Extrae TODA la información visible:\n' +
+        '- marca (ej: Air Optix, Acuvue, Biofinity, FreshLook, Dailies)\n' +
+        '- modelo (ej: Hydraglyde, Oasys, Colors, Moist)\n' +
+        '- tipo: esferico, torico, multifocal, color\n' +
+        '- ojo: OD (derecho), OI (izquierdo), o ambos si hay dos datos\n' +
+        '- poder/esfera (PWR/SPH): número como -2.50, +1.00\n' +
+        '- cilindro (CYL): para tóricos, ej: -0.75, -1.25\n' +
+        '- eje (AXIS): para tóricos, ej: 180, 90\n' +
+        '- adición (ADD): para multifocales, ej: Low, Med, Hi\n' +
+        '- BC (curva base): ej: 8.6\n' +
+        '- DIA (diámetro): ej: 14.2\n' +
+        '- color: si es LC de color (ej: Sterling Gray, Blue, Green)\n' +
+        '- cantidad_cajas: si se ve la cantidad (si no, usa 1)\n' +
+        '- frecuencia: diario, quincenal, mensual (si se puede inferir del producto)\n' +
+        'Si es una RECETA, extrae los datos de graduación para OD y OI.\n' +
+        'Si no puedes leer un campo, usa null.\n' +
+        'RESPONDE ÚNICAMENTE con JSON:\n' +
+        '{"marca":"Air Optix","modelo":"Hydraglyde","tipo":"esferico","ojos":[{"ojo":"OD","pwr":"-2.50","cyl":null,"axis":null,"add":null,"bc":"8.6","dia":"14.2"}],"color":null,"frecuencia":"mensual","cantidad_cajas":1}\n' +
+        'Si hay datos para ambos ojos, incluye ambos en el array "ojos".\n' +
+        'Si es un producto de color, incluye el nombre del color.',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mType, data: base64 } },
+          { type: 'text', text: 'Extrae todos los datos visibles de esta caja de lentes de contacto o receta. Responde solo JSON.' }
+        ]
+      }]
+    })
+  });
+
+  if (!aiResp.ok) {
+    var aiErr = await aiResp.json();
+    throw new Error(aiErr.error?.message || 'Error de Vision API');
+  }
+
+  var aiData = await aiResp.json();
+  var aiText = '';
+  if (aiData.content) aiData.content.forEach(function(c) { if (c.type === 'text') aiText += c.text; });
+
+  // 3. Parse JSON response
+  var parsed = null;
+  var objMatch = aiText.match(/\{[\s\S]*\}/);
+  if (objMatch) try { parsed = JSON.parse(objMatch[0]); } catch(e) { console.log('[LC-OCR] JSON parse error:', e.message); }
+
+  return parsed;
+}
+
+// Build human-readable LC summary + match with catalog
+async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
+  var ocr = await lcPhotoOCR(mediaUrl, mediaType);
+  if (!ocr || !ocr.marca) {
+    return { reply: '🔍 No pude identificar los datos del lente en esta foto.\n\nPor favor envía una foto más clara de:\n📦 La caja del lente de contacto (donde aparecen marca, graduación y parámetros)\n📋 O tu receta/prescripción de lentes de contacto\n\n¡Intenta de nuevo! 😊' };
+  }
+
+  // Build summary
+  var summary = '👁️ *Datos detectados:*\n';
+  summary += '🏷️ ' + ocr.marca;
+  if (ocr.modelo) summary += ' ' + ocr.modelo;
+  if (ocr.tipo) summary += ' (' + ocr.tipo + ')';
+  if (ocr.color) summary += ' — Color: ' + ocr.color;
+  summary += '\n';
+
+  if (ocr.ojos && ocr.ojos.length) {
+    ocr.ojos.forEach(function(o) {
+      summary += '\n' + (o.ojo || '??') + ': ';
+      if (o.pwr) summary += 'PWR ' + o.pwr;
+      if (o.cyl) summary += ' | CYL ' + o.cyl;
+      if (o.axis) summary += ' | AXIS ' + o.axis;
+      if (o.add) summary += ' | ADD ' + o.add;
+      if (o.bc) summary += ' | BC ' + o.bc;
+      if (o.dia) summary += ' | DIA ' + o.dia;
+    });
+    summary += '\n';
+  }
+
+  if (ocr.frecuencia) summary += '⏱️ Frecuencia: ' + ocr.frecuencia + '\n';
+
+  // Search catalog for matching products
+  var searchTerm = ocr.marca;
+  if (ocr.modelo) searchTerm += ' ' + ocr.modelo;
+  if (ocr.tipo === 'color' && ocr.color) searchTerm += ' ' + ocr.color;
+  var matches = await lookupLCCatalog(searchTerm);
+
+  // If no exact match, try just brand
+  if ((!matches || !matches.length) && ocr.marca) {
+    matches = await lookupLCCatalog(ocr.marca);
+  }
+
+  // Store OCR data in conversation context for Clari to use
+  var ocrContext = '[LC-OCR] ' + JSON.stringify(ocr);
+  await saveMessage(phone, 'user', ocrContext, userName);
+
+  if (matches && matches.length > 0) {
+    summary += '\n✅ *Encontré en nuestro catálogo:*\n';
+    matches.forEach(function(p, i) {
+      summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja';
+      if (p.pares_por_caja) summary += ' (' + p.pares_por_caja + ' pares)';
+      if (p.stock > 0) summary += ' ✅';
+      summary += '\n';
+    });
+    summary += '\n¿Te gustaría ordenar? Dime cuántas cajas necesitas y en qué sucursal quieres recoger 😊\n';
+    summary += '\n💳 Aceptamos transferencia BBVA o link de pago Clip';
+  } else {
+    summary += '\n⚠️ No encontré ese producto exacto en nuestro catálogo actual.\n';
+    summary += 'Pero tenemos opciones similares. ¿Quieres que te muestre alternativas? 👓';
+    // Try broader search
+    var altMatches = await lookupLCCatalog(ocr.tipo || 'contacto');
+    if (altMatches && altMatches.length > 0) {
+      summary += '\n\n📋 *Opciones disponibles:*\n';
+      altMatches.slice(0, 5).forEach(function(p, i) {
+        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja\n';
+      });
+    }
+  }
+
+  return { reply: summary, ocr: ocr, matches: matches };
+}
+
 // ── LC SALE CREATION ──
 async function generateOnlineFolio() {
   // Read folio config
@@ -830,9 +981,26 @@ exports.handler = async function(event) {
             return { statusCode: 200, headers: H, body: '<Response></Response>' };
           }
 
-          // Non-admin media
-          await saveMessage(from, 'user', '📷 Media recibida', userName);
-          var mediaReply = '¡Gracias por tu mensaje! 😊 Por el momento solo puedo leer mensajes de texto. Si tienes alguna pregunta sobre nuestros servicios, lentes o promociones, escríbela y con gusto te ayudo 👓✨';
+          // Non-admin media → LC Photo OCR (contact lens box/prescription)
+          var custMediaUrl = tw.MediaUrl0 || tw['MediaUrl0'] || '';
+          var custMediaType = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
+          if (custMediaUrl && (custMediaType||'').startsWith('image/')) {
+            await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)', userName);
+            try {
+              console.log('[LC-OCR] Processing photo from customer ' + from);
+              var lcResult = await processLCPhoto(custMediaUrl, custMediaType, from, userName);
+              await sendWhatsAppReply(from, lcResult.reply);
+              await saveMessage(from, 'assistant', lcResult.reply);
+            } catch(lcErr) {
+              console.error('[LC-OCR Error]', lcErr.message);
+              await sendWhatsAppReply(from, '📸 Recibí tu foto pero tuve un problema procesándola.\n\n¿Podrías enviarla de nuevo? Asegúrate que se vea bien la caja del lente o la receta 👓');
+              await saveMessage(from, 'assistant', '⚠ Error procesando foto: ' + lcErr.message);
+            }
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
+          // Non-image media (audio, video, etc.)
+          await saveMessage(from, 'user', '📎 Media recibida', userName);
+          var mediaReply = '¡Gracias por tu mensaje! 😊 Por el momento puedo leer fotos de cajas de lentes de contacto o recetas. Si tienes alguna pregunta, escríbela y con gusto te ayudo 👓✨';
           await sendWhatsAppReply(from, mediaReply);
           await saveMessage(from, 'assistant', mediaReply);
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
@@ -855,6 +1023,20 @@ exports.handler = async function(event) {
           } catch(ocrErr2) {
             console.error('[LabOCR2 Error]', ocrErr2.message);
             await sendWhatsAppReply(from, '❌ Error procesando: ' + ocrErr2.message);
+          }
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
+        // Non-admin sent photo WITH text → LC OCR + pass text to context
+        if (!isAdminWithMedia && mediaUrl2 && (mediaType2||'').startsWith('image/')) {
+          await saveMessage(from, 'user', '📷 ' + userText, userName);
+          try {
+            console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
+            var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);
+            await sendWhatsAppReply(from, lcResult2.reply);
+            await saveMessage(from, 'assistant', lcResult2.reply);
+          } catch(lcErr2) {
+            console.error('[LC-OCR2 Error]', lcErr2.message);
+            await sendWhatsAppReply(from, '📸 Recibí tu foto pero tuve un problema. ¿Podrías enviarla de nuevo? 👓');
           }
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
