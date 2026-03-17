@@ -159,6 +159,16 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Webhook URL configurado en Clip: `https://optcaryera.netlify.app/.netlify/functions/clip-webhook`
 - Duplicate detection: referencia `clip_{paymentId}` evita doble registro
 
+## 📷 LC PHOTO OCR (Clari vende LC con fotos)
+- Cualquier usuario WA puede enviar foto de caja LC o receta → Clari extrae datos automáticamente
+- `lcPhotoOCR()`: Anthropic Vision extrae marca, modelo, tipo, graduación (PWR, CYL, AXIS, ADD), BC, DIA, color
+- `processLCPhoto()`: Matchea OCR con catálogo `productos` (categoria=Lente de contacto), muestra opciones con precio
+- Contexto guardado como `[LC-OCR] {json}` en `clari_conversations` para que Clari use los datos en la conversación
+- Si no hay match exacto en catálogo, busca alternativas por marca o tipo
+- System prompt prioriza transferencia BBVA (sin comisión) sobre Clip
+- Datos bancarios: BBVA Cuenta `0485220280` / CLABE `012164004852202892` / Benef: Ivonne Yamilez Alvidrez Flores
+- Flujo completo: foto → OCR → catálogo → cotización → CREAR_VENTA → aprobación admin → pago → lc_seguimiento
+
 ## ⭐ ENCUESTA DE OPINIÓN / GOOGLE MAPS REVIEWS
 - `review-cron.js`: cron diario 12pm CST, envía template `opinion_servicio` a clientes que compraron hace 3-7 días
 - Template WA: `HX30905d80304bed820dce55b439f1eca3` (Quick Reply, 3 botones: Todo excelente / Buenas promos / Podría mejorar)
@@ -178,7 +188,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v144
+## 📊 VERSIÓN ACTIVA: v145
+Cambios v145: Clari vende LC con OCR de fotos — lcPhotoOCR() usa Anthropic Vision para extraer marca, modelo, graduación (PWR, CYL, AXIS, ADD), BC, DIA, color de fotos de cajas de LC o recetas. processLCPhoto() matchea con catálogo de productos y muestra opciones con precio. Funciona para TODOS los usuarios WA (no solo admin). Maneja foto sola y foto+caption. System prompt actualizado: prioriza transferencia bancaria BBVA sobre Clip (sin comisiones), invita a clientes a enviar fotos, recomienda cantidades según frecuencia, menciona recordatorios automáticos de recompra. Contexto [LC-OCR] guardado en historial para que Clari use datos extraídos en conversación. Tienda LC try-on virtual: reescrito con offscreen canvas aislado por ojo (fix bug un solo ojo), ellipse fitting estilo pupilómetro, blending con video pixels reales via 'color' composite mode.
 Cambios v144: CRM WhatsApp Kanban en Clari — 3ra pestaña "CRM" con board Kanban de 6 columnas (Necesita atención, Encuesta OK, LC Online, Cliente, Prospecto, Nuevo Lead). Clasificación automática cruzando clari_conversations con pacientes, ventas y lc_seguimiento. Modal overlay para ver conversación completa sin salir del CRM (con reply directo). Mobile responsive con scroll-snap para swipe entre columnas. Optimización de carga: `.in()` en vez de `ilike`, `Promise.all` para queries paralelas (512 contactos en ~3.5s). Insights panel con métricas: conversión, tasa respuesta encuestas, leads activos, prospectos por convertir, clientes con actividad reciente, recompras LC próximas. Supabase Realtime para chat Clari (sin polling). Fix auto-refresh que sacaba al usuario de conversación abierta. Fix whatsapp: duplicate prefix en review-cron.js y lc-cron.js. Fix estado filter en review-cron.js (Liquidada en vez de Completada).
 Cambios v143: Sistema de encuestas de opinión Google Maps — review-cron.js envía template opinion_servicio (Quick Reply con 3 botones) a clientes 3-7 días después de compra. Respuestas positivas reciben link de Google Maps de su sucursal. Respuestas negativas activan modo atención de Clari + alerta a admin. Links por sucursal (Américas, Pinocelli, Magnolia). Tracking via [Review] tag en clari_conversations.
 Cambios v142: Pagos en línea Clip — portal pacientes permite seleccionar monto (Total/Mitad/Otro) antes de pagar, clip-payment.js genera links dinámicos de Clip checkout, clip-webhook.js recibe webhook de Clip al completarse pago y auto-registra en venta_pagos (método "Link de pago"), actualiza saldo/pagado de la venta, y envía notificación WA a admin_phones + recipients_corte. Credenciales producción Clip configuradas en Netlify env vars. Pagos online NO afectan cuadre de caja (solo "Efectivo" cuenta para cuadre).
@@ -192,13 +203,15 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 2. SICAR migración completa
 3. Landing pages bug
 4. Plantillas Twilio: lc_recompra + venta_clari_pendiente
-5. Recompra automática wa-webhook
+5. ~~Recompra automática wa-webhook~~ ✅ HECHO (2026-03-17) — lc_seguimiento ya registra fecha_recompra, lc-cron envía recordatorio 7d antes
 6. Promo "Material a $1"
 7. SEGURIDAD: RLS Supabase + proxy lectura por fases
 8. ~~Mapeo materiales + matching inteligente compras lab~~ ✅ HECHO (2026-03-16)
 9. Precios Marina pendientes de confirmar
 10. ~~Configurar GitHub para sincronizar entre computadoras~~ ✅ HECHO (2026-03-16)
 11. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
+12. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
+13. CRM Clari: modal overlay para conversación, optimizar vista móvil, agregar insights/stats
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
