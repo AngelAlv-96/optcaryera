@@ -124,7 +124,16 @@ Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana
 
 RECORDATORIO DE RECOMPRA: Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
 El sistema registra automáticamente la fecha de recompra y enviará recordatorio por WhatsApp 7 días antes.
-Menciona esto al cliente: "Te recordaremos cuando sea tiempo de renovar tus lentes 😊"`;
+Menciona esto al cliente: "Te recordaremos cuando sea tiempo de renovar tus lentes 😊"
+
+RESPUESTA A RECORDATORIO DE RECOMPRA:
+Si ves "[LC-Recompra]" en el historial reciente, significa que el sistema envió un recordatorio automático de recompra.
+Cuando el cliente responda:
+- "SI" / "sí" / "ok" / "quiero" / "mándame" → Procede como venta: confirma el producto, cantidad (misma que antes o pregunta), sucursal de entrega, y da total con formas de pago. Usa CREAR_VENTA cuando confirme.
+- Pregunta por precio / cotización → Muestra precio del producto y ofrece ordenar.
+- Dice que necesita nueva graduación / ve borroso / cambió su vista → Invítalo a sucursal para examen de vista GRATUITO (incluido al comprar lentes). Ofrece tener los lentes listos el mismo día del examen si la graduación es la misma.
+- Dice que no / todavía tiene → Responde amablemente, pregunta cuándo le gustaría que le recordemos.
+SIEMPRE prioriza la venta primero. La sucursal es el plan B.`;
 
 // ── SUPABASE HELPERS ──
 async function supaFetch(path, opts) {

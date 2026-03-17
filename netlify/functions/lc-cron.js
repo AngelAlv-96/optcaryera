@@ -101,12 +101,37 @@ exports.handler = async function(event) {
 
       const nombre = (r.pacientes?.nombre || 'Cliente').split(' ')[0];
       const diasFaltan = Math.round((new Date(r.fecha_recompra) - hoy) / 86400000);
-      const urgencia = diasFaltan <= 0 ? '¡Ya es tiempo de renovar!' : `Le quedan aproximadamente ${diasFaltan} días.`;
+      const urgencia = diasFaltan <= 0
+        ? '¡tus lentes de contacto ya se terminaron!'
+        : diasFaltan <= 3
+          ? `¡te quedan solo ${diasFaltan} días de lentes!`
+          : `en unos ${diasFaltan} días se te terminan tus lentes.`;
 
-      const msg = `Hola ${nombre} 👋\n\nLe recordamos que es tiempo de renovar sus lentes de contacto (${r.producto}). ${urgencia}\n\nPase a Ópticas Car & Era${r.sucursal ? ' — ' + r.sucursal : ''} para re-surtir su receta.\n\nHorario:\nLun.-Sab. 10:00am-7:00pm\nDom. 11:00am-5:00pm\n\n¿Desea agendar o tiene alguna pregunta? Responda este mensaje. 😊`;
+      // Determine sucursal for pickup
+      const suc = r.sucursal && r.sucursal !== 'Online' ? r.sucursal : 'la sucursal de tu preferencia';
+
+      const msg = `Hola ${nombre} 👋\n\n`
+        + `Te escribo porque ${urgencia}\n\n`
+        + `👁️ *${r.producto}*\n\n`
+        + `¿Quieres que te los pida para que estén listos cuando pases a recogerlos a ${suc}? Solo responde *SI* y yo me encargo de todo 😊\n\n`
+        + `💰 Puedes pagar por transferencia (sin comisión) o con tarjeta.\n\n`
+        + `Si sientes que tu graduación cambió, también te podemos hacer un examen de vista sin costo cuando recojas tus lentes ✨`;
 
       const ok = await enviarWA(tel, msg);
       if (ok) {
+        // Save to clari_conversations so Clari has context when customer replies
+        let cleanPhone = tel.replace(/\D/g, '');
+        if (cleanPhone.length === 10) cleanPhone = '521' + cleanPhone;
+        if (!cleanPhone.startsWith('521')) cleanPhone = cleanPhone.replace(/^52/, '521');
+        try {
+          await supaREST('POST', 'clari_conversations', {
+            phone: cleanPhone,
+            role: 'assistant',
+            content: `[LC-Recompra] ${msg}`,
+            user_name: null
+          });
+        } catch(e) { console.error('[LC-CRON] Error saving to history:', e.message); }
+
         // Marcar como notificado
         await supaREST('PATCH',
           `lc_seguimiento?id=eq.${r.id}`,
