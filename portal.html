@@ -427,6 +427,15 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
         </div>
       </div>
       ${saldo > 0 ? `<div class="saldo-alert"><span class="l">⚠ Saldo pendiente</span><span class="v">$${saldo.toFixed(2)}</span></div>
+      <div style="margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">¿Cuánto deseas abonar?</label>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button onclick="document.getElementById('clip-monto').value=${saldo.toFixed(2)}" style="flex:1;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;font-weight:600;cursor:pointer">Total $${saldo.toFixed(2)}</button>
+          <button onclick="document.getElementById('clip-monto').value=${(saldo/2).toFixed(2)}" style="flex:1;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;font-weight:600;cursor:pointer">Mitad $${(saldo/2).toFixed(2)}</button>
+          <button onclick="document.getElementById('clip-monto').value='';document.getElementById('clip-monto').focus()" style="flex:1;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:12px;font-weight:600;cursor:pointer">Otro</button>
+        </div>
+        <input id="clip-monto" type="number" min="1" max="${saldo.toFixed(2)}" step="0.01" value="${saldo.toFixed(2)}" placeholder="Monto a abonar" style="width:100%;padding:12px 14px;background:var(--surface2);border:1px solid rgba(196,162,101,0.3);border-radius:10px;color:var(--white);font-size:16px;font-weight:700;text-align:center;outline:none;box-sizing:border-box">
+      </div>
       <button id="btn-clip-pay" onclick="iniciarPagoClip()" style="display:block;width:100%;text-align:center;margin-top:10px;padding:14px 20px;background:linear-gradient(135deg,#4a90d9,#357abd);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.02em">💳 Abonar en línea</button>` : ''}
     </div></div>
 
@@ -485,6 +494,19 @@ async function iniciarPagoClip() {
   btn.textContent = '⏳ Generando link de pago...';
   btn.style.opacity = '0.7';
   try {
+    // Read amount from selector input
+    const montoInput = document.getElementById('clip-monto');
+    const monto = montoInput ? Number(montoInput.value) : Number(_portalVenta.saldo);
+    if (!monto || monto < 1) {
+      btn.textContent = '⚠️ Monto mínimo: $1';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.style.opacity = '1'; }, 2000);
+      return;
+    }
+    if (monto > Number(_portalVenta.saldo)) {
+      btn.textContent = '⚠️ Monto excede el saldo';
+      setTimeout(() => { btn.textContent = origText; btn.disabled = false; btn.style.opacity = '1'; }, 2000);
+      return;
+    }
     const pac = _portalVenta.pacientes ? `${_portalVenta.pacientes.nombre || ''} ${_portalVenta.pacientes.apellidos || ''}`.trim() : 'Cliente';
     const resp = await fetch('/.netlify/functions/clip-payment', {
       method: 'POST',
@@ -492,7 +514,7 @@ async function iniciarPagoClip() {
       body: JSON.stringify({
         venta_id: _portalVenta.id,
         folio: _portalVenta.folio,
-        amount: Number(_portalVenta.saldo),
+        amount: monto,
         paciente_nombre: pac,
         token_portal: token
       })
