@@ -3070,6 +3070,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <div id="wcrm-board" class="wcrm-board">
               <div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">Cargando CRM...</div>
             </div>
+            <div id="wcrm-insights" style="display:none;margin-top:14px;background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:14px 18px"></div>
             <!-- CRM Detail Modal -->
             <div class="wcrm-modal" id="wcrm-modal" onclick="if(event.target===this)cerrarWaCrmModal()">
               <div class="wcrm-modal-box">
@@ -12731,6 +12732,7 @@ function filtrarWaCrm() {
   });
   renderWaCrmStats();
   renderWaCrm();
+  renderWaCrmInsights();
 }
 
 function renderWaCrmStats() {
@@ -12756,6 +12758,113 @@ function renderWaCrmStats() {
   html += '<div style="font-size:9px;color:var(--muted)">\ud83d\udcc8 Conversi\u00f3n</div>';
   html += '</div>';
   el.innerHTML = html;
+}
+
+function renderWaCrmInsights() {
+  var el = document.getElementById('wcrm-insights');
+  if (!el || !_wcrmFiltered.length) { if (el) el.style.display = 'none'; return; }
+
+  var now = Date.now();
+  var d7 = 7 * 24 * 60 * 60 * 1000;
+  var d30 = 30 * 24 * 60 * 60 * 1000;
+
+  // Counts by column
+  var counts = {};
+  WCRM_COLS.forEach(function(c) { counts[c.id] = 0; });
+  _wcrmFiltered.forEach(function(c) { counts[c.column]++; });
+
+  // 1. Prospectos con ventas previas (prospectos que SÍ tienen paciente pero sin ventas activas recientes)
+  var prospectos = _wcrmFiltered.filter(function(c) { return c.column === 'prospecto'; });
+  var prospectosActivos7d = prospectos.filter(function(c) { return (now - new Date(c.last).getTime()) < d7; }).length;
+
+  // 2. Survey stats
+  var encuestaEnviada = _wcrmFiltered.filter(function(c) { return c.hasReviewSent; }).length;
+  var encuestaOK = counts['encuesta'];
+  var encuestaPendiente = encuestaEnviada - encuestaOK - counts['atencion'];
+  if (encuestaPendiente < 0) encuestaPendiente = 0;
+  var tasaRespuesta = encuestaEnviada > 0 ? Math.round((encuestaOK / encuestaEnviada) * 100) : 0;
+
+  // 3. Leads activos (mensajearon en últimos 7 días)
+  var leads = _wcrmFiltered.filter(function(c) { return c.column === 'lead'; });
+  var leadsActivos7d = leads.filter(function(c) { return (now - new Date(c.last).getTime()) < d7; }).length;
+  var leadsActivos30d = leads.filter(function(c) { return (now - new Date(c.last).getTime()) < d30; }).length;
+
+  // 4. Clientes con actividad reciente (posible recompra)
+  var clientes = _wcrmFiltered.filter(function(c) { return c.column === 'cliente'; });
+  var clientesActivos7d = clientes.filter(function(c) { return (now - new Date(c.last).getTime()) < d7; }).length;
+
+  // 5. Promedio mensajes por contacto
+  var totalMsgs = 0;
+  _wcrmFiltered.forEach(function(c) { totalMsgs += c.msgCount || c.messages.length; });
+  var avgMsgs = _wcrmFiltered.length > 0 ? (totalMsgs / _wcrmFiltered.length).toFixed(1) : 0;
+
+  // 6. LC con fecha de recompra próxima
+  var lcProximos = 0;
+  _wcrmFiltered.forEach(function(c) {
+    if (c.lc) c.lc.forEach(function(l) {
+      if (l.fecha_recompra) {
+        var diff = new Date(l.fecha_recompra).getTime() - now;
+        if (diff > 0 && diff < d30) lcProximos++;
+      }
+    });
+  });
+
+  // Build insights
+  var items = [];
+
+  // Conversion insight
+  var totalConvertible = counts['cliente'] + counts['encuesta'] + counts['lead'] + counts['prospecto'];
+  var convertidos = counts['cliente'] + counts['encuesta'];
+  if (totalConvertible > 0) {
+    items.push({ icon: '\ud83d\udcc8', color: '#d4b84a', text: '<b>' + convertidos + ' de ' + totalConvertible + '</b> contactos se convirtieron en clientes <span style="color:var(--muted)">(' + Math.round(convertidos / totalConvertible * 100) + '% conversi\u00f3n)</span>' });
+  }
+
+  // Survey insight
+  if (encuestaEnviada > 0) {
+    items.push({ icon: '\u2b50', color: '#72c47e', text: '<b>' + encuestaOK + ' de ' + encuestaEnviada + '</b> encuestas respondidas positivamente <span style="color:var(--muted)">(' + tasaRespuesta + '% tasa de respuesta)</span>' });
+  }
+  if (encuestaPendiente > 0) {
+    items.push({ icon: '\ud83d\udce9', color: '#d4b84a', text: '<b>' + encuestaPendiente + '</b> encuestas enviadas sin respuesta a\u00fan' });
+  }
+
+  // Active leads
+  if (leadsActivos7d > 0) {
+    items.push({ icon: '\ud83d\udd25', color: '#e08080', text: '<b>' + leadsActivos7d + '</b> leads nuevos activos en los \u00faltimos 7 d\u00edas <span style="color:var(--muted)">(oportunidad de conversi\u00f3n)</span>' });
+  }
+
+  // Active prospectos
+  if (prospectosActivos7d > 0) {
+    items.push({ icon: '\ud83c\udfaf', color: '#72b8c4', text: '<b>' + prospectosActivos7d + ' de ' + prospectos.length + '</b> prospectos activos esta semana <span style="color:var(--muted)">(registrados pero sin compra)</span>' });
+  }
+
+  // Clientes activos
+  if (clientesActivos7d > 0) {
+    items.push({ icon: '\ud83d\udd04', color: '#d4b84a', text: '<b>' + clientesActivos7d + '</b> clientes escribieron esta semana <span style="color:var(--muted)">(posible recompra o seguimiento)</span>' });
+  }
+
+  // LC próximos
+  if (lcProximos > 0) {
+    items.push({ icon: '\ud83d\udc41', color: '#8ab0e8', text: '<b>' + lcProximos + '</b> cliente' + (lcProximos !== 1 ? 's' : '') + ' LC con recompra pr\u00f3xima en los siguientes 30 d\u00edas' });
+  }
+
+  // Needs attention
+  if (counts['atencion'] > 0) {
+    items.push({ icon: '\u26a0\ufe0f', color: '#e08080', text: '<b>' + counts['atencion'] + '</b> cliente' + (counts['atencion'] !== 1 ? 's reportaron' : ' report\u00f3') + ' experiencia negativa <span style="color:var(--muted)">(requieren seguimiento)</span>' });
+  }
+
+  // Engagement
+  items.push({ icon: '\ud83d\udcac', color: 'var(--muted)', text: 'Promedio de <b>' + avgMsgs + '</b> mensajes por conversaci\u00f3n \u00b7 <b>' + _wcrmFiltered.length + '</b> contactos totales' });
+
+  var html = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--beige);margin-bottom:10px">\ud83d\udcca Insights del CRM</div>';
+  items.forEach(function(item) {
+    html += '<div style="display:flex;align-items:start;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)">';
+    html += '<span style="font-size:14px;flex-shrink:0;margin-top:1px">' + item.icon + '</span>';
+    html += '<span style="font-size:12px;color:var(--white);line-height:1.5">' + item.text + '</span>';
+    html += '</div>';
+  });
+
+  el.innerHTML = html;
+  el.style.display = '';
 }
 
 function renderWaCrm() {

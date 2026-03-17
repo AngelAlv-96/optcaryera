@@ -97,7 +97,7 @@ Si algo se rompe gravemente:
 - **laboratorio**: producción/surtido/bitácora, sin ventas/caja
 
 ## 📋 MÓDULOS ACTIVOS
-Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), CRM LC, Compras Lab (con lista precios SALES).
+Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), CRM LC, Compras Lab (con lista precios SALES).
 
 ## 🏗️ CÓMO FUNCIONA INDEX.HTML
 - Es una SPA: todas las vistas son `<div class="view" id="view-nombre">` que se muestran/ocultan
@@ -178,7 +178,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v143
+## 📊 VERSIÓN ACTIVA: v144
+Cambios v144: CRM WhatsApp Kanban en Clari — 3ra pestaña "CRM" con board Kanban de 6 columnas (Necesita atención, Encuesta OK, LC Online, Cliente, Prospecto, Nuevo Lead). Clasificación automática cruzando clari_conversations con pacientes, ventas y lc_seguimiento. Modal overlay para ver conversación completa sin salir del CRM (con reply directo). Mobile responsive con scroll-snap para swipe entre columnas. Optimización de carga: `.in()` en vez de `ilike`, `Promise.all` para queries paralelas (512 contactos en ~3.5s). Insights panel con métricas: conversión, tasa respuesta encuestas, leads activos, prospectos por convertir, clientes con actividad reciente, recompras LC próximas. Supabase Realtime para chat Clari (sin polling). Fix auto-refresh que sacaba al usuario de conversación abierta. Fix whatsapp: duplicate prefix en review-cron.js y lc-cron.js. Fix estado filter en review-cron.js (Liquidada en vez de Completada).
 Cambios v143: Sistema de encuestas de opinión Google Maps — review-cron.js envía template opinion_servicio (Quick Reply con 3 botones) a clientes 3-7 días después de compra. Respuestas positivas reciben link de Google Maps de su sucursal. Respuestas negativas activan modo atención de Clari + alerta a admin. Links por sucursal (Américas, Pinocelli, Magnolia). Tracking via [Review] tag en clari_conversations.
 Cambios v142: Pagos en línea Clip — portal pacientes permite seleccionar monto (Total/Mitad/Otro) antes de pagar, clip-payment.js genera links dinámicos de Clip checkout, clip-webhook.js recibe webhook de Clip al completarse pago y auto-registra en venta_pagos (método "Link de pago"), actualiza saldo/pagado de la venta, y envía notificación WA a admin_phones + recipients_corte. Credenciales producción Clip configuradas en Netlify env vars. Pagos online NO afectan cuadre de caja (solo "Efectivo" cuenta para cuadre).
 Cambios v141: Foto Colors requiere selector de color (Gris/Rosa/Cafe/Azul/Morado/Verde) en POS y Orden Lab — se guarda en tinte como "Foto Colors: Color", aparece en surtido/reporte distinguido por color. Fix folio slots: items con cantidad > 1 ahora se pueden asignar a múltiples folios (antes se bloqueaba después del primero).
