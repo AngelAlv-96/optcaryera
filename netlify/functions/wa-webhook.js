@@ -929,13 +929,17 @@ async function notifyAdminPendingSale(saleData, customerPhone) {
   }
   if (!adminPhones.length) { console.warn('[LC Sale] No admin phones configured'); return; }
   
-  var msg = '🛒 *NUEVA VENTA CLARI (pendiente)*\n\n'
+  var titulo = saleData.isRecompra
+    ? '🔄 *RECOMPRA LC (cliente regresa)* 🎉'
+    : '🛒 *NUEVA VENTA CLARI (pendiente)*';
+  var msg = titulo + '\n\n'
     + '👤 Cliente: ' + saleData.customerName + '\n'
     + '📱 Tel: ' + customerPhone + '\n'
     + '👁 Producto: ' + saleData.productName + '\n'
     + '📦 Cantidad: ' + saleData.qty + ' cajas\n'
     + '💰 Total: $' + saleData.total + '\n'
-    + '🏪 Entrega: ' + saleData.sucursalEntrega + '\n\n'
+    + '🏪 Entrega: ' + saleData.sucursalEntrega + '\n'
+    + (saleData.isRecompra ? '♻️ *Recompra automática desde recordatorio*\n' : '') + '\n'
     + 'Responde:\n'
     + '✅ *APROBAR 3 dias* (o la fecha/tiempo)\n'
     + '❌ *RECHAZAR*';
@@ -1361,9 +1365,17 @@ exports.handler = async function(event) {
             qty: parseInt(saleMatch[3]),
             total: parseFloat(saleMatch[4]),
             sucursalEntrega: saleMatch[5].trim(),
-            customerPhone: from
+            customerPhone: from,
+            isRecompra: false
           };
-          
+          // Check if this is a recompra (LC-Recompra tag in recent history)
+          try {
+            var recentHistory = await getConversationHistory(from);
+            if (recentHistory && recentHistory.some(function(m) { return m.content && m.content.includes('[LC-Recompra]'); })) {
+              saleData.isRecompra = true;
+            }
+          } catch(e) {}
+
           // Save pending sale and notify admin
           try {
             await savePendingSale(from, saleData);
