@@ -51,7 +51,9 @@ Si algo se rompe gravemente:
     ├── ia-chat.js        — Chat IA auxiliar
     ├── img-upload.js     — Upload imágenes a Supabase Storage
     ├── landing.js        — Servidor de landing pages dinámicas
-    └── lc-cron.js        — Cron recordatorios LC por WA
+    ├── lc-cron.js        — Cron recordatorios LC por WA
+    ├── clip-payment.js   — Genera links de pago Clip checkout (portal pacientes)
+    └── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
 ```
 
 ## 🔧 TECH STACK
@@ -59,6 +61,7 @@ Si algo se rompe gravemente:
 - **Backend**: Supabase (PostgreSQL) + Netlify Functions (serverless)
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
+- **Pagos**: Clip API (checkout links para portal pacientes)
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
 
@@ -145,12 +148,23 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Serie se determina por CIL: ≤-2.00=S1, ≤-4.00=S2, ≤-6.00=S3
 - Estimado de compra en Reporte de Materiales usa listas oficiales (con serie por CIL) con fallback a historial
 
+## 💳 PAGOS EN LÍNEA (CLIP)
+- Portal pacientes (`portal.html`) tiene botón "Pagar en línea" con selector de monto (Total/Mitad/Otro)
+- `clip-payment.js`: genera link de Clip checkout vía API `https://api.payclip.com/v2/checkout` (Basic Auth)
+- `clip-webhook.js`: recibe POST de Clip al completarse pago, registra en `venta_pagos`, actualiza `ventas.pagado/saldo`, notifica WA
+- Método de pago: "Link de pago" (icono 🔗, color #38bdf8) — ya existía en el sistema
+- Env vars Netlify: `CLIP_API_KEY`, `CLIP_API_SECRET` (producción, no test_)
+- Pagos online aparecen en historial de abonos pero NO afectan cuadre de caja (solo Efectivo cuenta)
+- Webhook URL configurado en Clip: `https://optcaryera.netlify.app/.netlify/functions/clip-webhook`
+- Duplicate detection: referencia `clip_{paymentId}` evita doble registro
+
 ## 🧪 USUARIO DEMO
 - Login: demo/demo2024, rol admin
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v141
+## 📊 VERSIÓN ACTIVA: v142
+Cambios v142: Pagos en línea Clip — portal pacientes permite seleccionar monto (Total/Mitad/Otro) antes de pagar, clip-payment.js genera links dinámicos de Clip checkout, clip-webhook.js recibe webhook de Clip al completarse pago y auto-registra en venta_pagos (método "Link de pago"), actualiza saldo/pagado de la venta, y envía notificación WA a admin_phones + recipients_corte. Credenciales producción Clip configuradas en Netlify env vars. Pagos online NO afectan cuadre de caja (solo "Efectivo" cuenta para cuadre).
 Cambios v141: Foto Colors requiere selector de color (Gris/Rosa/Cafe/Azul/Morado/Verde) en POS y Orden Lab — se guarda en tinte como "Foto Colors: Color", aparece en surtido/reporte distinguido por color. Fix folio slots: items con cantidad > 1 ahora se pueden asignar a múltiples folios (antes se bloqueaba después del primero).
 Cambios v140: Cancelar ventas con autorización WA (motivo, devolución dinero, retiro caja), estimado compra con selector proveedor por fila (aprende preferencias), VS medios, TIPO badges, comparativo estimado vs compras reales, total nota editable en Compras Lab, terminología laboratorio→proveedor, Hi Index · Foto AR · VS (S1: $2,199, S2: $2,499), botón "+ Agregar material" en Catálogo (admin only) con modal para insertar en reglas_materiales.
 Cambios v139: validación precios SALES en Lab Assistant (WA) y Compras Lab (web), OCR extrae serie, modal mapeo con selector de serie, agregar nuevas listas de precios por foto/manual, estimado de compra en Reporte Materiales usa listas oficiales con serie por CIL.
