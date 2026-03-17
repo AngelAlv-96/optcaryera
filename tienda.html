@@ -1430,11 +1430,10 @@ var camera=new Camera(video,{onFrame:async function(){if(tryOnActive)await fm.se
 camera.start().then(function(){loading.classList.add('hidden')});
 }
 
-/* ── Eye contour landmarks for eyelid occlusion ── */
-var EYE_UPPER_L=[33,246,161,160,159,158,157,173,133];
-var EYE_LOWER_L=[33,7,163,144,145,153,154,155,133];
-var EYE_UPPER_R=[362,398,384,385,386,387,388,466,263];
-var EYE_LOWER_R=[362,382,381,380,374,373,390,249,263];
+/* ── Full eye contour landmarks (clockwise loop around eye opening) ── */
+/* Upper lid left→right then lower lid right→left = clean closed shape */
+var EYE_CONTOUR_L=[33,246,161,160,159,158,157,173,133,155,154,153,145,144,163,7];
+var EYE_CONTOUR_R=[263,466,388,387,386,385,384,398,362,382,381,380,374,373,390,249];
 
 /* ── Fiber pattern texture (cached, color-independent) ── */
 var _fiberCanvas=null;
@@ -1493,44 +1492,27 @@ _fiberCanvas=c;
 return c;
 }
 
-/* ── Smooth eye contour path using catmull-rom interpolation ── */
-function eyePath(ctx,indices,lm,w,h){
-var pts=indices.map(function(idx){return{x:lm[idx].x*w,y:lm[idx].y*h}});
-ctx.moveTo(pts[0].x,pts[0].y);
-for(var i=0;i<pts.length;i++){
-var p0=pts[(i-1+pts.length)%pts.length];
-var p1=pts[i];
-var p2=pts[(i+1)%pts.length];
-var p3=pts[(i+2)%pts.length];
-/* Catmull-Rom to cubic bezier conversion */
-var cp1x=p1.x+(p2.x-p0.x)/6;
-var cp1y=p1.y+(p2.y-p0.y)/6;
-var cp2x=p2.x-(p3.x-p1.x)/6;
-var cp2y=p2.y-(p3.y-p1.y)/6;
-ctx.bezierCurveTo(cp1x,cp1y,cp2x,cp2y,p2.x,p2.y);
-}
-}
-
 function drawLensOnIris(ctx,lm,centerIdx,w,h){
 var cx=lm[centerIdx].x*w,cy=lm[centerIdx].y*h;
 var pts=[];for(var i=1;i<=4;i++)pts.push(lm[centerIdx+i]);
 var maxR=0;
 pts.forEach(function(p){var dx=p.x*w-cx,dy=p.y*h-cy;var d=Math.sqrt(dx*dx+dy*dy);if(d>maxR)maxR=d});
-var r=maxR*1.15; /* tight to actual iris — colored contacts don't extend much beyond */
+var r=maxR*1.25;
 var col=tryOnColor;if(!col)return;
 var video=document.getElementById('tryon-video');if(!video)return;
 
 ctx.save();
 
-/* ── Step 1: Smooth eyelid clipping (Catmull-Rom spline) ── */
-var isLeft=(centerIdx===468);
-var upperIdx=isLeft?EYE_UPPER_L:EYE_UPPER_R;
-var lowerIdx=isLeft?EYE_LOWER_L:EYE_LOWER_R;
+/* ── Step 1: Eyelid clipping — smooth quadratic curve through contour points ── */
+var eyeIdx=(centerIdx===468)?EYE_CONTOUR_L:EYE_CONTOUR_R;
+var ep=eyeIdx.map(function(idx){return{x:lm[idx].x*w,y:lm[idx].y*h}});
 ctx.beginPath();
-eyePath(ctx,upperIdx,lm,w,h);
-/* Reverse lower path to complete the eye shape */
-var lowerPts=lowerIdx.map(function(idx){return{x:lm[idx].x*w,y:lm[idx].y*h}});
-for(var i=lowerPts.length-1;i>=0;i--)ctx.lineTo(lowerPts[i].x,lowerPts[i].y);
+ctx.moveTo(ep[0].x,ep[0].y);
+for(var i=1;i<ep.length;i++){
+var mx=(ep[i-1].x+ep[i].x)/2,my=(ep[i-1].y+ep[i].y)/2;
+ctx.quadraticCurveTo(ep[i-1].x,ep[i-1].y,mx,my);
+}
+ctx.quadraticCurveTo(ep[ep.length-1].x,ep[ep.length-1].y,ep[0].x,ep[0].y);
 ctx.closePath();
 ctx.clip();
 
