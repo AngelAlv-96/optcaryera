@@ -50,7 +50,8 @@ async function sendTemplate(to, contentSid, variables) {
   const toNum = normalizePhone(to);
   const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
   const params = new URLSearchParams();
-  params.append('From', `whatsapp:${TWILIO_WA}`);
+  const fromNum = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : `whatsapp:${TWILIO_WA}`;
+  params.append('From', fromNum);
   params.append('To', `whatsapp:+${toNum}`);
   params.append('ContentSid', contentSid);
   if (variables && Object.keys(variables).length) {
@@ -101,7 +102,7 @@ exports.handler = async function(event) {
 
     // Find completed ventas in the date range with patient phone
     const ventas = await supaREST('GET',
-      `ventas?estado=in.(Completada,Entregada)&created_at=gte.${fromDate}&created_at=lte.${toDate}&select=id,folio,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=100`
+      `ventas?estado=eq.Liquidada&created_at=gte.${fromDate}&created_at=lte.${toDate}&select=id,folio,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=100`
     );
 
     if (!ventas || !ventas.length) {
