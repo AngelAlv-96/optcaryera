@@ -17663,7 +17663,7 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
       var termDiffTxt = Math.abs(termDiff) < 0.01 ? 'CUADRA $0.00' : termDiff > 0 ? 'SOBRANTE +$'+termDiff.toFixed(2) : 'FALTANTE -$'+Math.abs(termDiff).toFixed(2);
       t += '<div class="r"><span>Contado:</span><span class="b">$' + terminalContado.toFixed(2) + '</span></div>';
       t += '<div class="sep"></div>';
-      t += '<div class="saldo"><span>DIFERENCIA TARJETA / MSI</span><span>' + termDiffTxt + '</span></div>';
+      t += '<div class="saldo"><span>DIFERENCIA TARJETAS</span><span>' + termDiffTxt + '</span></div>';
     } else {
       t += '<div class="r"><span>Terminal reporta:</span><span>__________</span></div>';
     }
