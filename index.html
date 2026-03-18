@@ -17733,6 +17733,18 @@ async function registrarRetiro() {
   const suc = (currentUser?.sucursal === 'Todas') ? (document.getElementById('caja-suc-selector')?.value || 'Américas') : (currentUser?.sucursal || 'Todas');
   const today = hoyLocal();
   try {
+    // ── VERIFICACIÓN EN TIEMPO REAL contra la DB ──
+    // Recalcula disponible con retiros actuales (evita doble retiro si otro proceso ya insertó)
+    const { data: retirosActuales } = await db.from('retiros_caja').select('monto').eq('corte_id', cajaData.id);
+    const totalRetirosActual = (retirosActuales || []).reduce((s, r) => s + Number(r.monto), 0);
+    const fondo = Number(cajaData.fondo_inicial) || 0;
+    const efectivo = cajaDayData.pagos.filter(p => p.metodo_pago === 'Efectivo').reduce((s, p) => s + Number(p.monto), 0);
+    const efectivoCreditos = (cajaDayData.creditoAbonos || []).filter(a => (a.metodo_pago || '').toLowerCase() === 'efectivo').reduce((s, a) => s + Number(a.monto), 0);
+    const disponibleReal = fondo + efectivo + efectivoCreditos - totalRetirosActual;
+    if (monto > disponibleReal + 0.01) {
+      toast(`❌ Saldo insuficiente. Disponible real: $${disponibleReal.toFixed(2)}`, true);
+      return;
+    }
     const { error } = await db.from('retiros_caja').insert({
       corte_id: cajaData.id,
       sucursal: suc,
