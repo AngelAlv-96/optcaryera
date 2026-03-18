@@ -10862,6 +10862,7 @@ function recibirRenderLista() {
 }
 
 async function confirmarRecibirPedidos() {
+  if (_actionBusy['confirmarRecibirPedidos']) { toast('Ya se está procesando...', true); return; }
   if (!_recibirLista.length) return;
   var entrega = (document.getElementById('recibir-entrega')?.value || '').trim() || 'Sin especificar';
   var recibe = (document.getElementById('recibir-recibe')?.value || '').trim();
@@ -10870,30 +10871,39 @@ async function confirmarRecibirPedidos() {
 
   if (!confirm('¿Confirmar recepción de ' + _recibirLista.length + ' pedido(s)?\n\nEntrega: ' + entrega + '\nRecibe: ' + recibe + '\n\nTodos pasarán a estado SURTIDO.')) return;
 
-  var now = new Date().toLocaleString('es-MX', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
-  var ok = 0;
-  var errors = 0;
+  _actionBusy['confirmarRecibirPedidos'] = true;
+  var _recibirBtn = event?.target?.closest('button');
+  if (_recibirBtn) { _recibirBtn.disabled = true; _recibirBtn.style.opacity = '0.5'; _recibirBtn.textContent = '⏳ Procesando...'; }
 
-  for (var i = 0; i < _recibirLista.length; i++) {
-    var it = _recibirLista[i];
-    var logEntry = ' | LOG:[' + now + '] ' + it.estado_lab + ' → Surtido (Recibido en lab — Entrega: ' + entrega + ', Recibe: ' + recibe + ')';
-    var notas = (it.notas_laboratorio || '').replace(/\s*\|\s*Faltante:\s*(OD|OI)\s*/g, '') + logEntry;
+  try {
+    var now = new Date().toLocaleString('es-MX', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+    var ok = 0;
+    var errors = 0;
 
-    var { error } = await db.from('ordenes_laboratorio').update({
-      estado_lab: 'Surtido',
-      notas_laboratorio: notas
-    }).eq('id', it.id);
+    for (var i = 0; i < _recibirLista.length; i++) {
+      var it = _recibirLista[i];
+      var logEntry = ' | LOG:[' + now + '] ' + it.estado_lab + ' → Surtido (Recibido en lab — Entrega: ' + entrega + ', Recibe: ' + recibe + ')';
+      var notas = (it.notas_laboratorio || '').replace(/\s*\|\s*Faltante:\s*(OD|OI)\s*/g, '') + logEntry;
 
-    if (error) { errors++; } else { ok++; }
+      var { error } = await db.from('ordenes_laboratorio').update({
+        estado_lab: 'Surtido',
+        notas_laboratorio: notas
+      }).eq('id', it.id);
+
+      if (error) { errors++; } else { ok++; }
+    }
+
+    toast('✅ ' + ok + ' pedido(s) recibidos y marcados como Surtido' + (errors ? ' (' + errors + ' errores)' : ''));
+
+    _recibirLista = [];
+    cerrarRecibirPedidos();
+
+    if (typeof loadLabTablero === 'function') loadLabTablero();
+    if (typeof loadLab === 'function') loadLab();
+  } finally {
+    _actionBusy['confirmarRecibirPedidos'] = false;
+    if (_recibirBtn) { _recibirBtn.disabled = false; _recibirBtn.style.opacity = ''; _recibirBtn.textContent = '✅ CONFIRMAR RECIBIDO EN LAB'; }
   }
-
-  toast('✅ ' + ok + ' pedido(s) recibidos y marcados como Surtido' + (errors ? ' (' + errors + ' errores)' : ''));
-
-  _recibirLista = [];
-  cerrarRecibirPedidos();
-
-  if (typeof loadLabTablero === 'function') loadLabTablero();
-  if (typeof loadLab === 'function') loadLab();
 }
 
 function seleccionarTodosEnvio() {
@@ -16257,6 +16267,7 @@ function calcIVAProducto() {
 function cerrarFormProducto() { document.getElementById('prod-form-overlay').classList.remove('open'); }
 async function editarProducto(id) { const p=productosCache.find(x=>x.id===id); if(p) mostrarFormProducto(p); }
 async function guardarProducto() {
+  if (_actionBusy['guardarProducto']) { toast('Ya se está guardando...', true); return; }
   const nombre=document.getElementById('prod-nombre').value.trim();
   const precio=parseFloat(document.getElementById('prod-precio').value);
   if (!nombre) { toast('Nombre obligatorio',true); return; }
@@ -16267,11 +16278,20 @@ async function guardarProducto() {
     payload.frecuencia_cambio_dias = parseInt(document.getElementById('prod-freq-dias')?.value) || 30;
     payload.duracion_dias = payload.pares_por_caja * payload.frecuencia_cambio_dias;
   } else { payload.duracion_dias = null; payload.pares_por_caja = null; payload.frecuencia_cambio_dias = null; }
-  const editId=document.getElementById('prod-edit-id').value; let error;
-  if (editId) ({error}=await db.from('productos').update(payload).eq('id',editId));
-  else ({error}=await db.from('productos').insert(payload));
-  if (error) { toast('Error: '+error.message,true); return; }
-  toast(`✓ Producto ${editId?'actualizado':'creado'}`); cerrarFormProducto(); cargarProductos();
+  const editId=document.getElementById('prod-edit-id').value;
+  const _prodBtn = event?.target?.closest('button');
+  if (_prodBtn) { _prodBtn.disabled = true; _prodBtn.textContent = '⏳ Guardando...'; }
+  _actionBusy['guardarProducto'] = true;
+  try {
+    let error;
+    if (editId) ({error}=await db.from('productos').update(payload).eq('id',editId));
+    else ({error}=await db.from('productos').insert(payload));
+    if (error) { toast('Error: '+error.message,true); return; }
+    toast(`✓ Producto ${editId?'actualizado':'creado'}`); cerrarFormProducto(); cargarProductos();
+  } finally {
+    _actionBusy['guardarProducto'] = false;
+    if (_prodBtn) { _prodBtn.disabled = false; _prodBtn.textContent = 'Guardar'; }
+  }
 }
 
 var _hvSearchTimer = null;
@@ -16784,26 +16804,27 @@ function setAbonoMonto(type) {
   document.getElementById('mvta-abono-monto').value=type==='full'?saldo.toFixed(2):(saldo/2).toFixed(2);
 }
 async function registrarAbono() {
+  if (_actionBusy['registrarAbono']) { toast('Ya se está procesando el abono...', true); return; }
   const monto=parseFloat(document.getElementById('mvta-abono-monto').value);
   if (!monto||monto<=0) { toast('Ingresa el monto del abono',true); return; }
   const v=vtaDetalleData; const saldoActual=Number(v.saldo);
   if (monto>saldoActual&&!confirm(`Monto ($${monto.toFixed(2)}) mayor al saldo ($${saldoActual.toFixed(2)}).\n¿Registrar de todas formas?`)) return;
   const montoReal=Math.min(monto,saldoActual);
   const btn=document.getElementById('btn-registrar-abono'); btn.disabled=true; btn.textContent='Registrando...';
+  _actionBusy['registrarAbono'] = true;
   try {
     // ── SICAR CREDIT ABONO ──
     if (v._is_sicar && v._credito_id) {
       var _abSicar = { credito_id: v._credito_id, monto: montoReal, metodo_pago: abonoMetodo, registrado_por: currentUser?.nombre || '', sucursal: currentUser?.sucursal || v.sucursal, notas: document.getElementById('mvta-abono-ref')?.value?.trim() || null };
       var insertRes = await db.from('creditos_abonos').insert(_abSicar);
-      if (insertRes.error) { toast('Error registrando abono: ' + insertRes.error.message, true); btn.disabled = false; btn.textContent = '💰 Registrar abono'; return; }
+      if (insertRes.error) { toast('Error registrando abono: ' + insertRes.error.message, true); return; }
       var snp = Number(v.pagado) + montoReal;
       var sns = Math.max(0, Number(v.total) - snp);
       var sNuevoEstado = sns <= 0 ? 'pagado' : 'pendiente';
       var updateRes = await db.from('creditos_clientes').update({ total_abonos: snp, saldo: sns, estado: sNuevoEstado, updated_at: new Date().toISOString() }).eq('id', v._credito_id);
-      if (updateRes.error) { toast('Error actualizando saldo: ' + updateRes.error.message, true); btn.disabled = false; btn.textContent = '💰 Registrar abono'; return; }
+      if (updateRes.error) { toast('Error actualizando saldo: ' + updateRes.error.message, true); return; }
       toast(sns <= 0 ? '✓ Crédito SICAR LIQUIDADO — $' + montoReal.toFixed(2) : '✓ Abono $' + montoReal.toFixed(2) + ' · Saldo: $' + sns.toFixed(2));
       await verDetalleSicar(v._credito_id);
-      btn.disabled = false; btn.textContent = '💰 Registrar abono';
       if (typeof cargarHistorialVentas === 'function') cargarHistorialVentas();
       return;
     }
@@ -16811,7 +16832,7 @@ async function registrarAbono() {
     if (abonoMetodo==='Monedero'&&v.paciente_id) {
       const {data:md}=await db.from('monedero').select('tipo, monto').eq('paciente_id',v.paciente_id);
       const bal=(md||[]).reduce((s,m)=>s+(m.tipo==='acumulado'?Number(m.monto):-Number(m.monto)),0);
-      if (bal<montoReal) { toast(`Saldo de monedero insuficiente ($${bal.toFixed(2)})`,true); btn.disabled=false; btn.textContent='💰 Registrar abono'; return; }
+      if (bal<montoReal) { toast(`Saldo de monedero insuficiente ($${bal.toFixed(2)})`,true); return; }
       await db.from('monedero').insert({paciente_id:v.paciente_id,tipo:'usado',monto:montoReal,venta_id:v.id,descripcion:`Abono monedero en ${v.folio}`});
     }
     var _abData = {venta_id:v.id,monto:montoReal,metodo_pago:abonoMetodo,referencia:document.getElementById('mvta-abono-ref')?.value?.trim()||null,msi_meses:abonoMetodo==='MSI'?abonoMSI:null,recibido_por:currentUser?.nombre||''};
@@ -16850,17 +16871,21 @@ async function registrarAbono() {
     compWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (histVentasData.length) cargarHistorialVentas();
     cargarVtaPendientes();
-  } catch(e) { toast('Error: '+e.message,true); }
-  btn.disabled=false; btn.textContent='💰 Registrar abono';
+  } catch(e) { toast('Error: '+e.message,true); } finally {
+    _actionBusy['registrarAbono'] = false;
+    btn.disabled=false; btn.textContent='💰 Registrar abono';
+  }
 }
 
 async function enviarComprobanteAbono() {
+  if (_actionBusy['enviarComprobanteAbono']) { toast('Ya se está enviando...', true); return; }
   const ab = window._lastAbono;
   const v = vtaDetalleData;
   if (!ab || !v) { toast('No hay abono reciente', true); return; }
   const pac = v.pacientes ? `${v.pacientes.nombre || ''} ${v.pacientes.apellidos || ''}`.trim() : '';
   const tel = v.pacientes?.telefono || '';
   if (!tel) { toast('Cliente sin teléfono', true); return; }
+  _actionBusy['enviarComprobanteAbono'] = true;
   const nombre = pac ? pac.split(' ')[0] : 'Cliente';
   const cleanTel = tel.replace(/\D/g, '');
   const whatsappNum = cleanTel.startsWith('52') ? cleanTel : cleanTel.length === 10 ? '52' + cleanTel : cleanTel;
@@ -16882,6 +16907,7 @@ async function enviarComprobanteAbono() {
     }
   });
   if (!result.ok) toast('Error enviando comprobante', true);
+  _actionBusy['enviarComprobanteAbono'] = false;
 }
 
 function imprimirComprobanteAbono() {
@@ -17095,6 +17121,8 @@ async function cancelarVentaRegistrada(ventaId, folio) {
   };
 }
 async function _ejecutarCancelarVenta(ventaId, motivo, devolucion) {
+  if (_actionBusy['cancelarVenta']) { toast('Ya se está procesando la cancelación...', true); return; }
+  _actionBusy['cancelarVenta'] = true;
   try {
     toast('Cancelando venta...');
     const {data:venta} = await db.from('ventas').select('*, venta_items(producto_id,cantidad)').eq('id',ventaId).single();
@@ -17141,7 +17169,9 @@ async function _ejecutarCancelarVenta(ventaId, motivo, devolucion) {
     if (typeof histVentasData !== 'undefined' && histVentasData.length) cargarHistorialVentas();
     if (typeof cargarVtaPendientes === 'function') cargarVtaPendientes();
     if (typeof cargarDatosCaja === 'function' && cajaData) cargarDatosCaja();
-  } catch(e) { toast('Error cancelando: ' + e.message, true); }
+  } catch(e) { toast('Error cancelando: ' + e.message, true); } finally {
+    _actionBusy['cancelarVenta'] = false;
+  }
 }
 
 let cajaData = null; // Current open caja for this sucursal
@@ -17690,11 +17720,15 @@ function validarMontoRetiro() {
 }
 
 async function registrarRetiro() {
+  if (_actionBusy['registrarRetiro']) { toast('Ya se está procesando el retiro...', true); return; }
   if (currentUser?.rol === 'gerencia') { toast('Solo lectura', true); return; }
   if (!cajaData) { toast('No hay caja abierta', true); return; }
   const monto = parseFloat(document.getElementById('retiro-monto').value);
   if (!monto || monto <= 0) { toast('Ingresa un monto válido', true); return; }
   if (monto > retiroDisponible) { toast('El monto excede el efectivo disponible', true); return; }
+  _actionBusy['registrarRetiro'] = true;
+  const _retiroBtn = document.getElementById('retiro-btn-guardar');
+  if (_retiroBtn) { _retiroBtn.disabled = true; _retiroBtn.textContent = '⏳ Registrando...'; }
   const obs = document.getElementById('retiro-obs').value.trim();
   const suc = (currentUser?.sucursal === 'Todas') ? (document.getElementById('caja-suc-selector')?.value || 'Américas') : (currentUser?.sucursal || 'Todas');
   const today = hoyLocal();
@@ -17714,6 +17748,9 @@ async function registrarRetiro() {
     await cargarDatosCaja();
   } catch (e) {
     toast('Error: ' + e.message, true);
+  } finally {
+    _actionBusy['registrarRetiro'] = false;
+    if (_retiroBtn) { _retiroBtn.disabled = false; _retiroBtn.textContent = '💸 Registrar retiro'; }
   }
 }
 
@@ -17961,6 +17998,7 @@ function setPagaCatConfig(arr) {
 }
 
 async function guardarPromo() {
+  if (_actionBusy['guardarPromo']) { toast('Ya se está guardando...', true); return; }
   const tipo = document.getElementById('promo-tipo').value;
   const nombre = document.getElementById('promo-nombre').value.trim();
   if (!nombre || !tipo) { toast('Nombre y tipo son obligatorios', true); return; }
@@ -17994,17 +18032,25 @@ async function guardarPromo() {
   else if (tipo === 'descuento_staff') { payload.valor = parseFloat(document.getElementById('promo-valor-staff').value) || 0; payload.solo_staff = true; }
   if (tipo !== 'descuento_staff') payload.solo_staff = false;
   const editId = document.getElementById('promo-edit-id').value;
-  if (editId) {
-    const { error } = await db.from('promociones').update(payload).eq('id', editId);
-    if (error) { toast('Error: ' + error.message, true); return; }
-    toast('✓ Promoción actualizada');
-  } else {
-    const { error } = await db.from('promociones').insert(payload);
-    if (error) { toast('Error: ' + error.message, true); return; }
-    toast('✓ Promoción creada');
+  const _promoBtn = event?.target?.closest('button');
+  if (_promoBtn) { _promoBtn.disabled = true; _promoBtn.textContent = '⏳ Guardando...'; }
+  _actionBusy['guardarPromo'] = true;
+  try {
+    if (editId) {
+      const { error } = await db.from('promociones').update(payload).eq('id', editId);
+      if (error) { toast('Error: ' + error.message, true); return; }
+      toast('✓ Promoción actualizada');
+    } else {
+      const { error } = await db.from('promociones').insert(payload);
+      if (error) { toast('Error: ' + error.message, true); return; }
+      toast('✓ Promoción creada');
+    }
+    document.getElementById('m-promo-form').classList.remove('open');
+    cargarPromociones();
+  } finally {
+    _actionBusy['guardarPromo'] = false;
+    if (_promoBtn) { _promoBtn.disabled = false; _promoBtn.textContent = 'Guardar promoción'; }
   }
-  document.getElementById('m-promo-form').classList.remove('open');
-  cargarPromociones();
 }
 
 async function togglePromoActiva(id, activa) {

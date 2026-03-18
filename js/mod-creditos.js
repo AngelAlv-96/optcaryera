@@ -152,6 +152,7 @@ async function verDetalleCredito(id) {
 }
 
 async function registrarAbonoCredito(creditoId, overlay) {
+  if (typeof _actionBusy !== 'undefined' && _actionBusy['registrarAbonoCredito']) { toast('Ya se está procesando el abono...', true); return; }
   const montoEl = document.getElementById('abono-monto');
   const metodoEl = document.getElementById('abono-metodo');
   const btnEl = overlay?.querySelector('.btn-p');
@@ -162,6 +163,7 @@ async function registrarAbonoCredito(creditoId, overlay) {
   if (!cred) return;
   if (monto > (cred.saldo || 0) + 0.01) { toast('El monto excede el saldo pendiente', true); return; }
   // Anti-duplicado
+  if (typeof _actionBusy !== 'undefined') _actionBusy['registrarAbonoCredito'] = true;
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Registrando...'; }
   try {
     const { error: e1 } = await db.from('creditos_abonos').insert({
@@ -186,6 +188,8 @@ async function registrarAbonoCredito(creditoId, overlay) {
   } catch(e) {
     toast('Error: '+(e.message||e), true);
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Registrar'; }
+  } finally {
+    if (typeof _actionBusy !== 'undefined') _actionBusy['registrarAbonoCredito'] = false;
   }
 }
 
