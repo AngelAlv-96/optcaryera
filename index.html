@@ -12230,7 +12230,7 @@ async function verTicketLab(orderId) {
 }
 
 var TICKET_CSS = `@page{margin:0;size:80mm auto;}body{width:80mm;margin:0;padding:12px 8px;font-family:'Courier New',monospace;font-size:16px;line-height:2;color:#111;font-weight:700;}.t-logo{text-align:center;font-size:22px;font-weight:700;letter-spacing:.08em;margin-bottom:4px;text-transform:uppercase;}.t-hr{border:none;border-top:1px dashed #bbb;margin:6px 0;}.t-row{display:flex;justify-content:space-between;gap:6px;font-size:16px;font-weight:700;}.t-row span:first-child{flex-shrink:0;}.t-row span:last-child{text-align:right;}.t-notas{font-size:14px;}.t-notas span:last-child{text-align:left;}.t-rx-tbl{width:100%;border-collapse:collapse;margin:8px 0;font-size:18px;font-weight:700;}.t-rx-tbl th{text-align:center;padding:4px;font-size:14px;border-bottom:1px dashed #999;font-weight:700;}.t-rx-tbl th:first-child{width:30px;}.t-rx-tbl td{text-align:center;padding:6px 4px;font-size:18px;border-bottom:1px solid #ddd;}.t-rx-lbl{font-weight:700;text-align:left!important;font-size:15px!important;}.t-rx-row3{display:flex;justify-content:space-between;padding:6px 2px;font-size:15px;font-weight:700;}.t-rx-row3 strong{font-size:17px;}`;
-var THERMAL_VENTA_CSS = `@page{margin:0;size:80mm auto}*{margin:0;padding:0;box-sizing:border-box;page-break-inside:avoid}html,body{height:auto;overflow:visible}body{width:80mm;margin:0;padding:8px 8px 12px;font-family:'Courier New',Courier,monospace;font-size:13px;line-height:1.35;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}b,strong{font-weight:900}.logo{text-align:center;font-size:18px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:1px 0}.city{text-align:center;font-size:10px;font-weight:700;color:#000;padding-bottom:1px}.titulo{text-align:center;font-size:14px;font-weight:900;letter-spacing:.1em;padding:2px 0}.sep{border-top:1px dashed #555;margin:3px 0}.sep.thick{border-top:2px solid #000;margin:4px 0}.sh{text-align:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;padding:1px 0}.r{display:flex;justify-content:space-between;gap:2px;font-size:12px;font-weight:900;padding:0}.r span:last-child{text-align:right;flex-shrink:0}.r .b{font-weight:900}.r.sm{font-size:11px;font-weight:700;color:#000}.r.tiny{font-size:9px;font-weight:700;color:#000;margin-bottom:0}.r.big{font-size:16px;font-weight:900;padding:2px 0}.saldo{display:flex;justify-content:space-between;font-size:13px;font-weight:900;background:#000;color:#fff;padding:4px 5px;margin:3px -3px;letter-spacing:.03em}.ok{text-align:center;font-size:12px;font-weight:900;letter-spacing:.1em;padding:2px 0}.footer{text-align:center;font-size:9px;font-weight:700;color:#000;padding:0}.footer.tiny{font-size:8px;font-weight:700;color:#333}.gt{text-align:center;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}.gx{font-size:9px;line-height:1.2;font-weight:700;color:#000;padding:1px 0;text-align:justify}`;
+var THERMAL_VENTA_CSS = `@page{margin:0;size:80mm auto}*{margin:0;padding:0;box-sizing:border-box;page-break-inside:avoid}html,body{height:auto;overflow:visible}body{width:80mm;margin:0;padding:8px 8px 12px;font-family:'Courier New',Courier,monospace;font-size:13px;line-height:1.35;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}b,strong{font-weight:900}.logo{text-align:center;font-size:18px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:1px 0}.city{text-align:center;font-size:10px;font-weight:700;color:#000;padding-bottom:1px}.titulo{text-align:center;font-size:14px;font-weight:900;letter-spacing:.1em;padding:2px 0}.sep{border-top:1px dashed #555;margin:3px 0}.sep.thick{border-top:2px solid #000;margin:4px 0}.sh{text-align:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;padding:1px 0}.r{display:flex;justify-content:space-between;gap:2px;font-size:12px;font-weight:900;padding:0}.r span:last-child{text-align:right;flex-shrink:0}.r .b{font-weight:900}.r.sm{font-size:11px;font-weight:700;color:#000}.r.tiny{font-size:9px;font-weight:700;color:#000;margin-bottom:0}.r.big{font-size:16px;font-weight:900;padding:2px 0}.saldo{display:flex;justify-content:space-between;font-size:13px;font-weight:900;background:#000;color:#fff;padding:4px 5px;margin:3px -3px;letter-spacing:.03em}.ok{text-align:center;font-size:12px;font-weight:900;letter-spacing:.1em;padding:2px 0}.footer{text-align:center;font-size:9px;font-weight:700;color:#000;padding:0}.footer.tiny{font-size:8px;font-weight:700;color:#333}.gt{text-align:center;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:2px 0}.gx{font-size:9px;line-height:1.2;font-weight:700;color:#000;padding:1px 0;text-align:justify}.nota{font-size:9px;font-weight:700;color:#000;padding:0 0 1px;line-height:1.3}.warn{text-align:center;font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;border:1px solid #000;padding:2px 4px;margin:2px 0}`;
 
 function silentPrint(bodyHtml, customCss) {
   var css = customCss || TICKET_CSS;
@@ -17559,6 +17559,26 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
   t += '<div class="sep"></div>';
   var diffColor = Math.abs(diff) < 0.01 ? '' : '';
   t += '<div class="saldo"><span>DIFERENCIA</span><span>' + diffTxt + '</span></div>';
+  // ── SECCIÓN VERIFICAR TERMINAL / BANCO ──
+  var noEfectivo = Object.entries(desglose).filter(function(e){ return e[0] !== 'Efectivo'; });
+  if (noEfectivo.length > 0) {
+    t += '<div class="sep thick"></div>';
+    t += '<div class="sh">VERIFICAR CON TERMINAL / BANCO</div>';
+    t += '<div class="nota" style="text-align:center;margin-bottom:2px">Palomea cada método contra tu reporte</div>';
+    noEfectivo.sort(function(a,b){return b[1]-a[1]}).forEach(function(e) {
+      var icono = e[0]==='Tarjeta'||e[0]==='MSI' ? '□ Terminal:' : e[0]==='Transferencia' ? '□ Banco:' : e[0]==='Dólar' ? '□ USD físico:' : '□ ' + e[0] + ':';
+      t += '<div class="r"><span>' + icono + ' ' + e[0] + '</span><span class="b">$' + e[1].toFixed(2) + '</span></div>';
+    });
+  }
+  // ── DIAGNÓSTICO SI HAY DIFERENCIA ──
+  if (Math.abs(diff) >= 0.01) {
+    t += '<div class="sep"></div>';
+    t += '<div class="warn">⚠ REVISAR CAUSAS COMUNES</div>';
+    t += '<div class="nota">· Tarjeta capturada como efectivo (o viceversa)</div>';
+    t += '<div class="nota">· Transferencia capturada como efectivo</div>';
+    t += '<div class="nota">· Vuelto dado incorrecto al cliente</div>';
+    t += '<div class="nota">· Retiro de efectivo sin registrar en sistema</div>';
+  }
   t += '<div class="sep"></div>';
   t += '<div class="footer">' + fecha + ' · ' + hora + '</div>';
   t += '<div class="footer">Car & Era</div>';
