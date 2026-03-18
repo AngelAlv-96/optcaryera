@@ -17575,8 +17575,7 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
   if (transferencia > 0) {
     t += '<div class="sep thick"></div>';
     t += '<div class="sh">TRANSFERENCIA</div>';
-    t += '<div class="r"><span>Esperado banco:</span><span class="b">$' + transferencia.toFixed(2) + '</span></div>';
-    t += '<div class="r"><span>Banco reporta:</span><span>__________</span></div>';
+    t += '<div class="r"><span>Total:</span><span class="b">$' + transferencia.toFixed(2) + '</span></div>';
   }
   if (dolar > 0) {
     t += '<div class="sep thick"></div>';
