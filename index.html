@@ -6463,7 +6463,7 @@ function renderPac(list) {
       </div>
       <div class="c-meta"><p>Estado</p><span class="badge b-${p.estado}">${p.estado}</span></div>
       <button onclick="verConsultasPaciente('${p.id}','${nombre}')" style="background:rgba(226,198,166,0.1);border:1px solid rgba(226,198,166,0.18);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="Ver consultas">📋 Consultas</button>
-      ${currentUser?.rol==='admin' ? `<button onclick="editarPaciente('${p.id}')" style="background:none;border:1px solid rgba(226,198,166,0.2);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="Editar datos">✏ Editar</button>` : ''}
+      <button onclick="editarPaciente('${p.id}')" style="background:none;border:1px solid rgba(226,198,166,0.2);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="${currentUser?.rol==='admin'?'Editar datos':'Editar teléfono'}">${currentUser?.rol==='admin'?'✏ Editar':'📞 Tel.'}</button>
       <button onclick="deletePac('${p.id}','${nombre}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;padding:6px 8px;font-size:14px;transition:color .15s" onmouseover="this.style.color='#e08080'" onmouseout="this.style.color='var(--muted2)'" title="Eliminar paciente">✕</button>
     </div>`;
   }).join('');
@@ -6472,47 +6472,55 @@ function renderPac(list) {
 function filterPac() { debouncePacSearch(); }
 
 async function editarPaciente(id) {
-  if (currentUser?.rol !== 'admin') return;
   const { data: p } = await db.from('pacientes').select('*').eq('id', id).single();
   if (!p) { toast('Paciente no encontrado', true); return; }
   const ov = document.createElement('div');
   ov.className = 'm-overlay open';
   const v = (f) => (p[f]||'').toString().replace(/"/g,'&quot;');
-  ov.innerHTML = `<div class="modal" style="max-width:480px;padding:24px">
-    <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige);margin-bottom:14px">✏ Editar Paciente</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div><label style="font-size:10px;color:var(--muted)">Nombre(s)</label><input id="ep-nom" value="${v('nombre')}" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Apellidos</label><input id="ep-ape" value="${v('apellidos')}" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Teléfono</label><input id="ep-tel" value="${v('telefono')}" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Email</label><input id="ep-ema" value="${v('email')}" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Fecha nacimiento</label><input id="ep-nac" type="date" value="${v('fecha_nacimiento')}" min="1920-01-01" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Sexo</label><select id="ep-sex" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option value="">—</option><option ${p.sexo==='Femenino'?'selected':''}>Femenino</option><option ${p.sexo==='Masculino'?'selected':''}>Masculino</option></select></div>
-      <div><label style="font-size:10px;color:var(--muted)">Ocupación</label><input id="ep-ocu" value="${v('ocupacion')}" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>
-      <div><label style="font-size:10px;color:var(--muted)">Estado</label><select id="ep-est" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option ${p.estado==='activo'?'selected':''}>activo</option><option ${p.estado==='inactivo'?'selected':''}>inactivo</option></select></div>
+  const isAdmin = currentUser?.rol === 'admin';
+  const inp = (lbl, id, val, type='text', extra='') => `<div><label style="font-size:10px;color:var(--muted)">${lbl}</label><input id="${id}" type="${type}" value="${val}" ${extra} style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>`;
+  ov.innerHTML = `<div class="modal" style="max-width:${isAdmin?480:340}px;padding:24px">
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige);margin-bottom:4px">${isAdmin?'✏ Editar Paciente':'📞 Editar teléfono'}</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px">${p.nombre} ${p.apellidos}</p>
+    <div style="display:grid;grid-template-columns:${isAdmin?'1fr 1fr':'1fr'};gap:10px;margin-bottom:12px">
+      ${isAdmin ? inp('Nombre(s)','ep-nom',v('nombre')) : ''}
+      ${isAdmin ? inp('Apellidos','ep-ape',v('apellidos')) : ''}
+      ${inp('Teléfono','ep-tel',v('telefono'),'tel','placeholder="10 dígitos"')}
+      ${isAdmin ? inp('Email','ep-ema',v('email'),'email') : ''}
+      ${isAdmin ? inp('Fecha nacimiento','ep-nac',v('fecha_nacimiento'),'date','min="1920-01-01"') : ''}
+      ${isAdmin ? `<div><label style="font-size:10px;color:var(--muted)">Sexo</label><select id="ep-sex" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option value="">—</option><option ${p.sexo==='Femenino'?'selected':''}>Femenino</option><option ${p.sexo==='Masculino'?'selected':''}>Masculino</option></select></div>` : ''}
+      ${isAdmin ? inp('Ocupación','ep-ocu',v('ocupacion')) : ''}
+      ${isAdmin ? `<div><label style="font-size:10px;color:var(--muted)">Estado</label><select id="ep-est" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option ${p.estado==='activo'?'selected':''}>activo</option><option ${p.estado==='inactivo'?'selected':''}>inactivo</option></select></div>` : ''}
     </div>
     <div style="display:flex;gap:8px">
-      <button onclick="guardarEditPaciente('${id}',this.closest('.m-overlay'))" class="btn btn-p" style="flex:1">Guardar</button>
+      <button onclick="guardarEditPaciente('${id}',this.closest('.m-overlay'),${isAdmin})" class="btn btn-p" style="flex:1">Guardar</button>
       <button onclick="this.closest('.m-overlay').remove()" class="btn btn-g">Cancelar</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
+  document.getElementById('ep-tel').focus();
 }
-async function guardarEditPaciente(id, ov) {
-  const payload = {
-    nombre: document.getElementById('ep-nom').value.trim(),
-    apellidos: document.getElementById('ep-ape').value.trim(),
-    telefono: document.getElementById('ep-tel').value.trim() || null,
-    email: document.getElementById('ep-ema').value.trim() || null,
-    fecha_nacimiento: document.getElementById('ep-nac').value || null,
-    sexo: document.getElementById('ep-sex').value || null,
-    ocupacion: document.getElementById('ep-ocu').value.trim() || null,
-    estado: document.getElementById('ep-est').value,
-    updated_at: new Date().toISOString()
-  };
-  if (!payload.nombre) { toast('Nombre requerido', true); return; }
+async function guardarEditPaciente(id, ov, isAdmin) {
+  const tel = document.getElementById('ep-tel').value.trim();
+  let payload = { telefono: tel || null, updated_at: new Date().toISOString() };
+  if (isAdmin) {
+    const nombre = document.getElementById('ep-nom').value.trim();
+    if (!nombre) { toast('Nombre requerido', true); return; }
+    payload = {
+      nombre,
+      apellidos: document.getElementById('ep-ape').value.trim(),
+      telefono: tel || null,
+      email: document.getElementById('ep-ema').value.trim() || null,
+      fecha_nacimiento: document.getElementById('ep-nac').value || null,
+      sexo: document.getElementById('ep-sex').value || null,
+      ocupacion: document.getElementById('ep-ocu').value.trim() || null,
+      estado: document.getElementById('ep-est').value,
+      updated_at: new Date().toISOString()
+    };
+  }
   const { error } = await db.from('pacientes').update(payload).eq('id', id);
   if (error) { toast('Error: ' + error.message, true); return; }
-  toast('✓ Paciente actualizado');
+  toast('✓ ' + (isAdmin ? 'Paciente actualizado' : 'Teléfono guardado'));
   ov.remove(); loadPac();
 }
 
