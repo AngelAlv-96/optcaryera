@@ -3800,7 +3800,19 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <input type="number" id="caja-contado" min="0" step="0.01" placeholder="0.00" oninput="calcDiferencia()" style="width:100%;background:transparent;border:none;color:var(--white);font-size:20px;font-weight:700;outline:none;font-family:'Outfit',sans-serif;padding:0;margin-top:2px">
                 </div>
               </div>
-              <div id="caja-diferencia" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:12px;font-weight:700"></div>
+              <div id="caja-diferencia" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700"></div>
+              <div id="caja-terminal-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+                <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10px;color:var(--muted)">Tarjeta/MSI esperado</div>
+                  <div style="font-size:20px;font-weight:700;color:var(--beige)" id="caja-terminal-esperado">$0.00</div>
+                  <div style="font-size:9px;color:var(--muted)">Según el sistema</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10px;color:var(--muted)">Terminal contado (real)</div>
+                  <input type="number" id="caja-terminal-contado" min="0" step="0.01" placeholder="0.00" oninput="calcDiferencia()" style="width:100%;background:transparent;border:none;color:var(--white);font-size:20px;font-weight:700;outline:none;font-family:'Outfit',sans-serif;padding:0;margin-top:2px">
+                </div>
+              </div>
+              <div id="caja-diferencia-terminal" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700"></div>
               <div class="fg" style="margin-bottom:12px"><label style="font-size:10px">Observaciones del corte</label><input type="text" id="caja-obs" placeholder="Notas opcionales sobre el corte"></div>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-p" onclick="realizarCorte()" style="flex:1;font-size:14px;padding:10px">Realizar corte de caja</button>
@@ -17438,6 +17450,19 @@ function renderCajaResumen() {
   document.getElementById('caja-contado').value = '';
   document.getElementById('caja-diferencia').style.display = 'none';
   document.getElementById('caja-obs').value = '';
+  // Terminal row: show only if there are Tarjeta/MSI payments
+  var _tarjetaTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0);
+  var _termRow = document.getElementById('caja-terminal-row');
+  if (_termRow) {
+    if (_tarjetaTotal > 0) {
+      _termRow.style.display = 'grid';
+      document.getElementById('caja-terminal-esperado').textContent = '$' + _tarjetaTotal.toFixed(2);
+    } else {
+      _termRow.style.display = 'none';
+    }
+    if (document.getElementById('caja-terminal-contado')) document.getElementById('caja-terminal-contado').value = '';
+    if (document.getElementById('caja-diferencia-terminal')) document.getElementById('caja-diferencia-terminal').style.display = 'none';
+  }
 }
 
 function calcDiferencia() {
@@ -17462,6 +17487,25 @@ function calcDiferencia() {
     el.style.background = 'rgba(224,128,128,0.08)'; el.style.color = '#e08080';
     el.textContent = `⚠ Faltante: -$${Math.abs(diff).toFixed(2)}`;
   }
+  // Terminal (tarjeta/MSI) difference
+  const termContadoEl = document.getElementById('caja-terminal-contado');
+  const termDiffEl = document.getElementById('caja-diferencia-terminal');
+  if (termContadoEl && termDiffEl && termContadoEl.value) {
+    const tarjetaEsp = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0);
+    const termContado = parseFloat(termContadoEl.value) || 0;
+    const termDiff = termContado - tarjetaEsp;
+    termDiffEl.style.display = '';
+    if (Math.abs(termDiff) < 0.01) {
+      termDiffEl.style.background = 'rgba(114,196,126,0.08)'; termDiffEl.style.color = '#72c47e';
+      termDiffEl.textContent = '✓ Terminal cuadra';
+    } else if (termDiff > 0) {
+      termDiffEl.style.background = 'rgba(212,184,74,0.08)'; termDiffEl.style.color = '#d4b84a';
+      termDiffEl.textContent = `⚠ Terminal sobrante: +$${termDiff.toFixed(2)}`;
+    } else {
+      termDiffEl.style.background = 'rgba(224,128,128,0.08)'; termDiffEl.style.color = '#e08080';
+      termDiffEl.textContent = `⚠ Terminal faltante: -$${Math.abs(termDiff).toFixed(2)}`;
+    }
+  } else if (termDiffEl) { termDiffEl.style.display = 'none'; }
 }
 
 async function realizarCorte() {
@@ -17506,12 +17550,13 @@ async function realizarCorte() {
   }).eq('id', cajaData.id);
   if (error) { toast('Error: ' + error.message, true); return; }
   toast('✓ Corte de caja realizado');
-  imprimirTicketCorte(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff);
+  const terminalContado = parseFloat(document.getElementById('caja-terminal-contado')?.value) || null;
+  imprimirTicketCorte(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado);
   enviarCorteWhatsApp(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff);
   initCaja();
 }
 
-function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff) {
+function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado) {
   var suc = caja.sucursal || 'Sucursal';
   var fecha = caja.fecha;
   var hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -17559,34 +17604,29 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
   t += '<div class="sep"></div>';
   var diffColor = Math.abs(diff) < 0.01 ? '' : '';
   t += '<div class="saldo"><span>DIFERENCIA EFECTIVO</span><span>' + diffTxt + '</span></div>';
-  // ── VALIDACIÓN OTROS MÉTODOS (mismo esquema Esperado/Contado) ──
+  // ── VALIDACIÓN TARJETA/MSI ──
   var tarjetaMSI = (desglose['Tarjeta'] || 0) + (desglose['MSI'] || 0);
-  var transferencia = desglose['Transferencia'] || 0;
   var dolar = desglose['Dólar'] || 0;
-  var linkPago = desglose['Link de pago'] || 0;
   if (tarjetaMSI > 0) {
     t += '<div class="sep thick"></div>';
     t += '<div class="sh">TARJETA / MSI</div>';
     if (desglose['Tarjeta']) t += '<div class="r sm"><span>Tarjeta:</span><span>$' + desglose['Tarjeta'].toFixed(2) + '</span></div>';
     if (desglose['MSI'])     t += '<div class="r sm"><span>MSI:</span><span>$' + desglose['MSI'].toFixed(2) + '</span></div>';
-    t += '<div class="r"><span>Esperado terminal:</span><span class="b">$' + tarjetaMSI.toFixed(2) + '</span></div>';
-    t += '<div class="r"><span>Terminal reporta:</span><span>__________</span></div>';
-  }
-  if (transferencia > 0) {
-    t += '<div class="sep thick"></div>';
-    t += '<div class="sh">TRANSFERENCIA</div>';
-    t += '<div class="r"><span>Total:</span><span class="b">$' + transferencia.toFixed(2) + '</span></div>';
+    t += '<div class="r"><span>Esperado:</span><span class="b">$' + tarjetaMSI.toFixed(2) + '</span></div>';
+    if (terminalContado !== null && terminalContado !== undefined) {
+      var termDiff = terminalContado - tarjetaMSI;
+      var termDiffTxt = Math.abs(termDiff) < 0.01 ? 'CUADRA $0.00' : termDiff > 0 ? 'SOBRANTE +$'+termDiff.toFixed(2) : 'FALTANTE -$'+Math.abs(termDiff).toFixed(2);
+      t += '<div class="r"><span>Contado:</span><span class="b">$' + terminalContado.toFixed(2) + '</span></div>';
+      t += '<div class="saldo"><span>DIFERENCIA TARJETA</span><span>' + termDiffTxt + '</span></div>';
+    } else {
+      t += '<div class="r"><span>Terminal reporta:</span><span>__________</span></div>';
+    }
   }
   if (dolar > 0) {
     t += '<div class="sep thick"></div>';
     t += '<div class="sh">DÓLAR (USD)</div>';
     t += '<div class="r"><span>Esperado:</span><span class="b">$' + dolar.toFixed(2) + '</span></div>';
     t += '<div class="r"><span>USD físico:</span><span>__________</span></div>';
-  }
-  if (linkPago > 0) {
-    t += '<div class="sep thick"></div>';
-    t += '<div class="sh">LINK DE PAGO</div>';
-    t += '<div class="r"><span>Esperado:</span><span class="b">$' + linkPago.toFixed(2) + '</span></div>';
   }
   t += '<div class="sep"></div>';
   t += '<div class="footer">' + fecha + ' · ' + hora + '</div>';
