@@ -3813,6 +3813,18 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 </div>
               </div>
               <div id="caja-diferencia-terminal" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700"></div>
+              <div id="caja-dolar-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+                <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10px;color:var(--muted)">Dólar esperado (MXN)</div>
+                  <div style="font-size:20px;font-weight:700;color:var(--beige)" id="caja-dolar-esperado">$0.00</div>
+                  <div style="font-size:9px;color:var(--muted)">Según el sistema</div>
+                </div>
+                <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
+                  <div style="font-size:10px;color:var(--muted)">Dólar contado (MXN)</div>
+                  <input type="number" id="caja-dolar-contado" min="0" step="0.01" placeholder="0.00" oninput="calcDiferencia()" style="width:100%;background:transparent;border:none;color:var(--white);font-size:20px;font-weight:700;outline:none;font-family:'Outfit',sans-serif;padding:0;margin-top:2px">
+                </div>
+              </div>
+              <div id="caja-diferencia-dolar" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700"></div>
               <div class="fg" style="margin-bottom:12px"><label style="font-size:10px">Observaciones del corte</label><input type="text" id="caja-obs" placeholder="Notas opcionales sobre el corte"></div>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-p" onclick="realizarCorte()" style="flex:1;font-size:14px;padding:10px">Realizar corte de caja</button>
@@ -17463,6 +17475,19 @@ function renderCajaResumen() {
     if (document.getElementById('caja-terminal-contado')) document.getElementById('caja-terminal-contado').value = '';
     if (document.getElementById('caja-diferencia-terminal')) document.getElementById('caja-diferencia-terminal').style.display = 'none';
   }
+  // Dólar row: show only if there are Dólar payments
+  var _dolarTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0);
+  var _dolarRow = document.getElementById('caja-dolar-row');
+  if (_dolarRow) {
+    if (_dolarTotal > 0) {
+      _dolarRow.style.display = 'grid';
+      document.getElementById('caja-dolar-esperado').textContent = '$' + _dolarTotal.toFixed(2);
+    } else {
+      _dolarRow.style.display = 'none';
+    }
+    if (document.getElementById('caja-dolar-contado')) document.getElementById('caja-dolar-contado').value = '';
+    if (document.getElementById('caja-diferencia-dolar')) document.getElementById('caja-diferencia-dolar').style.display = 'none';
+  }
 }
 
 function calcDiferencia() {
@@ -17506,6 +17531,25 @@ function calcDiferencia() {
       termDiffEl.textContent = `⚠ Terminal faltante: -$${Math.abs(termDiff).toFixed(2)}`;
     }
   } else if (termDiffEl) { termDiffEl.style.display = 'none'; }
+  // Dólar difference
+  const dolarContadoEl = document.getElementById('caja-dolar-contado');
+  const dolarDiffEl = document.getElementById('caja-diferencia-dolar');
+  if (dolarContadoEl && dolarDiffEl && dolarContadoEl.value) {
+    const dolarEsp = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0);
+    const dolarContado = parseFloat(dolarContadoEl.value) || 0;
+    const dolarDiff = dolarContado - dolarEsp;
+    dolarDiffEl.style.display = '';
+    if (Math.abs(dolarDiff) < 0.01) {
+      dolarDiffEl.style.background = 'rgba(114,196,126,0.08)'; dolarDiffEl.style.color = '#72c47e';
+      dolarDiffEl.textContent = '✓ Dólar cuadra';
+    } else if (dolarDiff > 0) {
+      dolarDiffEl.style.background = 'rgba(212,184,74,0.08)'; dolarDiffEl.style.color = '#d4b84a';
+      dolarDiffEl.textContent = `⚠ Dólar sobrante: +$${dolarDiff.toFixed(2)}`;
+    } else {
+      dolarDiffEl.style.background = 'rgba(224,128,128,0.08)'; dolarDiffEl.style.color = '#e08080';
+      dolarDiffEl.textContent = `⚠ Dólar faltante: -$${Math.abs(dolarDiff).toFixed(2)}`;
+    }
+  } else if (dolarDiffEl) { dolarDiffEl.style.display = 'none'; }
 }
 
 async function realizarCorte() {
@@ -17551,12 +17595,13 @@ async function realizarCorte() {
   if (error) { toast('Error: ' + error.message, true); return; }
   toast('✓ Corte de caja realizado');
   const terminalContado = parseFloat(document.getElementById('caja-terminal-contado')?.value) || null;
-  imprimirTicketCorte(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado);
+  const dolarContado = parseFloat(document.getElementById('caja-dolar-contado')?.value) || null;
+  imprimirTicketCorte(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado, dolarContado);
   enviarCorteWhatsApp(cajaData, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff);
   initCaja();
 }
 
-function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado) {
+function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCancel, esperado, contado, diff, terminalContado, dolarContado) {
   var suc = caja.sucursal || 'Sucursal';
   var fecha = caja.fecha;
   var hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -17617,7 +17662,8 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
       var termDiff = terminalContado - tarjetaMSI;
       var termDiffTxt = Math.abs(termDiff) < 0.01 ? 'CUADRA $0.00' : termDiff > 0 ? 'SOBRANTE +$'+termDiff.toFixed(2) : 'FALTANTE -$'+Math.abs(termDiff).toFixed(2);
       t += '<div class="r"><span>Contado:</span><span class="b">$' + terminalContado.toFixed(2) + '</span></div>';
-      t += '<div class="saldo"><span>DIFERENCIA TARJETA</span><span>' + termDiffTxt + '</span></div>';
+      t += '<div class="sep"></div>';
+      t += '<div class="saldo"><span>DIFERENCIA TARJETA / MSI</span><span>' + termDiffTxt + '</span></div>';
     } else {
       t += '<div class="r"><span>Terminal reporta:</span><span>__________</span></div>';
     }
@@ -17625,8 +17671,21 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
   if (dolar > 0) {
     t += '<div class="sep thick"></div>';
     t += '<div class="sh">DÓLAR (USD)</div>';
+    t += '<div class="r sm"><span>Equiv. MXN cobrado:</span><span>$' + dolar.toFixed(2) + '</span></div>';
+    // Show USD received detail if available
+    var dolarPagosD = cajaDayData.pagos.filter(function(p){return p.metodo_pago==='Dólar'});
+    var totalUSDd = dolarPagosD.reduce(function(s,p){return s+(Number(p.monto_usd)||0)},0);
+    if (totalUSDd > 0) t += '<div class="r sm"><span>USD recibidos:</span><span>$' + totalUSDd.toFixed(2) + ' USD</span></div>';
     t += '<div class="r"><span>Esperado:</span><span class="b">$' + dolar.toFixed(2) + '</span></div>';
-    t += '<div class="r"><span>USD físico:</span><span>__________</span></div>';
+    if (dolarContado !== null && dolarContado !== undefined) {
+      var dolarDiff = dolarContado - dolar;
+      var dolarDiffTxt = Math.abs(dolarDiff) < 0.01 ? 'CUADRA $0.00' : dolarDiff > 0 ? 'SOBRANTE +$'+dolarDiff.toFixed(2) : 'FALTANTE -$'+Math.abs(dolarDiff).toFixed(2);
+      t += '<div class="r"><span>Contado:</span><span class="b">$' + dolarContado.toFixed(2) + '</span></div>';
+      t += '<div class="sep"></div>';
+      t += '<div class="saldo"><span>DIFERENCIA DÓLAR</span><span>' + dolarDiffTxt + '</span></div>';
+    } else {
+      t += '<div class="r"><span>Dólar contado:</span><span>__________</span></div>';
+    }
   }
   t += '<div class="sep"></div>';
   t += '<div class="footer">' + fecha + ' · ' + hora + '</div>';
