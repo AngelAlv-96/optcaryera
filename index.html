@@ -17558,26 +17558,36 @@ function imprimirTicketCorte(caja, desglose, totalVentas, totalAbonos, totalCanc
   t += '<div class="r"><span>Contado:</span><span class="b">$' + contado.toFixed(2) + '</span></div>';
   t += '<div class="sep"></div>';
   var diffColor = Math.abs(diff) < 0.01 ? '' : '';
-  t += '<div class="saldo"><span>DIFERENCIA</span><span>' + diffTxt + '</span></div>';
-  // ── SECCIÓN VERIFICAR TERMINAL / BANCO ──
-  var noEfectivo = Object.entries(desglose).filter(function(e){ return e[0] !== 'Efectivo'; });
-  if (noEfectivo.length > 0) {
+  t += '<div class="saldo"><span>DIFERENCIA EFECTIVO</span><span>' + diffTxt + '</span></div>';
+  // ── VALIDACIÓN OTROS MÉTODOS (mismo esquema Esperado/Contado) ──
+  var tarjetaMSI = (desglose['Tarjeta'] || 0) + (desglose['MSI'] || 0);
+  var transferencia = desglose['Transferencia'] || 0;
+  var dolar = desglose['Dólar'] || 0;
+  var linkPago = desglose['Link de pago'] || 0;
+  if (tarjetaMSI > 0) {
     t += '<div class="sep thick"></div>';
-    t += '<div class="sh">VERIFICAR CON TERMINAL / BANCO</div>';
-    t += '<div class="nota" style="text-align:center;margin-bottom:2px">Palomea cada método contra tu reporte</div>';
-    noEfectivo.sort(function(a,b){return b[1]-a[1]}).forEach(function(e) {
-      var icono = e[0]==='Tarjeta'||e[0]==='MSI' ? '□ Terminal:' : e[0]==='Transferencia' ? '□ Banco:' : e[0]==='Dólar' ? '□ USD físico:' : '□ ' + e[0] + ':';
-      t += '<div class="r"><span>' + icono + ' ' + e[0] + '</span><span class="b">$' + e[1].toFixed(2) + '</span></div>';
-    });
+    t += '<div class="sh">TARJETA / MSI</div>';
+    if (desglose['Tarjeta']) t += '<div class="r sm"><span>Tarjeta:</span><span>$' + desglose['Tarjeta'].toFixed(2) + '</span></div>';
+    if (desglose['MSI'])     t += '<div class="r sm"><span>MSI:</span><span>$' + desglose['MSI'].toFixed(2) + '</span></div>';
+    t += '<div class="r"><span>Esperado terminal:</span><span class="b">$' + tarjetaMSI.toFixed(2) + '</span></div>';
+    t += '<div class="r"><span>Terminal reporta:</span><span>__________</span></div>';
   }
-  // ── DIAGNÓSTICO SI HAY DIFERENCIA ──
-  if (Math.abs(diff) >= 0.01) {
-    t += '<div class="sep"></div>';
-    t += '<div class="warn">⚠ REVISAR CAUSAS COMUNES</div>';
-    t += '<div class="nota">· Tarjeta capturada como efectivo (o viceversa)</div>';
-    t += '<div class="nota">· Transferencia capturada como efectivo</div>';
-    t += '<div class="nota">· Vuelto dado incorrecto al cliente</div>';
-    t += '<div class="nota">· Retiro de efectivo sin registrar en sistema</div>';
+  if (transferencia > 0) {
+    t += '<div class="sep thick"></div>';
+    t += '<div class="sh">TRANSFERENCIA</div>';
+    t += '<div class="r"><span>Esperado banco:</span><span class="b">$' + transferencia.toFixed(2) + '</span></div>';
+    t += '<div class="r"><span>Banco reporta:</span><span>__________</span></div>';
+  }
+  if (dolar > 0) {
+    t += '<div class="sep thick"></div>';
+    t += '<div class="sh">DÓLAR (USD)</div>';
+    t += '<div class="r"><span>Esperado:</span><span class="b">$' + dolar.toFixed(2) + '</span></div>';
+    t += '<div class="r"><span>USD físico:</span><span>__________</span></div>';
+  }
+  if (linkPago > 0) {
+    t += '<div class="sep thick"></div>';
+    t += '<div class="sh">LINK DE PAGO</div>';
+    t += '<div class="r"><span>Esperado:</span><span class="b">$' + linkPago.toFixed(2) + '</span></div>';
   }
   t += '<div class="sep"></div>';
   t += '<div class="footer">' + fecha + ' · ' + hora + '</div>';
