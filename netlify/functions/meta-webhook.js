@@ -500,10 +500,14 @@ async function checkRecentComments() {
       var commentsRes = await fetch(GRAPH_API + '/' + post.id + '/comments?fields=id,from,message,created_time&limit=25&access_token=' + META_PAGE_TOKEN);
       if (!commentsRes.ok) {
         var cErr = await commentsRes.text();
-        console.error('[Meta] Failed to get comments for post ' + post.id + ':', commentsRes.status, cErr.substring(0, 200));
+        console.error('[Meta] Comments error post ' + post.id + ': ' + commentsRes.status + ' ' + cErr.substring(0, 300));
         continue;
       }
-      var commentsData = await commentsRes.json();
+      var commentsRaw = await commentsRes.text();
+      var commentsData;
+      try { commentsData = JSON.parse(commentsRaw); } catch(pe) { console.error('[Meta] Parse error:', pe.message); continue; }
+      // Log first post's comment response for debugging
+      if (p === 0) console.log('[Meta] First post comments response:', commentsRaw.substring(0, 300));
       if (!commentsData.data) { console.log('[Meta] No comments data for post ' + post.id); continue; }
       if (commentsData.data.length > 0) console.log('[Meta] Post ' + post.id + ' has ' + commentsData.data.length + ' comments');
 
