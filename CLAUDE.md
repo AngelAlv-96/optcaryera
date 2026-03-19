@@ -54,13 +54,15 @@ Si algo se rompe gravemente:
     ├── lc-cron.js        — Cron recordatorios LC por WA
     ├── clip-payment.js   — Genera links de pago Clip checkout (portal pacientes)
     ├── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
-    └── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST)
+    ├── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST)
+    └── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
 ```
 
 ## 🔧 TECH STACK
 - **Frontend**: Vanilla JS SPA (CERO frameworks/bundlers). Todo es HTML+CSS+JS puro.
 - **Backend**: Supabase (PostgreSQL) + Netlify Functions (serverless)
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
+- **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
 - **Pagos**: Clip API (checkout links para portal pacientes)
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
@@ -83,6 +85,18 @@ Si algo se rompe gravemente:
 - **auth_phones**: solo Angel (5216564269961) para autorizaciones de descuento
 - **recipients_corte**: 4 números que reciben notificación de cortes
 - Todo en app_config id='whatsapp_config'
+
+## 💬 FACEBOOK MESSENGER + INSTAGRAM DM
+- **meta-webhook.js**: recibe mensajes de FB Messenger e Instagram DM, responde con Clari (misma IA)
+- Meta App: "car & era maker" (ID: 2088315654915229) — compartida con agencia de marketing (solo campañas)
+- Página FB: "Ópticas Car & Era" (140615486675232)
+- Instagram: @opticascar.yera (17841414023710928)
+- Webhook URL: `https://optcaryera.netlify.app/.netlify/functions/meta-webhook`
+- Env vars Netlify: `META_PAGE_TOKEN` (Page Access Token), `META_VERIFY_TOKEN` (clari_caryera_2026)
+- Canal se detecta por `body.object`: 'page' = Messenger, 'instagram' = Instagram
+- Historial en `clari_conversations` con senderId como phone, canal en user_name (clari-messenger/clari-instagram)
+- No tiene ventana de 24h como WhatsApp — puede responder siempre
+- Notifica admin por WA en primeros mensajes nuevos
 
 ## 🏪 NEGOCIO
 - 3 sucursales: Américas, Pinocelli, Magnolia (Ciudad Juárez, Chihuahua)
@@ -193,7 +207,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v149
+## 📊 VERSIÓN ACTIVA: v150
+Cambios v150: Clari multi-canal — Facebook Messenger + Instagram DM. Nuevo `meta-webhook.js` recibe mensajes de ambos canales vía Meta Graph API v25.0 y responde con la misma IA de Clari (Anthropic). Reutiliza historial en `clari_conversations` (senderId como phone, canal identificado en user_name). Búsqueda de pedidos por folio/nombre. Notificación WA a admin en primeros mensajes. Configurado en Meta Developers: webhook verificado, campo `messages` suscrito para Messenger e Instagram, Page Access Token de "Ópticas Car & Era" (140615486675232). Instagram @opticascar.yera (17841414023710928) conectado. Env vars: `META_PAGE_TOKEN`, `META_VERIFY_TOKEN`. App: "car & era maker" (2088315654915229) — compartida con agencia de marketing (solo campañas, no toca mensajes).
 Cambios v149: Corte de caja — cuadre completo por método de pago. Dólar ahora tiene mismo flujo que Efectivo y Tarjeta: UI con input "Dólar contado (MXN)" (`caja-dolar-row`) + diferencia en tiempo real + sección DIFERENCIA DÓLAR en ticket. Ticket renombrado a "DIFERENCIA TARJETAS" (MSI es solo registro interno, misma terminal). Las 3 secciones (Efectivo/Tarjetas/Dólar) en UI y ticket aparecen SOLO si hubo ese método de pago ese día — Efectivo siempre aparece por el fondo inicial. `imprimirTicketCorte()` acepta `dolarContado` como 10mo parámetro. Fix visual: "DIFERENCIA TARJETAS" wrappea a 2 líneas igual que DIFERENCIA EFECTIVO/DÓLAR (texto de 18 chars no wrapeaba, 19+ sí).
 Cambios v148: Anti-doble-click universal — protección `_actionBusy` aplicada a todas las operaciones críticas de escritura: `registrarRetiro()` (causa del bug de retiro duplicado del 2026-03-17), `confirmarRecibirPedidos()`, `registrarAbono()` (refactorizado a try/finally), `_ejecutarCancelarVenta()`, `enviarComprobanteAbono()`, `guardarPromo()`, `guardarProducto()`, `registrarAbonoCredito()` (mod-creditos.js). Patrón: flag `_actionBusy['nombre']` + botón deshabilitado + texto "⏳ Procesando..." + finally que siempre restaura el estado. Los botones dan feedback visual inmediato al primer click. `procesarVenta()` y `enviarLoteASucursal()` ya tenían protección desde antes. Validación en tiempo real de saldo disponible en caja antes de registrar retiro (re-query DB). Edición de teléfono de paciente para todos los roles (botón "📞 Tel." en fila), admin sigue teniendo edición completa. Terminal contado para tarjeta/MSI en UI de caja con diferencia automática. Ticket corte mejorado: secciones por método (Efectivo, Tarjeta/MSI, Dólar) solo aparecen si hubo ese método.
 Cambios v147: Seguridad RLS Supabase — habilitado RLS en las 19 tablas que no lo tenían (12 óptica + 7 agencia). Corregidas 7 policies ALL con roles={public} (ahora solo service_role puede escribir). Fijado search_path=public en 3 funciones (generar_token_portal, update_landing_pages_updated_at, update_landing_timestamp). 40/40 tablas protegidas, 40/40 lecturas anon verificadas OK. Scripts: rls-audit-BEFORE.md, rls-audit-AFTER.md, rls-fix-log.md, rls-fix-summary.md, rls-rollback.sql. Excepciones intencionales: clari_conversations (chatbot anon) y pacientes (registro público).
