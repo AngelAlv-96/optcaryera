@@ -4,8 +4,8 @@
 // Usar cuando se quiera un push masivo; el cron diario (review-cron) sigue normal después
 //
 // Modo dry run (?dry=1): responde con lista de clientes SIN enviar
-// Modo envío real: lanza el envío y responde inmediato "procesando",
-//   guarda resultado final en clari_conversations como [Review-Blast-Log]
+// Modo cleanup (?cleanup=1): elimina registros [Review] duplicados en clari_conversations
+// Modo envío real: envía en lotes de 20, con verificación anti-duplicado antes de cada envío
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
@@ -93,7 +93,46 @@ exports.handler = async function(event) {
   }
 
   const dias = parseInt(qs.dias) || 30;
-  const dryRun = qs.dry === '1'; // ?dry=1 para solo ver sin enviar
+  const dryRun = qs.dry === '1';
+  const cleanup = qs.cleanup === '1';
+
+  // --- MODO CLEANUP: eliminar registros [Review] duplicados ---
+  if (cleanup) {
+    console.log('[REVIEW-BLAST] Modo cleanup — eliminando duplicados [Review]');
+    try {
+      const allReviews = await supaREST('GET',
+        `clari_conversations?content=ilike.*[Review]*&select=id,phone,content,created_at&order=created_at.asc&limit=500`
+      );
+      if (!allReviews || !allReviews.length) {
+        return { statusCode: 200, body: JSON.stringify({ ok: true, mensaje: 'No hay registros [Review]', eliminados: 0 }) };
+      }
+      // Agrupar por phone+content, quedarse con el primero, borrar los demás
+      const seen = new Set();
+      const toDelete = [];
+      for (const r of allReviews) {
+        const key = `${r.phone}|${r.content}`;
+        if (seen.has(key)) {
+          toDelete.push(r.id);
+        } else {
+          seen.add(key);
+        }
+      }
+      console.log(`[REVIEW-BLAST] ${allReviews.length} registros totales, ${toDelete.length} duplicados a eliminar`);
+      // Borrar duplicados en batches
+      for (let i = 0; i < toDelete.length; i += 20) {
+        const batch = toDelete.slice(i, i + 20);
+        const idFilter = batch.map(id => `"${id}"`).join(',');
+        await supaREST('DELETE', `clari_conversations?id=in.(${idFilter})`);
+      }
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ ok: true, totalRegistros: allReviews.length, duplicadosEliminados: toDelete.length }, null, 2)
+      };
+    } catch (e) {
+      console.error('[REVIEW-BLAST] Cleanup error:', e.message);
+      return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
+    }
+  }
 
   console.log(`[REVIEW-BLAST] Inicio — últimos ${dias} días${dryRun ? ' (DRY RUN)' : ''}`);
 
@@ -191,8 +230,21 @@ exports.handler = async function(event) {
 
     for (const v of batch) {
       const tel = v.pacientes.telefono;
+      const phone = normalizePhone(tel);
       const nombre = (v.pacientes.nombre || 'Cliente').split(' ')[0];
       const sucursal = v.sucursal || 'N/A';
+
+      // Verificación anti-duplicado justo antes de enviar (previene race conditions)
+      try {
+        const existing = await supaREST('GET',
+          `clari_conversations?phone=eq.${phone}&content=ilike.*[Review]*&created_at=gte.${cutoff30d}&select=id&limit=1`
+        );
+        if (existing && existing.length > 0) {
+          console.log(`[REVIEW-BLAST] ⏭ ${nombre} ya encuestado, skip`);
+          resultados.push({ folio: v.folio, nombre, sucursal, status: 'ya_encuestado' });
+          continue;
+        }
+      } catch (e) { /* si falla la verificación, intentar enviar de todas formas */ }
 
       const ok = await sendTemplate(tel, TEMPLATE_SID, { '1': nombre });
 
