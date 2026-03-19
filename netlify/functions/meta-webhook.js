@@ -348,16 +348,46 @@ async function getSenderProfile(senderId, channel) {
 }
 
 // ── COMMENT AUTO-REPLY ──
-// Reply publicly to comment + send DM with full attention
-var COMMENT_REPLIES = [
-  '¡Hola! 👋 Te enviamos un mensaje directo con toda la información 👓✨',
-  '¡Hola! 👓 Te mandamos un DM para atenderte mejor ✨',
-  '¡Gracias por tu interés! 👋 Revisa tu bandeja de mensajes, te enviamos info 👓',
-  '¡Hola! ✨ Te escribimos por mensaje directo para darte todos los detalles 👓'
-];
+// Public reply: smart but brief. DM: full detailed response.
 
-function getRandomCommentReply() {
-  return COMMENT_REPLIES[Math.floor(Math.random() * COMMENT_REPLIES.length)];
+async function generatePublicReply(commentText) {
+  if (!ANTHROPIC_API_KEY) return '¡Hola! 👓 Te mandamos un mensaje directo con más info ✨';
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 150,
+        system: `Eres Clari, asistente de Ópticas Car & Era en Ciudad Juárez. Genera una respuesta PÚBLICA para un comentario en redes sociales.
+
+REGLAS ESTRICTAS:
+- Máximo 2 líneas, MUY breve
+- Responde lo básico del comentario (horario, ubicación, si aplica)
+- Siempre termina invitando a revisar su DM para más detalles
+- Usa 1-2 emojis máximo (👓 ✨ 👋)
+- NO uses markdown, NO uses listas
+- Tono amigable y profesional
+- NO des precios ni promos en público
+
+DATOS BÁSICOS:
+Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
+Sucursales: Américas (Pronaf), Pinocelli, Magnolia — Ciudad Juárez
+Examen de vista gratuito al comprar lentes
+Lentes listos desde 35 min`,
+        messages: [{ role: 'user', content: 'Comentario: "' + commentText + '"' }]
+      })
+    });
+    var data = await res.json();
+    if (res.ok && data.content && data.content[0]) {
+      return data.content[0].text;
+    }
+  } catch(e) { console.error('[Meta PublicReply AI]', e.message); }
+  return '¡Hola! 👓 Te mandamos un mensaje directo con más info ✨';
 }
 
 async function replyToComment(commentId, text) {
@@ -423,11 +453,12 @@ async function handleComment(commentData, channel) {
 
   console.log('[Meta] ' + channel + ' comment from ' + fromName + ': ' + commentText.substring(0, 50));
 
-  // 1. Reply publicly to the comment
-  await replyToComment(commentId, getRandomCommentReply());
+  // 1. Generate smart brief public reply based on comment
+  var publicReply = await generatePublicReply(commentText);
+  await replyToComment(commentId, publicReply);
 
-  // 2. Generate personalized DM based on the comment
-  var dmPrompt = 'Alguien comentó en una publicación de ' + (channel === 'instagram' ? 'Instagram' : 'Facebook') + ': "' + commentText + '". Respóndele de manera amigable por mensaje directo, ofrécele ayuda relacionada con lo que comentó y menciona brevemente nuestras promociones vigentes. No repitas lo que dice el comentario textual.';
+  // 2. Generate detailed DM based on the comment
+  var dmPrompt = 'Alguien comentó en una publicación de ' + (channel === 'instagram' ? 'Instagram' : 'Facebook') + ': "' + commentText + '". Ya le respondiste brevemente en público. Ahora respóndele por mensaje directo con TODA la información relevante: promociones, precios, horarios, ubicaciones. Sé detallada y amigable. Menciona que puede visitarnos sin cita. No repitas lo que dice el comentario textual.';
   var dmReply = await getAIResponse(dmPrompt, fromName, fromId, channel);
 
   // 3. Send DM via private reply (linked to the comment)
