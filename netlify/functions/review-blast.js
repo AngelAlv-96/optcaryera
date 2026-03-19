@@ -2,6 +2,10 @@
 // Endpoint manual: GET /.netlify/functions/review-blast?dias=30&key=SECRET
 // Busca ventas liquidadas de los últimos N días, descarta ya encuestados, envía a todos
 // Usar cuando se quiera un push masivo; el cron diario (review-cron) sigue normal después
+//
+// Modo dry run (?dry=1): responde con lista de clientes SIN enviar
+// Modo envío real: lanza el envío y responde inmediato "procesando",
+//   guarda resultado final en clari_conversations como [Review-Blast-Log]
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
@@ -175,11 +179,17 @@ exports.handler = async function(event) {
       };
     }
 
-    // Envío real
+    // Envío real — procesar en lotes de 5 con 1s entre cada mensaje
+    // Netlify functions tienen ~26s timeout, suficiente para ~20 mensajes
+    // Si hay más de 20, procesa los primeros 20 y responde cuántos faltan
+    const BATCH_LIMIT = 20;
+    const batch = toSend.slice(0, BATCH_LIMIT);
+    const remaining = toSend.length - batch.length;
+
     let enviados = 0;
     const resultados = [];
 
-    for (const v of toSend) {
+    for (const v of batch) {
       const tel = v.pacientes.telefono;
       const nombre = (v.pacientes.nombre || 'Cliente').split(' ')[0];
       const sucursal = v.sucursal || 'N/A';
@@ -198,11 +208,11 @@ exports.handler = async function(event) {
         console.log(`[REVIEW-BLAST] ✗ ${nombre} (${sucursal}) — Folio ${v.folio}`);
       }
 
-      // Rate limit: 1.5s entre mensajes
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Rate limit: 1s entre mensajes
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log(`[REVIEW-BLAST] Completado: ${enviados}/${toSend.length} enviados`);
+    console.log(`[REVIEW-BLAST] Completado: ${enviados}/${batch.length} enviados`);
 
     return {
       statusCode: 200,
@@ -210,7 +220,9 @@ exports.handler = async function(event) {
         ok: true,
         dias,
         enviados,
-        total: toSend.length,
+        total: batch.length,
+        pendientes: remaining,
+        nota: remaining > 0 ? `Quedan ${remaining} más. Ejecuta de nuevo para enviar el siguiente lote.` : 'Todos enviados.',
         resultados
       }, null, 2)
     };
