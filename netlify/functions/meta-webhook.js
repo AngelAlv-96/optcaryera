@@ -400,12 +400,6 @@ exports.handler = async function(event) {
 
         // Send reply
         await sendMetaReply(senderId, reply, channel);
-
-        // Notify admin (first message only — check if new conversation)
-        var history = await getConversationHistory(senderId);
-        if (history.length <= 3) {
-          await notifyAdmin(senderName, channel, messageText);
-        }
       }
     }
 
