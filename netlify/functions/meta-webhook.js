@@ -395,25 +395,15 @@ No se necesita cita`,
 async function replyToComment(commentId, text) {
   if (!META_PAGE_TOKEN) return false;
   try {
-    // Try /comments endpoint (standard for page-level replies)
-    var res = await fetch(GRAPH_API + '/' + commentId + '/comments?access_token=' + META_PAGE_TOKEN, {
+    // Meta requires form-encoded (not JSON) for posting comment replies
+    var params = new URLSearchParams({ message: text, access_token: META_PAGE_TOKEN });
+    var res = await fetch(GRAPH_API + '/' + commentId + '/comments', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text })
+      body: params
     });
     if (res.ok) return true;
-    var err1 = await res.text();
-    console.error('[Meta Reply /comments]', res.status, err1.substring(0, 200));
-
-    // Fallback: try /replies endpoint
-    res = await fetch(GRAPH_API + '/' + commentId + '/replies?access_token=' + META_PAGE_TOKEN, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text })
-    });
-    if (res.ok) return true;
-    var err2 = await res.text();
-    console.error('[Meta Reply /replies]', res.status, err2.substring(0, 200));
+    var err = await res.text();
+    console.error('[Meta Reply Error]', res.status, err.substring(0, 200));
     return false;
   } catch(e) { console.error('[Meta Comment Reply]', e.message); return false; }
 }
@@ -465,8 +455,10 @@ async function handleComment(commentData, channel) {
   var replied = await replyToComment(commentId, publicReply);
   console.log('[Meta] Public reply to comment ' + commentId + ': ' + (replied ? 'OK' : 'FAILED'));
 
-  // 2. Track this comment as replied (even if reply failed, to avoid retrying permissions errors)
-  await saveMessage('comment-' + fromId, 'assistant', '[FB-Comment:' + commentId + ']', fromName, channel);
+  // 2. Track this comment as replied (only if reply succeeded)
+  if (replied) {
+    await saveMessage('comment-' + fromId, 'assistant', '[FB-Comment:' + commentId + ']', fromName, channel);
+  }
 
   // 3. Send DM via private reply (linked to the comment) — skip DM since Meta already sends the comment as a message
   // The DM response is handled by the messaging webhook handler automatically
