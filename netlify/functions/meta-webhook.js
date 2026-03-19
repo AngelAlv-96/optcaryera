@@ -504,7 +504,8 @@ async function checkRecentComments() {
         continue;
       }
       var commentsData = await commentsRes.json();
-      if (!commentsData.data) continue;
+      if (!commentsData.data) { console.log('[Meta] No comments data for post ' + post.id); continue; }
+      if (commentsData.data.length > 0) console.log('[Meta] Post ' + post.id + ' has ' + commentsData.data.length + ' comments');
 
       for (var c = 0; c < commentsData.data.length && replied < MAX_REPLIES_PER_RUN; c++) {
         var comment = commentsData.data[c];
