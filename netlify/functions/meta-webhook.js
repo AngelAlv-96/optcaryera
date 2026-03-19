@@ -347,6 +347,98 @@ async function getSenderProfile(senderId, channel) {
   return null;
 }
 
+// ── COMMENT AUTO-REPLY ──
+// Reply publicly to comment + send DM with full attention
+var COMMENT_REPLIES = [
+  '¡Hola! 👋 Te enviamos un mensaje directo con toda la información 👓✨',
+  '¡Hola! 👓 Te mandamos un DM para atenderte mejor ✨',
+  '¡Gracias por tu interés! 👋 Revisa tu bandeja de mensajes, te enviamos info 👓',
+  '¡Hola! ✨ Te escribimos por mensaje directo para darte todos los detalles 👓'
+];
+
+function getRandomCommentReply() {
+  return COMMENT_REPLIES[Math.floor(Math.random() * COMMENT_REPLIES.length)];
+}
+
+async function replyToComment(commentId, text) {
+  if (!META_PAGE_TOKEN) return false;
+  try {
+    var res = await fetch(GRAPH_API + '/' + commentId + '/replies?access_token=' + META_PAGE_TOKEN, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text })
+    });
+    if (!res.ok) {
+      // Try Facebook format (comments endpoint instead of replies)
+      res = await fetch(GRAPH_API + '/' + commentId + '/comments?access_token=' + META_PAGE_TOKEN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+    }
+    if (!res.ok) {
+      var err = await res.text();
+      console.error('[Meta Comment Reply Error]', err);
+      return false;
+    }
+    return true;
+  } catch(e) { console.error('[Meta Comment Reply]', e.message); return false; }
+}
+
+async function sendPrivateReplyFromComment(commentId, text, channel) {
+  if (!META_PAGE_TOKEN) return false;
+  try {
+    var endpoint = GRAPH_API + '/me/messages?access_token=' + META_PAGE_TOKEN;
+    var res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { comment_id: commentId },
+        message: { text: text },
+        messaging_type: 'RESPONSE'
+      })
+    });
+    if (!res.ok) {
+      var err = await res.text();
+      console.error('[Meta Private Reply Error]', err);
+      return false;
+    }
+    return true;
+  } catch(e) { console.error('[Meta Private Reply]', e.message); return false; }
+}
+
+async function handleComment(commentData, channel) {
+  var commentId = commentData.id || commentData.comment_id;
+  var commentText = commentData.text || commentData.message || '';
+  var fromId = commentData.from ? commentData.from.id : null;
+  var fromName = commentData.from ? (commentData.from.name || commentData.from.username || 'Usuario') : 'Usuario';
+
+  if (!commentId || !fromId) return;
+
+  // Skip comments from our own page
+  if (fromId === FB_PAGE_ID || fromId === IG_ACCOUNT_ID) return;
+
+  // Skip very short comments (emojis only, single chars)
+  if (commentText.replace(/[\s\p{Emoji}]/gu, '').length < 2 && commentText.length < 5) return;
+
+  console.log('[Meta] ' + channel + ' comment from ' + fromName + ': ' + commentText.substring(0, 50));
+
+  // 1. Reply publicly to the comment
+  await replyToComment(commentId, getRandomCommentReply());
+
+  // 2. Generate personalized DM based on the comment
+  var dmPrompt = 'Alguien comentó en una publicación de ' + (channel === 'instagram' ? 'Instagram' : 'Facebook') + ': "' + commentText + '". Respóndele de manera amigable por mensaje directo, ofrécele ayuda relacionada con lo que comentó y menciona brevemente nuestras promociones vigentes. No repitas lo que dice el comentario textual.';
+  var dmReply = await getAIResponse(dmPrompt, fromName, fromId, channel);
+
+  // 3. Send DM via private reply (linked to the comment)
+  var sent = await sendPrivateReplyFromComment(commentId, dmReply, channel);
+  if (!sent) {
+    // Fallback: try sending a regular DM if private reply from comment fails
+    console.log('[Meta] Private reply from comment failed, trying regular DM');
+    await sendMetaReply(fromId, dmReply, channel);
+  }
+}
+
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
   // Webhook verification (GET request from Meta)
@@ -359,7 +451,7 @@ exports.handler = async function(event) {
     return { statusCode: 403, body: 'Forbidden' };
   }
 
-  // POST — incoming message
+  // POST — incoming message or comment
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
   }
@@ -374,8 +466,9 @@ exports.handler = async function(event) {
 
     for (var e = 0; e < body.entry.length; e++) {
       var entry = body.entry[e];
-      var messaging = entry.messaging || [];
 
+      // ── HANDLE DIRECT MESSAGES ──
+      var messaging = entry.messaging || [];
       for (var m = 0; m < messaging.length; m++) {
         var msg = messaging[m];
 
@@ -400,6 +493,26 @@ exports.handler = async function(event) {
 
         // Send reply
         await sendMetaReply(senderId, reply, channel);
+      }
+
+      // ── HANDLE COMMENTS (feed changes) ──
+      var changes = entry.changes || [];
+      for (var c = 0; c < changes.length; c++) {
+        var change = changes[c];
+
+        // Facebook comments: field === 'feed', value.item === 'comment', value.verb === 'add'
+        if (change.field === 'feed' && change.value && change.value.item === 'comment' && change.value.verb === 'add') {
+          await handleComment({
+            id: change.value.comment_id,
+            message: change.value.message,
+            from: change.value.from
+          }, 'messenger');
+        }
+
+        // Instagram comments: field === 'comments'
+        if (change.field === 'comments' && change.value) {
+          await handleComment(change.value, 'instagram');
+        }
       }
     }
 
