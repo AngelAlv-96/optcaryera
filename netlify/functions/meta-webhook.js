@@ -453,23 +453,67 @@ async function handleComment(commentData, channel) {
   // Skip very short comments (emojis only, single chars)
   if (commentText.replace(/[\s\p{Emoji}]/gu, '').length < 2 && commentText.length < 5) return;
 
+  // Check if already replied to this comment
+  var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + commentId + ']&select=id&limit=1');
+  if (existing && existing.length > 0) return;
+
   console.log('[Meta] ' + channel + ' comment from ' + fromName + ': ' + commentText.substring(0, 50));
 
   // 1. Generate smart brief public reply based on comment
   var publicReply = await generatePublicReply(commentText);
-  await replyToComment(commentId, publicReply);
+  var replied = await replyToComment(commentId, publicReply);
+  console.log('[Meta] Public reply to comment ' + commentId + ': ' + (replied ? 'OK' : 'FAILED'));
 
-  // 2. Generate detailed DM based on the comment
-  var dmPrompt = 'Alguien comentó en una publicación de ' + (channel === 'instagram' ? 'Instagram' : 'Facebook') + ': "' + commentText + '". Ya le respondiste brevemente en público. Ahora respóndele por mensaje directo con TODA la información relevante: promociones, precios, horarios, ubicaciones. Sé detallada y amigable. Menciona que puede visitarnos sin cita. No repitas lo que dice el comentario textual.';
-  var dmReply = await getAIResponse(dmPrompt, fromName, fromId, channel);
+  // 2. Track this comment as replied
+  await saveMessage('comment-' + fromId, 'assistant', '[FB-Comment:' + commentId + ']', fromName, channel);
 
-  // 3. Send DM via private reply (linked to the comment)
-  var sent = await sendPrivateReplyFromComment(commentId, dmReply, channel);
-  if (!sent) {
-    // Fallback: try sending a regular DM if private reply from comment fails
-    console.log('[Meta] Private reply from comment failed, trying regular DM');
-    await sendMetaReply(fromId, dmReply, channel);
-  }
+  // 3. Send DM via private reply (linked to the comment) — skip DM since Meta already sends the comment as a message
+  // The DM response is handled by the messaging webhook handler automatically
+}
+
+// ── POLL FOR UNANSWERED COMMENTS ──
+async function checkRecentComments() {
+  if (!META_PAGE_TOKEN) return;
+  try {
+    // Get recent posts (last 5)
+    var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/posts?fields=id&limit=5&access_token=' + META_PAGE_TOKEN);
+    if (!postsRes.ok) { console.error('[Meta] Failed to get posts:', postsRes.status); return; }
+    var postsData = await postsRes.json();
+    if (!postsData.data || !postsData.data.length) return;
+
+    for (var p = 0; p < postsData.data.length; p++) {
+      var postId = postsData.data[p].id;
+
+      // Get comments on this post (last 10)
+      var commentsRes = await fetch(GRAPH_API + '/' + postId + '/comments?fields=id,from,message,created_time&limit=10&access_token=' + META_PAGE_TOKEN);
+      if (!commentsRes.ok) continue;
+      var commentsData = await commentsRes.json();
+      if (!commentsData.data) continue;
+
+      for (var c = 0; c < commentsData.data.length; c++) {
+        var comment = commentsData.data[c];
+        if (!comment.from || !comment.message) continue;
+
+        // Skip comments from our own page
+        if (comment.from.id === FB_PAGE_ID) continue;
+
+        // Skip old comments (only reply to last 2 hours)
+        var commentTime = new Date(comment.created_time);
+        if (Date.now() - commentTime.getTime() > 7200000) continue;
+
+        // Skip very short comments
+        if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) continue;
+
+        // handleComment checks for duplicates internally
+        await handleComment({
+          id: comment.id,
+          message: comment.message,
+          from: comment.from
+        }, 'messenger');
+      }
+    }
+    console.log('[Meta] Comment check completed');
+  } catch(e) { console.error('[Meta] Comment check error:', e.message); }
 }
 
 // ── MAIN HANDLER ──
@@ -529,7 +573,7 @@ exports.handler = async function(event) {
         await sendMetaReply(senderId, reply, channel);
       }
 
-      // ── HANDLE COMMENTS (feed changes) ──
+      // ── HANDLE COMMENTS (feed changes — if feed webhook works) ──
       var changes = entry.changes || [];
       if (changes.length > 0) console.log('[Meta] Changes received:', JSON.stringify(changes).substring(0, 500));
       for (var c = 0; c < changes.length; c++) {
@@ -550,6 +594,9 @@ exports.handler = async function(event) {
         }
       }
     }
+
+    // ── POLL FOR UNANSWERED COMMENTS (piggyback on webhook calls) ──
+    await checkRecentComments();
 
     return { statusCode: 200, body: 'OK' };
 
