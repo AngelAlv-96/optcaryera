@@ -491,6 +491,7 @@ exports.handler = async function(event) {
 
   try {
     var body = JSON.parse(event.body || '{}');
+    console.log('[Meta] Webhook body:', JSON.stringify(body).substring(0, 500));
 
     // Meta sends { object: 'page' or 'instagram', entry: [...] }
     if (!body.entry || !body.entry.length) {
@@ -530,6 +531,7 @@ exports.handler = async function(event) {
 
       // ── HANDLE COMMENTS (feed changes) ──
       var changes = entry.changes || [];
+      if (changes.length > 0) console.log('[Meta] Changes received:', JSON.stringify(changes).substring(0, 500));
       for (var c = 0; c < changes.length; c++) {
         var change = changes[c];
 
