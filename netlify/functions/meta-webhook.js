@@ -480,8 +480,13 @@ async function checkRecentComments() {
   try {
     // Get recent posts (last 15 to cover a week of activity)
     var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/posts?fields=id,created_time&limit=15&access_token=' + META_PAGE_TOKEN);
-    if (!postsRes.ok) { console.error('[Meta] Failed to get posts:', postsRes.status); return; }
+    if (!postsRes.ok) {
+      var errText = await postsRes.text();
+      console.error('[Meta] Failed to get posts:', postsRes.status, errText.substring(0, 200));
+      return;
+    }
     var postsData = await postsRes.json();
+    console.log('[Meta] Found ' + (postsData.data ? postsData.data.length : 0) + ' posts');
     if (!postsData.data || !postsData.data.length) return;
 
     for (var p = 0; p < postsData.data.length && replied < MAX_REPLIES_PER_RUN; p++) {
@@ -493,7 +498,11 @@ async function checkRecentComments() {
 
       // Get comments on this post (last 25)
       var commentsRes = await fetch(GRAPH_API + '/' + post.id + '/comments?fields=id,from,message,created_time&limit=25&access_token=' + META_PAGE_TOKEN);
-      if (!commentsRes.ok) continue;
+      if (!commentsRes.ok) {
+        var cErr = await commentsRes.text();
+        console.error('[Meta] Failed to get comments for post ' + post.id + ':', commentsRes.status, cErr.substring(0, 200));
+        continue;
+      }
       var commentsData = await commentsRes.json();
       if (!commentsData.data) continue;
 
