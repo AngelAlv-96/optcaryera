@@ -470,7 +470,7 @@ async function checkRecentComments() {
   var startTime = Date.now();
   var replied = 0;
   var MAX_REPLIES_PER_RUN = 5;
-  var ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
+  var ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
   try {
     // Single query: /feed with inline comments (requires pages_read_user_content)
     var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(25){id,from,message,created_time}&limit=30&access_token=' + META_PAGE_TOKEN);
@@ -486,7 +486,7 @@ async function checkRecentComments() {
     var allComments = [];
     for (var p = 0; p < postsData.data.length; p++) {
       var post = postsData.data[p];
-      if (Date.now() - new Date(post.created_time).getTime() > ONE_MONTH) continue;
+      if (Date.now() - new Date(post.created_time).getTime() > ONE_WEEK) continue;
       if (!post.comments || !post.comments.data) continue;
       for (var c = 0; c < post.comments.data.length; c++) {
         allComments.push(post.comments.data[c]);
@@ -509,7 +509,7 @@ async function checkRecentComments() {
       if (comment.from && (comment.from.id === FB_PAGE_ID || comment.from.id === IG_ACCOUNT_ID)) continue;
 
       // Skip old comments
-      if (Date.now() - new Date(comment.created_time).getTime() > ONE_MONTH) continue;
+      if (Date.now() - new Date(comment.created_time).getTime() > ONE_WEEK) continue;
 
       // Skip very short comments (emojis only, etc.)
       if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) continue;
