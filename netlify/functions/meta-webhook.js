@@ -474,45 +474,58 @@ async function handleComment(commentData, channel) {
 // ── POLL FOR UNANSWERED COMMENTS ──
 async function checkRecentComments() {
   if (!META_PAGE_TOKEN) return;
+  var replied = 0;
+  var MAX_REPLIES_PER_RUN = 3; // Avoid Netlify timeout — catches up over multiple calls
+  var ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
   try {
-    // Get recent posts (last 5)
-    var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/posts?fields=id&limit=5&access_token=' + META_PAGE_TOKEN);
+    // Get recent posts (last 15 to cover a week of activity)
+    var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/posts?fields=id,created_time&limit=15&access_token=' + META_PAGE_TOKEN);
     if (!postsRes.ok) { console.error('[Meta] Failed to get posts:', postsRes.status); return; }
     var postsData = await postsRes.json();
     if (!postsData.data || !postsData.data.length) return;
 
-    for (var p = 0; p < postsData.data.length; p++) {
-      var postId = postsData.data[p].id;
+    for (var p = 0; p < postsData.data.length && replied < MAX_REPLIES_PER_RUN; p++) {
+      var post = postsData.data[p];
 
-      // Get comments on this post (last 10)
-      var commentsRes = await fetch(GRAPH_API + '/' + postId + '/comments?fields=id,from,message,created_time&limit=10&access_token=' + META_PAGE_TOKEN);
+      // Skip posts older than 1 week
+      var postTime = new Date(post.created_time);
+      if (Date.now() - postTime.getTime() > ONE_WEEK) continue;
+
+      // Get comments on this post (last 25)
+      var commentsRes = await fetch(GRAPH_API + '/' + post.id + '/comments?fields=id,from,message,created_time&limit=25&access_token=' + META_PAGE_TOKEN);
       if (!commentsRes.ok) continue;
       var commentsData = await commentsRes.json();
       if (!commentsData.data) continue;
 
-      for (var c = 0; c < commentsData.data.length; c++) {
+      for (var c = 0; c < commentsData.data.length && replied < MAX_REPLIES_PER_RUN; c++) {
         var comment = commentsData.data[c];
         if (!comment.from || !comment.message) continue;
 
         // Skip comments from our own page
         if (comment.from.id === FB_PAGE_ID) continue;
 
-        // Skip old comments (only reply to last 2 hours)
+        // Skip comments older than 1 week
         var commentTime = new Date(comment.created_time);
-        if (Date.now() - commentTime.getTime() > 7200000) continue;
+        if (Date.now() - commentTime.getTime() > ONE_WEEK) continue;
 
         // Skip very short comments
         if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) continue;
 
-        // handleComment checks for duplicates internally
+        // handleComment checks for duplicates internally — returns early if already replied
+        var before = replied;
+        // Check duplicate here to count only actual new replies
+        var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + comment.id + ']&select=id&limit=1');
+        if (existing && existing.length > 0) continue;
+
         await handleComment({
           id: comment.id,
           message: comment.message,
           from: comment.from
         }, 'messenger');
+        replied++;
       }
     }
-    console.log('[Meta] Comment check completed');
+    if (replied > 0) console.log('[Meta] Replied to ' + replied + ' comments');
   } catch(e) { console.error('[Meta] Comment check error:', e.message); }
 }
 
