@@ -565,19 +565,19 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 /* TRUST HERO SECTION */
 .trust-hero{position:relative;z-index:1;padding:0 clamp(16px,4vw,32px) 48px;max-width:900px;margin:0 auto}
-.trust-card{position:relative;border-radius:var(--r);overflow:hidden;min-height:320px;display:flex;align-items:center}
+.trust-card{position:relative;border-radius:var(--r);overflow:hidden;min-height:360px;display:flex;flex-direction:column;justify-content:flex-end}
 .trust-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;z-index:0;transition:transform 6s ease}
 .trust-card:hover img{transform:scale(1.03)}
-.trust-card::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,11,20,.92) 0%,rgba(7,11,20,.8) 35%,rgba(7,11,20,.45) 65%,rgba(7,11,20,.15) 100%);z-index:1}
-.trust-content{position:relative;z-index:2;padding:28px 32px;max-width:520px}
+.trust-card::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,11,20,.95) 0%,rgba(7,11,20,.75) 30%,rgba(7,11,20,.15) 55%,transparent 70%);z-index:1}
+.trust-content{position:relative;z-index:2;padding:22px 26px}
 .trust-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);background:rgba(226,198,166,.1);border:1px solid rgba(226,198,166,.15);border-radius:20px;padding:4px 12px;margin-bottom:8px}
-.trust-title{font-family:var(--hd);font-size:clamp(22px,3vw,28px);font-style:italic;color:#fff;line-height:1.3;margin-bottom:8px}
+.trust-title{font-family:var(--hd);font-size:clamp(20px,3vw,26px);font-style:italic;color:#fff;line-height:1.3;margin-bottom:6px}
 .trust-desc{font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px}
-.trust-stats{display:flex;gap:20px;flex-wrap:wrap}
+.trust-stats{display:flex;gap:24px;flex-wrap:wrap}
 .trust-stat{display:flex;flex-direction:column;gap:1px}
 .trust-stat-num{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--ac),var(--gd));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .trust-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
-@media(max-width:640px){.trust-card{min-height:260px}.trust-card::after{background:linear-gradient(0deg,rgba(7,11,20,.93) 0%,rgba(7,11,20,.75) 50%,rgba(7,11,20,.2) 100%)}.trust-content{padding:20px}}
+@media(max-width:640px){.trust-card{min-height:320px}.trust-content{padding:18px 20px}}
 
 /* TTS BUTTON */
 .tts-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--s3);border:1px solid var(--bd);cursor:pointer;font-size:13px;vertical-align:middle;margin-left:6px;transition:all .25s;position:relative}
@@ -787,7 +787,7 @@ footer .fi{font-size:11px;color:var(--t3)}
       <div class="trust-desc">Miles de personas en Ciudad Ju&aacute;rez conf&iacute;an en Car &amp; Era. Lentes 100% originales, asesor&iacute;a profesional incluida y si es tu primera vez, te ense&ntilde;amos a colocarlos sin costo.</div>
       <div class="trust-stats">
         <div class="trust-stat"><span class="trust-stat-num">4,200+</span><span class="trust-stat-label">Clientes</span></div>
-        <div class="trust-stat"><span class="trust-stat-num">4.9 &#x2605;</span><span class="trust-stat-label">Google</span></div>
+        <div class="trust-stat"><span class="trust-stat-num">24h</span><span class="trust-stat-label">Entregas</span></div>
         <div class="trust-stat"><span class="trust-stat-num">3</span><span class="trust-stat-label">Sucursales</span></div>
         <div class="trust-stat"><span class="trust-stat-num">8+</span><span class="trust-stat-label">Marcas</span></div>
       </div>
