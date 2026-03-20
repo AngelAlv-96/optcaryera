@@ -257,27 +257,16 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 2. SICAR migración completa
 3. Landing pages bug
 4. Plantillas Twilio: lc_recompra + venta_clari_pendiente
-5. ~~Recompra automática wa-webhook~~ ✅ HECHO (2026-03-17) — lc_seguimiento ya registra fecha_recompra, lc-cron envía recordatorio 7d antes
-6. Promo "Material a $1"
-7. ~~SEGURIDAD: RLS Supabase~~ ✅ HECHO (2026-03-17) — 40/40 tablas con RLS, policies corregidas, search_path fijado. Proxy lectura por fases pendiente
-8. ~~Mapeo materiales + matching inteligente compras lab~~ ✅ HECHO (2026-03-16)
-9. Precios Marina pendientes de confirmar
-10. ~~Configurar GitHub para sincronizar entre computadoras~~ ✅ HECHO (2026-03-16)
-11. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
-12. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-13. CRM Clari: modal overlay para conversación, optimizar vista móvil, agregar insights/stats
-14. **Stripe**: Configurar env vars en Netlify (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), crear webhook en Stripe Dashboard, configurar Stripe Customer Portal settings
-15. **Google Sign-In**: Crear OAuth 2.0 Client ID en Google Cloud Console, reemplazar GOOGLE_CID en tienda.html
-16. **Stripe**: Probar flujo completo con claves test antes de activar producción
-17. ~~**SEGURIDAD**: CLIP_WEBHOOK_TOKEN~~ ✅ HECHO (2026-03-20) — configurado en Netlify + Clip dashboard
-18. **SEGURIDAD pendiente**: innerHTML con datos de DB sin sanitizar (XSS — riesgo bajo, solo users autenticados escriben)
-19. ~~**SEGURIDAD**: token_portal expiración~~ DESCARTADO — token_portal da acceso permanente al monedero del paciente, no debe expirar
-20. ~~**SEGURIDAD**: Google credential~~ ✅ HECHO (2026-03-20) — solo perfil en sessionStorage, JWT en memoria
-21. ~~**SEGURIDAD**: Passwords env var~~ ✅ HECHO (2026-03-20) — 5 funciones soportan `AUTH_USERS` env var
-22. ~~**SEGURIDAD**: SRI CDNs~~ ✅ HECHO (2026-03-20) — SHA-384 en 6 scripts, Supabase pinado v2.99.3
-23. **SEGURIDAD pendiente**: Configurar `AUTH_USERS` JSON en Netlify env vars para eliminar passwords del source code
-24. **SEGURIDAD pendiente**: Rate limiting en endpoints públicos
-25. **SEGURIDAD pendiente**: RBAC en dbwrite.js (restricción por rol)
+5. Promo "Material a $1"
+6. Precios Marina pendientes de confirmar
+7. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
+8. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
+9. **Stripe**: Configurar env vars en Netlify (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), crear webhook en Stripe Dashboard, configurar Stripe Customer Portal settings
+10. **Google Sign-In**: Crear OAuth 2.0 Client ID en Google Cloud Console, reemplazar GOOGLE_CID en tienda.html
+11. **Stripe**: Probar flujo completo con claves test antes de activar producción
+12. **SEGURIDAD menor**: innerHTML con datos de DB sin sanitizar (XSS — riesgo bajo, solo users autenticados escriben)
+13. **SEGURIDAD menor**: Rate limiting en endpoints públicos
+14. **SEGURIDAD menor**: RBAC en dbwrite.js (restricción por rol)
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
