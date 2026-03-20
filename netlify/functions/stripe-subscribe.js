@@ -108,6 +108,38 @@ exports.handler = async (event) => {
     var googleUser = await verifyGoogleToken(google_token);
     if (!googleUser) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token de Google inválido o expirado. Inicia sesión nuevamente.' }) };
 
+    // === SERVER-SIDE PRICE VALIDATION ===
+    // Fetch real prices from DB to prevent price manipulation from frontend
+    var prodResp = await fetch(SUPA_URL + '/rest/v1/productos?categoria=eq.Lente%20de%20contacto&activo=eq.true&select=id,nombre,precio_venta', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+    var dbProducts = await prodResp.json();
+    if (!Array.isArray(dbProducts)) dbProducts = [];
+
+    // Build lookup: normalize name → max precio_venta (products may have multiple entries)
+    var priceMap = {};
+    dbProducts.forEach(function(p) {
+      var normName = (p.nombre || '').trim().toLowerCase();
+      if (!priceMap[normName] || p.precio_venta > priceMap[normName]) {
+        priceMap[normName] = p.precio_venta;
+      }
+    });
+
+    // Validate and override prices from DB
+    var SUB_DISCOUNT = 0.10; // 10% subscription discount
+    for (var vi = 0; vi < items.length; vi++) {
+      var item = items[vi];
+      var normItemName = (item.nombre || '').trim().toLowerCase();
+      var dbPrice = priceMap[normItemName];
+      if (!dbPrice) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Producto no encontrado: ' + item.nombre }) };
+      }
+      // For subscriptions, apply 10% discount to DB price; for one-time, use DB price as-is
+      var expectedPrice = item.sub ? Math.round(dbPrice * (1 - SUB_DISCOUNT)) : dbPrice;
+      // Override with server-validated price (ignore whatever the client sent)
+      item.precio = expectedPrice;
+    }
+
     // Find or create Stripe customer
     var customer = await findOrCreateStripeCustomer(googleUser, telefono);
 
@@ -124,7 +156,7 @@ exports.handler = async (event) => {
       }
     }
 
-    // Build Stripe line_items
+    // Build Stripe line_items (using server-validated prices)
     var lineItems = [];
 
     subItems.forEach(function(item) {
