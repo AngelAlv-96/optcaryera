@@ -55,7 +55,10 @@ Si algo se rompe gravemente:
     ├── clip-payment.js   — Genera links de pago Clip checkout (portal pacientes)
     ├── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
     ├── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST)
-    └── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
+    ├── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
+    ├── stripe-subscribe.js — Crea Stripe Checkout Session para suscripciones (Google auth + recurring billing)
+    ├── stripe-webhook.js  — Webhook Stripe: auto-crea ventas en cada cobro recurrente + notifica WA
+    └── stripe-portal.js   — Portal cliente: consulta suscripciones + abre Stripe Customer Portal
 ```
 
 ## 🔧 TECH STACK
@@ -64,7 +67,7 @@ Si algo se rompe gravemente:
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
-- **Pagos**: Clip API (checkout links para portal pacientes)
+- **Pagos**: Stripe (suscripciones recurrentes tienda) + Clip API (checkout links portal pacientes)
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
 
@@ -209,12 +212,29 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Tracking: `[Review]` tag en `clari_conversations` (evita re-envío en 30 días)
 - Máx 20 encuestas por ejecución, rate limit 1.5s entre mensajes
 
+## 💳 SUSCRIPCIONES STRIPE (Tienda Online)
+- **Stripe account**: acct_1TD8PDF8cTOBxfic
+- **Flujo**: cliente elige suscripción → Google Sign-In → Stripe Checkout (hosted) → pago automático recurrente
+- **Google Sign-In**: Google Identity Services (GIS), ID token verificado server-side vía `oauth2.googleapis.com/tokeninfo`
+- **Zero npm dependencies**: Stripe REST API directo con fetch, webhook signature con crypto HMAC-SHA256 nativo
+- **stripe-subscribe.js**: verifica Google token, busca/crea Stripe customer por email, crea Checkout Session en modo subscription con `price_data` dinámico + `recurring`, soporta mix de items recurrentes + one-time
+- **stripe-webhook.js**: `invoice.payment_succeeded` → crea venta (folio ONL-SUB-xxx) + registra pago + notifica admin y cliente por WA; `invoice.payment_failed` → alerta; `customer.subscription.deleted` → notifica cancelación. Duplicate detection por referencia `stripe_{invoiceId}`
+- **stripe-portal.js**: devuelve status de suscripciones activas o crea sesión de Stripe Customer Portal (autogestión: cambiar tarjeta, cancelar, pausar)
+- **Frontend**: nav con Google auth state (avatar + menú dropdown), checkout bifurcado (sub→Stripe, one-time→dbwrite), modal "Mi cuenta" con lista de suscripciones + botón portal, post-payment handler para ?pago=ok
+- **Env vars Netlify**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`
+- **Webhook URL**: `https://optcaryera.netlify.app/.netlify/functions/stripe-webhook`
+- **Eventos webhook**: `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted`
+- **Google Client ID**: configurar en tienda.html variable `GOOGLE_CID` (línea en el JS)
+- **Frecuencias**: 30d→mensual, 60d→bimestral, 90d→trimestral (mapeo a Stripe `interval: 'month'`)
+- **Descuento suscripción**: 10% automático (aplicado en frontend antes de enviar a Stripe)
+
 ## 🧪 USUARIO DEMO
 - Login: demo/demo2024, rol admin
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v152
+## 📊 VERSIÓN ACTIVA: v153
+Cambios v153: Suscripciones automáticas Stripe + Google Sign-In para tienda online. 3 funciones nuevas (zero npm deps): `stripe-subscribe.js` crea Stripe Checkout Session en modo subscription con Google auth, `stripe-webhook.js` procesa cobros automáticos (crea venta + pago en DB + notifica admin/cliente por WA, con duplicate detection), `stripe-portal.js` consulta suscripciones y abre Stripe Customer Portal para autogestión. Frontend: Google Identity Services (One Tap + fallback botón), nav con auth state (avatar + menú dropdown con Mis suscripciones/Mis pedidos/Cerrar sesión), checkout bifurcado (items con suscripción → Google auth + Stripe Checkout hosted; sin suscripción → flujo existente dbwrite), modal "Mi cuenta" con lista de suscripciones activas (status badges, frecuencia, próximo cobro) + botón portal Stripe, post-payment handler (?pago=ok). Stripe REST API usado directamente con fetch (sin SDK), webhook signature verificada con crypto HMAC-SHA256 nativo. Env vars necesarias: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, GOOGLE_CLIENT_ID.
 Cambios v152: Mejorar OCR Compras Lab + edición reactiva de items + edición de compras guardadas. Prompt OCR reescrito con instrucciones específicas para notas manuscritas (caligrafía, tachones, confusión de números) e impresas (encabezados de columnas). Abreviaturas ópticas comunes como contexto (BL, AR, CR, Poli, Foto, HI, Prog, BF, FT, Inv). Manejo robusto de IVA con 3 escenarios (separado, incluido, sin indicación). Materiales conocidos del catálogo de precios se pasan como referencia al modelo para mejor matching de nombres. Proveedor pre-seleccionado se incluye como contexto en web. Parsing más robusto: limpia markdown fences, trailing commas, comillas simples, con fallback. Editar nombre de material ahora re-valida precio contra lista automáticamente (onchange → clbRevalidarPrecio). Subtotal se actualiza visualmente en tiempo real al editar cantidad o precio (antes solo el total general). Focus del input se preserva al re-renderizar la tabla. Modal detalle de compras guardadas ahora es completamente editable: inputs inline para material/cantidad/precio, botón "+ Agregar línea", botón ✕ para eliminar items, subtotales y total se recalculan en tiempo real, botón "Guardar cambios" persiste a DB. Mejoras aplicadas en frontend (index.html clbProcesarFoto + clbRenderItems + clbVerDetalle) y backend (wa-webhook.js labAssistantOCR).
 Cambios v151: Auto-reply a comentarios públicos en Facebook. `checkRecentComments()` en meta-webhook.js escanea posts de los últimos 7 días vía `/feed` endpoint con inline comments (`pages_read_user_content`), genera respuestas breves con Claude Haiku (`generatePublicReply`), y publica via `/{commentId}/comments` (form-encoded, requiere `pages_manage_engagement`). Dedup via `[FB-Comment:{id}]` en `clari_conversations`. Max 5 replies por ejecución con timeout guard de 7s. Page Access Token regenerado como long-lived (never-expires) con 18 permisos incluyendo `pages_manage_engagement`. Fix: Meta requiere form-encoded (URLSearchParams) no JSON para publicar comment replies. Fix: campo `from` no disponible en apps no verificadas — código maneja gracefully sin requerir datos de usuario.
 Cambios v150: Clari multi-canal — Facebook Messenger + Instagram DM. Nuevo `meta-webhook.js` recibe mensajes de ambos canales vía Meta Graph API v25.0 y responde con la misma IA de Clari (Anthropic). Reutiliza historial en `clari_conversations` (senderId como phone, canal identificado en user_name). Búsqueda de pedidos por folio/nombre. Notificación WA a admin en primeros mensajes. Configurado en Meta Developers: webhook verificado, campo `messages` suscrito para Messenger e Instagram, Page Access Token de "Ópticas Car & Era" (140615486675232). Instagram @opticascar.yera (17841414023710928) conectado. Env vars: `META_PAGE_TOKEN`, `META_VERIFY_TOKEN`. App: "car & era maker" (2088315654915229) — compartida con agencia de marketing (solo campañas, no toca mensajes).
@@ -245,6 +265,9 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 11. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 12. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
 13. CRM Clari: modal overlay para conversación, optimizar vista móvil, agregar insights/stats
+14. **Stripe**: Configurar env vars en Netlify (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET), crear webhook en Stripe Dashboard, configurar Stripe Customer Portal settings
+15. **Google Sign-In**: Crear OAuth 2.0 Client ID en Google Cloud Console, reemplazar GOOGLE_CID en tienda.html
+16. **Stripe**: Probar flujo completo con claves test antes de activar producción
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
