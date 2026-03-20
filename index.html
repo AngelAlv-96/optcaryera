@@ -19746,31 +19746,57 @@ async function clbProcesarFoto(input) {
   var mediaType = file.type || 'image/jpeg';
   var proveedorPrefill = document.getElementById('clb-proveedor').value || '';
 
+  // Build list of known materials from price index for OCR context
+  var materialesConocidos = [];
+  if (_clbPrecioIndex && _clbPrecioIndex.length) {
+    var seen = {};
+    _clbPrecioIndex.forEach(function(p) {
+      var k = p.material.toUpperCase();
+      if (!seen[k]) { seen[k] = true; materialesConocidos.push(p.lab + ': ' + p.material); }
+    });
+  }
+  var matCtx = materialesConocidos.length ? '\n\nMATERIALES CONOCIDOS en nuestro catálogo (usa estos nombres cuando el material de la nota coincida o sea equivalente):\n' + materialesConocidos.join('\n') : '';
+  var provCtx = proveedorPrefill && proveedorPrefill !== '__otro__' ? '\nPROVEEDOR YA IDENTIFICADO: ' + proveedorPrefill + ' (usa este nombre exacto para el campo proveedor)' : '';
+
   try {
     var resp = await fetch('/.netlify/functions/ia-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         max_tokens: 4096,
-        system: 'Eres un asistente de óptica que extrae datos de notas/tickets/facturas de compra de materiales ópticos.\n' +
-          'Extrae TODA la información posible de la nota:\n' +
-          '1. proveedor: nombre de la empresa/tienda/proveedor que aparece en la nota\n' +
-          '2. folio: número de folio, ticket, nota o factura\n' +
-          '3. fecha: fecha de la nota en formato YYYY-MM-DD\n' +
-          '4. items: array de productos. Para cada uno:\n' +
-          '   - material: nombre del material óptico tal como aparece (ej: "ANTI BLUE CR39", "POLI AR", etc.)\n' +
-          '   - serie: número de serie si aparece (S1=1, S2=2, S3=3, Serie 1=1, etc). Si no aparece, null\n' +
-          '   - cantidad: cuántas piezas/pares\n' +
-          '   - precio_unitario: precio por unidad SIN IVA (si el precio incluye IVA, dividir entre 1.16)\n' +
-          '   - subtotal: cantidad × precio_unitario\n' +
-          'RESPONDE ÚNICAMENTE con un JSON object (no array), sin markdown:\n' +
-          '{"proveedor":"NOMBRE","folio":"12345","fecha":"2026-03-15","items":[{"material":"NOMBRE","serie":1,"cantidad":1,"precio_unitario":123.45,"subtotal":123.45}]}\n' +
-          'Si no puedes leer algún campo, usa null. Si hay un total general, agrégalo como item con material="TOTAL NOTA" y cantidad=0.',
+        system: 'Eres un asistente experto en óptica que extrae datos de notas de compra de materiales ópticos (lentes oftálmicos). Las notas pueden ser IMPRESAS (tickets, facturas) o MANUSCRITAS (escritas a mano).\n\n' +
+          'INSTRUCCIONES PARA NOTAS MANUSCRITAS:\n' +
+          '- Lee con mucho cuidado cada línea. La caligrafía puede ser difícil.\n' +
+          '- Los números escritos a mano pueden confundirse: 1/7, 3/8, 4/9, 5/6. Usa el contexto (precios típicos de materiales ópticos van de $100 a $5,000 MXN por pieza).\n' +
+          '- Abreviaturas comunes: "c/u"=cada uno, "p/u"=precio unitario, "pza"/"pz"=pieza, "pr"=par, "Dz"=docena, "BL"=Blue Light, "AR"=Anti-Reflejo, "CR"=CR-39, "Poli"=Policarbonato, "Foto"=Fotocromático, "HI"=Hi-Index, "Prog"=Progresivo, "BF"=Bifocal, "FT"=Flat Top, "Inv"=Invisible.\n' +
+          '- Si hay tachones o correcciones, usa el último valor visible.\n' +
+          '- Las cantidades suelen ser 1-20 piezas por línea. Si lees un número muy alto (>50), probablemente es un precio.\n\n' +
+          'INSTRUCCIONES PARA NOTAS IMPRESAS:\n' +
+          '- Extrae exactamente como aparece el nombre del material.\n' +
+          '- Busca encabezados de columnas (Cant, Descripción, P.U., Importe, etc.) para identificar qué número es qué.\n\n' +
+          'REGLAS GENERALES:\n' +
+          '1. proveedor: nombre de la empresa/laboratorio que emite la nota\n' +
+          '2. folio: número de folio, ticket, nota, remisión o factura\n' +
+          '3. fecha: en formato YYYY-MM-DD. Si solo dice día/mes, asume año actual 2026.\n' +
+          '4. items: array de cada material/producto:\n' +
+          '   - material: nombre del material óptico TAL COMO APARECE en la nota. Si reconoces que es equivalente a un material de nuestro catálogo, usa el nombre del catálogo.\n' +
+          '   - serie: rango de graduación (S1=1, S2=2, S3=3, Serie 1=1, etc). Si la nota agrupa por serie o rango, extrae el número. Si no aparece, null.\n' +
+          '   - cantidad: número de piezas/pares. Default 1 si no es claro.\n' +
+          '   - precio_unitario: precio por unidad SIN IVA.\n' +
+          '   - subtotal: cantidad × precio_unitario\n\n' +
+          'MANEJO DE IVA (MUY IMPORTANTE):\n' +
+          '- Si la nota muestra "Subtotal", "IVA" y "Total" por separado → usa los precios de la columna de precio unitario tal cual (ya son sin IVA).\n' +
+          '- Si la nota solo muestra un total final y los precios parecen incluir IVA (números "redondos" que al dividir entre 1.16 dan cantidades limpias) → divide entre 1.16.\n' +
+          '- Si no hay indicación de IVA → deja los precios tal cual.\n' +
+          '- Incluye el total general de la nota como item: material="TOTAL NOTA", cantidad=0, precio_unitario=0, subtotal=(total de la nota SIN IVA).\n\n' +
+          'RESPONDE ÚNICAMENTE con JSON object, SIN markdown, SIN comentarios, SIN texto extra:\n' +
+          '{"proveedor":"NOMBRE","folio":"12345","fecha":"2026-03-15","items":[{"material":"NOMBRE","serie":1,"cantidad":1,"precio_unitario":123.45,"subtotal":123.45}]}' +
+          provCtx + matCtx,
         messages: [{
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: 'Extrae proveedor, folio, fecha y materiales de esta nota de compra. Responde solo JSON object.' }
+            { type: 'text', text: 'Extrae proveedor, folio, fecha y TODOS los materiales de esta nota de compra de óptica. Analiza cuidadosamente cada línea, especialmente si es manuscrita. Responde SOLO JSON object, sin markdown.' }
           ]
         }]
       })
@@ -19786,20 +19812,32 @@ async function clbProcesarFoto(input) {
     var text = '';
     if (data.content) data.content.forEach(function(c) { if (c.type === 'text') text += c.text; });
 
+    // Clean response: remove markdown fences, trailing commas in JSON
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    text = text.replace(/,\s*([}\]])/g, '$1'); // trailing commas
+
     // Try to parse as object first, then array fallback
     var parsed = null;
     var objMatch = text.match(/\{[\s\S]*\}/);
     if (objMatch) {
-      try { parsed = JSON.parse(objMatch[0]); } catch(e) {}
+      try { parsed = JSON.parse(objMatch[0]); } catch(e) {
+        // Try fixing common JSON issues
+        var fixed = objMatch[0].replace(/'/g, '"').replace(/,\s*([}\]])/g, '$1');
+        try { parsed = JSON.parse(fixed); } catch(e2) {}
+      }
     }
     if (!parsed) {
       var arrMatch = text.match(/\[[\s\S]*\]/);
       if (arrMatch) {
-        try { parsed = { items: JSON.parse(arrMatch[0]) }; } catch(e) {}
+        try { parsed = { items: JSON.parse(arrMatch[0]) }; } catch(e) {
+          var fixed2 = arrMatch[0].replace(/'/g, '"').replace(/,\s*([}\]])/g, '$1');
+          try { parsed = { items: JSON.parse(fixed2) }; } catch(e2) {}
+        }
       }
     }
     if (!parsed) {
       st.innerHTML = '<span style="color:#f04a6a">❌ No se pudo leer la nota. Intenta con otra foto más clara.</span>';
+      console.warn('[CLB-OCR] Raw response:', text);
       return;
     }
 
@@ -19876,6 +19914,18 @@ function clbRenderItems() {
   var totalEl = document.getElementById('clb-total');
   sec.style.display = '';
 
+  // Save focused input position to restore after re-render
+  var focusIdx = -1, focusField = '', focusSel = [0,0];
+  var ae = document.activeElement;
+  if (ae && ae.tagName === 'INPUT' && ae.closest('#clb-items-tbody')) {
+    var row = ae.closest('tr');
+    if (row) {
+      focusIdx = Array.from(tbody.children).indexOf(row);
+      focusField = Array.from(row.querySelectorAll('input')).indexOf(ae);
+      focusSel = [ae.selectionStart||0, ae.selectionEnd||0];
+    }
+  }
+
   var IS = 'background:transparent;border:1px solid rgba(255,255,255,.08);border-radius:5px;color:var(--white);font-size:11px;padding:5px 7px;outline:none;font-family:Outfit,sans-serif;width:100%';
   var hasPriceData = _clbItems.some(function(it) { return it._precioLista !== null && it._precioLista !== undefined; });
 
@@ -19903,10 +19953,10 @@ function clbRenderItems() {
     var serieCell = '<td style="padding:4px 6px;width:45px"><input type="number" min="1" max="9" style="' + IS + ';width:35px" value="' + (item.serie||'') + '" placeholder="-" oninput="_clbItems[' + i + '].serie=parseInt(this.value)||null;clbRevalidarPrecio(' + i + ')"></td>';
 
     return '<tr style="border-bottom:1px solid rgba(255,255,255,.04)">' +
-      '<td style="padding:4px 6px"><input style="' + IS + '" value="' + (item.material||'').replace(/"/g,'&quot;') + '" oninput="_clbItems[' + i + '].material=this.value"></td>' +
+      '<td style="padding:4px 6px"><input style="' + IS + '" value="' + (item.material||'').replace(/"/g,'&quot;') + '" onchange="_clbItems[' + i + '].material=this.value;clbRevalidarPrecio(' + i + ')" oninput="_clbItems[' + i + '].material=this.value"></td>' +
       serieCell +
-      '<td style="padding:4px 6px;width:60px"><input type="number" style="' + IS + ';width:50px" value="' + (item.cantidad||1) + '" oninput="_clbItems[' + i + '].cantidad=parseInt(this.value)||1;_clbItems[' + i + '].subtotal=_clbItems[' + i + '].cantidad*_clbItems[' + i + '].precio_unitario;clbActualizarTotal()"></td>' +
-      '<td style="padding:4px 6px;width:80px"><input type="number" style="' + IS + ';width:70px" value="' + (item.precio_unitario||0) + '" step="0.01" oninput="_clbItems[' + i + '].precio_unitario=parseFloat(this.value)||0;_clbItems[' + i + '].subtotal=_clbItems[' + i + '].cantidad*_clbItems[' + i + '].precio_unitario;clbActualizarTotal()"></td>' +
+      '<td style="padding:4px 6px;width:60px"><input type="number" style="' + IS + ';width:50px" value="' + (item.cantidad||1) + '" oninput="_clbItems[' + i + '].cantidad=parseInt(this.value)||1;_clbItems[' + i + '].subtotal=_clbItems[' + i + '].cantidad*_clbItems[' + i + '].precio_unitario;clbRenderItems()"></td>' +
+      '<td style="padding:4px 6px;width:80px"><input type="number" style="' + IS + ';width:70px" value="' + (item.precio_unitario||0) + '" step="0.01" oninput="_clbItems[' + i + '].precio_unitario=parseFloat(this.value)||0;_clbItems[' + i + '].subtotal=_clbItems[' + i + '].cantidad*_clbItems[' + i + '].precio_unitario;clbRenderItems()"></td>' +
       '<td style="padding:4px 6px;width:80px;font-family:Outfit;color:var(--accent)">$' + (item.subtotal||0).toLocaleString('es-MX',{minimumFractionDigits:2}) + '</td>' +
       precioCell +
       '<td style="padding:4px 6px;width:30px"><button onclick="_clbItems.splice(' + i + ',1);clbRenderItems()" style="background:none;border:none;color:#f04a6a;cursor:pointer;font-size:12px">✕</button></td>' +
@@ -19914,6 +19964,15 @@ function clbRenderItems() {
   }).join('');
 
   clbActualizarTotal();
+
+  // Restore focus to the input that was being edited
+  if (focusIdx >= 0 && tbody.children[focusIdx]) {
+    var inputs = tbody.children[focusIdx].querySelectorAll('input');
+    if (inputs[focusField]) {
+      inputs[focusField].focus();
+      try { inputs[focusField].setSelectionRange(focusSel[0], focusSel[1]); } catch(e) {}
+    }
+  }
 }
 
 function clbRevalidarPrecio(idx) {
