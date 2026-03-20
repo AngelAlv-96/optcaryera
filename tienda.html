@@ -103,9 +103,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,11,20,.8);backdrop-filte
 .hero-lens{flex-shrink:0;width:clamp(200px,30vw,350px);height:clamp(200px,30vw,350px);position:relative}
 .lens-outer{position:relative;width:100%;height:100%;animation:lensFloat 4s ease-in-out infinite}
 @keyframes lensFloat{0%,100%{transform:translateY(0) rotateX(15deg) rotateY(-5deg)}50%{transform:translateY(-15px) rotateX(20deg) rotateY(5deg)}}
-.lens-body{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:65%;height:65%;border-radius:50%;overflow:hidden;border:2px solid rgba(226,198,166,.25);box-shadow:0 0 60px rgba(226,198,166,.15),0 0 120px rgba(226,198,166,.06)}
-.lens-body img{width:100%;height:100%;object-fit:cover;display:block}
-.lens-reflection{position:absolute;top:0;left:0;width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.08) 0%,transparent 50%);pointer-events:none;z-index:1}
+.lens-body{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:65%;height:65%;border-radius:50%;background:radial-gradient(ellipse at 30% 30%,rgba(226,198,166,.2),rgba(226,198,166,.05) 50%,rgba(7,11,20,.3));border:1px solid rgba(226,198,166,.2);box-shadow:0 0 60px rgba(226,198,166,.15),inset 0 0 40px rgba(226,198,166,.05);backdrop-filter:blur(4px)}
+.lens-reflection{position:absolute;top:15%;left:20%;width:40%;height:25%;border-radius:50%;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);filter:blur(3px)}
 .lens-ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid}
 .lens-ring--1{width:80%;height:80%;transform:translate(-50%,-50%);border-color:rgba(226,198,166,.15);animation:ringPulse 3s ease-in-out infinite}
 .lens-ring--2{width:95%;height:95%;transform:translate(-50%,-50%);border-color:rgba(226,198,166,.08);animation:ringPulse 3s ease-in-out infinite 1s}
@@ -566,20 +565,19 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 /* TRUST HERO SECTION */
 .trust-hero{position:relative;z-index:1;padding:0 clamp(16px,4vw,32px) 48px;max-width:900px;margin:0 auto}
-.trust-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch}
-.trust-card{position:relative;border-radius:var(--r);overflow:hidden;min-height:280px;display:flex;flex-direction:column;justify-content:flex-end}
-.trust-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;transition:transform 6s ease}
-.trust-card:hover img{transform:scale(1.05)}
-.trust-card::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(7,11,20,.85) 0%,rgba(7,11,20,.4) 50%,rgba(7,11,20,.1) 100%);z-index:1}
-.trust-content{position:relative;z-index:2;padding:20px 22px}
+.trust-card{position:relative;border-radius:var(--r);overflow:hidden;min-height:320px;display:flex;align-items:center}
+.trust-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;z-index:0;transition:transform 6s ease}
+.trust-card:hover img{transform:scale(1.03)}
+.trust-card::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,11,20,.88) 0%,rgba(7,11,20,.7) 40%,rgba(7,11,20,.2) 70%,transparent 100%);z-index:1}
+.trust-content{position:relative;z-index:2;padding:28px 32px;max-width:520px}
 .trust-badge{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);background:rgba(226,198,166,.1);border:1px solid rgba(226,198,166,.15);border-radius:20px;padding:4px 12px;margin-bottom:8px}
-.trust-title{font-family:var(--hd);font-size:20px;font-style:italic;color:#fff;line-height:1.3;margin-bottom:6px}
-.trust-desc{font-size:12px;color:rgba(255,255,255,.65);line-height:1.6}
-.trust-stats{display:flex;gap:16px;margin-top:10px}
+.trust-title{font-family:var(--hd);font-size:clamp(22px,3vw,28px);font-style:italic;color:#fff;line-height:1.3;margin-bottom:8px}
+.trust-desc{font-size:13px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px}
+.trust-stats{display:flex;gap:20px;flex-wrap:wrap}
 .trust-stat{display:flex;flex-direction:column;gap:1px}
-.trust-stat-num{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--ac),var(--gd));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.trust-stat-num{font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--ac),var(--gd));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .trust-stat-label{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
-@media(max-width:640px){.trust-grid{grid-template-columns:1fr;gap:14px}.trust-card{min-height:220px}}
+@media(max-width:640px){.trust-card{min-height:260px}.trust-card::after{background:linear-gradient(0deg,rgba(7,11,20,.9) 0%,rgba(7,11,20,.6) 50%,rgba(7,11,20,.15) 100%)}.trust-content{padding:20px}}
 
 /* TTS BUTTON */
 .tts-btn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--s3);border:1px solid var(--bd);cursor:pointer;font-size:13px;vertical-align:middle;margin-left:6px;transition:all .25s;position:relative}
@@ -767,7 +765,6 @@ footer .fi{font-size:11px;color:var(--t3)}
         <div class="lens-ring lens-ring--2"></div>
         <div class="lens-ring lens-ring--3"></div>
         <div class="lens-body">
-          <img src="hero-lc.jpg" alt="Mujer colocándose lente de contacto" loading="eager">
           <div class="lens-reflection"></div>
         </div>
         <div class="lens-drop lens-drop--1"></div>
@@ -782,31 +779,17 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 <!-- TRUST SECTION -->
 <div class="trust-hero reveal">
-  <div class="trust-grid">
-    <div class="trust-card">
-      <img src="https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?w=600&q=80&auto=format" alt="Paciente en consulta optom&eacute;trica con equipo profesional" loading="lazy">
-      <div class="trust-content">
-        <div class="trust-badge">&#x2728; Confianza visual</div>
-        <div class="trust-title">Tu mirada, sin l&iacute;mites</div>
-        <div class="trust-desc">Miles de personas en Ciudad Ju&aacute;rez conf&iacute;an en Car &amp; Era para su salud visual. Lentes originales, marcas l&iacute;der y atenci&oacute;n profesional.</div>
-        <div class="trust-stats">
-          <div class="trust-stat"><span class="trust-stat-num">4,200+</span><span class="trust-stat-label">Clientes</span></div>
-          <div class="trust-stat"><span class="trust-stat-num">4.9 &#x2605;</span><span class="trust-stat-label">Google</span></div>
-          <div class="trust-stat"><span class="trust-stat-num">3</span><span class="trust-stat-label">Sucursales</span></div>
-        </div>
-      </div>
-    </div>
-    <div class="trust-card">
-      <img src="https://images.unsplash.com/photo-1551884170-09fb70a3a2ed?w=600&q=80&auto=format" alt="Optometrista profesional atendiendo paciente en consultorio" loading="lazy">
-      <div class="trust-content">
-        <div class="trust-badge">&#x1f3e5; Respaldo profesional</div>
-        <div class="trust-title">Asesor&iacute;a experta incluida</div>
-        <div class="trust-desc">Nuestro equipo de profesionales te ayuda a elegir el lente ideal para tus ojos. Si es tu primera vez, te ense&ntilde;amos a colocarlos sin costo.</div>
-        <div class="trust-stats">
-          <div class="trust-stat"><span class="trust-stat-num">100%</span><span class="trust-stat-label">Originales</span></div>
-          <div class="trust-stat"><span class="trust-stat-num">20 min</span><span class="trust-stat-label">Listos</span></div>
-          <div class="trust-stat"><span class="trust-stat-num">8+</span><span class="trust-stat-label">Marcas</span></div>
-        </div>
+  <div class="trust-card">
+    <img src="hero-lc.jpg" alt="Mujer colocándose lente de contacto" loading="lazy">
+    <div class="trust-content">
+      <div class="trust-badge">&#x2728; Confianza visual</div>
+      <div class="trust-title">Tu mirada, nuestra especialidad</div>
+      <div class="trust-desc">Miles de personas en Ciudad Ju&aacute;rez conf&iacute;an en Car &amp; Era. Lentes 100% originales, asesor&iacute;a profesional incluida y si es tu primera vez, te ense&ntilde;amos a colocarlos sin costo.</div>
+      <div class="trust-stats">
+        <div class="trust-stat"><span class="trust-stat-num">4,200+</span><span class="trust-stat-label">Clientes</span></div>
+        <div class="trust-stat"><span class="trust-stat-num">4.9 &#x2605;</span><span class="trust-stat-label">Google</span></div>
+        <div class="trust-stat"><span class="trust-stat-num">3</span><span class="trust-stat-label">Sucursales</span></div>
+        <div class="trust-stat"><span class="trust-stat-num">8+</span><span class="trust-stat-label">Marcas</span></div>
       </div>
     </div>
   </div>
