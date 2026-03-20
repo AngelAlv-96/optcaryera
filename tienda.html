@@ -696,9 +696,9 @@ footer .fi{font-size:11px;color:var(--t3)}
 .tryon-color-label{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--ac);white-space:nowrap;font-weight:600;background:var(--bg2);padding:2px 8px;border-radius:6px;border:1px solid var(--bd);pointer-events:none;opacity:0;transition:opacity .2s}
 .tryon-color.active .tryon-color-label,.tryon-color:hover .tryon-color-label{opacity:1}
 .tryon-tip{font-size:11px;color:var(--t3);text-align:center;padding:4px 16px;max-width:520px}
-.tryon-btn-hero{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,rgba(226,198,166,.15),rgba(168,137,106,.1));border:1px solid var(--ac2);border-radius:var(--rs);color:var(--ac);font-family:var(--ft);font-size:13px;font-weight:500;cursor:pointer;transition:all .3s;margin-top:10px}
-.tryon-btn-hero:hover{background:linear-gradient(135deg,rgba(226,198,166,.25),rgba(168,137,106,.2));transform:translateY(-1px)}
-.tryon-btn-hero svg{width:18px;height:18px}
+.det-tryon{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,rgba(226,198,166,.15),rgba(168,137,106,.1));border:1px solid var(--ac2);border-radius:var(--rs);color:var(--ac);font-family:var(--ft);font-size:13px;font-weight:500;cursor:pointer;transition:all .3s;margin-bottom:10px}
+.det-tryon:hover{background:linear-gradient(135deg,rgba(226,198,166,.25),rgba(168,137,106,.2));transform:translateY(-1px)}
+.det-tryon svg{width:16px;height:16px}
 .tryon-nocam{color:var(--t2);font-size:14px;text-align:center;padding:40px 20px}
 .tryon-photo-btn{position:absolute;bottom:12px;right:12px;z-index:3;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--gd));border:none;color:#111;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.4);transition:transform .2s}
 .tryon-photo-btn:hover{transform:scale(1.1)}
@@ -748,7 +748,6 @@ footer .fi{font-size:11px;color:var(--t3)}
           <span class="hp-text"><strong>Ya s&eacute; cu&aacute;les quiero</strong><small>Busca y pide directo</small></span>
         </button>
       </div>
-      <button class="tryon-btn-hero" onclick="openTryOn()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7z"/></svg>Probador virtual de color</button>
       <!-- AI type options (hidden until "Ayúdame" is clicked) -->
       <div class="hero-ai-opts" id="hero-ai-opts" style="display:none">
         <p class="hero-q">&iquest;Qu&eacute; tipo de lente buscas?</p>
@@ -1187,6 +1186,7 @@ b.innerHTML=
 (feat?'<ul class="det-feats">'+feat.feats.map(function(f){return'<li>'+f+'</li>'}).join('')+'</ul>':'')+
 '<div class="det-price">$'+p.precio.toLocaleString('es-MX')+'<small> /caja</small></div>'+
 '<div class="guide-link" onclick="document.getElementById(\'dm\').remove();showGuide()">&#x1f4d6; ¿Primera vez? Aprende a colocarlos y retirarlos</div>'+
+(p.tipo==='Color'?'<div style="text-align:center"><button class="det-tryon" onclick="document.getElementById(\'dm\').remove();openTryOn()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7z"/></svg>Probar color virtual</button></div>':'')+
 '<div class="det-btns">'+
 '<button class="bp" onclick="document.getElementById(\'dm\').remove();ped(\''+p.key+'\')">Pedir ahora</button>'+
 '<a class="det-wa" href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, me interesa: '+p.nombre)+'" target="_blank">&#x1f4ac; WhatsApp</a>'+
