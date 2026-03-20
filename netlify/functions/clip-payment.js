@@ -8,10 +8,11 @@ const CLIP_API_URL = 'https://api.payclip.com/v2/checkout';
 const SITE_URL = process.env.URL || 'https://optcaryera.netlify.app';
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ALLOWED_ORIGIN = SITE_URL;
 
 exports.handler = async (event) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json'
   };
@@ -38,6 +39,12 @@ exports.handler = async (event) => {
 
     if (amount < 1) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Amount must be at least $1' }) };
+    }
+
+    // Validate amount does not exceed venta saldo
+    const ventaSaldo = Number(ventaData[0].saldo) || 0;
+    if (amount > ventaSaldo + 0.01) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: `Monto ($${amount}) excede el saldo pendiente ($${ventaSaldo.toFixed(2)})` }) };
     }
 
     // Build redirect URLs — return to portal after payment
@@ -74,7 +81,7 @@ exports.handler = async (event) => {
     const data = await resp.json();
 
     if (!resp.ok) {
-      console.error('Clip API error:', resp.status, JSON.stringify(data));
+      console.error('Clip API error:', resp.status, data?.error || data?.message || 'unknown');
       return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Clip API error', details: data }) };
     }
 

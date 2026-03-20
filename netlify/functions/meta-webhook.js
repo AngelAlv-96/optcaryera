@@ -548,7 +548,7 @@ exports.handler = async function(event) {
 
   try {
     var body = JSON.parse(event.body || '{}');
-    console.log('[Meta] Webhook body:', JSON.stringify(body).substring(0, 500));
+    console.log('[Meta] Webhook received: object=' + (body.object || 'unknown') + ', entries=' + (body.entry?.length || 0));
 
     // Meta sends { object: 'page' or 'instagram', entry: [...] }
     if (!body.entry || !body.entry.length) {

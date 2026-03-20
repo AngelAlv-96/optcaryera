@@ -51,7 +51,7 @@ async function verifyGoogleToken(token) {
 
 exports.handler = async (event) => {
   var headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': SITE_URL,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json'
   };

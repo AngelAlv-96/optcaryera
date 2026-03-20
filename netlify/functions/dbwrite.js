@@ -4,9 +4,10 @@
 
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
 
-// Base users (mirrors frontend — custom users fetched from DB)
-const BASE_USERS = {
+// Base users — prefer AUTH_USERS env var (JSON), fallback to hardcoded for backward compat
+const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) : {
   'americas':  { pass: 'americas01',  rol: 'sucursal' },
   'pinocelli': { pass: 'pinocelli01', rol: 'sucursal' },
   'magnolia':  { pass: 'magnolia01',  rol: 'sucursal' },
@@ -52,9 +53,14 @@ async function supaREST(method, path, body, extraHeaders) {
   return { data, error: null };
 }
 
+function isValidColumn(col) {
+  return typeof col === 'string' && /^[a-zA-Z_][a-zA-Z0-9_]{0,63}$/.test(col);
+}
+
 function buildFilterString(filters) {
   if (!filters || !filters.length) return '';
   return filters.map(f => {
+    if (!isValidColumn(f.col)) return '';
     const v = (f.val === null || f.val === undefined) ? 'null' : f.val;
     if (f.op === 'eq') return `${f.col}=eq.${v}`;
     if (f.op === 'neq') return `${f.col}=neq.${v}`;
@@ -75,7 +81,7 @@ async function getCustomUsers() {
 
 exports.handler = async (event) => {
   const H = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'

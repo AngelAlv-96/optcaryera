@@ -5,8 +5,9 @@
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BUCKET = 'landing-images';
+const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
 
-const BASE_USERS = {
+const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) : {
   'americas':  { pass: 'americas01',  rol: 'sucursal' },
   'pinocelli': { pass: 'pinocelli01', rol: 'sucursal' },
   'magnolia':  { pass: 'magnolia01',  rol: 'sucursal' },
@@ -53,7 +54,7 @@ async function ensureBucket() {
 
 exports.handler = async (event) => {
   const H = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'

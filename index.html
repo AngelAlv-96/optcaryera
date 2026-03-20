@@ -10,10 +10,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.min.js" integrity="sha384-4bKASEcnXfYfA/rrhF9qD3mYowkb5k4Xbzbrf3ccqgZrplKUrwnA2Q/L5xcdZFAp" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 <style>
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
@@ -13418,7 +13418,7 @@ async function eliminarAsesorConfig(suc, nombre) {
 async function descargarBackup() {
   toast('Generando backup...');
   try {
-    const res = await fetch('/.netlify/functions/backup');
+    const res = await fetch('/.netlify/functions/backup?token=caryera-backup-2024');
     if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -13693,7 +13693,7 @@ async function verReporteMensual() {
   el.innerHTML = '<div class="ld"><div class="spin"></div> Cargando reporte...</div>';
   try {
     const mes = hoyLocal().slice(0, 7);
-    const res = await fetch(`/.netlify/functions/reporte?mes=${mes}`);
+    const res = await fetch(`/.netlify/functions/reporte?mes=${mes}&user=${encodeURIComponent(currentUser?.id||'')}&pass=${encodeURIComponent(currentUser?.pass||'')}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     const r = data.resumen;

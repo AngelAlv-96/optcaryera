@@ -8,10 +8,11 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA    = process.env.TWILIO_WA_NUMBER || 'whatsapp:+5216563110094';
 const SUPA_URL     = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
 
 const TWILIO_API = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`;
 
-const BASE_USERS = {
+const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) : {
   'americas':  { pass: 'americas01',  rol: 'sucursal' },
   'pinocelli': { pass: 'pinocelli01', rol: 'sucursal' },
   'magnolia':  { pass: 'magnolia01',  rol: 'sucursal' },
@@ -135,7 +136,7 @@ function templateToText(templateName, variables) {
 
 exports.handler = async (event) => {
   const H = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'

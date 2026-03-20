@@ -1050,7 +1050,7 @@ var btn=document.getElementById('cbk');btn.disabled=true;btn.textContent='...';v
 var payMethod=document.getElementById('cpay').value;
 // === STRIPE PATH: subscription items → Stripe Checkout with Google auth ===
 if(hasSub){
-if(!_gUser){btn.disabled=false;btn.textContent='Confirmar pedido';tt('Inicia sesión con Google para suscribirte');googleSignIn();return}
+if(!_gUser||!_gUser.credential){btn.disabled=false;btn.textContent='Confirmar pedido';tt('Inicia sesión con Google para suscribirte');googleSignIn();return}
 btn.textContent='Redirigiendo a pago seguro...';
 try{var sr=await fetch('/.netlify/functions/stripe-subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({google_token:_gUser.credential,items:cart,telefono:t,sucursal:s,notas:nt,nombre:n})});
 var sd=await sr.json();
@@ -1856,14 +1856,14 @@ var GOOGLE_CID='961220697987-6a871h0obi1kmlnmk4448758ohqp6e2a.apps.googleusercon
 function initGoogleAuth(){
 if(typeof google==='undefined'||!google.accounts)return;
 google.accounts.id.initialize({client_id:GOOGLE_CID,callback:handleGoogleCredential,auto_select:true});
-// Restore session
+// Restore session (profile only — credential stays in memory, refreshed by auto_select)
 var saved=sessionStorage.getItem('ce_guser');
-if(saved){try{_gUser=JSON.parse(saved);updateAuthUI()}catch(e){}}
+if(saved){try{var p=JSON.parse(saved);_gUser={credential:null,name:p.name||'',email:p.email||'',picture:p.picture||'',sub:p.sub};updateAuthUI()}catch(e){}}
 }
 function handleGoogleCredential(response){
 try{var parts=response.credential.split('.');var payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
 _gUser={credential:response.credential,name:payload.name||'',email:payload.email||'',picture:payload.picture||'',sub:payload.sub};
-sessionStorage.setItem('ce_guser',JSON.stringify(_gUser));updateAuthUI();tt('Bienvenido, '+(_gUser.name||_gUser.email))}catch(e){console.error('Google auth error:',e)}}
+sessionStorage.setItem('ce_guser',JSON.stringify({name:_gUser.name,email:_gUser.email,picture:_gUser.picture,sub:_gUser.sub}));updateAuthUI();tt('Bienvenido, '+(_gUser.name||_gUser.email))}catch(e){console.error('Google auth error:',e)}}
 function googleSignIn(){
 if(typeof google==='undefined'||!google.accounts){tt('Cargando autenticación...');return}
 google.accounts.id.prompt(function(notification){
@@ -1897,7 +1897,7 @@ b.innerHTML='<button class="det-close" onclick="document.getElementById(\'cuenta
 '<div class="det-hdr" style="margin-bottom:4px"><div class="det-marca">Mi cuenta</div><h2 class="det-name">Mis suscripciones</h2></div>'+
 '<div style="text-align:center;padding:20px 0;color:var(--t3);font-size:12px" id="cuenta-loading">Cargando...</div>';
 e.appendChild(b);document.body.appendChild(e);
-if(!_gUser){b.querySelector('#cuenta-loading').innerHTML='<div class="auth-required-msg"><p>Inicia sesi&oacute;n para ver tus suscripciones</p><button class="g-signin-btn" onclick="document.getElementById(\'cuenta-modal\').remove();googleSignIn()"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Iniciar con Google</button></div>';return}
+if(!_gUser||!_gUser.credential){b.querySelector('#cuenta-loading').innerHTML='<div class="auth-required-msg"><p>Inicia sesi&oacute;n para ver tus suscripciones</p><button class="g-signin-btn" onclick="document.getElementById(\'cuenta-modal\').remove();googleSignIn()"><svg viewBox="0 0 24 24" width="16" height="16"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Iniciar con Google</button></div>';return}
 try{
 var r=await fetch('/.netlify/functions/stripe-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({google_token:_gUser.credential,action:'status'})});
 var d=await r.json();
@@ -1923,7 +1923,7 @@ b.querySelector('#cuenta-loading').innerHTML=html}
 catch(err){b.querySelector('#cuenta-loading').innerHTML='<div style="color:#f87171;font-size:12px">Error: '+err.message+'</div>'}}
 
 async function openStripePortal(){
-if(!_gUser){tt('Inicia sesión primero');return}
+if(!_gUser||!_gUser.credential){tt('Inicia sesión primero');googleSignIn();return}
 try{var r=await fetch('/.netlify/functions/stripe-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({google_token:_gUser.credential,action:'portal'})});
 var d=await r.json();
 if(d.portal_url){window.open(d.portal_url,'_blank')}

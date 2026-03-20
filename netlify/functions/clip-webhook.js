@@ -6,6 +6,8 @@
 
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const CLIP_WEBHOOK_TOKEN = process.env.CLIP_WEBHOOK_TOKEN;
+const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER || 'whatsapp:+5216563110094';
@@ -65,7 +67,7 @@ async function getWhatsAppConfig() {
 
 exports.handler = async (event) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Content-Type': 'application/json'
   };
 
@@ -74,9 +76,18 @@ exports.handler = async (event) => {
   // Clip sends POST with webhook data
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: '{"error":"Method not allowed"}' };
 
+  // Verify webhook token if configured (add CLIP_WEBHOOK_TOKEN env var + ?token=XXX in Clip dashboard webhook URL)
+  if (CLIP_WEBHOOK_TOKEN) {
+    const params = event.queryStringParameters || {};
+    if (params.token !== CLIP_WEBHOOK_TOKEN) {
+      console.warn('Clip webhook: invalid token');
+      return { statusCode: 401, headers, body: '{"error":"Unauthorized"}' };
+    }
+  }
+
   try {
     const payload = JSON.parse(event.body || '{}');
-    console.log('Clip webhook received:', JSON.stringify(payload));
+    console.log('Clip webhook received: status=' + (payload.status || payload.resource_status) + ', ref=' + (payload.metadata?.me_reference_id || ''));
 
     const status = payload.status || payload.resource_status || '';
     const paymentId = payload.payment_request_id || '';

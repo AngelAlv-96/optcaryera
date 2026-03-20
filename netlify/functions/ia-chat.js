@@ -4,8 +4,9 @@
 
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
 
-const BASE_USERS = {
+const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) : {
   'americas':  { pass: 'americas01' },
   'pinocelli': { pass: 'pinocelli01' },
   'magnolia':  { pass: 'magnolia01' },
@@ -32,7 +33,7 @@ async function getCustomUsers() {
 exports.handler = async (event) => {
   // CORS headers
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
@@ -88,9 +89,10 @@ exports.handler = async (event) => {
     const data = await response.json();
 
     if (!response.ok) {
+      console.error('Anthropic API error:', response.status, data.error?.type);
       return {
         statusCode: response.status, headers,
-        body: JSON.stringify({ error: data.error?.message || 'Error de API Anthropic' })
+        body: JSON.stringify({ error: 'Error al procesar la solicitud. Intenta de nuevo.' })
       };
     }
 
@@ -99,9 +101,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({ content: data.content })
     };
   } catch (err) {
+    console.error('ia-chat error:', err.message);
     return {
       statusCode: 500, headers,
-      body: JSON.stringify({ error: 'Error interno: ' + err.message })
+      body: JSON.stringify({ error: 'Error interno del servidor. Intenta de nuevo.' })
     };
   }
 };

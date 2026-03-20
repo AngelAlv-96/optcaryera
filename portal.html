@@ -172,8 +172,8 @@ body::before { content:''; position:fixed; inset:0; background:url("data:image/s
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.min.js" integrity="sha384-4bKASEcnXfYfA/rrhF9qD3mYowkb5k4Xbzbrf3ccqgZrplKUrwnA2Q/L5xcdZFAp" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz" crossorigin="anonymous"></script>
 <script>
 const SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
@@ -227,6 +227,8 @@ async function loadPortal() {
     .single();
 
   if (error || !v) { showError('Ticket no encontrado', 'Verifica que el link sea correcto o contacta a la óptica.'); return; }
+
+
 
   // Fetch items and payments
   const [{ data: items }, { data: pagos }, { data: promos }] = await Promise.all([

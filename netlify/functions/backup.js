@@ -114,7 +114,7 @@ async function cleanOldBackups() {
 
 exports.handler = async (event) => {
   const headers = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': process.env.URL || 'https://optcaryera.netlify.app',
     'Access-Control-Allow-Headers': 'Content-Type, x-backup-token'
   };
 
@@ -129,11 +129,10 @@ exports.handler = async (event) => {
   const params = event.queryStringParameters || {};
   const isAuto = params.auto === '1';
 
-  if (isAuto) {
-    const token = params.token || '';
-    if (token !== BACKUP_TOKEN) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido' }) };
-    }
+  // Require token for ALL modes (auto and manual) to prevent unauthorized access
+  const token = params.token || '';
+  if (token !== BACKUP_TOKEN) {
+    return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token requerido. Usa ?token=XXX' }) };
   }
 
   try {
