@@ -6,6 +6,8 @@ const CLIP_API_KEY = process.env.CLIP_API_KEY;
 const CLIP_API_SECRET = process.env.CLIP_API_SECRET;
 const CLIP_API_URL = 'https://api.payclip.com/v2/checkout';
 const SITE_URL = process.env.URL || 'https://optcaryera.netlify.app';
+const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
+const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 exports.handler = async (event) => {
   const headers = {
@@ -20,8 +22,18 @@ exports.handler = async (event) => {
   try {
     const { venta_id, folio, amount, paciente_nombre, token_portal } = JSON.parse(event.body || '{}');
 
-    if (!venta_id || !folio || !amount) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields: venta_id, folio, amount' }) };
+    if (!venta_id || !folio || !amount || !token_portal) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields: venta_id, folio, amount, token_portal' }) };
+    }
+
+    // Validate token_portal against the venta in Supabase
+    const ventaResp = await fetch(
+      `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}&token_portal=eq.${encodeURIComponent(token_portal)}&select=id,folio,saldo`,
+      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+    );
+    const ventaData = await ventaResp.json();
+    if (!Array.isArray(ventaData) || ventaData.length === 0) {
+      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido o venta no encontrada' }) };
     }
 
     if (amount < 1) {

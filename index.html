@@ -8924,7 +8924,7 @@ IMPORTANTE: Responde en español, conciso, formato texto plano sin markdown.`;
     const resp = await fetch('/.netlify/functions/ia-chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ system: 'Eres un optometrista clínico experto en adaptación de lentes de contacto. Responde en español, conciso y profesional.', messages: [{ role: 'user', content: prompt }] })
+      body: JSON.stringify({ system: 'Eres un optometrista clínico experto en adaptación de lentes de contacto. Responde en español, conciso y profesional.', messages: [{ role: 'user', content: prompt }], auth: { id: currentUser?.id, pass: currentUser?.pass } })
     });
     const data = await resp.json();
     const text = typeof data.content === 'string' ? data.content
@@ -19535,7 +19535,8 @@ async function clbNLProcesarFoto(input) {
             { type: 'image', source: { type: 'base64', media_type: file.type || 'image/jpeg', data: base64 } },
             { type: 'text', text: 'Extrae todos los materiales y precios de esta lista. Responde solo JSON.' }
           ]
-        }]
+        }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
       })
     });
 
@@ -19798,7 +19799,8 @@ async function clbProcesarFoto(input) {
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
             { type: 'text', text: 'Extrae proveedor, folio, fecha y TODOS los materiales de esta nota de compra de óptica. Analiza cuidadosamente cada línea, especialmente si es manuscrita. Responde SOLO JSON object, sin markdown.' }
           ]
-        }]
+        }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
       })
     });
 
@@ -22153,7 +22155,8 @@ async function amOCRProcesar(input) {
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
             { type: 'text', text: 'Extrae los productos de esta factura de ' + proveedor + '. Responde solo JSON.' }
           ]
-        }]
+        }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
       })
     });
 
