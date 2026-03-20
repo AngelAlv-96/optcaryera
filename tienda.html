@@ -538,6 +538,32 @@ footer .fi{font-size:11px;color:var(--t3)}
 .tts-btn.playing{border-color:var(--ac);background:rgba(226,198,166,.15);animation:ttsPulse 1s ease infinite}
 @keyframes ttsPulse{0%,100%{box-shadow:0 0 0 0 rgba(226,198,166,.3)}50%{box-shadow:0 0 0 6px rgba(226,198,166,0)}}
 
+/* SUBSCRIPTION */
+.sub-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;background:var(--s2);border-radius:var(--rs);padding:4px}
+.sub-opt{padding:8px;border-radius:8px;border:none;background:transparent;color:var(--t3);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft);transition:all .3s;text-align:center}
+.sub-opt.active{background:linear-gradient(135deg,var(--ac),var(--gd));color:#fff;box-shadow:0 2px 10px rgba(226,198,166,.3)}
+.sub-freq{display:none;margin-bottom:12px;animation:subSlide .3s ease}
+.sub-freq.show{display:block}
+@keyframes subSlide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.sub-freq-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sub-freq-btn{padding:8px 4px;border-radius:8px;border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:10px;font-weight:500;cursor:pointer;font-family:var(--ft);transition:all .3s;text-align:center;line-height:1.3}
+.sub-freq-btn.active{border-color:var(--ac);background:rgba(226,198,166,.1);color:var(--ac)}
+.sub-freq-btn:hover{border-color:var(--t2)}
+.sub-freq-btn strong{display:block;font-size:12px;font-weight:700}
+.sub-discount{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:8px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.15);margin-bottom:12px;animation:subSlide .3s ease}
+.sub-discount span{font-size:11px;color:#4ade80;font-weight:600}
+.sub-price{text-decoration:line-through;color:var(--t3);font-size:13px;font-weight:400}
+.sub-new-price{font-size:16px;font-weight:700;color:#4ade80}
+.sub-badge{display:inline-flex;align-items:center;gap:3px;font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(74,222,128,.1);color:#4ade80;font-weight:600;border:1px solid rgba(74,222,128,.15);margin-left:4px}
+.sub-promo{max-width:1100px;margin:20px auto 0;padding:0 clamp(16px,4vw,32px);position:relative;z-index:1}
+.sub-promo-card{background:linear-gradient(135deg,rgba(226,198,166,.08),rgba(226,198,166,.03));border:1px solid rgba(226,198,166,.15);border-radius:var(--r);padding:20px 24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.sub-promo-icon{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--ac),var(--gd));display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.sub-promo-text{flex:1;min-width:200px}
+.sub-promo-text h3{font-family:var(--hd);font-size:16px;font-weight:400;font-style:italic;color:var(--tx);margin-bottom:2px}
+.sub-promo-text p{font-size:11px;color:var(--t2);line-height:1.5}
+.sub-promo-text p strong{color:#4ade80}
+.sub-promo-tag{padding:6px 14px;border-radius:16px;background:linear-gradient(135deg,var(--ac),var(--gd));color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+
 /* ORDER TRACKING */
 .orders-btn{font-size:11px;color:var(--t2);text-decoration:none;padding:6px 14px;border-radius:20px;border:1px solid var(--glass-border);transition:all .3s;font-weight:500;cursor:pointer;background:none;font-family:var(--ft)}.orders-btn:hover{border-color:var(--ac);color:var(--ac)}
 .ord-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
@@ -728,6 +754,17 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 
 <!-- FILTERS (hidden by default) -->
+<!-- SUBSCRIPTION PROMO -->
+<div class="sub-promo reveal">
+  <div class="sub-promo-card">
+    <div class="sub-promo-icon">&#x1f504;</div>
+    <div class="sub-promo-text">
+      <h3>Suscr&iacute;bete y ahorra 10%</h3>
+      <p>Recibe tus lentes autom&aacute;ticamente cada mes, bimestre o trimestre. <strong>Sin compromisos</strong> &mdash; cancela cuando quieras. Te recordamos por WhatsApp antes de cada env&iacute;o.</p>
+    </div>
+    <div class="sub-promo-tag">-10% siempre</div>
+  </div>
+</div>
 <div class="sec-title">Cat&aacute;logo</div>
 <div class="fb" id="fb"></div>
 <div class="ci" id="ci"></div>
@@ -804,7 +841,7 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 <!-- CART -->
 <div class="cov" id="co" onclick="if(event.target===this)tC()"><div class="cdw"><div class="chd"><h2>Tu pedido</h2><button class="ccl" onclick="tC()">&#x2715;</button></div><div class="cbdy" id="cbd"><div class="empty">Carrito vac&iacute;o</div></div><div class="cftr" id="cft" style="display:none"><div class="ctot"><span>Total</span><span id="ctp">$0</span></div><div class="cf"><div><label>Nombre</label><input type="text" id="cn" placeholder="Tu nombre"></div><div><label>WhatsApp</label><input type="tel" id="ct" placeholder="656 123 4567"></div><div><label>Sucursal</label><select id="cs"><option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option></select></div><div><label>Notas</label><input type="text" id="cno" placeholder="Opcional"></div><div><label>Forma de pago</label><select id="cpay"><option value="sucursal">Pago en sucursal</option><option value="clip">Pagar en l&iacute;nea (tarjeta)</option><option value="transfer">Transferencia BBVA</option></select></div><div id="transfer-info" style="display:none;background:var(--s2);border-radius:var(--rs);padding:10px;margin-top:4px;font-size:11px;color:var(--t2);line-height:1.6"><strong style="color:var(--ac)">Transferencia BBVA (sin comisi&oacute;n):</strong><br>Cuenta: 0485220280<br>CLABE: 012164004852202892<br>Benef: Ivonne Y. Alvidrez Flores<br><em>Env&iacute;a tu comprobante por WhatsApp</em></div><button class="btnc" id="cbk" onclick="chk()">Confirmar pedido</button></div></div></div></div>
-<div class="mov" id="sov"><div class="mbox" style="text-align:center"><div style="font-size:32px;margin-bottom:8px">&#x2705;</div><h2>Pedido recibido</h2><div id="sfo" style="display:inline-block;margin:8px 0;padding:6px 16px;background:var(--s2);border-radius:var(--rs);font-weight:600;font-size:14px;color:var(--ac)">ONL-0001</div><p style="font-size:12px;color:var(--t2);margin-bottom:12px">Te contactamos por WhatsApp.</p><div style="display:flex;gap:8px;justify-content:center"><a id="swa" href="#" target="_blank" style="padding:8px 16px;border-radius:var(--rs);background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:#25d366;text-decoration:none;font-size:12px;font-weight:600">WhatsApp</a><button onclick="document.getElementById('sov').classList.remove('open')" style="padding:8px 16px;border-radius:var(--rs);background:var(--s2);border:1px solid var(--bd);color:var(--tx);cursor:pointer;font-size:12px;font-family:var(--ft)">Cerrar</button></div></div></div>
+<div class="mov" id="sov"><div class="mbox" style="text-align:center"><div style="font-size:32px;margin-bottom:8px">&#x2705;</div><h2>Pedido recibido</h2><div id="sfo" style="display:inline-block;margin:8px 0;padding:6px 16px;background:var(--s2);border-radius:var(--rs);font-weight:600;font-size:14px;color:var(--ac)">ONL-0001</div><p style="font-size:12px;color:var(--t2);margin-bottom:12px">Te contactamos por WhatsApp.</p><div style="display:flex;gap:8px;justify-content:center"><a id="swa" href="#" target="_blank" style="padding:8px 16px;border-radius:var(--rs);background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:#25d366;text-decoration:none;font-size:12px;font-weight:600">WhatsApp</a><button onclick="document.getElementById('sov').classList.remove('open')" style="padding:8px 16px;border-radius:var(--rs);background:var(--s2);border:1px solid var(--bd);color:var(--tx);cursor:pointer;font-size:12px;font-family:var(--ft)">Cerrar</button></div><div id="sub-success" style="display:none"></div></div></div>
 
 <footer>
   <div class="footer-inner">
@@ -944,12 +981,26 @@ b.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'<
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px"><button id="gm" onclick="tG(\'m\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--gd);background:var(--gd);color:var(--bg);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Misma de siempre</button><button id="gn" onclick="tG(\'n\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Tengo graduación</button></div>'+
 '<div id="gd" style="display:none;margin-bottom:12px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--tx);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO DERECHO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="oe" placeholder="-2.50"></div><div><label>Cilindro</label><input type="text" id="oc" placeholder="-0.75"></div><div><label>Eje</label><input type="text" id="oj" placeholder="180"></div></div></div><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--gd);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO IZQUIERDO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="ie" placeholder="-2.25"></div><div><label>Cilindro</label><input type="text" id="ic" placeholder="-0.50"></div><div><label>Eje</label><input type="text" id="ij" placeholder="170"></div></div></div></div><div style="margin-top:6px" class="cf"><div><label>ADD</label><input type="text" id="ad" placeholder="+2.00"></div></div></div>'+
 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--t2)">Cajas:</label><select id="pq" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:13px;background:var(--s2);color:var(--tx)"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div>'+
+'<div class="sub-toggle"><button class="sub-opt active" id="sub-once" onclick="tSub(\'once\')">Compra &uacute;nica</button><button class="sub-opt" id="sub-plan" onclick="tSub(\'sub\')">Suscripci&oacute;n &#x1f504;</button></div>'+
+'<div class="sub-freq" id="sub-freq-panel"><div style="font-size:10px;color:var(--t3);margin-bottom:6px;text-align:center;font-weight:600;letter-spacing:.06em">RECIBE AUTOM&Aacute;TICAMENTE CADA:</div><div class="sub-freq-opts"><button class="sub-freq-btn active" onclick="tSubF(this,30)"><strong>Mensual</strong>30 d&iacute;as</button><button class="sub-freq-btn" onclick="tSubF(this,60)"><strong>Bimestral</strong>60 d&iacute;as</button><button class="sub-freq-btn" onclick="tSubF(this,90)"><strong>Trimestral</strong>90 d&iacute;as</button></div></div>'+
+'<div class="sub-discount" id="sub-disc" style="display:none"><span>&#x2714; 10% de descuento &mdash;</span><span class="sub-price" id="sub-orig"></span><span class="sub-new-price" id="sub-new"></span></div>'+
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button onclick="document.getElementById(\'pm\').remove()" style="padding:10px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--ft)">Cancelar</button><button onclick="aC(\''+k+'\')" class="btnc" style="margin:0">Agregar</button></div>';
-e.appendChild(b);document.body.appendChild(e)}
+e.dataset.precio=p.precio;e.appendChild(b);document.body.appendChild(e);_sub='once';_subDays=30;
+document.getElementById('pq').addEventListener('change',function(){updSubPrice()})}
+var _sub='once',_subDays=30,SUB_DISC=0.10;
+function tSub(v){_sub=v;
+document.getElementById('sub-once').className='sub-opt'+(v==='once'?' active':'');
+document.getElementById('sub-plan').className='sub-opt'+(v==='sub'?' active':'');
+var fp=document.getElementById('sub-freq-panel'),sd=document.getElementById('sub-disc');
+if(v==='sub'){fp.classList.add('show');sd.style.display='flex';updSubPrice()}else{fp.classList.remove('show');sd.style.display='none'}}
+function tSubF(el,d){_subDays=d;document.querySelectorAll('.sub-freq-btn').forEach(function(b){b.classList.remove('active')});el.classList.add('active');updSubPrice()}
+function updSubPrice(){var q=parseInt((document.getElementById('pq')||{}).value)||1;var pm=document.getElementById('pm');if(!pm)return;var pr=parseFloat(pm.dataset.precio)||0;var orig=pr*q,nw=Math.round(orig*(1-SUB_DISC));document.getElementById('sub-orig').textContent='$'+orig.toLocaleString('es-MX');document.getElementById('sub-new').textContent='$'+nw.toLocaleString('es-MX')}
 var _g='m';function tG(v){_g=v;document.getElementById('gd').style.display=v==='n'?'':'none';var a=document.getElementById('gm'),b=document.getElementById('gn');[a,b].forEach(function(x){x.style.background='transparent';x.style.color='var(--t2)';x.style.borderColor='var(--bd)'});(v==='m'?a:b).style.cssText+='background:var(--gd);color:var(--bg);border-color:var(--gd)'}
 function aC(k){var p=P.find(function(x){return x.key===k});if(!p)return;var q=parseInt(document.getElementById('pq').value)||1,g='';
 if(_g==='n'){var v=function(id){return(document.getElementById(id).value||'').trim()};g='OD:'+v('oe')+(v('oc')?'/'+v('oc'):'')+(v('oj')?'x'+v('oj'):'')+' OI:'+v('ie')+(v('ic')?'/'+v('ic'):'')+(v('ij')?'x'+v('ij'):'')+(v('ad')?' ADD:'+v('ad'):'')}else{g='Misma graduación de siempre'}
-cart.push({nombre:p.nombre,precio:p.precio,qty:q,grad:g,key:k});saveCart();uB();tt(p.nombre+' agregado');
+var itemPrice=_sub==='sub'?Math.round(p.precio*(1-SUB_DISC)):p.precio;
+var subInfo=_sub==='sub'?{freq:_subDays,label:_subDays===30?'Mensual':_subDays===60?'Bimestral':'Trimestral',originalPrice:p.precio}:null;
+cart.push({nombre:p.nombre,precio:itemPrice,qty:q,grad:g,key:k,sub:subInfo});saveCart();uB();tt(p.nombre+' agregado'+(subInfo?' (suscripción)':''));
 if(typeof gtag==='function')gtag('event','add_to_cart',{currency:'MXN',value:p.precio*q,items:[{item_id:k,item_name:p.nombre,price:p.precio,quantity:q}]});
 if(typeof fbq==='function')fbq('track','AddToCart',{content_name:p.nombre,content_ids:[k],content_type:'product',value:p.precio*q,currency:'MXN'});document.getElementById('pm')?.remove();_g='m'}
 function saveCart(){try{localStorage.setItem('ce_cart',JSON.stringify(cart))}catch(e){}}
@@ -957,18 +1008,20 @@ function rC(i){cart.splice(i,1);saveCart();uB();dC()}
 function uB(){var t=cart.reduce(function(s,c){return s+c.qty},0);var b=document.getElementById('cart-badge');b.style.display=t>0?'flex':'none';b.textContent=t}
 function tC(){document.getElementById('co').classList.toggle('open');if(document.getElementById('co').classList.contains('open'))dC()}
 function dC(){var b=document.getElementById('cbd'),f=document.getElementById('cft');if(!cart.length){b.innerHTML='<div class="empty">Carrito vacío</div>';f.style.display='none';return}f.style.display='';
-b.innerHTML=cart.map(function(c,i){return'<div class="cit"><div class="cit-t"><div class="cit-n">'+c.nombre+(c.qty>1?' ×'+c.qty:'')+'</div><div class="cit-p">$'+(c.precio*c.qty).toLocaleString('es-MX')+'</div><button class="cit-x" onclick="rC('+i+')">&#x2715;</button></div>'+(c.grad?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+c.grad+'</div>':'')+'</div>'}).join('');
+b.innerHTML=cart.map(function(c,i){return'<div class="cit"><div class="cit-t"><div class="cit-n">'+c.nombre+(c.qty>1?' ×'+c.qty:'')+(c.sub?'<span class="sub-badge">&#x1f504; '+c.sub.label+'</span>':'')+'</div><div class="cit-p">$'+(c.precio*c.qty).toLocaleString('es-MX')+(c.sub?'<div style="font-size:9px;color:var(--t3);text-decoration:line-through">$'+(c.sub.originalPrice*c.qty).toLocaleString('es-MX')+'</div>':'')+'</div><button class="cit-x" onclick="rC('+i+')">&#x2715;</button></div>'+(c.grad?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+c.grad+'</div>':'')+'</div>'}).join('');
 document.getElementById('ctp').textContent='$'+cart.reduce(function(s,c){return s+(c.precio*c.qty)},0).toLocaleString('es-MX')}
 async function chk(){var n=document.getElementById('cn').value.trim(),t=document.getElementById('ct').value.trim().replace(/[\s\-\(\)]/g,''),s=document.getElementById('cs').value,nt=document.getElementById('cno').value.trim();if(!n){tt('Ingresa tu nombre');return}if(!t||t.length<7){tt('Ingresa teléfono');return}if(!cart.length)return;
-var btn=document.getElementById('cbk');btn.disabled=true;btn.textContent='...';var tot=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var desc=cart.map(function(c){return c.nombre+' x'+c.qty+(c.grad?' ['+c.grad+']':'')}).join(', ');
+var btn=document.getElementById('cbk');btn.disabled=true;btn.textContent='...';var tot=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var hasSub=cart.some(function(c){return!!c.sub});var desc=cart.map(function(c){return c.nombre+' x'+c.qty+(c.sub?' [SUSCRIPCIÓN '+c.sub.label+']':'')+(c.grad?' ['+c.grad+']':'')}).join(', ');
 var payMethod=document.getElementById('cpay').value;
-try{var r=await fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'ventas',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,sucursal:'Online',folio:'ONL-WEB-'+Date.now().toString(36).toUpperCase(),total:tot,monto_pagado:0,estado:'Apartado',canal_venta:'Tienda Web',sucursal_entrega:s,asesor:'Tienda Online',notas:'PEDIDO WEB\nCliente: '+n+'\nTel: '+t+'\nPago: '+(payMethod==='clip'?'En línea (Clip)':payMethod==='transfer'?'Transferencia BBVA':'En sucursal')+'\nProductos: '+desc+(nt?'\nNotas: '+nt:''),created_at:new Date().toISOString()},options:{select:true}})});
+try{var r=await fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'ventas',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,sucursal:'Online',folio:'ONL-WEB-'+Date.now().toString(36).toUpperCase(),total:tot,monto_pagado:0,estado:'Apartado',canal_venta:'Tienda Web',sucursal_entrega:s,asesor:'Tienda Online',notas:'PEDIDO WEB'+(hasSub?' [SUSCRIPCIÓN]':'')+'\nCliente: '+n+'\nTel: '+t+'\nPago: '+(payMethod==='clip'?'En línea (Clip)':payMethod==='transfer'?'Transferencia BBVA':'En sucursal')+'\nProductos: '+desc+(hasSub?'\n🔄 SUSCRIPCIÓN: '+cart.filter(function(c){return c.sub}).map(function(c){return c.nombre+' cada '+c.sub.freq+' días'}).join(', '):'')+(nt?'\nNotas: '+nt:''),created_at:new Date().toISOString()},options:{select:true}})});
 var rs=await r.json(),fo=(rs&&rs[0])?rs[0].folio:'ONL-WEB',vid=(rs&&rs[0])?rs[0].id:null;
-saveOrder(fo,tot,s,cart.map(function(c){return c.nombre+' x'+c.qty}));
+saveOrder(fo,tot,s,cart.map(function(c){return c.nombre+' x'+c.qty+(c.sub?' ['+c.sub.label+']':'')}));
+// Save subscription data for tracking
+if(hasSub){var subs=JSON.parse(localStorage.getItem('ce_subs')||'[]');cart.forEach(function(c){if(c.sub){subs.unshift({folio:fo,producto:c.nombre,freq:c.sub.freq,label:c.sub.label,precio:c.precio,qty:c.qty,tel:t,nombre:n,sucursal:s,created:new Date().toISOString(),nextDate:new Date(Date.now()+c.sub.freq*86400000).toISOString()})}});if(subs.length>20)subs=subs.slice(0,20);localStorage.setItem('ce_subs',JSON.stringify(subs))}
 if(typeof gtag==='function')gtag('event','purchase',{transaction_id:fo,value:tot,currency:'MXN',items:cart.map(function(c){return{item_id:c.key||'',item_name:c.nombre,price:c.precio,quantity:c.qty}})});
 if(typeof fbq==='function')fbq('track','Purchase',{value:tot,currency:'MXN',content_ids:cart.map(function(c){return c.key||c.nombre}),content_type:'product'});
 var payEmoji=payMethod==='clip'?'💳 Pago en línea':payMethod==='transfer'?'🏦 Transferencia':'🏪 Pago en sucursal';
-fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:WA,text:'🛒 *PEDIDO WEB*\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n'+payEmoji+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});
+fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:WA,text:'🛒 *PEDIDO WEB*'+(hasSub?' 🔄':'')+'\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n'+payEmoji+(hasSub?'\n🔄 *Incluye suscripción*':'')+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.sub?' 🔄 '+c.sub.label+' (-10%)':'')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});
 // If Clip, generate payment link
 if(payMethod==='clip'&&vid){
 btn.textContent='Generando link de pago...';
@@ -977,6 +1030,7 @@ var cd=await cr.json();if(cd.payment_url){window.open(cd.payment_url,'_blank')}}
 document.getElementById('sfo').textContent=fo;
 document.getElementById('swa').href='https://wa.me/'+WA+'?text='+encodeURIComponent('Pedido '+fo);
 if(payMethod==='transfer'){document.getElementById('sov').querySelector('.mbox p').innerHTML='Transfiere <strong>$'+tot.toLocaleString('es-MX')+'</strong> a BBVA Cuenta <strong>0485220280</strong><br>CLABE: 012164004852202892<br>Envía tu comprobante por WhatsApp.'}
+if(hasSub){var si=document.getElementById('sub-success');if(si)si.style.display='';if(si)si.innerHTML='<div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.15);border-radius:var(--rs);padding:12px;margin-top:10px;text-align:center"><div style="font-size:14px;margin-bottom:4px">&#x1f504; Suscripci&oacute;n activa</div><div style="font-size:11px;color:var(--t2)">Te contactaremos por WhatsApp antes de cada reenv&iacute;o. Puedes cancelar en cualquier momento.</div></div>'}
 document.getElementById('sov').classList.add('open');cart=[];saveCart();uB();tC()}catch(e){tt('Error')}btn.disabled=false;btn.textContent='Confirmar pedido'}
 // Toggle transfer info visibility
 document.addEventListener('change',function(e){if(e.target.id==='cpay'){var ti=document.getElementById('transfer-info');if(ti)ti.style.display=e.target.value==='transfer'?'':'none'}});
