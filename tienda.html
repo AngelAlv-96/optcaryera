@@ -399,6 +399,17 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,11,20,.8);backdrop-filte
 .hai-opt:hover{border-color:var(--ac);color:var(--ac);background:rgba(226,198,166,.1);box-shadow:0 0 20px rgba(226,198,166,.15);transform:translateY(-2px)}
 .hai-opt:active{transform:scale(.96)}
 .hai-opt.selected{background:linear-gradient(135deg,var(--ac),#c4a47e);color:#fff;border-color:var(--ac);box-shadow:0 0 24px rgba(226,198,166,.25)}
+.hero-ai-age{display:flex;align-items:center;gap:10px;margin-top:8px}
+.hai-age-input{width:80px;padding:10px 14px;border-radius:24px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;font-size:16px;font-family:var(--ft);text-align:center;outline:none;transition:border-color .3s}
+.hai-age-input:focus{border-color:var(--ac)}
+.hai-age-input::placeholder{color:var(--t3);font-size:13px}
+.ai-chat-inline{margin-top:16px}
+.ai-back{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--t2);cursor:pointer;padding:6px 0;transition:color .2s;font-family:var(--ft)}
+.ai-back:hover{color:var(--ac)}
+.ai-selected{display:inline-flex;gap:6px;font-size:11px;color:var(--ac);background:rgba(226,198,166,.1);border:1px solid rgba(226,198,166,.15);border-radius:16px;padding:4px 12px;margin:4px 0 8px;font-weight:500;letter-spacing:.02em}
+.ai-chat-inline .ai-products{max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--ac) transparent}
+.ai-chat-inline .ai-products::-webkit-scrollbar{width:4px}
+.ai-chat-inline .ai-products::-webkit-scrollbar-thumb{background:var(--ac);border-radius:4px}
 
 /* PRO CATALOG (expert flow) */
 .pro-catalog{max-width:1100px;margin:0 auto;padding:16px clamp(16px,4vw,32px) 48px;position:relative;z-index:1;animation:aiIn .4s ease-out}
@@ -758,14 +769,15 @@ footer .fi{font-size:11px;color:var(--t3)}
       </div>
       <!-- AI type options (hidden until "Ayúdame" is clicked) -->
       <div class="hero-ai-opts" id="hero-ai-opts" style="display:none">
-        <p class="hero-q">&iquest;Qu&eacute; tipo de lente buscas?</p>
-        <div class="hero-ai-btns">
-          <button class="hai-opt" onclick="heroAi('Esférico')">&#x1f441; Esf&eacute;ricos</button>
-          <button class="hai-opt" onclick="heroAi('Tórico')">&#x1f504; Astigmatismo</button>
-          <button class="hai-opt" onclick="heroAi('Multifocal')">&#x1f50d; Multifocales</button>
-          <button class="hai-opt" onclick="heroAi('Color')">&#x1f3a8; De color</button>
-          <button class="hai-opt" onclick="heroAi('all')">&#x2728; Ver todo</button>
+        <p class="hero-q">&iquest;Qu&eacute; edad tienes?</p>
+        <div class="hero-ai-age">
+          <input type="number" id="ai-age-input" class="hai-age-input" placeholder="Ej: 28" min="10" max="99" onkeydown="if(event.key==='Enter')aiAgeSubmit()">
+          <button class="hai-opt" onclick="aiAgeSubmit()">Continuar &rarr;</button>
         </div>
+      </div>
+      <!-- AI Chat inline (inside hero) -->
+      <div class="ai-chat-inline" id="ai-chat-inline" style="display:none">
+        <div class="ai-chat" id="ai-chat"></div>
       </div>
     </div>
     <div class="hero-lens" aria-hidden="true">
@@ -827,9 +839,8 @@ footer .fi{font-size:11px;color:var(--t3)}
   <div class="pro-grid" id="pro-grid"></div>
 </section>
 
-<!-- AI CATALOG RESULTS (populated by heroAi flow) -->
+<!-- AI CATALOG RESULTS (moved inline into hero, see ai-chat-inline) -->
 <section class="ai-catalog" id="ai-catalog" style="display:none">
-  <div class="ai-chat" id="ai-chat"></div>
 </section>
 
 
@@ -1373,22 +1384,22 @@ document.querySelectorAll('.hero-path').forEach(function(p){p.classList.remove('
 document.querySelector('.hero-path--new').classList.add('active');
 document.getElementById('hero-ai-opts').style.display='block';
 document.getElementById('pro-catalog').style.display='none';
-document.getElementById('ai-catalog').style.display='none';
+document.getElementById('ai-chat-inline').style.display='none';
 document.getElementById('ai-chat').innerHTML='';
-document.getElementById('hero-ai-opts').scrollIntoView({behavior:'smooth',block:'center'});
+document.getElementById('hero-ai-opts').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function startProUser(){
 currentMode='pro';
 document.querySelectorAll('.hero-path').forEach(function(p){p.classList.remove('active')});
 document.querySelector('.hero-path--pro').classList.add('active');
 document.getElementById('hero-ai-opts').style.display='none';
-document.getElementById('ai-catalog').style.display='none';
+document.getElementById('ai-chat-inline').style.display='none';
 // Show pro catalog
 var sec=document.getElementById('pro-catalog');
 sec.style.display='block';
 document.body.classList.remove('catalog-hidden');
 renderProCatalog();
-sec.scrollIntoView({behavior:'smooth',block:'start'});
+sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 setTimeout(function(){document.getElementById('pro-si').focus()},400);
 }
 function exitProMode(){
@@ -1434,73 +1445,104 @@ function proSearch(){
 renderProCatalog();
 }
 
+function aiBack(step){
+if(step==='age'){
+// Back to age selection — reset everything
+document.getElementById('hero-ai-opts').style.display='block';
+document.getElementById('ai-chat-inline').style.display='none';
+document.getElementById('ai-chat').innerHTML='';
+aiState={tipo:null,uso:null,exp:null,hours:null,age:null,ageNum:null};
+}else if(step==='type'){
+// Back to type selection — re-trigger age
+aiAge(aiState.age);
+}else if(step==='exp'){
+// Back to experience — re-trigger type selection
+heroAi(aiState.tipo||'all');
+}else if(step==='hours'){
+// Back to hours — re-trigger experience
+aiExp(aiState.exp);
+}else if(step==='freq'){
+// Back to frequency — re-trigger hours
+aiHours(aiState.hours);
+}
+}
+
+var TIPO_LABELS={'Esférico':'No veo de lejos','Tórico':'Astigmatismo','Multifocal':'Lejos y cerca','Color':'Cambiar color'};
+function getTipoLabel(val){return val&&val!=='all'?TIPO_LABELS[val]||val:'No estoy seguro'}
+function aiAgeSubmit(){
+var inp=document.getElementById('ai-age-input');
+var edad=parseInt(inp.value);
+if(!edad||edad<10||edad>99){inp.focus();return;}
+aiState.age=edad>=40?'senior':'young';
+aiState.ageNum=edad;aiState.tipo=null;aiState.uso=null;aiState.exp=null;aiState.hours=null;
+var inl=document.getElementById('ai-chat-inline');
+var chat=document.getElementById('ai-chat');
+inl.style.display='block';
+document.getElementById('hero-ai-opts').style.display='none';
+var opts='<button class="ai-opt" onclick="heroAi(\'Esférico\')">&#x1f441; No veo bien de lejos</button>'+
+'<button class="ai-opt" onclick="heroAi(\'Tórico\')">&#x1f504; Tengo astigmatismo</button>';
+if(edad>=40){
+opts+='<button class="ai-opt" onclick="heroAi(\'Multifocal\')">&#x1f453; Necesito para lejos y para cerca</button>';
+}
+opts+='<button class="ai-opt" onclick="heroAi(\'Color\')">&#x1f3a8; Quiero cambiar de color</button>'+
+'<button class="ai-opt" onclick="heroAi(\'all\')">&#x2728; No estoy seguro</button>';
+chat.innerHTML=
+'<div class="ai-back" onclick="aiBack(\'age\')">&#x2190; Volver</div>'+
+'<div class="ai-selected">'+edad+' a&ntilde;os</div>'+
+'<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>¡Perfecto! ¿Para qué los necesitas?</p></div></div>'+
+'<div class="ai-options">'+opts+'</div>';
+}
 function heroAi(val){
 aiState.tipo=val==='all'?null:val;
-aiState.uso=null;aiState.exp=null;
-var sec=document.getElementById('ai-catalog');
+aiState.uso=null;aiState.exp=null;aiState.hours=null;
 var chat=document.getElementById('ai-chat');
-sec.style.display='block';
-document.querySelectorAll('.hai-opt').forEach(function(b){b.classList.remove('selected')});
-if(val!=='all') event.target.classList.add('selected');
-// Step 2 — experience question
-chat.innerHTML='<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+(val==='all'?'Perfecto. Primero cuéntame':'Excelente, lentes <strong>'+val+'s</strong>. Cuéntame')+' — ¿ya has usado lentes de contacto antes?</p></div></div>'+
-'<div class="ai-options"><button class="ai-opt" onclick="aiExp(\'first\')">&#x1f331; Primera vez</button><button class="ai-opt" onclick="aiExp(\'yes\')">&#x2705; Sí, ya los uso</button></div>';
-sec.scrollIntoView({behavior:'smooth',block:'start'});
+var ageLabel=(aiState.ageNum||'')+(aiState.ageNum?' años':'');
+var tipoLabel=getTipoLabel(val);
+chat.innerHTML=
+'<div class="ai-back" onclick="aiBack(\'type\')">&#x2190; Volver</div>'+
+'<div class="ai-selected">'+ageLabel+' &middot; '+tipoLabel+'</div>'+
+'<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>¡Perfecto! Te voy a ayudar a encontrar los ideales para ti. Cuéntame, ¿ya has usado lentes de contacto antes?</p></div></div>'+
+'<div class="ai-options"><button class="ai-opt" onclick="aiExp(\'first\')">&#x1f331; Es mi primera vez</button><button class="ai-opt" onclick="aiExp(\'yes\')">&#x2705; Sí, ya los uso</button></div>';
 }
 
 function aiExp(val){
 aiState.exp=val;
 var chat=document.getElementById('ai-chat');
-var opts=chat.querySelector('.ai-options');if(opts)opts.style.display='none';
-// User response
-var userMsg=document.createElement('div');userMsg.className='ai-user-msg';
-userMsg.innerHTML='<div class="ai-user-bubble">'+(val==='first'?'Es mi primera vez':'Sí, ya los uso')+'</div>';
-chat.appendChild(userMsg);
-// Typing delay then frequency question
-var typing=document.createElement('div');typing.className='ai-msg';
-typing.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
-chat.appendChild(typing);
-setTimeout(function(){
-typing.remove();
+var ageLabel=(aiState.ageNum||'')+(aiState.ageNum?' años':'');
+var tipoLabel=getTipoLabel(aiState.tipo||'all');
+var expLabel=val==='first'?'Primera vez':'Ya los uso';
 var tip=val==='first'?'<p style="margin-top:6px;font-size:11px;color:var(--ac)">&#x1f4a1; Tip: los lentes diarios son ideales para empezar — no necesitan mantenimiento.</p>':'';
-var msg=document.createElement('div');msg.className='ai-msg';
-msg.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+(val==='first'?'¡Qué bien! Te voy a ayudar. ¿Cuántas horas al día los usarías?':'Perfecto. ¿Cuántas horas al día los usas normalmente?')+'</p>'+tip+'</div>';
-chat.appendChild(msg);
-var optsDiv=document.createElement('div');optsDiv.className='ai-options';
-optsDiv.innerHTML='<button class="ai-opt" onclick="aiHours(\'short\')">&#x23f0; Menos de 8h</button><button class="ai-opt" onclick="aiHours(\'long\')">&#x2600; 8-12h</button><button class="ai-opt" onclick="aiHours(\'max\')">&#x1f31f; 12h+</button>';
-chat.appendChild(optsDiv);
-chat.parentElement.scrollIntoView({behavior:'smooth',block:'start'});
-},600);
+chat.innerHTML=
+'<div class="ai-back" onclick="aiBack(\'exp\')">&#x2190; Volver</div>'+
+'<div class="ai-selected">'+ageLabel+' &middot; '+tipoLabel+' &middot; '+expLabel+'</div>'+
+'<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+(val==='first'?'¡Qué bien! Te voy a ayudar. ¿Cuántas horas al día los usarías?':'Perfecto. ¿Cuántas horas al día los usas normalmente?')+'</p>'+tip+'</div></div>'+
+'<div class="ai-options"><button class="ai-opt" onclick="aiHours(\'short\')">&#x23f0; Menos de 8h</button><button class="ai-opt" onclick="aiHours(\'long\')">&#x2600; 8-12h</button><button class="ai-opt" onclick="aiHours(\'max\')">&#x1f31f; Todo el día</button></div>';
 }
 
 function aiHours(val){
 aiState.hours=val;
 var chat=document.getElementById('ai-chat');
-var opts=chat.querySelector('.ai-options:last-child');if(opts)opts.style.display='none';
-var userMsg=document.createElement('div');userMsg.className='ai-user-msg';
-userMsg.innerHTML='<div class="ai-user-bubble">'+(val==='short'?'Menos de 8h':val==='long'?'8-12 horas':'Más de 12h')+'</div>';
-chat.appendChild(userMsg);
-var typing=document.createElement('div');typing.className='ai-msg';
-typing.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
-chat.appendChild(typing);
-setTimeout(function(){
-typing.remove();
+var ageLabel=(aiState.ageNum||'')+(aiState.ageNum?' años':'');
+var tipoLabel=getTipoLabel(aiState.tipo||'all');
+var expLabel=aiState.exp==='first'?'Primera vez':'Ya los uso';
+var hoursLabel=val==='short'?'Menos de 8h':val==='long'?'8-12h':'Todo el día';
 // Recommend frequency based on hours + experience
 var recFreq=null,recText='';
-if(aiState.exp==='first'){recFreq='Diario';recText='Para primera vez te recomiendo <strong>lentes diarios</strong> — sin mantenimiento, solo los usas y los desechas.';}
-else if(val==='max'){recFreq=null;recText='Con tantas horas, necesitas lentes con <strong>alto paso de oxígeno</strong>. Te muestro los mejores:';}
+if(aiState.exp==='first'){recFreq='Diario';recText='Para tu primera vez te recomiendo <strong>lentes de un solo uso</strong> — los estrenas cada día, sin líquidos ni estuches. ¡Son los más fáciles!';}
+else if(val==='max'){recFreq=null;recText='Para usarlos todo el día necesitas lentes que dejen <strong>respirar bien tus ojos</strong>. Te muestro los más cómodos:';}
 else{recText='¿Cada cuánto prefieres cambiarlos?';}
-var msg=document.createElement('div');msg.className='ai-msg';
-msg.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+recText+'</p></div>';
-chat.appendChild(msg);
-if(recFreq){aiFreq(recFreq)}
-else{
-var optsDiv=document.createElement('div');optsDiv.className='ai-options';
-optsDiv.innerHTML='<button class="ai-opt" onclick="aiFreq(\'Diario\')">&#x2600; Diarios</button><button class="ai-opt" onclick="aiFreq(\'Mensual\')">&#x1f4c5; Mensuales</button><button class="ai-opt" onclick="aiFreq(\'all\')">&#x2728; Ver todos</button>';
-chat.appendChild(optsDiv);
+var freqOpts='';
+if(recFreq){
+setTimeout(function(){aiFreq(recFreq)},100);
+return;
+}else{
+freqOpts='<div class="ai-options"><button class="ai-opt" onclick="aiFreq(\'Diario\')">&#x2600; Usar y tirar (diarios)</button><button class="ai-opt" onclick="aiFreq(\'Mensual\')">&#x1f4c5; Uno al mes</button><button class="ai-opt" onclick="aiFreq(\'all\')">&#x2728; Ver todos</button></div>';
 }
-chat.parentElement.scrollIntoView({behavior:'smooth',block:'start'});
-},700);
+chat.innerHTML=
+'<div class="ai-back" onclick="aiBack(\'hours\')">&#x2190; Volver</div>'+
+'<div class="ai-selected">'+ageLabel+' &middot; '+tipoLabel+' &middot; '+expLabel+' &middot; '+hoursLabel+'</div>'+
+'<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+recText+'</p></div></div>'+
+freqOpts;
 }
 
 function aiFreq(val){
@@ -1513,38 +1555,29 @@ return true;
 });
 // Sort by O2 if user needs long hours
 if(aiState.hours==='max'){filtered.sort(function(a,b){var ta=TECH[a.marca]||{o2:30},tb=TECH[b.marca]||{o2:30};return tb.o2-ta.o2})}
-var lastOpts=chat.querySelector('.ai-options:last-child');
-if(lastOpts&&lastOpts.style.display!=='none')lastOpts.style.display='none';
-var typing=document.createElement('div');typing.className='ai-msg';typing.id='ai-typing';
-typing.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
-chat.appendChild(typing);
-setTimeout(function(){
-typing.remove();
+var ageLabel=(aiState.ageNum||'')+(aiState.ageNum?' años':'');
+var tipoLabel=getTipoLabel(aiState.tipo||'all');
+var expLabel=aiState.exp==='first'?'Primera vez':'Ya los uso';
+var hoursLabel=aiState.hours==='short'?'Menos de 8h':aiState.hours==='long'?'8-12h':'Todo el día';
 var personalTip='';
-if(aiState.exp==='first')personalTip=' Incluyen <strong>asesoría gratuita</strong> en sucursal para que aprendas a colocarlos.';
-var msg=document.createElement('div');msg.className='ai-msg';
-msg.innerHTML='<div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+
-(filtered.length?'Encontré <strong>'+filtered.length+' producto'+(filtered.length>1?'s':'')+' </strong> para ti.'+personalTip:'No hay productos con esos filtros.')+'</p></div>';
-chat.appendChild(msg);
-if(filtered.length){
-var prodDiv=document.createElement('div');prodDiv.className='ai-products';
-prodDiv.innerHTML=renderAiCards(filtered);
-chat.appendChild(prodDiv);
-}
-var restart=document.createElement('div');restart.className='ai-options';
-restart.innerHTML='<button class="ai-opt" onclick="aiRestart()">&#x1f504; Cambiar filtros</button><button class="ai-opt" onclick="toggleFullCatalog()">&#x1f4cb; Ver catálogo completo</button>';
-chat.appendChild(restart);
+if(aiState.exp==='first')personalTip=' Si es tu primera vez, en sucursal <strong>te enseñamos a ponértelos sin costo</strong>.';
+var prodHtml='';
+if(filtered.length){prodHtml='<div class="ai-products">'+renderAiCards(filtered)+'</div>';}
+chat.innerHTML=
+'<div class="ai-back" onclick="aiBack(\'hours\')">&#x2190; Volver</div>'+
+'<div class="ai-selected">'+ageLabel+' &middot; '+tipoLabel+' &middot; '+expLabel+' &middot; '+hoursLabel+'</div>'+
+'<div class="ai-msg"><div class="ai-avatar">C</div><div class="ai-bubble"><div class="ai-name">Clari</div><p>'+
+(filtered.length?'Encontré <strong>'+filtered.length+' producto'+(filtered.length>1?'s':'')+' </strong> para ti.'+personalTip:'No hay productos con esos filtros.')+'</p></div></div>'+
+prodHtml+
+'<div class="ai-options"><button class="ai-opt" onclick="aiBack(\'type\')">&#x1f504; Cambiar filtros</button><button class="ai-opt" onclick="toggleFullCatalog()">&#x1f4cb; Ver catálogo completo</button></div>';
 document.getElementById('catalog-toggle').style.display='block';
-document.getElementById('ai-catalog').scrollIntoView({behavior:'smooth',block:'start'});
-},700);
 }
 
 function aiRestart(){
-document.querySelectorAll('.hai-opt').forEach(function(b){b.classList.remove('selected')});
-document.getElementById('ai-catalog').style.display='none';
+document.getElementById('hero-ai-opts').style.display='block';
+document.getElementById('ai-chat-inline').style.display='none';
 document.getElementById('ai-chat').innerHTML='';
-aiState={tipo:null,uso:null};
-document.querySelector('.hero').scrollIntoView({behavior:'smooth',block:'start'});
+aiState={tipo:null,uso:null,exp:null,hours:null,age:null,ageNum:null};
 }
 
 var catalogVisible=false;
