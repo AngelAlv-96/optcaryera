@@ -57,9 +57,11 @@ Si algo se rompe gravemente:
     ├── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
     ├── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST)
     ├── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
-    ├── stripe-subscribe.js — Crea Stripe Checkout Session para suscripciones (Google auth + recurring billing)
-    ├── stripe-webhook.js  — Webhook Stripe: auto-crea ventas en cada cobro recurrente + notifica WA
-    └── stripe-portal.js   — Portal cliente: consulta suscripciones + abre Stripe Customer Portal
+    ├── conekta-subscribe.js — Crea Conekta HostedPayment checkout para suscripciones (Google auth + planes dinámicos)
+    ├── conekta-webhook.js  — Webhook Conekta: auto-crea ventas en cada cobro recurrente + notifica WA
+    ├── stripe-subscribe.js — ⛔ DEPRECATED (Stripe bloqueado para LC) — mantener como referencia
+    ├── stripe-webhook.js  — ⛔ DEPRECATED
+    └── stripe-portal.js   — ⛔ DEPRECATED
 ```
 
 ## 🔧 TECH STACK
@@ -68,7 +70,7 @@ Si algo se rompe gravemente:
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
-- **Pagos**: Stripe (suscripciones recurrentes tienda) + Clip API (checkout links portal pacientes)
+- **Pagos**: Conekta (suscripciones recurrentes tienda) + Clip API (checkout links portal pacientes + pagos únicos tienda)
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
 
@@ -234,7 +236,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v158
+## 📊 VERSIÓN ACTIVA: v159
+Cambios v159: Tienda LC — suscripciones con Conekta (reemplaza Stripe). **2 funciones nuevas** (zero npm deps): `conekta-subscribe.js` crea Order con HostedPayment checkout en Conekta (planes dinámicos por monto+frecuencia, Google auth, validación precios server-side con descuento 10%), `conekta-webhook.js` procesa eventos de pago (crea venta + registra pago en DB + notifica admin/cliente por WA, duplicate detection por `conekta_{orderId}`). **Frontend restaurado**: Google Identity Services, Google Sign-In UI (avatar + menú dropdown con Mis suscripciones/Mis pedidos/Cerrar sesión), toggle Suscripción/Compra única en modal de pedido, frecuencias (mensual/bimestral/trimestral) + descuento 10%, sub badges en carrito, post-payment handler (?pago=ok). **Mi cuenta simplificado**: sin portal de autogestión (Conekta no tiene equivalente a Stripe Customer Portal), gestión vía WhatsApp. **Flujo**: suscripción → Google auth → `conekta-subscribe` → redirect a Conekta hosted → pago → webhook → venta en DB. **Pagos únicos siguen con Clip** (sin cambio). **API Conekta**: REST directa con fetch, Bearer auth, `application/vnd.conekta-v2.2.0+json`, amounts en centavos. Env vars: `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`. Webhook URL: `https://optcaryera.netlify.app/.netlify/functions/conekta-webhook`.
 Cambios v158: Tienda LC — remover Stripe y Google Sign-In. **Stripe bloqueado**: Stripe no acepta lentes de contacto (dispositivos médicos restringidos), cuenta en proceso de cierre. Se eliminaron ~150 líneas: Google Identity Services (GIS) script, Google Sign-In UI (botón + avatar + menú dropdown), toggle Suscripción/Compra única del modal de pedido, frecuencias de suscripción (mensual/bimestral/trimestral), descuento 10% de suscripción, Stripe checkout path, Mi cuenta/Mis suscripciones modal, openStripePortal(), checkPaymentReturn(). **Nav simplificado**: solo "Mis pedidos" + WhatsApp + carrito (sin auth). **Pagos vigentes**: Clip (en línea) + transferencia BBVA + pago en sucursal. **Pendiente**: evaluar Conekta para suscripciones recurrentes cuando se tengan documentos de empresa.
 Cambios v157: Tienda LC — rediseño flujo "Ayúdame a elegir" conversacional. **Chat inline en hero**: conversación de Clari ahora aparece dentro del banner (antes se iba a sección separada abajo, forzando scroll). **Flujo step-by-step limpio**: cada paso reemplaza el contenido anterior (no acumula chat largo), botones desaparecen al elegir mostrando solo un badge con las selecciones. **Botón "← Volver"** siempre visible para regresar al paso anterior. **Filtro de edad**: primer paso pide edad como campo libre (input numérico), si tiene 40+ muestra opción de multifocales ("Necesito para lejos y para cerca"), si es menor no la muestra. **Lenguaje no técnico**: "Esféricos"→"No veo bien de lejos", "Tórico"→"Tengo astigmatismo", "Multifocal"→"Necesito para lejos y para cerca", "Color"→"Quiero cambiar de color", "Ver todo"→"No estoy seguro". Mensajes de Clari simplificados: "alto paso de oxígeno"→"lentes que dejen respirar bien tus ojos", "lentes diarios sin mantenimiento"→"lentes de un solo uso, los estrenas cada día sin líquidos ni estuches", "12h+"→"Todo el día", "Diarios/Mensuales"→"Usar y tirar (diarios)/Uno al mes". **Flujo completo**: Edad → Para qué → Experiencia → Horas → Productos recomendados. **Stripe restringido**: Stripe no acepta venta de lentes de contacto (dispositivos médicos). Pendiente evaluación de Conekta como alternativa para suscripciones recurrentes.
 Cambios v156: Tienda LC — probador virtual contextual + trust section + mobile UX. **Probador virtual**: botón removido del hero, ahora solo aparece en detalle de productos tipo Color ("Probar color virtual"). **Trust section**: 2 cards (stock photos) unificadas en 1 card con foto real (`hero-lc.jpg`, 77KB) + gradient bottom-to-top, stats: 4,200+ Clientes / 24h Lentes listos / 3 Sucursales / 8+ Marcas. **Mobile optimizado**: hero reducido de 528px→263px (`min-height:auto`), botones hero lado a lado (compactos, `flex:1`), animación lente como fondo decorativo (absolute, opacity .7), flecha scroll oculta, trust section compactada. Productos visibles sin scroll en mobile (632px vs 980px antes).
@@ -266,9 +269,9 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 6. Precios Marina pendientes de confirmar
 7. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 8. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-9. **Stripe BLOQUEADO**: Stripe no acepta lentes de contacto (dispositivos médicos restringidos). Evaluar **Conekta** como alternativa para suscripciones recurrentes (requiere documentos de empresa para registro)
+9. **Conekta**: Configurar env vars en Netlify (`CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`), crear webhook en panel Conekta apuntando a `conekta-webhook`, probar flujo completo con claves de prueba
 10. **Google Sign-In**: Crear OAuth 2.0 Client ID en Google Cloud Console, reemplazar GOOGLE_CID en tienda.html
-11. **Conekta**: Completar registro, integrar API de suscripciones recurrentes en tienda.html (reemplazar stripe-subscribe/webhook/portal)
+11. **Conekta cuenta**: Completar validación de cuenta (subir documentos de empresa), activar modo producción
 12. **SEGURIDAD menor**: innerHTML con datos de DB sin sanitizar (XSS — riesgo bajo, solo users autenticados escriben)
 13. **SEGURIDAD menor**: Rate limiting en endpoints públicos
 14. **SEGURIDAD menor**: RBAC en dbwrite.js (restricción por rol)
