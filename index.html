@@ -3664,6 +3664,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="precio_fijo">Precio fijo</option>
               <option value="monto_minimo">Monto mínimo</option>
               <option value="descuento_staff">Staff/Rescate</option>
+              <option value="material_a_peso">Material a $X</option>
             </select>
             <select id="promo-estado-filter" onchange="filtrarPromos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todas</option>
@@ -4145,6 +4146,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <option value="precio_fijo">Precio fijo de paquete</option>
         <option value="monto_minimo">Descuento por monto mínimo</option>
         <option value="descuento_staff">Descuento staff / rescate</option>
+        <option value="material_a_peso">Material a $X (ej: material a $1 en compra de armazón)</option>
       </select>
     </div>
     <!-- Dynamic fields per tipo -->
@@ -4181,6 +4183,18 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
     </div>
     <div id="promo-fields-staff" style="display:none">
       <div class="fg"><label>% Descuento staff</label><input type="number" id="promo-valor-staff" min="1" max="100" placeholder="15"></div>
+    </div>
+    <div id="promo-fields-material-a-peso" style="display:none">
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:6px">Condición: compra de armazón desde cierto monto</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>Monto mín. armazón ($)</label><input type="number" id="promo-mat-min-arm" min="0" step="0.01" placeholder="1200"></div>
+          <div class="fg"><label>Precio del material ($)</label><input type="number" id="promo-mat-precio" min="0" step="0.01" placeholder="1"></div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:4px">Si el carrito tiene un armazón ≥ monto mín., los materiales en las categorías seleccionadas abajo se reducen al precio indicado.</div>
+      </div>
+      <div class="fg"><label>Folios lab</label><input type="number" id="promo-mat-folios" min="1" placeholder="2" style="max-width:120px"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:-4px;margin-bottom:8px">Normalmente 2: uno para el armazón + uno para el material a precio especial</div>
     </div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);margin:12px 0;padding-top:12px">
       <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Reglas</div>
@@ -17958,7 +17972,8 @@ const PROMO_TIPOS = {
   'nxm': { label: 'NxM', icon: '🎁', color: '#d4b84a' },
   'precio_fijo': { label: 'Precio fijo', icon: '📦', color: '#60a5fa' },
   'monto_minimo': { label: 'Monto mín.', icon: '🎯', color: '#a78bfa' },
-  'descuento_staff': { label: 'Staff', icon: '👤', color: '#f472b6' }
+  'descuento_staff': { label: 'Staff', icon: '👤', color: '#f472b6' },
+  'material_a_peso': { label: 'Material a $X', icon: '🏷', color: '#f59e0b' }
 };
 const PROMO_CATS_PRODUCTOS = ['Armazón','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
 
@@ -18014,6 +18029,7 @@ function renderPromoList(list) {
     else if (p.tipo === 'nxm') valorTxt = `${p.compra_cantidad}x${p.paga_cantidad}`;
     else if (p.tipo === 'precio_fijo') valorTxt = `$${Number(p.precio_paquete).toFixed(2)}`;
     else if (p.tipo === 'monto_minimo') valorTxt = `${p.valor}% en +$${Number(p.monto_minimo).toFixed(0)}`;
+    else if (p.tipo === 'material_a_peso') valorTxt = `Material a $${Number(p.precio_paquete).toFixed(0)} · Arm ≥$${Number(p.monto_minimo).toFixed(0)}`;
     const fechas = (p.fecha_inicio || p.fecha_fin) ? `${p.fecha_inicio || '∞'} → ${p.fecha_fin || '∞'}` : 'Sin vigencia';
     const cats = p.categorias?.length ? p.categorias.join(', ') : 'Todas';
     let statusBadge = '';
@@ -18087,6 +18103,9 @@ function abrirModalPromo(editData) {
   document.getElementById('promo-monto-min').value = editData?.monto_minimo || '';
   document.getElementById('promo-valor-min').value = editData?.tipo === 'monto_minimo' ? editData.valor : '';
   document.getElementById('promo-valor-staff').value = editData?.tipo === 'descuento_staff' ? editData.valor : '';
+  document.getElementById('promo-mat-min-arm').value = editData?.tipo === 'material_a_peso' ? editData.monto_minimo : '';
+  document.getElementById('promo-mat-precio').value = editData?.tipo === 'material_a_peso' ? editData.precio_paquete : '';
+  document.getElementById('promo-mat-folios').value = editData?.tipo === 'material_a_peso' ? editData.folios_lab : '';
   document.getElementById('promo-fecha-ini').value = editData?.fecha_inicio || '';
   document.getElementById('promo-fecha-fin').value = editData?.fecha_fin || '';
   document.getElementById('promo-max-usos').value = editData?.max_usos || '';
@@ -18106,7 +18125,7 @@ function editarPromo(id) {
 
 function togglePromoFields() {
   const t = document.getElementById('promo-tipo').value;
-  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff'].forEach(s => {
+  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff', 'material-a-peso'].forEach(s => {
     document.getElementById(`promo-fields-${s}`).style.display = 'none';
   });
   if (t === 'porcentaje') document.getElementById('promo-fields-porcentaje').style.display = '';
@@ -18114,6 +18133,7 @@ function togglePromoFields() {
   else if (t === 'precio_fijo') document.getElementById('promo-fields-precio-fijo').style.display = '';
   else if (t === 'monto_minimo') document.getElementById('promo-fields-monto-min').style.display = '';
   else if (t === 'descuento_staff') document.getElementById('promo-fields-staff').style.display = '';
+  else if (t === 'material_a_peso') document.getElementById('promo-fields-material-a-peso').style.display = '';
 }
 
 const PAGA_CAT_OPTIONS = ['Armazón','Material','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
@@ -18178,6 +18198,11 @@ async function guardarPromo() {
     payload.valor = parseFloat(document.getElementById('promo-valor-min').value) || 0;
   }
   else if (tipo === 'descuento_staff') { payload.valor = parseFloat(document.getElementById('promo-valor-staff').value) || 0; payload.solo_staff = true; }
+  else if (tipo === 'material_a_peso') {
+    payload.monto_minimo = parseFloat(document.getElementById('promo-mat-min-arm').value) || 0;
+    payload.precio_paquete = parseFloat(document.getElementById('promo-mat-precio').value) || 1;
+    payload.folios_lab = parseInt(document.getElementById('promo-mat-folios').value) || 2;
+  }
   if (tipo !== 'descuento_staff') payload.solo_staff = false;
   const editId = document.getElementById('promo-edit-id').value;
   const _promoBtn = event?.target?.closest('button');
@@ -18236,6 +18261,7 @@ async function abrirSelectorPromo() {
       else if (p.tipo === 'precio_fijo') valorTxt = `Paquete $${Number(p.precio_paquete).toFixed(2)}`;
       else if (p.tipo === 'monto_minimo') valorTxt = sub >= p.monto_minimo ? `${p.valor}% (aplica)` : `${p.valor}% (falta $${(p.monto_minimo - sub).toFixed(0)})`;
       else if (p.tipo === 'descuento_staff') valorTxt = `${p.valor}% staff`;
+      else if (p.tipo === 'material_a_peso') { const arm = vtaItems.find(i => (i.categoria||'').includes('Armazón') && i.precio_unitario >= p.monto_minimo); valorTxt = arm ? `Material a $${Number(p.precio_paquete).toFixed(0)} (aplica)` : `Material a $${Number(p.precio_paquete).toFixed(0)} (armazón ≥$${Number(p.monto_minimo).toFixed(0)})`; }
       const puedeCombinar = !vtaPromoAplicada || (vtaPromoAplicada && p.combinable && vtaPromoAplicada.combinable);
       const aplica = descCalc > 0 && puedeCombinar;
       return `<div style="background:var(--surface2);border:1px solid ${aplica ? t.color + '30' : 'rgba(255,255,255,0.04)'};border-radius:10px;padding:12px 14px;cursor:${aplica ? 'pointer' : 'default'};opacity:${aplica ? '1' : '0.4'};transition:all .2s" ${aplica ? `onclick="aplicarPromoVenta('${p.id}')" onmouseover="this.style.borderColor='${t.color}'" onmouseout="this.style.borderColor='${t.color}30'"` : ''}>
@@ -18299,6 +18325,20 @@ function calcularDescuentoPromo(promo, items, subtotal) {
     case 'descuento_staff': {
       return subtotal * (promo.valor / 100);
     }
+    case 'material_a_peso': {
+      const minArm = promo.monto_minimo || 0;
+      const precioMat = promo.precio_paquete || 1;
+      const tieneArm = items.some(i => (i.categoria || '').includes('Armazón') && i.precio_unitario >= minArm);
+      if (!tieneArm) return 0;
+      const catsMat = promo.categorias?.length ? promo.categorias : ['Material'];
+      const elegibles = items.filter(i => catsMat.some(c => (i.categoria || '').includes(c)));
+      if (!elegibles.length) return 0;
+      let desc = 0;
+      for (const it of elegibles) {
+        if (it.precio_unitario > precioMat) desc += (it.precio_unitario - precioMat) * it.cantidad;
+      }
+      return desc;
+    }
     default: return 0;
   }
 }
@@ -18329,7 +18369,7 @@ async function aplicarPromoVenta(promoId) {
   recalcVtaTotales();
   document.getElementById('m-promo-selector').classList.remove('open');
   toast(`✓ Promo "${data.nombre}" aplicada: -$${vtaPromoAplicada.descuento.toFixed(2)}`);
-  if (data.tipo === 'nxm' && vtaPromoAplicada.folios_lab > 1) {
+  if ((data.tipo === 'nxm' || data.tipo === 'material_a_peso') && vtaPromoAplicada.folios_lab > 1) {
     autoAsignarFolios();
   } else {
     document.getElementById('vta-folio-assign').style.display = 'none';
