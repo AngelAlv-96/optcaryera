@@ -269,9 +269,9 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 6. Precios Marina pendientes de confirmar
 7. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 8. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-9. **Conekta**: Configurar env vars en Netlify (`CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`), crear webhook en panel Conekta apuntando a `conekta-webhook`, probar flujo completo con claves de prueba
-10. **Google Sign-In**: Crear OAuth 2.0 Client ID en Google Cloud Console, reemplazar GOOGLE_CID en tienda.html
-11. **Conekta cuenta**: Completar validación de cuenta (subir documentos de empresa), activar modo producción
+9. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify, ✅ webhook activo en panel Conekta, ⬜ `CONEKTA_WEBHOOK_KEY` opcional (generar llave de firma en panel), ⬜ probar flujo completo con claves de prueba
+10. **Google Sign-In**: ✅ OAuth 2.0 Client ID creado ("Tienda LC Car y Era"), ✅ `GOOGLE_CLIENT_ID` en Netlify, ✅ GOOGLE_CID en tienda.html
+11. **Conekta cuenta**: Completar validación de cuenta (subir documentos de empresa), activar modo producción — actualmente en Modo Pruebas
 12. **SEGURIDAD menor**: innerHTML con datos de DB sin sanitizar (XSS — riesgo bajo, solo users autenticados escriben)
 13. **SEGURIDAD menor**: Rate limiting en endpoints públicos
 14. **SEGURIDAD menor**: RBAC en dbwrite.js (restricción por rol)
