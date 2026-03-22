@@ -3665,10 +3665,12 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="monto_minimo">Monto mínimo</option>
               <option value="descuento_staff">Staff/Rescate</option>
               <option value="material_a_peso">Material a $X</option>
+              <option value="material_1">Material a $1</option>
+              <option value="paquete_fijo">Paquete fijo</option>
             </select>
             <select id="promo-estado-filter" onchange="filtrarPromos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todas</option>
-              <option value="activa">Activas</option>
+              <option value="activa" selected>Activas</option>
               <option value="inactiva">Inactivas</option>
               <option value="vigente">Vigentes hoy</option>
               <option value="expirada">Expiradas</option>
@@ -4147,6 +4149,8 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <option value="monto_minimo">Descuento por monto mínimo</option>
         <option value="descuento_staff">Descuento staff / rescate</option>
         <option value="material_a_peso">Material a $X (ej: material a $1 en compra de armazón)</option>
+        <option value="material_1">Material a $1 (armazón mín.)</option>
+        <option value="paquete_fijo">Paquete precio fijo</option>
       </select>
     </div>
     <!-- Dynamic fields per tipo -->
@@ -4196,6 +4200,67 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
       <div class="fg"><label>Folios lab</label><input type="number" id="promo-mat-folios" min="1" placeholder="2" style="max-width:120px"></div>
       <div style="font-size:10px;color:var(--muted);margin-top:-4px;margin-bottom:8px">Normalmente 2: uno para el armazón + uno para el material a precio especial</div>
     </div>
+    <!-- Material a $1 fields -->
+    <div id="promo-fields-material-1" style="display:none">
+      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:6px">🔖 Material a precio especial en compra de armazón</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>Precio mín. armazón ($)</label><input type="number" id="promo-mat1-min-arm" min="0" step="0.01" value="1200"></div>
+          <div class="fg"><label>Precio del material ($)</label><input type="number" id="promo-mat1-precio" min="0" step="0.01" value="1"></div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:10px;color:var(--beige);font-weight:600;margin-bottom:4px">Tipo de visión</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-tv" value="VS" checked> VS</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-tv" value="Bif F/T"> Bif F/T</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-tv" value="Bif Semi-invisible"> Bif Semi-invisible</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-tv" value="Progresivo"> Progresivo</label>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:10px;color:var(--beige);font-weight:600;margin-bottom:4px">Materiales elegibles</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-material" value="Hi Index" checked> Hi Index</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-material" value="CR-39"> CR-39</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-material" value="Policarbonato"> Policarbonato</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-material" value="Ultra-thin 1.67"> Ultra-thin 1.67</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-material" value="Super Ultra-thin 1.74"> Super Ultra-thin 1.74</label>
+          </div>
+        </div>
+        <div style="margin-top:8px">
+          <div style="font-size:10px;color:var(--beige);font-weight:600;margin-bottom:4px">Tratamientos elegibles</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="AR" checked> AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="Anti-Blue AR" checked> Anti-Blue AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="Blue Light"> Blue Light</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="Foto AR"> Foto AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="Foto Anti-Blue AR"> Foto Anti-Blue AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="mat1-trat" value="Foto Blue Light"> Foto Blue Light</label>
+          </div>
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:6px">Si el carrito tiene armazón ≥ monto mín., los materiales que cumplan los filtros se reducen al precio indicado.</div>
+      </div>
+    </div>
+    <!-- Paquete Fijo fields -->
+    <div id="promo-fields-paquete-fijo" style="display:none">
+      <div style="background:rgba(20,184,166,0.06);border:1px solid rgba(20,184,166,0.15);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:11px;color:#14b8a6;font-weight:600;margin-bottom:6px">📦 Paquete a precio fijo</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg"><label>Precio fijo del paquete ($)</label><input type="number" id="promo-pf-precio" min="0" step="0.01" value="1200"></div>
+          <div class="fg"><label>Armazones requeridos</label><input type="number" id="promo-pf-num-arm" min="1" value="3"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+          <div class="fg"><label>Precio mín. armazón ($)</label><input type="number" id="promo-pf-arm-min" min="0" step="0.01" value="600"></div>
+          <div class="fg"><label>Precio máx. armazón ($)</label><input type="number" id="promo-pf-arm-max" min="0" step="0.01" value="1200"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:4px;align-items:end">
+          <div class="fg"><label>Folios de laboratorio</label><input type="number" id="promo-pf-folios" min="1" value="3" onchange="pfRegenerarFolios()"></div>
+          <button type="button" class="btn btn-g btn-sm" onclick="pfRegenerarFolios()" style="font-size:10px;margin-bottom:4px">Regenerar</button>
+        </div>
+        <div id="promo-pf-folios-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+        <div style="font-size:9px;color:var(--muted);margin-top:6px">Valida N armazones en el rango de precio + materiales que coincidan con cada folio especificado.</div>
+      </div>
+    </div>
     <div style="border-top:1px solid rgba(255,255,255,0.06);margin:12px 0;padding-top:12px">
       <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Reglas</div>
       <div class="fg"><label>Categorías (dejar vacío = todas)</label>
@@ -4209,6 +4274,43 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-cat" value="Servicio"> Servicio</label>
           <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-cat" value="Cobertura"> Cobertura</label>
         </div>
+      </div>
+      <div id="promo-filtros-material-wrap" style="background:rgba(96,165,250,0.04);border:1px solid rgba(96,165,250,0.12);border-radius:8px;padding:10px 12px;margin-top:8px">
+        <div style="font-size:10px;color:#60a5fa;font-weight:600;margin-bottom:6px">🔬 Filtros de material (opcional)</div>
+        <div style="margin-bottom:6px">
+          <div style="font-size:9px;color:var(--muted);margin-bottom:3px;font-weight:600">Tipo de visión</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-tv" value="VS"> VS</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-tv" value="Bif F/T"> Bif F/T</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-tv" value="Bif Semi-invisible"> Bif Semi-inv</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-tv" value="Progresivo"> Progresivo</label>
+          </div>
+        </div>
+        <div style="margin-bottom:6px">
+          <div style="font-size:9px;color:var(--muted);margin-bottom:3px;font-weight:600">Material</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-mat" value="CR-39"> CR-39</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-mat" value="Hi Index"> Hi Index</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-mat" value="Policarbonato"> Policarbonato</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-mat" value="Ultra-thin 1.67"> Ultra-thin 1.67</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-mat" value="Super Ultra-thin 1.74"> S.Ultra-thin 1.74</label>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--muted);margin-bottom:3px;font-weight:600">Tratamiento</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Blanco"> Blanco</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="AR"> AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Anti-Blue AR"> Anti-Blue AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Blue Light"> Blue Light</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Foto AR"> Foto AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Foto Anti-Blue AR"> Foto Anti-Blue AR</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Foto Blue Light"> Foto Blue Light</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Tinte Solar"> Tinte Solar</label>
+            <label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);cursor:pointer"><input type="checkbox" class="promo-filtro-trat" value="Polarizado"> Polarizado</label>
+          </div>
+        </div>
+        <div style="font-size:8px;color:var(--muted);margin-top:4px">Filtra items de Material por tipo/material/tratamiento. Dejar vacío = todos los materiales.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="fg"><label>Fecha inicio</label><input type="date" id="promo-fecha-ini"></div>
@@ -17973,7 +18075,9 @@ const PROMO_TIPOS = {
   'precio_fijo': { label: 'Precio fijo', icon: '📦', color: '#60a5fa' },
   'monto_minimo': { label: 'Monto mín.', icon: '🎯', color: '#a78bfa' },
   'descuento_staff': { label: 'Staff', icon: '👤', color: '#f472b6' },
-  'material_a_peso': { label: 'Material a $X', icon: '🏷', color: '#f59e0b' }
+  'material_a_peso': { label: 'Material a $X', icon: '🏷', color: '#f59e0b' },
+  'material_1': { label: 'Material a $1', icon: '🔖', color: '#f59e0b' },
+  'paquete_fijo': { label: 'Paquete fijo', icon: '📦', color: '#14b8a6' }
 };
 const PROMO_CATS_PRODUCTOS = ['Armazón','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
 
@@ -18030,6 +18134,8 @@ function renderPromoList(list) {
     else if (p.tipo === 'precio_fijo') valorTxt = `$${Number(p.precio_paquete).toFixed(2)}`;
     else if (p.tipo === 'monto_minimo') valorTxt = `${p.valor}% en +$${Number(p.monto_minimo).toFixed(0)}`;
     else if (p.tipo === 'material_a_peso') valorTxt = `Material a $${Number(p.precio_paquete).toFixed(0)} · Arm ≥$${Number(p.monto_minimo).toFixed(0)}`;
+    else if (p.tipo === 'material_1') valorTxt = `Arm ≥$${Number(p.monto_min_armazon||1200).toFixed(0)}`;
+    else if (p.tipo === 'paquete_fijo') valorTxt = `$${Number(p.precio_paquete||0).toFixed(0)}`;
     const fechas = (p.fecha_inicio || p.fecha_fin) ? `${p.fecha_inicio || '∞'} → ${p.fecha_fin || '∞'}` : 'Sin vigencia';
     const cats = p.categorias?.length ? p.categorias.join(', ') : 'Todas';
     let statusBadge = '';
@@ -18106,6 +18212,24 @@ function abrirModalPromo(editData) {
   document.getElementById('promo-mat-min-arm').value = editData?.tipo === 'material_a_peso' ? editData.monto_minimo : '';
   document.getElementById('promo-mat-precio').value = editData?.tipo === 'material_a_peso' ? editData.precio_paquete : '';
   document.getElementById('promo-mat-folios').value = editData?.tipo === 'material_a_peso' ? editData.folios_lab : '';
+  // material_1 fields
+  document.getElementById('promo-mat1-min-arm').value = editData?.tipo === 'material_1' ? (editData.monto_min_armazon || 1200) : 1200;
+  document.getElementById('promo-mat1-precio').value = editData?.tipo === 'material_1' ? (editData.precio_material || 1) : 1;
+  const me = editData?.tipo === 'material_1' ? editData.materiales_elegibles : null;
+  document.querySelectorAll('.mat1-tv').forEach(cb => { cb.checked = me?.tipos_vision?.includes(cb.value) || (!me && cb.value === 'VS'); });
+  document.querySelectorAll('.mat1-material').forEach(cb => { cb.checked = me?.materiales?.includes(cb.value) || (!me && cb.value === 'Hi Index'); });
+  document.querySelectorAll('.mat1-trat').forEach(cb => { cb.checked = me?.tratamientos?.includes(cb.value) || (!me && (cb.value === 'AR' || cb.value === 'Anti-Blue AR')); });
+  // paquete_fijo fields
+  document.getElementById('promo-pf-precio').value = editData?.tipo === 'paquete_fijo' ? (editData.precio_paquete || 1200) : 1200;
+  document.getElementById('promo-pf-num-arm').value = editData?.pf_config?.num_armazones || 3;
+  document.getElementById('promo-pf-arm-min').value = editData?.pf_config?.arm_precio_min || 600;
+  document.getElementById('promo-pf-arm-max').value = editData?.pf_config?.arm_precio_max || 1200;
+  document.getElementById('promo-pf-folios').value = editData?.tipo === 'paquete_fijo' ? (editData.folios_lab || 3) : 3;
+  // global material filters
+  const fm = editData?.filtros_material || null;
+  document.querySelectorAll('.promo-filtro-tv').forEach(cb => { cb.checked = fm?.tipos_vision?.includes(cb.value) || false; });
+  document.querySelectorAll('.promo-filtro-mat').forEach(cb => { cb.checked = fm?.materiales?.includes(cb.value) || false; });
+  document.querySelectorAll('.promo-filtro-trat').forEach(cb => { cb.checked = fm?.tratamientos?.includes(cb.value) || false; });
   document.getElementById('promo-fecha-ini').value = editData?.fecha_inicio || '';
   document.getElementById('promo-fecha-fin').value = editData?.fecha_fin || '';
   document.getElementById('promo-max-usos').value = editData?.max_usos || '';
@@ -18115,6 +18239,7 @@ function abrirModalPromo(editData) {
   document.querySelectorAll('.promo-cat').forEach(cb => { cb.checked = editData?.categorias?.includes(cb.value) || false; });
   setPagaCatConfig(editData?.paga_categorias || null);
   togglePromoFields();
+  if (editData?.tipo === 'paquete_fijo') setPfFoliosConfig(editData.pf_config?.folios_material || []);
   document.getElementById('m-promo-form').classList.add('open');
 }
 
@@ -18125,7 +18250,7 @@ function editarPromo(id) {
 
 function togglePromoFields() {
   const t = document.getElementById('promo-tipo').value;
-  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff', 'material-a-peso'].forEach(s => {
+  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff', 'material-a-peso', 'material-1', 'paquete-fijo'].forEach(s => {
     document.getElementById(`promo-fields-${s}`).style.display = 'none';
   });
   if (t === 'porcentaje') document.getElementById('promo-fields-porcentaje').style.display = '';
@@ -18134,6 +18259,8 @@ function togglePromoFields() {
   else if (t === 'monto_minimo') document.getElementById('promo-fields-monto-min').style.display = '';
   else if (t === 'descuento_staff') document.getElementById('promo-fields-staff').style.display = '';
   else if (t === 'material_a_peso') document.getElementById('promo-fields-material-a-peso').style.display = '';
+  else if (t === 'material_1') document.getElementById('promo-fields-material-1').style.display = '';
+  else if (t === 'paquete_fijo') { document.getElementById('promo-fields-paquete-fijo').style.display = ''; pfRegenerarFolios(); }
 }
 
 const PAGA_CAT_OPTIONS = ['Armazón','Material','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
@@ -18203,6 +18330,31 @@ async function guardarPromo() {
     payload.precio_paquete = parseFloat(document.getElementById('promo-mat-precio').value) || 1;
     payload.folios_lab = parseInt(document.getElementById('promo-mat-folios').value) || 2;
   }
+  else if (tipo === 'material_1') {
+    const trats = [...document.querySelectorAll('.mat1-trat:checked')].map(c => c.value);
+    if (!trats.length) { toast('Selecciona al menos un tratamiento elegible', true); return; }
+    payload.monto_min_armazon = parseFloat(document.getElementById('promo-mat1-min-arm').value) || 1200;
+    payload.precio_material = parseFloat(document.getElementById('promo-mat1-precio').value) || 1;
+    payload.materiales_elegibles = {
+      tipos_vision: [...document.querySelectorAll('.mat1-tv:checked')].map(c => c.value),
+      materiales: [...document.querySelectorAll('.mat1-material:checked')].map(c => c.value),
+      tratamientos: trats
+    };
+  }
+  else if (tipo === 'paquete_fijo') {
+    payload.precio_paquete = parseFloat(document.getElementById('promo-pf-precio').value) || 1200;
+    payload.folios_lab = parseInt(document.getElementById('promo-pf-folios').value) || 3;
+    payload.pf_config = getPfConfig();
+  }
+  // global material filters
+  const _fmTv = [...document.querySelectorAll('.promo-filtro-tv:checked')].map(c => c.value);
+  const _fmMat = [...document.querySelectorAll('.promo-filtro-mat:checked')].map(c => c.value);
+  const _fmTrat = [...document.querySelectorAll('.promo-filtro-trat:checked')].map(c => c.value);
+  if (_fmTv.length || _fmMat.length || _fmTrat.length) {
+    payload.filtros_material = { tipos_vision: _fmTv, materiales: _fmMat, tratamientos: _fmTrat };
+  } else {
+    payload.filtros_material = null;
+  }
   if (tipo !== 'descuento_staff') payload.solo_staff = false;
   const editId = document.getElementById('promo-edit-id').value;
   const _promoBtn = event?.target?.closest('button');
@@ -18234,7 +18386,8 @@ async function togglePromoActiva(id, activa) {
 
 async function eliminarPromo(id) {
   if (!confirm('¿Eliminar esta promoción?')) return;
-  await db.from('promociones').delete().eq('id', id);
+  const { error } = await db.from('promociones').delete().eq('id', id);
+  if (error) { toast('Error al eliminar: ' + error.message, true); return; }
   toast('✓ Eliminada');
   cargarPromociones();
 }
@@ -18262,6 +18415,8 @@ async function abrirSelectorPromo() {
       else if (p.tipo === 'monto_minimo') valorTxt = sub >= p.monto_minimo ? `${p.valor}% (aplica)` : `${p.valor}% (falta $${(p.monto_minimo - sub).toFixed(0)})`;
       else if (p.tipo === 'descuento_staff') valorTxt = `${p.valor}% staff`;
       else if (p.tipo === 'material_a_peso') { const arm = vtaItems.find(i => (i.categoria||'').includes('Armazón') && i.precio_unitario >= p.monto_minimo); valorTxt = arm ? `Material a $${Number(p.precio_paquete).toFixed(0)} (aplica)` : `Material a $${Number(p.precio_paquete).toFixed(0)} (armazón ≥$${Number(p.monto_minimo).toFixed(0)})`; }
+      else if (p.tipo === 'material_1') { const arm1 = vtaItems.find(i => (i.categoria||'').includes('Armazón') && i.precio_unitario >= (p.monto_min_armazon||1200)); valorTxt = arm1 ? `Material a $${Number(p.precio_material||1).toFixed(0)} (aplica)` : `Material a $${Number(p.precio_material||1).toFixed(0)} (armazón ≥$${Number(p.monto_min_armazon||1200).toFixed(0)})`; }
+      else if (p.tipo === 'paquete_fijo') { valorTxt = descCalc > 0 ? `Paquete $${Number(p.precio_paquete).toFixed(0)} (aplica)` : `Paquete $${Number(p.precio_paquete).toFixed(0)} (ver req.)`; }
       const puedeCombinar = !vtaPromoAplicada || (vtaPromoAplicada && p.combinable && vtaPromoAplicada.combinable);
       const aplica = descCalc > 0 && puedeCombinar;
       return `<div style="background:var(--surface2);border:1px solid ${aplica ? t.color + '30' : 'rgba(255,255,255,0.04)'};border-radius:10px;padding:12px 14px;cursor:${aplica ? 'pointer' : 'default'};opacity:${aplica ? '1' : '0.4'};transition:all .2s" ${aplica ? `onclick="aplicarPromoVenta('${p.id}')" onmouseover="this.style.borderColor='${t.color}'" onmouseout="this.style.borderColor='${t.color}30'"` : ''}>
@@ -18283,18 +18438,87 @@ async function abrirSelectorPromo() {
   document.getElementById('m-promo-selector').classList.add('open');
 }
 
+// Paquete Fijo helpers
+function pfRegenerarFolios() {
+  const n = parseInt(document.getElementById('promo-pf-folios').value) || 3;
+  const list = document.getElementById('promo-pf-folios-list');
+  const TV_OPTS = ['VS','Bif F/T','Bif Semi-invisible','Progresivo'];
+  const MAT_OPTS = ['CR-39','Hi Index','Policarbonato','Ultra-thin 1.67','Super Ultra-thin 1.74'];
+  const TRA_OPTS = ['Blanco','AR','Anti-Blue AR','Blue Light','Foto AR','Foto Anti-Blue AR','Foto Blue Light','Tinte Solar','Polarizado'];
+  const existing = [];
+  list.querySelectorAll('.pf-folio-row').forEach(r => {
+    existing.push({ tipo_vision: r.querySelector('.pf-tv').value, material: r.querySelector('.pf-mat').value, tratamiento: r.querySelector('.pf-tra').value });
+  });
+  list.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const ex = existing[i] || {};
+    const row = document.createElement('div');
+    row.className = 'pf-folio-row';
+    row.style.cssText = 'display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:4px;align-items:center;font-size:10px';
+    row.innerHTML = `<span style="color:var(--muted);font-weight:600">F${i+1}</span>
+      <select class="pf-tv" style="padding:4px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:var(--white)">${TV_OPTS.map(o=>`<option${o===(ex.tipo_vision||'VS')?' selected':''}>${o}</option>`).join('')}</select>
+      <select class="pf-mat" style="padding:4px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:var(--white)">${MAT_OPTS.map(o=>`<option${o===(ex.material||'CR-39')?' selected':''}>${o}</option>`).join('')}</select>
+      <select class="pf-tra" style="padding:4px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:4px;color:var(--white)">${TRA_OPTS.map(o=>`<option${o===(ex.tratamiento||'AR')?' selected':''}>${o}</option>`).join('')}</select>`;
+    list.appendChild(row);
+  }
+}
+function getPfConfig() {
+  const rows = [...document.querySelectorAll('#promo-pf-folios-list .pf-folio-row')];
+  return {
+    num_armazones: parseInt(document.getElementById('promo-pf-num-arm').value) || 3,
+    arm_precio_min: parseFloat(document.getElementById('promo-pf-arm-min').value) || 600,
+    arm_precio_max: parseFloat(document.getElementById('promo-pf-arm-max').value) || 1200,
+    folios_material: rows.map(r => ({ tipo_vision: r.querySelector('.pf-tv').value, material: r.querySelector('.pf-mat').value, tratamiento: r.querySelector('.pf-tra').value }))
+  };
+}
+function setPfFoliosConfig(arr) {
+  document.getElementById('promo-pf-folios').value = arr.length || 3;
+  pfRegenerarFolios();
+  const rows = document.querySelectorAll('#promo-pf-folios-list .pf-folio-row');
+  arr.forEach((spec, i) => {
+    if (!rows[i]) return;
+    rows[i].querySelector('.pf-tv').value = spec.tipo_vision || 'VS';
+    rows[i].querySelector('.pf-mat').value = spec.material || 'CR-39';
+    rows[i].querySelector('.pf-tra').value = spec.tratamiento || 'AR';
+  });
+}
+
+// Helper: filtra items por categorías y filtros_material de la promo
+function _filtrarItemsPromo(promo, items) {
+  let filtered = items;
+  if (promo.categorias?.length) filtered = filtered.filter(i => promo.categorias.some(c => (i.categoria || '').includes(c)));
+  if (promo.filtros_material) {
+    const fm = promo.filtros_material;
+    filtered = filtered.filter(i => {
+      if (!(i.categoria || '').includes('Material')) return true; // solo filtrar items Material
+      const m = i.material_meta;
+      if (!m) { // fallback: buscar por descripcion
+        const d = (i.descripcion || '').toLowerCase();
+        if (fm.tipos_vision?.length && !fm.tipos_vision.some(tv => d.includes(tv.toLowerCase()))) return false;
+        if (fm.materiales?.length && !fm.materiales.some(mt => d.includes(mt.toLowerCase()))) return false;
+        if (fm.tratamientos?.length && !fm.tratamientos.some(tr => d.includes(tr.toLowerCase()))) return false;
+        return true;
+      }
+      if (fm.tipos_vision?.length && !fm.tipos_vision.includes(m.tipo_vision)) return false;
+      if (fm.materiales?.length && !fm.materiales.includes(m.material)) return false;
+      if (fm.tratamientos?.length && !fm.tratamientos.includes(m.tratamiento)) return false;
+      return true;
+    });
+  }
+  return filtered;
+}
+
 function calcularDescuentoPromo(promo, items, subtotal) {
   switch (promo.tipo) {
     case 'porcentaje': {
-      if (promo.categorias?.length) {
-        const filtrado = items.filter(i => !i.producto_id || promo.categorias.some(c => (i.categoria || '').includes(c)));
+      const filtrado = _filtrarItemsPromo(promo, items);
+      if (promo.categorias?.length || promo.filtros_material) {
         return filtrado.reduce((s, i) => s + i.subtotal, 0) * (promo.valor / 100);
       }
       return subtotal * (promo.valor / 100);
     }
     case 'nxm': {
-      let elegibles = items;
-      if (promo.categorias?.length) elegibles = items.filter(i => promo.categorias.some(c => (i.categoria || '').includes(c)));
+      let elegibles = _filtrarItemsPromo(promo, items);
       const totalItems = elegibles.reduce((s, i) => s + i.cantidad, 0);
       if (totalItems < promo.compra_cantidad) return 0;
       const totalElegible = elegibles.reduce((s, i) => s + i.subtotal, 0);
@@ -18330,14 +18554,68 @@ function calcularDescuentoPromo(promo, items, subtotal) {
       const precioMat = promo.precio_paquete || 1;
       const tieneArm = items.some(i => (i.categoria || '').includes('Armazón') && i.precio_unitario >= minArm);
       if (!tieneArm) return 0;
-      const catsMat = promo.categorias?.length ? promo.categorias : ['Material'];
-      const elegibles = items.filter(i => catsMat.some(c => (i.categoria || '').includes(c)));
+      const elegibles = _filtrarItemsPromo(promo, items).filter(i => (i.categoria || '').includes('Material'));
       if (!elegibles.length) return 0;
       let desc = 0;
       for (const it of elegibles) {
         if (it.precio_unitario > precioMat) desc += (it.precio_unitario - precioMat) * it.cantidad;
       }
       return desc;
+    }
+    case 'material_1': {
+      const minArm1 = promo.monto_min_armazon || 1200;
+      const precioMat1 = promo.precio_material || 1;
+      const tieneArm1 = items.some(i => (i.categoria || '').includes('Armazón') && i.precio_unitario >= minArm1);
+      if (!tieneArm1) return 0;
+      const me1 = promo.materiales_elegibles || {};
+      const matItems = items.filter(i => {
+        if (!(i.categoria || '').includes('Material')) return false;
+        const m = i.material_meta;
+        if (m) {
+          if (me1.tipos_vision?.length && !me1.tipos_vision.includes(m.tipo_vision)) return false;
+          if (me1.materiales?.length && !me1.materiales.includes(m.material)) return false;
+          if (me1.tratamientos?.length && !me1.tratamientos.includes(m.tratamiento)) return false;
+          return true;
+        }
+        // fallback: buscar por texto en descripcion
+        const d = (i.descripcion || '').toLowerCase();
+        if (me1.tratamientos?.length && !me1.tratamientos.some(t => d.includes(t.toLowerCase()))) return false;
+        if (me1.materiales?.length && !me1.materiales.some(mt => d.includes(mt.toLowerCase()))) return false;
+        return true;
+      });
+      if (!matItems.length) return 0;
+      // descuento del material más barato elegible
+      const cheapest = matItems.reduce((min, it) => it.precio_unitario < min.precio_unitario ? it : min, matItems[0]);
+      return Math.max(0, cheapest.precio_unitario - precioMat1) * cheapest.cantidad;
+    }
+    case 'paquete_fijo': {
+      const pfc = promo.pf_config || {};
+      const numArm = pfc.num_armazones || 3;
+      const armMin = pfc.arm_precio_min || 0;
+      const armMax = pfc.arm_precio_max || Infinity;
+      const armazones = items.filter(i => (i.categoria || '').includes('Armazón') && i.precio_unitario >= armMin && i.precio_unitario <= armMax);
+      const totalArm = armazones.reduce((s, i) => s + i.cantidad, 0);
+      if (totalArm < numArm) return 0;
+      const foliosSpec = pfc.folios_material || [];
+      let matTotal = 0;
+      const usedItems = new Set();
+      for (const spec of foliosSpec) {
+        const match = items.find((it, idx) => {
+          if (usedItems.has(idx)) return false;
+          if (!(it.categoria || '').includes('Material')) return false;
+          const m = it.material_meta;
+          if (m) return m.tipo_vision === spec.tipo_vision && m.material === spec.material && m.tratamiento === spec.tratamiento;
+          const d = (it.descripcion || '').toLowerCase();
+          return d.includes(spec.tipo_vision.toLowerCase()) && d.includes(spec.material.toLowerCase()) && d.includes(spec.tratamiento.toLowerCase());
+        });
+        if (!match) return 0; // missing a required folio material
+        const idx = items.indexOf(match);
+        usedItems.add(idx);
+        matTotal += match.precio_unitario;
+      }
+      const armSubtotal = armazones.reduce((s, i) => s + i.subtotal, 0);
+      const paqTotal = armSubtotal + matTotal;
+      return Math.max(0, paqTotal - (promo.precio_paquete || 0));
     }
     default: return 0;
   }
@@ -18369,7 +18647,7 @@ async function aplicarPromoVenta(promoId) {
   recalcVtaTotales();
   document.getElementById('m-promo-selector').classList.remove('open');
   toast(`✓ Promo "${data.nombre}" aplicada: -$${vtaPromoAplicada.descuento.toFixed(2)}`);
-  if ((data.tipo === 'nxm' || data.tipo === 'material_a_peso') && vtaPromoAplicada.folios_lab > 1) {
+  if ((data.tipo === 'nxm' || data.tipo === 'material_a_peso' || data.tipo === 'material_1' || data.tipo === 'paquete_fijo') && vtaPromoAplicada.folios_lab > 1) {
     autoAsignarFolios();
   } else {
     document.getElementById('vta-folio-assign').style.display = 'none';
