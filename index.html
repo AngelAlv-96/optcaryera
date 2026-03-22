@@ -18261,6 +18261,8 @@ function togglePromoFields() {
   else if (t === 'material_a_peso') document.getElementById('promo-fields-material-a-peso').style.display = '';
   else if (t === 'material_1') document.getElementById('promo-fields-material-1').style.display = '';
   else if (t === 'paquete_fijo') { document.getElementById('promo-fields-paquete-fijo').style.display = ''; pfRegenerarFolios(); }
+  // Ocultar filtros globales de material cuando el tipo ya tiene los suyos
+  document.getElementById('promo-filtros-material-wrap').style.display = (t === 'material_1' || t === 'paquete_fijo') ? 'none' : '';
 }
 
 const PAGA_CAT_OPTIONS = ['Armazón','Material','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
