@@ -21442,7 +21442,7 @@ function lcGroupProducts(rawProducts) {
     var pv = parseFloat(p.precio_venta)||0;
     if (pv > 0) groups[key].precios.push(pv);
   });
-  var BRAND_MAP={'acuvue':'Acuvue','air':'Air Optix','air optix':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','lenticon':'Lenticon','lumitoric':'Lenticon','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','start':'Start','halloween':'Especial'};
+  var BRAND_MAP={'acuvue':'Acuvue','air':'Air Optix','air optix':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','lenticon':'Lenticon','lumitoric':'Lenticon','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','total30':'Total30','precision1':'Precision1','infuse':'Infuse','start':'Start','halloween':'Especial'};
   return Object.keys(groups).map(function(key) {
     var parts = key.split('|');
     var g = groups[key];

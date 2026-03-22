@@ -1009,10 +1009,10 @@ footer .fi{font-size:11px;color:var(--t3)}
 <script>
 var SU='https://icsnlgeereepesbrdjhf.supabase.co',SK='sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm',WA='5216563110094';
 var P=[],cart=JSON.parse(localStorage.getItem('ce_cart')||'[]'),I={acuvue_oasys:'https://cdn11.bigcommerce.com/s-fu16hs0usz/images/stencil/original/products/1734/2660/2308-2__29097.1601912675.jpg',air_optix_hydraglyde:'https://www.myalcon.com/sites/g/files/rbvwei2521/files/2023-12/airoptix-plus-hydraglyde.png','bausch+lomb_ultra':'https://bauschcontactlenses.com/siteassets/img/img-407x305-ultra-family-herobanner.png',acuvue_moist_1_day:'https://m.contactlensking.com/ProdImages/en/AC1M90_Main.jpg',soflens_59:'https://trendysweet.com/cdn/shop/products/bausch-and-lomb-soflens-59-contact-lenses-6-pack-2.png?v=1754837256',biomedics_now:'https://res2.contactlenses.co.uk/data/images/large/9.jpg',dailies_total_1:'https://do6sydhp1s299.cloudfront.net/web/files/collections/6427063dc9cce4.72561226.webp',freshlook_colorblends:'https://www.perfectlensworld.com/img/products/img_flb.jpg'},fT=null,fU=null;
-var BM={'acuvue':'Acuvue','air':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','lenticon':'Lenticon','lumitoric':'Lenticon','start':'Start','halloween':'Especial'};
-var LM={'Acuvue':'Johnson & Johnson','Air Optix':'Alcon','O2 Optix':'Alcon','Dailies':'Alcon','FreshLook':'Alcon','Biofinity':'CooperVision','Biomedics':'CooperVision','Clariti':'CooperVision','Avaira':'CooperVision','CooperVision':'CooperVision','Bausch+Lomb':'Bausch+Lomb','Biotrue':'Bausch+Lomb'};
+var BM={'acuvue':'Acuvue','air':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','total30':'Total30','precision1':'Precision1','infuse':'Infuse','lenticon':'Lenticon','lumitoric':'Lenticon','start':'Start','halloween':'Especial'};
+var LM={'Acuvue':'Johnson & Johnson','Air Optix':'Alcon','O2 Optix':'Alcon','Dailies':'Alcon','FreshLook':'Alcon','Total30':'Alcon','Precision1':'Alcon','Biofinity':'CooperVision','Biomedics':'CooperVision','Clariti':'CooperVision','Avaira':'CooperVision','CooperVision':'CooperVision','Bausch+Lomb':'Bausch+Lomb','Biotrue':'Bausch+Lomb','Infuse':'Bausch+Lomb'};
 var HK=['Lenticon','Start','Especial'],HI=['halloween','ultra_terapeutico','o2_optix'];
-var BG={'Acuvue':'bg0','Air Optix':'bg1','O2 Optix':'bg1','Bausch+Lomb':'bg2','Biofinity':'bg0','Dailies':'bg1','Biotrue':'bg1','Biomedics':'bg0','Clariti':'bg0','Avaira':'bg0','FreshLook':'bg2','CooperVision':'bg0'};
+var BG={'Acuvue':'bg0','Air Optix':'bg1','O2 Optix':'bg1','Total30':'bg1','Precision1':'bg1','Bausch+Lomb':'bg2','Biofinity':'bg0','Dailies':'bg1','Biotrue':'bg1','Biomedics':'bg0','Clariti':'bg0','Avaira':'bg0','FreshLook':'bg2','Infuse':'bg2','CooperVision':'bg0'};
 
 // Featured products for carousel
 var FEAT=[
@@ -1304,9 +1304,9 @@ document.addEventListener('touchend',function(){dragging=false});
 
 // AI Catalog Agent — Hero-integrated flow
 var aiState={tipo:null,uso:null};
-var BG_MAP={'Acuvue':'linear-gradient(135deg,#0f1a2e,#162a4a)','Air Optix':'linear-gradient(135deg,#0f2018,#143a24)','O2 Optix':'linear-gradient(135deg,#0f2018,#143a24)','Biofinity':'linear-gradient(135deg,#1a142e,#2a1e4a)','Bausch+Lomb':'linear-gradient(135deg,#200f14,#3a1420)','Dailies':'linear-gradient(135deg,#1a1a0f,#2a2a18)','Biotrue':'linear-gradient(135deg,#0f2a26,#142a20)','Biomedics':'linear-gradient(135deg,#0f1a2e,#142640)','Clariti':'linear-gradient(135deg,#141a20,#1a2028)','Avaira':'linear-gradient(135deg,#1a142e,#2a1e4a)','FreshLook':'linear-gradient(135deg,#2a200f,#3a2a14)','CooperVision':'linear-gradient(135deg,#141a20,#1a2028)'};
+var BG_MAP={'Acuvue':'linear-gradient(135deg,#0f1a2e,#162a4a)','Air Optix':'linear-gradient(135deg,#0f2018,#143a24)','O2 Optix':'linear-gradient(135deg,#0f2018,#143a24)','Total30':'linear-gradient(135deg,#0f2018,#143a24)','Precision1':'linear-gradient(135deg,#0f2018,#143a24)','Biofinity':'linear-gradient(135deg,#1a142e,#2a1e4a)','Bausch+Lomb':'linear-gradient(135deg,#200f14,#3a1420)','Dailies':'linear-gradient(135deg,#1a1a0f,#2a2a18)','Biotrue':'linear-gradient(135deg,#0f2a26,#142a20)','Biomedics':'linear-gradient(135deg,#0f1a2e,#142640)','Clariti':'linear-gradient(135deg,#141a20,#1a2028)','Avaira':'linear-gradient(135deg,#1a142e,#2a1e4a)','FreshLook':'linear-gradient(135deg,#2a200f,#3a2a14)','Infuse':'linear-gradient(135deg,#200f14,#3a1420)','CooperVision':'linear-gradient(135deg,#141a20,#1a2028)'};
 
-var TECH={'Acuvue':{o2:147,hid:'HydraClear',hrs:14},'Air Optix':{o2:138,hid:'SmartShield',hrs:16},'O2 Optix':{o2:110,hid:'SmartShield',hrs:14},'Biofinity':{o2:160,hid:'Aquaform',hrs:16},'Bausch+Lomb':{o2:163,hid:'MoistureSeal',hrs:16},'Dailies':{o2:156,hid:'SmarTears',hrs:14},'Biotrue':{o2:42,hid:'HyperGel',hrs:16},'Biomedics':{o2:27,hid:'SiHi',hrs:12},'Clariti':{o2:86,hid:'WetLoc',hrs:14},'Avaira':{o2:125,hid:'Aquaform',hrs:14},'FreshLook':{o2:26,hid:'Color',hrs:10},'CooperVision':{o2:128,hid:'Aquaform',hrs:14}};
+var TECH={'Acuvue':{o2:147,hid:'HydraClear',hrs:14},'Air Optix':{o2:138,hid:'SmartShield',hrs:16},'O2 Optix':{o2:110,hid:'SmartShield',hrs:14},'Total30':{o2:154,hid:'Water Gradient',hrs:16},'Precision1':{o2:100,hid:'SMARTSURFACE',hrs:14},'Biofinity':{o2:160,hid:'Aquaform',hrs:16},'Bausch+Lomb':{o2:163,hid:'MoistureSeal',hrs:16},'Dailies':{o2:156,hid:'SmarTears',hrs:14},'Biotrue':{o2:42,hid:'HyperGel',hrs:16},'Biomedics':{o2:27,hid:'SiHi',hrs:12},'Clariti':{o2:86,hid:'WetLoc',hrs:14},'Avaira':{o2:125,hid:'Aquaform',hrs:14},'FreshLook':{o2:26,hid:'Color',hrs:10},'Infuse':{o2:134,hid:'PRO-Balance',hrs:16},'CooperVision':{o2:128,hid:'Aquaform',hrs:14}};
 var SPECS={
 acuvue_2:{bc:'8.3 / 8.7',dia:'14.0',h2o:58,mat:'Etafilcon A',uv:true},
 acuvue_oasys:{bc:'8.4 / 8.8',dia:'14.0',h2o:38,mat:'Senofilcon A',uv:true},
@@ -1349,6 +1349,21 @@ freshlook_one_day:{bc:'8.6',dia:'13.8',h2o:55,mat:'Phemfilcon A',uv:false},
 o2_optix:{bc:'8.6',dia:'14.2',h2o:33,mat:'Lotrafilcon B',uv:false},
 avaira_vitality:{bc:'8.4',dia:'14.2',h2o:46,mat:'Fanfilcon A',uv:true},
 avaira_vitality_torico:{bc:'8.5',dia:'14.5',h2o:46,mat:'Fanfilcon A',uv:true},
+acuvue_oasys_1_day:{bc:'8.5 / 9.0',dia:'14.3',h2o:38,mat:'Senofilcon A',uv:true},
+acuvue_oasys_multifocal:{bc:'8.4',dia:'14.3',h2o:38,mat:'Senofilcon A',uv:true},
+acuvue_moist_1_day_multifocal:{bc:'8.4',dia:'14.3',h2o:58,mat:'Etafilcon A',uv:true},
+total30:{bc:'8.4',dia:'14.2',h2o:55,mat:'Lehfilcon A',uv:true},
+total30_torico:{bc:'8.6',dia:'14.5',h2o:55,mat:'Lehfilcon A',uv:true},
+total30_multifocal:{bc:'8.4',dia:'14.2',h2o:55,mat:'Lehfilcon A',uv:true},
+precision1:{bc:'8.3',dia:'14.2',h2o:51,mat:'Verofilcon A',uv:true},
+precision1_torico:{bc:'8.5',dia:'14.5',h2o:51,mat:'Verofilcon A',uv:true},
+dailies_total_1_torico:{bc:'8.6',dia:'14.5',h2o:33,mat:'Delefilcon A',uv:true},
+dailies_total_1_multifocal:{bc:'8.5',dia:'14.1',h2o:33,mat:'Delefilcon A',uv:false},
+biofinity_energys:{bc:'8.6',dia:'14.0',h2o:48,mat:'Comfilcon A',uv:false},
+biotrue_oneday_multifocal:{bc:'8.6',dia:'14.2',h2o:78,mat:'Nesofilcon A',uv:true},
+infuse:{bc:'8.6',dia:'14.2',h2o:55,mat:'Kalifilcon A',uv:true},
+infuse_torico:{bc:'8.6',dia:'14.5',h2o:55,mat:'Kalifilcon A',uv:true},
+infuse_multifocal:{bc:'8.6',dia:'14.2',h2o:55,mat:'Kalifilcon A',uv:true},
 lenticon_pupila_negra:{bc:'8.6',dia:'14.2',h2o:38,mat:'Polymacon',uv:false},
 start_colors:{bc:'8.6',dia:'14.2',h2o:38,mat:'Polymacon',uv:false},
 start_shine:{bc:'8.6',dia:'14.2',h2o:38,mat:'Polymacon',uv:false}
