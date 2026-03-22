@@ -548,35 +548,70 @@ async function checkRecentComments() {
 // GET /meta-webhook?diag=comments&token=clari_caryera_2026
 async function diagComments() {
   if (!META_PAGE_TOKEN) return { error: 'No META_PAGE_TOKEN' };
+  var result = {};
   try {
-    var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(10){id,message,created_time}&limit=10&access_token=' + META_PAGE_TOKEN;
+    // 1. Check token permissions
+    var permRes = await fetch(GRAPH_API + '/me/permissions?access_token=' + META_PAGE_TOKEN);
+    if (permRes.ok) {
+      var permData = await permRes.json();
+      result.permissions = (permData.data || []).filter(function(p) { return p.status === 'granted'; }).map(function(p) { return p.permission; });
+      result.declined_permissions = (permData.data || []).filter(function(p) { return p.status !== 'granted'; }).map(function(p) { return p.permission + ':' + p.status; });
+    }
+
+    // 2. Feed with inline comments
+    var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(10){id,message,created_time}&limit=5&access_token=' + META_PAGE_TOKEN;
     var postsRes = await fetch(feedUrl);
     if (!postsRes.ok) {
       var errText = await postsRes.text();
-      return { error: 'Feed API failed', status: postsRes.status, detail: errText.substring(0, 300) };
+      result.feed_error = { status: postsRes.status, detail: errText.substring(0, 300) };
+      return result;
     }
     var postsData = await postsRes.json();
-    if (!postsData.data) return { error: 'No data in response', raw: JSON.stringify(postsData).substring(0, 300) };
+    result.posts_in_feed = postsData.data ? postsData.data.length : 0;
 
-    var posts = postsData.data.length;
+    // 3. Show raw first post structure (to see if comments field exists at all)
+    if (postsData.data && postsData.data.length > 0) {
+      var firstPost = postsData.data[0];
+      result.first_post = {
+        id: firstPost.id,
+        created_time: firstPost.created_time,
+        has_comments_field: !!firstPost.comments,
+        comments_count: firstPost.comments ? (firstPost.comments.summary ? firstPost.comments.summary.total_count : 'no summary') : 'no comments field',
+        comments_data_length: firstPost.comments && firstPost.comments.data ? firstPost.comments.data.length : 0
+      };
+    }
+
+    // 4. Try fetching comments directly on first post
+    if (postsData.data && postsData.data.length > 0) {
+      var postId = postsData.data[0].id;
+      var directUrl = GRAPH_API + '/' + postId + '/comments?fields=id,message,created_time&limit=5&access_token=' + META_PAGE_TOKEN;
+      var directRes = await fetch(directUrl);
+      if (directRes.ok) {
+        var directData = await directRes.json();
+        result.direct_comments_on_first_post = {
+          count: directData.data ? directData.data.length : 0,
+          comments: (directData.data || []).map(function(c) { return { id: c.id, message: (c.message || '').substring(0, 80), date: c.created_time }; })
+        };
+      } else {
+        var directErr = await directRes.text();
+        result.direct_comments_error = { status: directRes.status, detail: directErr.substring(0, 300) };
+      }
+    }
+
+    // 5. Collect inline comments from all posts
     var comments = [];
-    for (var p = 0; p < postsData.data.length; p++) {
+    for (var p = 0; p < (postsData.data || []).length; p++) {
       var post = postsData.data[p];
       if (!post.comments || !post.comments.data) continue;
       for (var c = 0; c < post.comments.data.length; c++) {
-        var cm = post.comments.data[c];
-        // Check dedup
-        var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + cm.id + ']&select=id&limit=1');
-        comments.push({
-          id: cm.id,
-          message: (cm.message || '').substring(0, 80),
-          date: cm.created_time,
-          already_replied: !!(existing && existing.length > 0)
-        });
+        comments.push({ id: post.comments.data[c].id, message: (post.comments.data[c].message || '').substring(0, 80) });
       }
     }
-    return { posts_in_feed: posts, comments: comments, total_comments: comments.length, unreplied: comments.filter(function(c) { return !c.already_replied; }).length };
-  } catch(e) { return { error: e.message }; }
+    result.inline_comments = comments.length;
+    result.api_version = GRAPH_API;
+
+    return result;
+  } catch(e) { result.error = e.message; return result; }
 }
 
 // ── MAIN HANDLER ──
