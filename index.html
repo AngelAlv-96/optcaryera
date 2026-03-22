@@ -3614,6 +3614,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <div class="fg"><label>Duración total</label><input type="number" id="prod-duracion-dias" value="90" min="1" style="width:80px" disabled></div>
                 </div>
               </div>
+              <div id="prod-lc-params" style="display:none;background:var(--surface2);border:1px solid rgba(226,198,166,0.12);border-radius:8px;padding:10px 14px;margin-bottom:8px"></div>
               <div class="fg"><label>Notas</label><textarea id="prod-notas" style="min-height:40px"></textarea></div>
               <div class="m-actions"><button class="btn btn-g" onclick="cerrarFormProducto()">Cancelar</button><button class="btn btn-p" onclick="guardarProducto()">Guardar</button></div>
             </div>
@@ -16381,8 +16382,39 @@ function mostrarFormProducto(prod=null) {
     var _calcDur = function() { if(durDias) durDias.value = (parseInt(paresCaja?.value)||3) * (parseInt(freqDias?.value)||30); };
     if (paresCaja) paresCaja.oninput = _calcDur;
     if (freqDias) freqDias.oninput = _calcDur;
-    catSel.onchange = function() { durWrap.style.display = (catSel.value === 'Lente de contacto') ? '' : 'none'; };
+    catSel.onchange = function() { durWrap.style.display = (catSel.value === 'Lente de contacto') ? '' : 'none'; _showLcParams(); };
   }
+  // Show LC params
+  async function _showLcParams() {
+    var box = document.getElementById('prod-lc-params');
+    if (!box) return;
+    if (catSel?.value !== 'Lente de contacto' || !prod) { box.style.display = 'none'; return; }
+    if (!window._lcParams) {
+      try { var r = await db.from('app_config').select('value').eq('id','lc_parametros').single(); window._lcParams = r.data ? JSON.parse(r.data.value) : {}; } catch(e) { window._lcParams = {}; }
+    }
+    var nm = (prod.nombre||'').toUpperCase().replace(/\s*(ESFERICOS?|NEUTROS?)\s*/gi,' ').replace(/\s+/g,' ').trim().toLowerCase().replace(/\s+/g,'_');
+    var lp = window._lcParams[nm];
+    if (!lp) { var keys = Object.keys(window._lcParams); for (var i=0;i<keys.length;i++) { if (nm.includes(keys[i]) || keys[i].includes(nm)) { lp = window._lcParams[keys[i]]; break; } } }
+    if (!lp) { box.style.display = 'none'; return; }
+    var h = '<div style="font-size:11px;font-weight:700;color:var(--beige);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Rangos de graduación</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px">';
+    h += '<div><span style="color:var(--muted)">Esfera:</span> <b style="color:var(--white)">'+(lp.pwr.max>0?'+':'')+lp.pwr.max+' a '+lp.pwr.min+'</b></div>';
+    h += '<div><span style="color:var(--muted)">Material:</span> <b style="color:var(--white)">'+lp.mat+'</b></div>';
+    if (lp.cyl) h += '<div><span style="color:var(--muted)">Cilindro:</span> <b style="color:var(--white)">'+lp.cyl[0]+' a '+lp.cyl[lp.cyl.length-1]+'</b></div>';
+    if (lp.axis) h += '<div><span style="color:var(--muted)">Eje:</span> <b style="color:var(--white)">'+lp.axis.min+'° a '+lp.axis.max+'° (×'+lp.axis.step+')</b></div>';
+    if (lp.add) h += '<div><span style="color:var(--muted)">ADD:</span> <b style="color:var(--white)">'+lp.add.join(', ')+'</b></div>';
+    h += '<div><span style="color:var(--muted)">Dk/t:</span> <b style="color:var(--white)">'+lp.dkt+'</b></div>';
+    h += '<div><span style="color:var(--muted)">H₂O:</span> <b style="color:var(--white)">'+lp.h2o+'%</b></div>';
+    h += '<div><span style="color:var(--muted)">UV:</span> <b style="color:'+(lp.uv?'#72c47e':'var(--muted)')+'">'+( lp.uv?'Sí':'No')+'</b></div>';
+    if (lp.bc) h += '<div><span style="color:var(--muted)">BC:</span> <b style="color:var(--white)">'+lp.bc.join(' / ')+'</b></div>';
+    if (lp.dia) h += '<div><span style="color:var(--muted)">DIA:</span> <b style="color:var(--white)">'+lp.dia+' mm</b></div>';
+    if (lp.box) h += '<div><span style="color:var(--muted)">Caja:</span> <b style="color:var(--white)">'+lp.box.join(', ')+' lentes</b></div>';
+    if (lp.colors) h += '<div style="grid-column:1/-1"><span style="color:var(--muted)">Colores:</span> <b style="color:var(--white);font-size:10px">'+lp.colors.join(', ')+'</b></div>';
+    if (lp.nota) h += '<div style="grid-column:1/-1"><span style="color:#d4b84a;font-size:10px">⚠ '+lp.nota+'</span></div>';
+    h += '</div>';
+    box.innerHTML = h; box.style.display = '';
+  }
+  if (catSel?.value === 'Lente de contacto' && prod) _showLcParams();
 }
 function calcIVAProducto() {
   const precio=parseFloat(document.getElementById('prod-precio').value)||0;
