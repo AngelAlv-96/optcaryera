@@ -397,15 +397,20 @@ async function replyToComment(commentId, text) {
   try {
     // Meta requires form-encoded (not JSON) for posting comment replies
     var params = new URLSearchParams({ message: text, access_token: META_PAGE_TOKEN });
-    var res = await fetch(GRAPH_API + '/' + commentId + '/comments', {
+    var url = GRAPH_API + '/' + commentId + '/comments';
+    console.log('[Meta Reply] POST to ' + url.replace(META_PAGE_TOKEN, '***'));
+    var res = await fetch(url, {
       method: 'POST',
       body: params
     });
-    if (res.ok) return true;
+    if (res.ok) {
+      console.log('[Meta Reply] Success for comment ' + commentId);
+      return true;
+    }
     var err = await res.text();
-    console.error('[Meta Reply Error]', res.status, err.substring(0, 200));
+    console.error('[Meta Reply Error]', res.status, err.substring(0, 400));
     return false;
-  } catch(e) { console.error('[Meta Comment Reply]', e.message); return false; }
+  } catch(e) { console.error('[Meta Comment Reply Exception]', e.message); return false; }
 }
 
 async function sendPrivateReplyFromComment(commentId, text, channel) {
@@ -466,67 +471,112 @@ async function handleComment(commentData, channel) {
 
 // ── POLL FOR UNANSWERED COMMENTS ──
 async function checkRecentComments() {
-  if (!META_PAGE_TOKEN) return;
+  if (!META_PAGE_TOKEN) { console.log('[Meta Comments] No PAGE_TOKEN — skipping'); return; }
   var startTime = Date.now();
   var replied = 0;
   var MAX_REPLIES_PER_RUN = 5;
   var ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
   try {
     // Single query: /feed with inline comments (requires pages_read_user_content)
-    var postsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(25){id,from,message,created_time}&limit=30&access_token=' + META_PAGE_TOKEN);
+    // NOTE: removed 'from' field — unverified apps can't access user data, requesting it may cause errors
+    var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(25){id,message,created_time}&limit=30&access_token=' + META_PAGE_TOKEN;
+    console.log('[Meta Comments] Fetching feed...');
+    var postsRes = await fetch(feedUrl);
     if (!postsRes.ok) {
       var errText = await postsRes.text();
-      console.error('[Meta] Failed to get feed:', postsRes.status, errText.substring(0, 200));
+      console.error('[Meta Comments] Feed failed:', postsRes.status, errText.substring(0, 300));
       return;
     }
     var postsData = await postsRes.json();
-    if (!postsData.data || !postsData.data.length) return;
+    if (!postsData.data || !postsData.data.length) {
+      console.log('[Meta Comments] No posts in feed');
+      return;
+    }
 
     // Collect all comments from all posts in one pass
     var allComments = [];
+    var postsWithComments = 0;
     for (var p = 0; p < postsData.data.length; p++) {
       var post = postsData.data[p];
       if (Date.now() - new Date(post.created_time).getTime() > ONE_WEEK) continue;
       if (!post.comments || !post.comments.data) continue;
+      postsWithComments++;
       for (var c = 0; c < post.comments.data.length; c++) {
         allComments.push(post.comments.data[c]);
       }
     }
-    console.log('[Meta] Found ' + allComments.length + ' total comments across ' + postsData.data.length + ' posts');
+    console.log('[Meta Comments] ' + allComments.length + ' comments across ' + postsWithComments + ' posts (of ' + postsData.data.length + ' in feed)');
     if (!allComments.length) return;
+
+    var skippedDedup = 0;
+    var skippedShort = 0;
+    var skippedOld = 0;
 
     for (var i = 0; i < allComments.length && replied < MAX_REPLIES_PER_RUN; i++) {
       // Guard against Netlify timeout (leave 3s buffer)
       if (Date.now() - startTime > 7000) {
-        console.log('[Meta] Timeout guard — stopping after ' + replied + ' replies');
+        console.log('[Meta Comments] Timeout guard — stopping after ' + replied + ' replies');
         break;
       }
 
       var comment = allComments[i];
       if (!comment.message) continue;
 
-      // Skip comments from our own page
-      if (comment.from && (comment.from.id === FB_PAGE_ID || comment.from.id === IG_ACCOUNT_ID)) continue;
-
       // Skip old comments
-      if (Date.now() - new Date(comment.created_time).getTime() > ONE_WEEK) continue;
+      if (Date.now() - new Date(comment.created_time).getTime() > ONE_WEEK) { skippedOld++; continue; }
 
       // Skip very short comments (emojis only, etc.)
-      if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) continue;
+      if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) { skippedShort++; continue; }
 
       // Supabase dedup only (no extra Graph API calls per comment)
       var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + comment.id + ']&select=id&limit=1');
-      if (existing && existing.length > 0) continue;
+      if (existing && existing.length > 0) { skippedDedup++; continue; }
 
+      console.log('[Meta Comments] Replying to: "' + comment.message.substring(0, 60) + '" (id:' + comment.id + ')');
       await handleComment({
         id: comment.id,
         message: comment.message,
-        from: comment.from || null
+        from: null  // not available for unverified apps
       }, 'messenger');
       replied++;
     }
-    console.log('[Meta] Comment check done: ' + replied + ' new replies (' + (Date.now() - startTime) + 'ms)');
-  } catch(e) { console.error('[Meta] Comment check error:', e.message); }
+    console.log('[Meta Comments] Done: ' + replied + ' new, ' + skippedDedup + ' dedup, ' + skippedShort + ' short, ' + skippedOld + ' old (' + (Date.now() - startTime) + 'ms)');
+  } catch(e) { console.error('[Meta Comments] Error:', e.message, e.stack ? e.stack.substring(0, 200) : ''); }
+}
+
+// ── DIAGNOSTIC: test comment checking manually ──
+// GET /meta-webhook?diag=comments&token=clari_caryera_2026
+async function diagComments() {
+  if (!META_PAGE_TOKEN) return { error: 'No META_PAGE_TOKEN' };
+  try {
+    var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(10){id,message,created_time}&limit=10&access_token=' + META_PAGE_TOKEN;
+    var postsRes = await fetch(feedUrl);
+    if (!postsRes.ok) {
+      var errText = await postsRes.text();
+      return { error: 'Feed API failed', status: postsRes.status, detail: errText.substring(0, 300) };
+    }
+    var postsData = await postsRes.json();
+    if (!postsData.data) return { error: 'No data in response', raw: JSON.stringify(postsData).substring(0, 300) };
+
+    var posts = postsData.data.length;
+    var comments = [];
+    for (var p = 0; p < postsData.data.length; p++) {
+      var post = postsData.data[p];
+      if (!post.comments || !post.comments.data) continue;
+      for (var c = 0; c < post.comments.data.length; c++) {
+        var cm = post.comments.data[c];
+        // Check dedup
+        var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + cm.id + ']&select=id&limit=1');
+        comments.push({
+          id: cm.id,
+          message: (cm.message || '').substring(0, 80),
+          date: cm.created_time,
+          already_replied: !!(existing && existing.length > 0)
+        });
+      }
+    }
+    return { posts_in_feed: posts, comments: comments, total_comments: comments.length, unreplied: comments.filter(function(c) { return !c.already_replied; }).length };
+  } catch(e) { return { error: e.message }; }
 }
 
 // ── MAIN HANDLER ──
@@ -534,6 +584,13 @@ exports.handler = async function(event) {
   // Webhook verification (GET request from Meta)
   if (event.httpMethod === 'GET') {
     var qs = event.queryStringParameters || {};
+
+    // Diagnostic endpoint
+    if (qs.diag === 'comments' && qs.token === META_VERIFY_TOKEN) {
+      var result = await diagComments();
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result, null, 2) };
+    }
+
     if (qs['hub.mode'] === 'subscribe' && qs['hub.verify_token'] === META_VERIFY_TOKEN) {
       console.log('[Meta] Webhook verified');
       return { statusCode: 200, body: qs['hub.challenge'] };
