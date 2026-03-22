@@ -735,6 +735,38 @@ footer .fi{font-size:11px;color:var(--t3)}
 .tryon-add-btn{width:100%;padding:12px;border:none;border-radius:var(--rs);background:linear-gradient(135deg,var(--ac),var(--gd));color:#111;font-family:var(--ft);font-size:13px;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;letter-spacing:.02em}
 .tryon-add-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(226,198,166,.3)}
 .tryon-add-btn:active{transform:scale(.98)}
+/* === Rx Picker === */
+.rxp-trigger{width:100%;padding:8px 10px;border:1.5px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:12px;background:var(--bg);color:var(--t2);cursor:pointer;text-align:left;transition:border-color .2s,box-shadow .2s;display:flex;justify-content:space-between;align-items:center}
+.rxp-trigger:hover{border-color:var(--gd)}
+.rxp-trigger.has-val{color:var(--tx);font-weight:600;border-color:var(--gd);background:linear-gradient(135deg,rgba(226,198,166,.08),rgba(226,198,166,.03))}
+.rxp-trigger .rxp-arrow{font-size:8px;color:var(--t3);transition:transform .2s}
+.rxp-dd{position:absolute;left:0;right:0;top:100%;z-index:90;background:var(--bg);border:1.5px solid var(--gd);border-radius:var(--rs);box-shadow:0 12px 32px rgba(0,0,0,.25);max-height:240px;overflow:hidden;display:none;flex-direction:column}
+.rxp-dd.open{display:flex}
+.rxp-dd-head{display:grid;grid-template-columns:1fr 1fr;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--bd);position:sticky;top:0;background:var(--bg);z-index:1}
+.rxp-dd-head span{padding:6px 8px;text-align:center}
+.rxp-dd-head .rxp-neg{color:#ef4444;background:rgba(239,68,68,.06)}
+.rxp-dd-head .rxp-pos{color:#22c55e;background:rgba(34,197,94,.06)}
+.rxp-dd-head .rxp-zero{color:var(--t3);background:var(--s2)}
+.rxp-dd-body{overflow-y:auto;overscroll-behavior:contain;flex:1}
+.rxp-cols{display:grid;grid-template-columns:1fr 1fr}
+.rxp-col{display:flex;flex-direction:column}
+.rxp-col.rxp-col-neg{border-right:1px solid var(--bd)}
+.rxp-zero-row{display:flex;justify-content:center;padding:0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--s2)}
+.rxp-val{padding:7px 6px;text-align:center;font-size:12px;font-family:var(--ft);cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(255,255,255,.03)}
+.rxp-val:hover{background:rgba(226,198,166,.15)}
+.rxp-val.sel{background:var(--gd);color:#111;font-weight:700}
+.rxp-val.rxp-v-neg{color:#f87171}
+.rxp-val.rxp-v-pos{color:#4ade80}
+.rxp-val.rxp-v-zero{color:var(--tx);font-weight:600}
+/* single-col picker (cyl, axis, add, color) */
+.rxp-list{overflow-y:auto;overscroll-behavior:contain;max-height:220px;padding:4px 0}
+.rxp-list .rxp-val{text-align:center;padding:8px 12px;font-size:13px}
+.rxp-wrap{position:relative}
+/* Color picker chips */
+.rxp-colors{display:flex;flex-wrap:wrap;gap:6px;padding:8px;justify-content:center}
+.rxp-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-family:var(--ft);cursor:pointer;border:1.5px solid var(--bd);background:var(--s2);color:var(--tx);transition:all .2s}
+.rxp-chip:hover{border-color:var(--gd);background:rgba(226,198,166,.1)}
+.rxp-chip.sel{background:var(--gd);color:#111;border-color:var(--gd);font-weight:600}
 </style>
 </head>
 <body>
@@ -1088,17 +1120,51 @@ if(lp.axis){var ast=lp.axis.step||10;for(var a=lp.axis.min;a<=lp.axis.max;a+=ast
 if(lp.add)o.add=lp.add.slice();
 if(lp.colors)o.colors=lp.colors.slice();
 return o}
-function _selHtml(id,opts,ph,fmt){var h='<select id="'+id+'" style="width:100%;padding:7px 4px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:12px;background:var(--s2);color:var(--tx)"><option value="">'+ph+'</option>';
-opts.forEach(function(v){var label=fmt?fmt(v):String(v);h+='<option value="'+label+'">'+label+'</option>'});return h+'</select>'}
 function _fmtPwr(v){return v>0?'+'+v.toFixed(2):v===0?'0.00':v.toFixed(2)}
 function _fmtCyl(v){return v.toFixed(2)}
 function _fmtAxis(v){return v+'°'}
 function _fmtAdd(v){return(typeof v==='number'?(v>0?'+':'')+v.toFixed(2):String(v))}
+function _pwrPickerHtml(id,rx){
+var neg=rx.pwr.filter(function(v){return v<0}),pos=rx.pwr.filter(function(v){return v>0}),hasZero=rx.pwr.indexOf(0)!==-1;
+var h='<input type="hidden" id="'+id+'"><div class="rxp-wrap"><button type="button" class="rxp-trigger" data-rxp="'+id+'" onclick="_rxpToggle(\''+id+'\')"><span class="rxp-ph">Esfera</span><span class="rxp-arrow">&#x25BC;</span></button>';
+h+='<div class="rxp-dd" id="'+id+'-dd">';
+h+='<div class="rxp-dd-head"><span class="rxp-neg">Miop\u00eda (−)</span><span class="rxp-pos">Hipermetrop\u00eda (+)</span></div>';
+h+='<div class="rxp-dd-body">';
+if(hasZero)h+='<div class="rxp-zero-row"><div class="rxp-val rxp-v-zero" data-v="0.00" onclick="_rxpSel(\''+id+'\',this)">0.00 (Neutro)</div></div>';
+h+='<div class="rxp-cols"><div class="rxp-col rxp-col-neg">';
+neg.forEach(function(v){var label=v.toFixed(2);h+='<div class="rxp-val rxp-v-neg" data-v="'+label+'" onclick="_rxpSel(\''+id+'\',this)">'+label+'</div>'});
+h+='</div><div class="rxp-col rxp-col-pos">';
+pos.forEach(function(v){var label='+'+v.toFixed(2);h+='<div class="rxp-val rxp-v-pos" data-v="'+label+'" onclick="_rxpSel(\''+id+'\',this)">'+label+'</div>'});
+h+='</div></div></div></div></div>';return h}
+function _listPickerHtml(id,opts,ph,fmt){
+var h='<input type="hidden" id="'+id+'"><div class="rxp-wrap"><button type="button" class="rxp-trigger" data-rxp="'+id+'" onclick="_rxpToggle(\''+id+'\')"><span class="rxp-ph">'+ph+'</span><span class="rxp-arrow">&#x25BC;</span></button>';
+h+='<div class="rxp-dd" id="'+id+'-dd"><div class="rxp-list">';
+opts.forEach(function(v){var label=fmt?fmt(v):String(v);h+='<div class="rxp-val" data-v="'+label+'" onclick="_rxpSel(\''+id+'\',this)">'+label+'</div>'});
+h+='</div></div></div>';return h}
+function _colorPickerHtml(id,colors){
+var h='<input type="hidden" id="'+id+'"><div class="rxp-wrap"><button type="button" class="rxp-trigger" data-rxp="'+id+'" onclick="_rxpToggle(\''+id+'\')"><span class="rxp-ph">Elige color</span><span class="rxp-arrow">&#x25BC;</span></button>';
+h+='<div class="rxp-dd" id="'+id+'-dd"><div class="rxp-colors">';
+colors.forEach(function(c){h+='<div class="rxp-chip" data-v="'+c+'" onclick="_rxpSel(\''+id+'\',this)">'+c+'</div>'});
+h+='</div></div></div>';return h}
+function _rxpToggle(id){
+var dd=document.getElementById(id+'-dd');if(!dd)return;
+var isOpen=dd.classList.contains('open');
+document.querySelectorAll('.rxp-dd.open').forEach(function(d){d.classList.remove('open')});
+if(!isOpen)dd.classList.add('open')}
+function _rxpSel(id,el){
+var val=el.dataset.v;document.getElementById(id).value=val;
+var dd=document.getElementById(id+'-dd');
+dd.querySelectorAll('.sel').forEach(function(s){s.classList.remove('sel')});el.classList.add('sel');
+var btn=dd.parentElement.querySelector('.rxp-trigger');
+btn.querySelector('.rxp-ph').textContent=val;btn.classList.add('has-val');
+dd.classList.remove('open');
+var ev=new Event('change');document.getElementById(id).dispatchEvent(ev)}
 function _buildEyeHtml(prefix,lp,rx,label,labelColor){
-var h='<div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:'+labelColor+';margin-bottom:6px;text-align:center;letter-spacing:.08em">'+label+'</div><div class="cf" style="gap:4px">';
-h+='<div><label>Esfera</label>'+_selHtml(prefix+'e',rx.pwr,'Esfera',_fmtPwr)+'</div>';
-if(rx.cyl.length){h+='<div><label>Cilindro</label>'+_selHtml(prefix+'c',rx.cyl,'—',_fmtCyl)+'</div>';
-h+='<div><label>Eje</label>'+_selHtml(prefix+'j',rx.axis,'—',_fmtAxis)+'</div>'}
+var h='<div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:'+labelColor+';margin-bottom:6px;text-align:center;letter-spacing:.08em">'+label+'</div>';
+h+='<div style="display:flex;flex-direction:column;gap:6px">';
+h+='<div><label>Esfera</label>'+_pwrPickerHtml(prefix+'e',rx)+'</div>';
+if(rx.cyl.length){h+='<div><label>Cilindro</label>'+_listPickerHtml(prefix+'c',rx.cyl,'\u2014',_fmtCyl)+'</div>';
+h+='<div class="rxp-eje-wrap" id="'+prefix+'j-wrap" style="opacity:0.4;pointer-events:none"><label>Eje</label>'+_listPickerHtml(prefix+'j',rx.axis,'\u2014',_fmtAxis)+'</div>'}
 h+='</div></div>';return h}
 function _buildGdHtml(lp){
 var rx=_rxOpts(lp);
@@ -1106,16 +1172,16 @@ var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
 h+=_buildEyeHtml('o',lp,rx,'OJO DERECHO','var(--tx)');
 h+=_buildEyeHtml('i',lp,rx,'OJO IZQUIERDO','var(--gd)');
 h+='</div>';
-if(rx.add.length){h+='<div style="margin-top:6px" class="cf"><div><label>ADD</label>'+_selHtml('ad',rx.add,'ADD',_fmtAdd)+'</div></div>'}
-if(rx.colors.length){h+='<div style="margin-top:6px" class="cf"><div><label>Color</label>'+_selHtml('clr',rx.colors,'Elige color',null)+'</div></div>'}
+if(rx.add.length){h+='<div style="margin-top:8px"><label>ADD</label>'+_listPickerHtml('ad',rx.add,'ADD',_fmtAdd)+'</div>'}
+if(rx.colors.length){h+='<div style="margin-top:8px"><label>Color</label>'+_colorPickerHtml('clr',rx.colors)+'</div>'}
 return h}
 function _buildGdFallback(){
 return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--tx);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO DERECHO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="oe" placeholder="-2.50"></div><div><label>Cilindro</label><input type="text" id="oc" placeholder="-0.75"></div><div><label>Eje</label><input type="text" id="oj" placeholder="180"></div></div></div><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--gd);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO IZQUIERDO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="ie" placeholder="-2.25"></div><div><label>Cilindro</label><input type="text" id="ic" placeholder="-0.50"></div><div><label>Eje</label><input type="text" id="ij" placeholder="170"></div></div></div></div><div style="margin-top:6px" class="cf"><div><label>ADD</label><input type="text" id="ad" placeholder="+2.00"></div></div>'}
 function _initCylCascade(){
 ['o','i'].forEach(function(px){
-var cyl=document.getElementById(px+'c'),eje=document.getElementById(px+'j');
-if(cyl&&eje){eje.disabled=true;eje.style.opacity='0.4';
-cyl.addEventListener('change',function(){if(cyl.value){eje.disabled=false;eje.style.opacity='1'}else{eje.value='';eje.disabled=true;eje.style.opacity='0.4'}})}})}
+var cyl=document.getElementById(px+'c'),ejeWrap=document.getElementById(px+'j-wrap');
+if(cyl&&ejeWrap){cyl.addEventListener('change',function(){if(cyl.value){ejeWrap.style.opacity='1';ejeWrap.style.pointerEvents='auto'}else{document.getElementById(px+'j').value='';ejeWrap.style.opacity='0.4';ejeWrap.style.pointerEvents='none';var btn=ejeWrap.querySelector('.rxp-trigger');if(btn){btn.classList.remove('has-val');btn.querySelector('.rxp-ph').textContent='\u2014'}}})}})}
+document.addEventListener('click',function(e){if(!e.target.closest('.rxp-wrap')){document.querySelectorAll('.rxp-dd.open').forEach(function(d){d.classList.remove('open')})}})
 
 function ped(k){var p=P.find(function(x){return x.key===k});if(!p)return;var e=document.createElement('div');e.className='mov open';e.id='pm';e.onclick=function(ev){if(ev.target===e)e.remove()};var b=document.createElement('div');b.className='mbox';
 var lp=window.LC_PARAMS&&window.LC_PARAMS[p.key];var gdHtml=lp?_buildGdHtml(lp):_buildGdFallback();
