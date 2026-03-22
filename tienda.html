@@ -1078,17 +1078,56 @@ return'<div class="card" onclick="showDetail(\''+p.key+'\')" style="cursor:point
 '<div class="ph" '+(hi?'style="display:none"':'')+'>&#x1f441;</div></div><div class="c2"><div class="cmk">'+p.marca+'</div><div class="cnm">'+p.nombre+'</div>'+(p.lab?'<div class="clab">'+p.lab+'</div>':'')+
 '<div class="ctg"><span class="tg">'+p.tipo+'</span><span class="tg">'+p.uso+'</span><span class="tg">Duración '+dt+'</span></div><div class="cbot"><div class="cpr">$'+p.precio.toLocaleString('es-MX')+'<small>/caja</small></div><div class="cbtns"><button class="bp" onclick="event.stopPropagation();ped(\''+p.key+'\')">Pedir</button><button class="bw" onclick="event.stopPropagation();waQ(\''+encodeURIComponent(p.nombre)+'\')">&#x1f4ac;</button></div></div></div></div>'}).join(''):'<div class="empty">Sin productos con estos filtros</div>'}
 function sF(t,v){if(t==='t'){fT=fT===v?null:v}else{fU=fU===v?null:v}ren()}
+function _rxOpts(lp){var o={pwr:[],cyl:[],axis:[],add:[],colors:[]};if(!lp)return o;
+if(lp.pwr){var mx=lp.pwr.max,mn=lp.pwr.min,s25mn=lp.pwr.step025_min,s25mx=lp.pwr.step025_max;
+var hasVar=(typeof s25mn==='number'&&typeof s25mx==='number');
+var v=mx;while(v>=mn){o.pwr.push(v);var step=(hasVar&&v>=s25mn&&v<=s25mx)?0.25:(hasVar?0.50:0.25);v=Math.round((v-step)*100)/100}
+if(o.pwr.length&&o.pwr[o.pwr.length-1]!==mn)o.pwr.push(mn)}
+if(lp.cyl)o.cyl=lp.cyl.slice();
+if(lp.axis){var ast=lp.axis.step||10;for(var a=lp.axis.min;a<=lp.axis.max;a+=ast)o.axis.push(a)}
+if(lp.add)o.add=lp.add.slice();
+if(lp.colors)o.colors=lp.colors.slice();
+return o}
+function _selHtml(id,opts,ph,fmt){var h='<select id="'+id+'" style="width:100%;padding:7px 4px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:12px;background:var(--s2);color:var(--tx)"><option value="">'+ph+'</option>';
+opts.forEach(function(v){var label=fmt?fmt(v):String(v);h+='<option value="'+label+'">'+label+'</option>'});return h+'</select>'}
+function _fmtPwr(v){return v>0?'+'+v.toFixed(2):v===0?'0.00':v.toFixed(2)}
+function _fmtCyl(v){return v.toFixed(2)}
+function _fmtAxis(v){return v+'°'}
+function _fmtAdd(v){return(typeof v==='number'?(v>0?'+':'')+v.toFixed(2):String(v))}
+function _buildEyeHtml(prefix,lp,rx,label,labelColor){
+var h='<div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:'+labelColor+';margin-bottom:6px;text-align:center;letter-spacing:.08em">'+label+'</div><div class="cf" style="gap:4px">';
+h+='<div><label>Esfera</label>'+_selHtml(prefix+'e',rx.pwr,'Esfera',_fmtPwr)+'</div>';
+if(rx.cyl.length){h+='<div><label>Cilindro</label>'+_selHtml(prefix+'c',rx.cyl,'—',_fmtCyl)+'</div>';
+h+='<div><label>Eje</label>'+_selHtml(prefix+'j',rx.axis,'—',_fmtAxis)+'</div>'}
+h+='</div></div>';return h}
+function _buildGdHtml(lp){
+var rx=_rxOpts(lp);
+var h='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+h+=_buildEyeHtml('o',lp,rx,'OJO DERECHO','var(--tx)');
+h+=_buildEyeHtml('i',lp,rx,'OJO IZQUIERDO','var(--gd)');
+h+='</div>';
+if(rx.add.length){h+='<div style="margin-top:6px" class="cf"><div><label>ADD</label>'+_selHtml('ad',rx.add,'ADD',_fmtAdd)+'</div></div>'}
+if(rx.colors.length){h+='<div style="margin-top:6px" class="cf"><div><label>Color</label>'+_selHtml('clr',rx.colors,'Elige color',null)+'</div></div>'}
+return h}
+function _buildGdFallback(){
+return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--tx);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO DERECHO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="oe" placeholder="-2.50"></div><div><label>Cilindro</label><input type="text" id="oc" placeholder="-0.75"></div><div><label>Eje</label><input type="text" id="oj" placeholder="180"></div></div></div><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--gd);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO IZQUIERDO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="ie" placeholder="-2.25"></div><div><label>Cilindro</label><input type="text" id="ic" placeholder="-0.50"></div><div><label>Eje</label><input type="text" id="ij" placeholder="170"></div></div></div></div><div style="margin-top:6px" class="cf"><div><label>ADD</label><input type="text" id="ad" placeholder="+2.00"></div></div>'}
+function _initCylCascade(){
+['o','i'].forEach(function(px){
+var cyl=document.getElementById(px+'c'),eje=document.getElementById(px+'j');
+if(cyl&&eje){eje.disabled=true;eje.style.opacity='0.4';
+cyl.addEventListener('change',function(){if(cyl.value){eje.disabled=false;eje.style.opacity='1'}else{eje.value='';eje.disabled=true;eje.style.opacity='0.4'}})}})}
 
 function ped(k){var p=P.find(function(x){return x.key===k});if(!p)return;var e=document.createElement('div');e.className='mov open';e.id='pm';e.onclick=function(ev){if(ev.target===e)e.remove()};var b=document.createElement('div');b.className='mbox';
+var lp=window.LC_PARAMS&&window.LC_PARAMS[p.key];var gdHtml=lp?_buildGdHtml(lp):_buildGdFallback();
 b.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'</h2><div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--gd)">$'+p.precio.toLocaleString('es-MX')+' <span style="font-size:11px;font-weight:400;color:var(--t3)">por caja</span></div></div>'+
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px"><button id="gm" onclick="tG(\'m\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--gd);background:var(--gd);color:var(--bg);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Misma de siempre</button><button id="gn" onclick="tG(\'n\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Tengo graduación</button></div>'+
-'<div id="gd" style="display:none;margin-bottom:12px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--tx);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO DERECHO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="oe" placeholder="-2.50"></div><div><label>Cilindro</label><input type="text" id="oc" placeholder="-0.75"></div><div><label>Eje</label><input type="text" id="oj" placeholder="180"></div></div></div><div style="background:var(--s2);border-radius:var(--rs);padding:10px"><div style="font-size:9px;font-weight:700;color:var(--gd);margin-bottom:6px;text-align:center;letter-spacing:.08em">OJO IZQUIERDO</div><div class="cf" style="gap:4px"><div><label>Esfera</label><input type="text" id="ie" placeholder="-2.25"></div><div><label>Cilindro</label><input type="text" id="ic" placeholder="-0.50"></div><div><label>Eje</label><input type="text" id="ij" placeholder="170"></div></div></div></div><div style="margin-top:6px" class="cf"><div><label>ADD</label><input type="text" id="ad" placeholder="+2.00"></div></div></div>'+
+'<div id="gd" style="display:none;margin-bottom:12px">'+gdHtml+'</div>'+
 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--t2)">Cajas:</label><select id="pq" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:13px;background:var(--s2);color:var(--tx)"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div>'+
 '<div class="sub-toggle"><button class="sub-opt active" id="sub-once" onclick="tSub(\'once\')">Compra &uacute;nica</button><button class="sub-opt" id="sub-plan" onclick="tSub(\'sub\')">Suscripci&oacute;n &#x1f504;</button></div>'+
 '<div class="sub-freq" id="sub-freq-panel"><div style="font-size:10px;color:var(--t3);margin-bottom:6px;text-align:center;font-weight:600;letter-spacing:.06em">RECIBE AUTOM&Aacute;TICAMENTE CADA:</div><div class="sub-freq-opts"><button class="sub-freq-btn active" onclick="tSubF(this,30)"><strong>Mensual</strong>30 d&iacute;as</button><button class="sub-freq-btn" onclick="tSubF(this,60)"><strong>Bimestral</strong>60 d&iacute;as</button><button class="sub-freq-btn" onclick="tSubF(this,90)"><strong>Trimestral</strong>90 d&iacute;as</button></div></div>'+
 '<div class="sub-discount" id="sub-disc" style="display:none"><span>&#x2714; 10% de descuento &mdash;</span><span class="sub-price" id="sub-orig"></span><span class="sub-new-price" id="sub-new"></span></div>'+
 '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button onclick="document.getElementById(\'pm\').remove()" style="padding:10px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--ft)">Cancelar</button><button onclick="aC(\''+k+'\')" class="btnc" style="margin:0">Agregar</button></div>';
-e.dataset.precio=p.precio;e.appendChild(b);document.body.appendChild(e);_sub='once';_subDays=30;
+e.dataset.precio=p.precio;e.appendChild(b);document.body.appendChild(e);_sub='once';_subDays=30;_initCylCascade();
 document.getElementById('pq').addEventListener('change',function(){updSubPrice()})}
 var _sub='once',_subDays=30,SUB_DISC=0.10;
 function tSub(v){_sub=v;
@@ -1100,7 +1139,7 @@ function tSubF(el,d){_subDays=d;document.querySelectorAll('.sub-freq-btn').forEa
 function updSubPrice(){var q=parseInt((document.getElementById('pq')||{}).value)||1;var pm=document.getElementById('pm');if(!pm)return;var pr=parseFloat(pm.dataset.precio)||0;var orig=pr*q,nw=Math.round(orig*(1-SUB_DISC));document.getElementById('sub-orig').textContent='$'+orig.toLocaleString('es-MX');document.getElementById('sub-new').textContent='$'+nw.toLocaleString('es-MX')}
 var _g='m';function tG(v){_g=v;document.getElementById('gd').style.display=v==='n'?'':'none';var a=document.getElementById('gm'),b=document.getElementById('gn');[a,b].forEach(function(x){x.style.background='transparent';x.style.color='var(--t2)';x.style.borderColor='var(--bd)'});(v==='m'?a:b).style.cssText+='background:var(--gd);color:var(--bg);border-color:var(--gd)'}
 function aC(k){var p=P.find(function(x){return x.key===k});if(!p)return;var q=parseInt(document.getElementById('pq').value)||1,g='';
-if(_g==='n'){var v=function(id){return(document.getElementById(id).value||'').trim()};g='OD:'+v('oe')+(v('oc')?'/'+v('oc'):'')+(v('oj')?'x'+v('oj'):'')+' OI:'+v('ie')+(v('ic')?'/'+v('ic'):'')+(v('ij')?'x'+v('ij'):'')+(v('ad')?' ADD:'+v('ad'):'')}else{g='Misma graduación de siempre'}
+if(_g==='n'){var v=function(id){var el=document.getElementById(id);return el?(el.value||'').trim():''};g='OD:'+v('oe')+(v('oc')?'/'+v('oc'):'')+(v('oj')?'x'+v('oj'):'')+' OI:'+v('ie')+(v('ic')?'/'+v('ic'):'')+(v('ij')?'x'+v('ij'):'')+(v('ad')?' ADD:'+v('ad'):'')+(v('clr')?' Color:'+v('clr'):'')}else{g='Misma graduación de siempre'}
 var itemPrice=_sub==='sub'?Math.round(p.precio*(1-SUB_DISC)):p.precio;
 var subInfo=_sub==='sub'?{freq:_subDays,label:_subDays===30?'Mensual':_subDays===60?'Bimestral':'Trimestral',originalPrice:p.precio}:null;
 cart.push({nombre:p.nombre,precio:itemPrice,qty:q,grad:g,key:k,sub:subInfo});saveCart();uB();tt(p.nombre+' agregado'+(subInfo?' (suscripción)':''));
