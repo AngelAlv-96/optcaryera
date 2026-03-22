@@ -767,6 +767,26 @@ footer .fi{font-size:11px;color:var(--t3)}
 .rxp-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-family:var(--ft);cursor:pointer;border:1.5px solid var(--bd);background:var(--s2);color:var(--tx);transition:all .2s}
 .rxp-chip:hover{border-color:var(--gd);background:rgba(226,198,166,.1)}
 .rxp-chip.sel{background:var(--gd);color:#111;border-color:var(--gd);font-weight:600}
+/* === Rx Confirm === */
+.rxc-box{background:linear-gradient(135deg,rgba(226,198,166,.1),rgba(226,198,166,.03));border:1.5px solid var(--gd);border-radius:var(--rs);padding:14px;margin-bottom:12px}
+.rxc-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gd);text-align:center;margin-bottom:10px}
+.rxc-eyes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rxc-eye{text-align:center}
+.rxc-eye-label{font-size:9px;font-weight:700;letter-spacing:.06em;margin-bottom:6px}
+.rxc-eye-label.od{color:var(--tx)}
+.rxc-eye-label.oi{color:var(--gd)}
+.rxc-row{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.rxc-tag{display:inline-flex;align-items:center;gap:3px;padding:4px 10px;border-radius:14px;font-size:11px;font-family:var(--ft);font-weight:600}
+.rxc-tag .rxc-lbl{font-weight:400;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.04em}
+.rxc-tag.esf{background:rgba(99,102,241,.15);color:#a5b4fc}
+.rxc-tag.cyl{background:rgba(239,68,68,.12);color:#fca5a5}
+.rxc-tag.eje{background:rgba(234,179,8,.12);color:#fde047}
+.rxc-extra{text-align:center;margin-top:8px}
+.rxc-tag.add{background:rgba(34,197,94,.12);color:#86efac}
+.rxc-tag.clr{background:rgba(168,85,247,.12);color:#d8b4fe}
+.rxc-warn{font-size:10px;color:var(--t3);text-align:center;margin-top:8px;font-style:italic}
+.rxc-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px}
+.rxc-back{padding:10px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--ft)}
 </style>
 </head>
 <body>
@@ -1204,11 +1224,57 @@ if(v==='sub'){fp.classList.add('show');sd.style.display='flex';updSubPrice()}els
 function tSubF(el,d){_subDays=d;document.querySelectorAll('.sub-freq-btn').forEach(function(b){b.classList.remove('active')});el.classList.add('active');updSubPrice()}
 function updSubPrice(){var q=parseInt((document.getElementById('pq')||{}).value)||1;var pm=document.getElementById('pm');if(!pm)return;var pr=parseFloat(pm.dataset.precio)||0;var orig=pr*q,nw=Math.round(orig*(1-SUB_DISC));document.getElementById('sub-orig').textContent='$'+orig.toLocaleString('es-MX');document.getElementById('sub-new').textContent='$'+nw.toLocaleString('es-MX')}
 var _g='m';function tG(v){_g=v;document.getElementById('gd').style.display=v==='n'?'':'none';var a=document.getElementById('gm'),b=document.getElementById('gn');[a,b].forEach(function(x){x.style.background='transparent';x.style.color='var(--t2)';x.style.borderColor='var(--bd)'});(v==='m'?a:b).style.cssText+='background:var(--gd);color:var(--bg);border-color:var(--gd)'}
+function _rxGetVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():''}
+function _rxBuildGrad(){
+var v=_rxGetVal;
+return'OD:'+v('oe')+(v('oc')?'/'+v('oc'):'')+(v('oj')?'x'+v('oj'):'')+' OI:'+v('ie')+(v('ic')?'/'+v('ic'):'')+(v('ij')?'x'+v('ij'):'')+(v('ad')?' ADD:'+v('ad'):'')+(v('clr')?' Color:'+v('clr'):'')}
+function _rxConfirmHtml(){
+var v=_rxGetVal;
+var oe=v('oe'),oc=v('oc'),oj=v('oj'),ie=v('ie'),ic=v('ic'),ij=v('ij'),ad=v('ad'),clr=v('clr');
+if(!oe&&!ie)return null;
+var h='<div class="rxc-box"><div class="rxc-title">Confirma tu graduaci\u00f3n</div><div class="rxc-eyes">';
+h+='<div class="rxc-eye"><div class="rxc-eye-label od">OJO DERECHO</div><div class="rxc-row">';
+if(oe)h+='<span class="rxc-tag esf"><span class="rxc-lbl">ESF</span>'+oe+'</span>';
+if(oc)h+='<span class="rxc-tag cyl"><span class="rxc-lbl">CIL</span>'+oc+'</span>';
+if(oj)h+='<span class="rxc-tag eje"><span class="rxc-lbl">EJE</span>'+oj+'</span>';
+if(!oe)h+='<span style="font-size:11px;color:var(--t3)">No seleccionada</span>';
+h+='</div></div>';
+h+='<div class="rxc-eye"><div class="rxc-eye-label oi">OJO IZQUIERDO</div><div class="rxc-row">';
+if(ie)h+='<span class="rxc-tag esf"><span class="rxc-lbl">ESF</span>'+ie+'</span>';
+if(ic)h+='<span class="rxc-tag cyl"><span class="rxc-lbl">CIL</span>'+ic+'</span>';
+if(ij)h+='<span class="rxc-tag eje"><span class="rxc-lbl">EJE</span>'+ij+'</span>';
+if(!ie)h+='<span style="font-size:11px;color:var(--t3)">No seleccionada</span>';
+h+='</div></div></div>';
+if(ad||clr){h+='<div class="rxc-extra">';
+if(ad)h+='<span class="rxc-tag add"><span class="rxc-lbl">ADD</span>'+ad+'</span> ';
+if(clr)h+='<span class="rxc-tag clr"><span class="rxc-lbl">COLOR</span>'+clr+'</span>';
+h+='</div>'}
+h+='<div class="rxc-warn">Verifica que los datos sean correctos</div></div>';
+return h}
 function aC(k){var p=P.find(function(x){return x.key===k});if(!p)return;var q=parseInt(document.getElementById('pq').value)||1,g='';
-if(_g==='n'){var v=function(id){var el=document.getElementById(id);return el?(el.value||'').trim():''};g='OD:'+v('oe')+(v('oc')?'/'+v('oc'):'')+(v('oj')?'x'+v('oj'):'')+' OI:'+v('ie')+(v('ic')?'/'+v('ic'):'')+(v('ij')?'x'+v('ij'):'')+(v('ad')?' ADD:'+v('ad'):'')+(v('clr')?' Color:'+v('clr'):'')}else{g='Misma graduación de siempre'}
+if(_g==='n'){
+g=_rxBuildGrad();
+var confirmHtml=_rxConfirmHtml();
+if(confirmHtml&&!document.getElementById('rxc-panel')){
+var pm=document.getElementById('pm');if(!pm)return;
+pm.dataset.grad=g;pm.dataset.qty=q;
+var mbox=pm.querySelector('.mbox');if(!mbox)return;
+mbox.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'</h2><div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--gd)">$'+p.precio.toLocaleString('es-MX')+' <span style="font-size:11px;font-weight:400;color:var(--t3)">por caja</span></div></div>'+
+'<div id="rxc-panel">'+confirmHtml+
+'<div class="rxc-btns"><button class="rxc-back" onclick="_rxBack(\''+k+'\')">&#x2190; Corregir</button><button onclick="_rxDoAdd(\''+k+'\')" class="btnc" style="margin:0">Confirmar</button></div></div>';
+return}
+}else{g='Misma graduaci\u00f3n de siempre'}
+_rxFinishAdd(k,p,q,g)}
+function _rxBack(k){document.getElementById('pm')?.remove();_g='m';ped(k);tG('n')}
+function _rxDoAdd(k){var p=P.find(function(x){return x.key===k});if(!p)return;
+var pm=document.getElementById('pm');
+var q=parseInt(pm?.dataset.qty)||1;
+var g=pm?.dataset.grad||'';
+_rxFinishAdd(k,p,q,g)}
+function _rxFinishAdd(k,p,q,g){
 var itemPrice=_sub==='sub'?Math.round(p.precio*(1-SUB_DISC)):p.precio;
 var subInfo=_sub==='sub'?{freq:_subDays,label:_subDays===30?'Mensual':_subDays===60?'Bimestral':'Trimestral',originalPrice:p.precio}:null;
-cart.push({nombre:p.nombre,precio:itemPrice,qty:q,grad:g,key:k,sub:subInfo});saveCart();uB();tt(p.nombre+' agregado'+(subInfo?' (suscripción)':''));
+cart.push({nombre:p.nombre,precio:itemPrice,qty:q,grad:g,key:k,sub:subInfo});saveCart();uB();tt(p.nombre+' agregado'+(subInfo?' (suscripci\u00f3n)':''));
 if(typeof gtag==='function')gtag('event','add_to_cart',{currency:'MXN',value:p.precio*q,items:[{item_id:k,item_name:p.nombre,price:p.precio,quantity:q}]});
 if(typeof fbq==='function')fbq('track','AddToCart',{content_name:p.nombre,content_ids:[k],content_type:'product',value:p.precio*q,currency:'MXN'});document.getElementById('pm')?.remove();_g='m'}
 function saveCart(){try{localStorage.setItem('ce_cart',JSON.stringify(cart))}catch(e){}}
