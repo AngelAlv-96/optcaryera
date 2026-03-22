@@ -3664,7 +3664,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="precio_fijo">Precio fijo</option>
               <option value="monto_minimo">Monto mínimo</option>
               <option value="descuento_staff">Staff/Rescate</option>
-              <option value="material_a_peso">Material a $X</option>
               <option value="material_1">Material a $1</option>
               <option value="paquete_fijo">Paquete fijo</option>
             </select>
@@ -4148,7 +4147,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <option value="precio_fijo">Precio fijo de paquete</option>
         <option value="monto_minimo">Descuento por monto mínimo</option>
         <option value="descuento_staff">Descuento staff / rescate</option>
-        <option value="material_a_peso">Material a $X (ej: material a $1 en compra de armazón)</option>
         <option value="material_1">Material a $1 (armazón mín.)</option>
         <option value="paquete_fijo">Paquete precio fijo</option>
       </select>
@@ -4187,18 +4185,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
     </div>
     <div id="promo-fields-staff" style="display:none">
       <div class="fg"><label>% Descuento staff</label><input type="number" id="promo-valor-staff" min="1" max="100" placeholder="15"></div>
-    </div>
-    <div id="promo-fields-material-a-peso" style="display:none">
-      <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="font-size:11px;color:#f59e0b;font-weight:600;margin-bottom:6px">Condición: compra de armazón desde cierto monto</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div class="fg"><label>Monto mín. armazón ($)</label><input type="number" id="promo-mat-min-arm" min="0" step="0.01" placeholder="1200"></div>
-          <div class="fg"><label>Precio del material ($)</label><input type="number" id="promo-mat-precio" min="0" step="0.01" placeholder="1"></div>
-        </div>
-        <div style="font-size:9px;color:var(--muted);margin-top:4px">Si el carrito tiene un armazón ≥ monto mín., los materiales en las categorías seleccionadas abajo se reducen al precio indicado.</div>
-      </div>
-      <div class="fg"><label>Folios lab</label><input type="number" id="promo-mat-folios" min="1" placeholder="2" style="max-width:120px"></div>
-      <div style="font-size:10px;color:var(--muted);margin-top:-4px;margin-bottom:8px">Normalmente 2: uno para el armazón + uno para el material a precio especial</div>
     </div>
     <!-- Material a $1 fields -->
     <div id="promo-fields-material-1" style="display:none">
@@ -18209,9 +18195,6 @@ function abrirModalPromo(editData) {
   document.getElementById('promo-monto-min').value = editData?.monto_minimo || '';
   document.getElementById('promo-valor-min').value = editData?.tipo === 'monto_minimo' ? editData.valor : '';
   document.getElementById('promo-valor-staff').value = editData?.tipo === 'descuento_staff' ? editData.valor : '';
-  document.getElementById('promo-mat-min-arm').value = editData?.tipo === 'material_a_peso' ? editData.monto_minimo : '';
-  document.getElementById('promo-mat-precio').value = editData?.tipo === 'material_a_peso' ? editData.precio_paquete : '';
-  document.getElementById('promo-mat-folios').value = editData?.tipo === 'material_a_peso' ? editData.folios_lab : '';
   // material_1 fields
   document.getElementById('promo-mat1-min-arm').value = editData?.tipo === 'material_1' ? (editData.monto_min_armazon || 1200) : 1200;
   document.getElementById('promo-mat1-precio').value = editData?.tipo === 'material_1' ? (editData.precio_material || 1) : 1;
@@ -18250,7 +18233,7 @@ function editarPromo(id) {
 
 function togglePromoFields() {
   const t = document.getElementById('promo-tipo').value;
-  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff', 'material-a-peso', 'material-1', 'paquete-fijo'].forEach(s => {
+  ['porcentaje', 'nxm', 'precio-fijo', 'monto-min', 'staff', 'material-1', 'paquete-fijo'].forEach(s => {
     document.getElementById(`promo-fields-${s}`).style.display = 'none';
   });
   if (t === 'porcentaje') document.getElementById('promo-fields-porcentaje').style.display = '';
@@ -18258,7 +18241,6 @@ function togglePromoFields() {
   else if (t === 'precio_fijo') document.getElementById('promo-fields-precio-fijo').style.display = '';
   else if (t === 'monto_minimo') document.getElementById('promo-fields-monto-min').style.display = '';
   else if (t === 'descuento_staff') document.getElementById('promo-fields-staff').style.display = '';
-  else if (t === 'material_a_peso') document.getElementById('promo-fields-material-a-peso').style.display = '';
   else if (t === 'material_1') document.getElementById('promo-fields-material-1').style.display = '';
   else if (t === 'paquete_fijo') { document.getElementById('promo-fields-paquete-fijo').style.display = ''; pfRegenerarFolios(); }
   // Ocultar filtros globales de material cuando el tipo ya tiene los suyos
@@ -18327,11 +18309,6 @@ async function guardarPromo() {
     payload.valor = parseFloat(document.getElementById('promo-valor-min').value) || 0;
   }
   else if (tipo === 'descuento_staff') { payload.valor = parseFloat(document.getElementById('promo-valor-staff').value) || 0; payload.solo_staff = true; }
-  else if (tipo === 'material_a_peso') {
-    payload.monto_minimo = parseFloat(document.getElementById('promo-mat-min-arm').value) || 0;
-    payload.precio_paquete = parseFloat(document.getElementById('promo-mat-precio').value) || 1;
-    payload.folios_lab = parseInt(document.getElementById('promo-mat-folios').value) || 2;
-  }
   else if (tipo === 'material_1') {
     const trats = [...document.querySelectorAll('.mat1-trat:checked')].map(c => c.value);
     if (!trats.length) { toast('Selecciona al menos un tratamiento elegible', true); return; }
