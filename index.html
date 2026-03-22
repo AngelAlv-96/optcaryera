@@ -16247,7 +16247,7 @@ async function cargarProductos() {
   productosCache = [];
   var page = 0, chunk = 1000;
   while (true) {
-    var { data } = await db.from('productos').select('*').order('nombre').range(page * chunk, (page + 1) * chunk - 1);
+    var { data } = await db.from('productos').select('*').eq('activo',true).order('nombre').range(page * chunk, (page + 1) * chunk - 1);
     if (!data || !data.length) break;
     productosCache = productosCache.concat(data);
     if (data.length < chunk) break;
