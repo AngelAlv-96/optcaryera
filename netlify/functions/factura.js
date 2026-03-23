@@ -89,8 +89,36 @@ const IVA_RATE = 0.08;
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers: HEADERS };
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: HEADERS, body: '{"error":"POST only"}' };
   if (!FACTURAPI_KEY) return { statusCode: 500, headers: HEADERS, body: '{"error":"FACTURAPI_KEY not configured"}' };
+
+  // GET for pdf/xml downloads (opened in new tab via window.open)
+  if (event.httpMethod === 'GET') {
+    const qs = event.queryStringParameters || {};
+    const action = qs.action;
+    const facturapi_id = qs.id;
+
+    if (!action || !facturapi_id || !['pdf', 'xml'].includes(action)) {
+      return { statusCode: 400, headers: HEADERS, body: '{"error":"GET only supports action=pdf|xml with id param"}' };
+    }
+
+    try {
+      const ext = action; // 'pdf' or 'xml'
+      const result = await facturapi('GET', '/invoices/' + encodeURIComponent(facturapi_id) + '/' + ext);
+      if (result._binary) {
+        return {
+          statusCode: 200,
+          headers: { ...HEADERS, 'Content-Type': result.contentType, 'Content-Disposition': 'inline; filename="factura.' + ext + '"' },
+          body: result.buffer.toString('base64'),
+          isBase64Encoded: true
+        };
+      }
+      return { statusCode: 500, headers: HEADERS, body: '{"error":"No se pudo obtener ' + ext.toUpperCase() + '"}' };
+    } catch(err) {
+      return { statusCode: 500, headers: HEADERS, body: JSON.stringify({ error: err.message }) };
+    }
+  }
+
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: HEADERS, body: '{"error":"POST only (GET for pdf/xml)"}' };
 
   try {
     const body = JSON.parse(event.body || '{}');
