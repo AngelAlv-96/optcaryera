@@ -47,6 +47,7 @@
     .btn, .sig-hint, .no-print { display:none !important; }
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.99.3/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="container">
@@ -61,8 +62,9 @@
 
 <script>
 var SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
-var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imljc25sZ2VlcmVlcGVzYnJkamhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYyMjQ2MDcsImV4cCI6MjA1MTgwMDYwN30.sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+var SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
 var DBWRITE_URL = '/.netlify/functions/dbwrite';
+var db = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 var _token = null;
 var _firmaData = null;
@@ -73,12 +75,29 @@ var _drawing = false;
 var _isActa = false;
 var _faltasDias = [];
 
-async function supaRead(path) {
-  var res = await fetch(SUPA_URL + '/rest/v1/' + path, {
-    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
-  });
-  if (!res.ok) return null;
-  return await res.json();
+async function supaRead(table, filters) {
+  // Backwards compatible: if called with old REST path string, parse it
+  if (typeof filters === 'undefined' && typeof table === 'string' && table.includes('?')) {
+    // Parse REST-style path: "table?col=eq.val&select=*"
+    var parts = table.split('?');
+    var tbl = parts[0];
+    var params = new URLSearchParams(parts[1]);
+    var query = db.from(tbl).select(params.get('select') || '*');
+    params.forEach(function(v, k) {
+      if (k === 'select') return;
+      if (k === 'order') { var o = v.split('.'); query = query.order(o[0], { ascending: o[1] !== 'desc' }); return; }
+      if (v.startsWith('eq.')) query = query.eq(k, v.slice(3));
+      else if (v.startsWith('gte.')) query = query.gte(k, v.slice(4));
+      else if (v.startsWith('lte.')) query = query.lte(k, v.slice(4));
+      else if (v.startsWith('in.(')) {
+        var vals = v.slice(4, -1).split(',');
+        query = query.in(k, vals);
+      }
+    });
+    var res = await query;
+    return res.data;
+  }
+  return null;
 }
 
 function formatHora(ts) {
