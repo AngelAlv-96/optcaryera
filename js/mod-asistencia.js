@@ -1584,16 +1584,16 @@ async function asistEnvioManual() {
 
   // Recipient selector
   html += '<div style="margin-bottom:12px"><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Enviar a</div>';
-  html += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+  html += '<div id="envio-dest-radios" style="display:flex;gap:8px;margin-bottom:8px">';
   html += '<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="radio" name="envio-dest" value="uno" checked style="accent-color:var(--accent)" onchange="document.getElementById(\'envio-emp-sel\').style.display=\'\'"> Un empleado</label>';
-  html += '<label style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="radio" name="envio-dest" value="todos" style="accent-color:var(--accent)" onchange="document.getElementById(\'envio-emp-sel\').style.display=\'none\'"> Todos los empleados</label>';
+  html += '<label id="envio-dest-todos-label" style="display:flex;align-items:center;gap:4px;font-size:12px"><input type="radio" name="envio-dest" value="todos" style="accent-color:var(--accent)" onchange="document.getElementById(\'envio-emp-sel\').style.display=\'none\'"> Todos los empleados</label>';
   html += '</div>';
   html += '<div id="envio-emp-sel"><select id="envio-uid" style="' + inputStyle + '">';
   emps.forEach(function(e) { html += '<option value="' + e.uid + '">' + e.nombre + ' (' + e.sucursal + ')</option>'; });
   html += '</select></div></div>';
 
-  // Period
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+  // Period (only for reporte)
+  html += '<div id="envio-periodo-section" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
   html += '<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Periodo inicio</div>';
   var weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
   html += '<input type="date" id="envio-inicio" value="' + weekAgo.toLocaleDateString('en-CA') + '" style="' + inputStyle + '"></div>';
@@ -1623,10 +1623,18 @@ async function asistEnvioManual() {
   overlay.innerHTML = html;
   overlay.classList.add('open');
 
-  // Toggle faltas section when switching type (script tags don't run in innerHTML)
+  // Toggle sections when switching type
   document.querySelectorAll('input[name=envio-tipo]').forEach(function(r) {
     r.addEventListener('change', function() {
-      document.getElementById('envio-faltas-section').style.display = this.value === 'acta' ? '' : 'none';
+      var isActa = this.value === 'acta';
+      document.getElementById('envio-faltas-section').style.display = isActa ? '' : 'none';
+      document.getElementById('envio-periodo-section').style.display = isActa ? 'none' : '';
+      document.getElementById('envio-dest-todos-label').style.display = isActa ? 'none' : '';
+      // Force "Un empleado" when acta
+      if (isActa) {
+        var unoRadio = document.querySelector('input[name=envio-dest][value=uno]');
+        if (unoRadio) { unoRadio.checked = true; document.getElementById('envio-emp-sel').style.display = ''; }
+      }
     });
   });
 }
@@ -1634,11 +1642,12 @@ async function asistEnvioManual() {
 async function asistEjecutarEnvio() {
   var tipo = document.querySelector('input[name=envio-tipo]:checked')?.value || 'reporte';
   var dest = document.querySelector('input[name=envio-dest]:checked')?.value || 'uno';
-  var inicio = document.getElementById('envio-inicio')?.value;
-  var fin = document.getElementById('envio-fin')?.value;
-  // Build faltas string from date pickers
   var faltaDesde = (document.getElementById('envio-falta-desde')?.value || '').trim();
   var faltaHasta = (document.getElementById('envio-falta-hasta')?.value || '').trim();
+  // For acta, use falta dates as period; for reporte, use period fields
+  var inicio = tipo === 'acta' ? (faltaDesde || '') : (document.getElementById('envio-inicio')?.value || '');
+  var fin = tipo === 'acta' ? (faltaHasta || faltaDesde || '') : (document.getElementById('envio-fin')?.value || '');
+  // Build faltas string from date pickers
   var faltasStr = '';
   if (tipo === 'acta' && faltaDesde) {
     var fechas = [];
@@ -1650,6 +1659,7 @@ async function asistEjecutarEnvio() {
     }
     faltasStr = fechas.join(', ');
   }
+  if (tipo === 'acta' && !faltaDesde) { if (typeof toast === 'function') toast('Selecciona las fechas de falta','error'); return; }
   if (!inicio || !fin) { if (typeof toast === 'function') toast('Selecciona el periodo','error'); return; }
 
   var btn = document.getElementById('btn-envio-manual');
