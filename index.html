@@ -989,6 +989,42 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 .wcrm-modal-reply{padding:10px 14px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center;flex-shrink:0}
 @media(max-width:768px){.wcrm-board{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.wcrm-col{min-width:85vw;max-width:85vw;scroll-snap-align:start}}
 @media(max-width:480px){.wcrm-col{min-width:92vw;max-width:92vw}.wcrm-modal-box{margin:8px;max-height:calc(100vh - 20px);border-radius:12px}}
+/* ═══ MÓDULO LC ═══ */
+.lc-tab{background:none;border:none;color:var(--muted);font-family:'Outfit',sans-serif;font-size:12px;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s}
+.lc-tab:hover{color:var(--white)}
+.lc-tab.active{color:var(--beige);border-bottom-color:var(--beige)}
+.lc-card{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .15s}
+.lc-card:hover{border-color:rgba(226,198,166,0.2);transform:translateY(-2px)}
+.lc-card-img{height:140px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center;position:relative}
+.lc-card-img img{max-height:120px;max-width:90%;object-fit:contain}
+.lc-card-body{padding:10px 12px}
+.lc-card-brand{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.lc-card-name{font-size:13px;font-weight:600;color:var(--white);margin:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lc-card-meta{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.lc-badge{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600}
+.lc-badge-tipo{background:rgba(138,176,232,0.12);color:#8ab0e8}
+.lc-badge-freq{background:rgba(114,196,126,0.12);color:#72c47e}
+.lc-badge-stock{background:rgba(114,196,126,0.12);color:#72c47e}
+.lc-badge-nostock{background:rgba(212,184,74,0.12);color:#d4b84a}
+.lc-card-specs{display:flex;gap:8px;margin-top:6px;font-size:10px;color:var(--muted)}
+.lc-card-price{font-size:15px;font-weight:700;color:var(--beige);margin-top:6px}
+.lc-param-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lc-param-grid label{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+.lc-param-grid input,.lc-param-grid textarea{background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:6px 10px;color:var(--white);font-size:12px;width:100%;box-sizing:border-box;font-family:'DM Sans',sans-serif}
+@media(max-width:600px){#lc-card-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important;gap:8px!important}.lc-card-img{height:100px}}
+/* POS LC mini-cards */
+.vta-lc-mc{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;overflow:hidden;transition:border-color .15s}
+.vta-lc-mc:hover{border-color:rgba(226,198,166,0.2)}
+.vta-lc-mc-img{height:70px;background:rgba(255,255,255,0.02);display:flex;align-items:center;justify-content:center}
+.vta-lc-mc-img img{max-height:60px;max-width:85%;object-fit:contain}
+.vta-lc-mc-body{padding:6px 8px}
+.vta-lc-mc-name{font-size:10px;font-weight:600;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vta-lc-mc-meta{font-size:8px;color:var(--muted);margin-top:1px}
+.vta-lc-mc-price{font-size:12px;font-weight:700;color:var(--beige);margin-top:2px}
+/* POS LC grad picker */
+.vta-lc-grad-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.vta-lc-grad-row label{font-size:10px;color:var(--muted);display:block;margin-bottom:2px}
+.vta-lc-grad-row select,.vta-lc-grad-row input{background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:7px 10px;color:var(--white);font-size:12px;width:100%;box-sizing:border-box;font-family:'Outfit',sans-serif}
 </style>
 </head>
 <body>
@@ -1168,6 +1204,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/><path d="M7 15h4"/><path d="M15 15h2"/></svg>
           Créditos
         </div>
+        <div class="nav-item" onclick="go('lentes-contacto')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>
+          Lentes de Contacto
+          <span class="nav-badge" id="badge-lc-crm" style="display:none">0</span>
+        </div>
       </div>
 
       <div class="nav-section">
@@ -1193,11 +1234,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <div class="nav-item" id="nav-admin-comisiones" style="display:none" onclick="go('comisiones')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           Comisiones
-        </div>
-        <div class="nav-item" id="nav-admin-lc-crm" style="display:none" onclick="go('lc-crm')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>
-          CRM Lentes Contacto
-          <span class="nav-badge" id="badge-lc-crm" style="display:none">0</span>
         </div>
       </div>
         <div class="user-pill">
@@ -3268,11 +3304,44 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                   <div style="font-size:9px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em">🔍 Productos</div>
-                  <button class="chip" onclick="toggleManualProd()" style="font-size:9px;padding:2px 6px">✏ Manual</button>
+                  <div style="display:flex;gap:4px">
+                    <button class="chip" onclick="vtaLcToggle()" style="font-size:9px;padding:2px 6px;background:rgba(138,176,232,0.1);border-color:rgba(138,176,232,0.2);color:#8ab0e8">👁 Lentes de contacto</button>
+                    <button class="chip" onclick="toggleManualProd()" style="font-size:9px;padding:2px 6px">✏ Manual</button>
+                  </div>
                 </div>
                 <div style="position:relative">
                   <input type="text" id="vta-prod-search" placeholder="&#128269; Buscar armaz&oacute;n, accesorio, lente de sol..." autocomplete="off" oninput="debounceVtaProdSearch()" onfocus="if(this.value.length>=2)debounceVtaProdSearch()" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none;box-sizing:border-box">
                   <div id="vta-prod-dropdown" style="display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid rgba(226,198,166,0.15);border-radius:10px;max-height:300px;overflow-y:auto;z-index:9999;box-shadow:0 12px 36px rgba(0,0,0,0.5)"></div>
+                </div>
+                <!-- Rx Final banner for LC -->
+                <div id="vta-lc-rx-banner" style="display:none;margin-top:8px;background:rgba(138,176,232,0.08);border:1px solid rgba(138,176,232,0.2);border-radius:10px;padding:10px 12px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-size:11px;font-weight:600;color:#8ab0e8">👁 <span id="vta-lc-rx-pac"></span> tiene Rx Final</div>
+                      <div id="vta-lc-rx-detail" style="font-size:10px;color:var(--muted);margin-top:2px"></div>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-shrink:0">
+                      <button id="vta-lc-rx-btn" class="btn btn-p btn-sm" style="font-size:10px;padding:4px 10px">Filtrar por Rx</button>
+                      <button onclick="document.getElementById('vta-lc-rx-banner').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px">✕</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- LC catalog panel -->
+                <div id="vta-lc-panel" style="display:none;margin-top:8px;background:var(--surface2);border:1px solid rgba(138,176,232,0.12);border-radius:10px;padding:10px;max-height:360px;overflow-y:auto">
+                  <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                    <select id="vta-lc-tipo" onchange="vtaLcRender()" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:10px;outline:none">
+                      <option value="">Todos</option>
+                      <option value="Esférico">Esf&eacute;rico</option>
+                      <option value="Tórico">T&oacute;rico</option>
+                      <option value="Multifocal">Multifocal</option>
+                      <option value="Color">Color</option>
+                    </select>
+                    <select id="vta-lc-marca" onchange="vtaLcRender()" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:10px;outline:none">
+                      <option value="">Todas marcas</option>
+                    </select>
+                    <input type="text" id="vta-lc-q" placeholder="Buscar..." oninput="vtaLcRender()" style="flex:1;min-width:80px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:10px;outline:none;box-sizing:border-box">
+                  </div>
+                  <div id="vta-lc-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px"></div>
                 </div>
                 <!-- Manual quick add -->
                 <div id="vta-manual-wrap" style="display:none;margin-top:10px;background:var(--surface2);border-radius:8px;padding:12px">
@@ -3565,7 +3634,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-right">
             <button class="btn btn-g btn-sm" onclick="cargarProductos()">🔄</button>
             <button class="btn btn-g btn-sm" onclick="go('alta-masiva')" id="btn-alta-masiva" style="display:none">📷 Alta masiva</button>
-            <button class="btn btn-g btn-sm" onclick="abrirCatalogoTienda()" id="btn-catalogo-tienda" style="display:none;background:rgba(107,163,212,.1);border-color:rgba(107,163,212,.3);color:#6ba3d4">🛒 Catálogo Tienda</button>
             <button class="btn btn-p btn-sm" onclick="mostrarFormProducto()">+ Nuevo</button>
           </div>
         </div>
@@ -3576,13 +3644,12 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="">Todos departamentos</option>
               <option value="Armazones">Armazones</option>
               <option value="Materiales opticos">Materiales &oacute;pticos</option>
-              <option value="Lentes de contacto">Lentes de contacto</option>
               <option value="Accesorios">Accesorios</option>
               <option value="SUSCRIPCIONES">Suscripciones</option>
             </select>
             <select id="prod-cat-filter" onchange="filtrarProductos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todas categor&iacute;as</option>
-              <option>Armaz&oacute;n</option><option>Material</option><option>Lente de sol</option><option>Lente de contacto</option>
+              <option>Armaz&oacute;n</option><option>Material</option><option>Lente de sol</option>
               <option>Soluci&oacute;n</option><option>Accesorio</option><option>Servicio</option><option>Cobertura</option>
             </select>
           </div>
@@ -3883,33 +3950,73 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
       </div>
 
-      <!-- ═══ CRM LENTES DE CONTACTO ═══ -->
-      <div class="view" id="view-lc-crm">
+      <!-- ═══ LENTES DE CONTACTO (Catálogo + CRM + Estadísticas) ═══ -->
+      <div class="view" id="view-lentes-contacto">
         <div class="topbar">
-          <div class="topbar-left"><h2>👁 CRM Lentes de Contacto</h2><p>Seguimiento de recompra</p></div>
-          <div class="topbar-right"><button class="btn btn-g btn-sm" onclick="cargarLcCrm()">🔄</button></div>
+          <div class="topbar-left"><h2>👁 Lentes de Contacto</h2><p>Cat&aacute;logo, CRM y Estad&iacute;sticas</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="initLcModule()">🔄</button>
+            <button class="btn btn-g btn-sm" id="btn-lc-catalogo-tienda" onclick="abrirCatalogoTienda()" style="display:none;background:rgba(107,163,212,.1);border-color:rgba(107,163,212,.3);color:#6ba3d4">🛒 Cat&aacute;logo Tienda</button>
+            <button class="btn btn-p btn-sm" id="btn-lc-nuevo" onclick="mostrarFormProducto();setTimeout(function(){var c=document.getElementById('prod-categoria');if(c){c.value='Lente de contacto';c.onchange&&c.onchange();}var d=document.getElementById('prod-departamento');if(d)d.value='Lentes de contacto';},50)" style="display:none">+ Nuevo LC</button>
+          </div>
         </div>
         <div class="body" style="padding:12px">
-          <!-- Stats -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px" id="lc-stats"></div>
-          <!-- Filters -->
-          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-            <input type="text" id="lc-search" placeholder="Buscar paciente..." oninput="filtrarLcCrm()" style="flex:1;min-width:150px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
-            <select id="lc-filtro-estado" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
-              <option value="pendientes">Pendientes recompra</option>
-              <option value="vencidos">Vencidos</option>
-              <option value="proximos7">Próximos 7 días</option>
-              <option value="proximos15">Próximos 15 días</option>
-              <option value="proximos30">Próximos 30 días</option>
-              <option value="todos">Todos</option>
-              <option value="recomprado">Recomprados</option>
-            </select>
-            <select id="lc-filtro-suc" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
-              <option value="">Todas las sucursales</option>
-              <option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Online">Online</option>
-            </select>
+          <!-- Tab bar -->
+          <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="lc-tabs">
+            <button class="lc-tab active" onclick="lcSwitchTab('catalogo')" id="lc-tab-catalogo">📦 Cat&aacute;logo</button>
+            <button class="lc-tab" onclick="lcSwitchTab('crm')" id="lc-tab-crm">🔄 CRM Recompra <span class="nav-badge" id="badge-lc-crm-tab" style="display:none">0</span></button>
+            <button class="lc-tab" onclick="lcSwitchTab('estadisticas')" id="lc-tab-estadisticas">📊 Estad&iacute;sticas</button>
           </div>
-          <div id="lc-list" style="display:grid;gap:6px"></div>
+          <!-- Catálogo content -->
+          <div id="lc-content-catalogo">
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <input type="text" id="lc-cat-search" placeholder="Buscar LC..." oninput="lcFilterCatalogo()" style="flex:1;min-width:150px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
+              <select id="lc-tipo-filter" onchange="lcFilterCatalogo()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+                <option value="">Todos los tipos</option>
+                <option value="Esférico">Esf&eacute;rico</option>
+                <option value="Tórico">T&oacute;rico</option>
+                <option value="Multifocal">Multifocal</option>
+                <option value="Color">Color</option>
+              </select>
+              <select id="lc-marca-filter" onchange="lcFilterCatalogo()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+                <option value="">Todas las marcas</option>
+              </select>
+              <select id="lc-freq-filter" onchange="lcFilterCatalogo()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+                <option value="">Todas frecuencias</option>
+                <option value="Diario">Diario</option>
+                <option value="Quincenal">Quincenal</option>
+                <option value="Mensual">Mensual</option>
+                <option value="Trimestral">Trimestral</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="lc-cat-stats"></div>
+            <div id="lc-card-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+          </div>
+          <!-- CRM content -->
+          <div id="lc-content-crm" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:12px" id="lc-stats"></div>
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <input type="text" id="lc-search" placeholder="Buscar paciente..." oninput="filtrarLcCrm()" style="flex:1;min-width:150px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
+              <select id="lc-filtro-estado" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+                <option value="pendientes">Pendientes recompra</option>
+                <option value="vencidos">Vencidos</option>
+                <option value="proximos7">Pr&oacute;ximos 7 d&iacute;as</option>
+                <option value="proximos15">Pr&oacute;ximos 15 d&iacute;as</option>
+                <option value="proximos30">Pr&oacute;ximos 30 d&iacute;as</option>
+                <option value="todos">Todos</option>
+                <option value="recomprado">Recomprados</option>
+              </select>
+              <select id="lc-filtro-suc" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+                <option value="">Todas las sucursales</option>
+                <option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Online">Online</option>
+              </select>
+            </div>
+            <div id="lc-list" style="display:grid;gap:6px"></div>
+          </div>
+          <!-- Estadísticas content -->
+          <div id="lc-content-estadisticas" style="display:none">
+            <div id="lc-estadisticas-container"></div>
+          </div>
         </div>
       </div>
       <!-- ═══ ALTA MASIVA ARMAZONES ═══ -->
@@ -4794,7 +4901,6 @@ function setupApp(u) {
       document.getElementById('nav-admin-clari').style.display = '';
       document.getElementById('nav-admin-landings').style.display = '';
       document.getElementById('nav-admin-comisiones').style.display = '';
-      document.getElementById('nav-admin-lc-crm').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4802,7 +4908,6 @@ function setupApp(u) {
       document.getElementById('nav-admin-clari').style.display = 'none';
       document.getElementById('nav-admin-landings').style.display = 'none';
       document.getElementById('nav-admin-comisiones').style.display = 'none';
-      document.getElementById('nav-admin-lc-crm').style.display = 'none';
       document.getElementById('nav-ventas-section').style.display = 'none';
     } else {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4810,20 +4915,20 @@ function setupApp(u) {
       document.getElementById('nav-admin-clari').style.display = 'none';
       document.getElementById('nav-admin-landings').style.display = 'none';
       document.getElementById('nav-admin-comisiones').style.display = u.rol === 'gerencia' ? '' : 'none';
-      document.getElementById('nav-admin-lc-crm').style.display = u.rol === 'gerencia' ? '' : 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
-      var roleControlled = ['configuracion','clari','landings','comisiones','lc-crm'];
+      var roleControlled = ['configuracion','clari','landings','comisiones'];
+      var alwaysVisible = ['lentes-contacto'];
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
         if (m && !roleControlled.includes(m[1])) {
-          ni.style.display = u.permisos.includes(m[1]) ? '' : 'none';
+          ni.style.display = (u.permisos.includes(m[1]) || alwaysVisible.includes(m[1])) ? '' : 'none';
         }
       });
     } else if (u.rol === 'sucursal') {
-      var defaultSucPerms = ['dashboard','pacientes','preregistro','historia','orden','laboratorio','garantias','ventas','productos','historial-ventas','creditos','caja','vision-segura'];
-      var roleControlled2 = ['configuracion','clari','landings','comisiones','lc-crm'];
+      var defaultSucPerms = ['dashboard','pacientes','preregistro','historia','orden','laboratorio','garantias','ventas','productos','historial-ventas','creditos','caja','vision-segura','lentes-contacto'];
+      var roleControlled2 = ['configuracion','clari','landings','comisiones'];
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
         if (m && !roleControlled2.includes(m[1])) {
@@ -5012,12 +5117,13 @@ function closeSidebar() {
 }
 
 function go(id) {
+  if (id === 'lc-crm') id = 'lentes-contacto';
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'vision-segura':19, configuracion:20, clari:21, landings:22, comisiones:23, 'lc-crm':24, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, configuracion:21, clari:22, landings:23, comisiones:24, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5035,7 +5141,7 @@ function go(id) {
   if (id === 'ventas')              { if (!vtaItems || !vtaItems.length) { initVenta(); } cargarVtaPendientes(); setTimeout(()=>document.getElementById('vta-pac-search')?.focus(),150); }
   if (id === 'promociones')          { cargarPromociones(); }
   if (id === 'caja')                 { initCaja(); }
-  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _ctBtn=document.getElementById('btn-catalogo-tienda'); if(_ctBtn) _ctBtn.style.display=currentUser?.rol==='admin'?'':'none'; }
+  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; }
   if (id === 'alta-masiva')         { amInit(); }
   if (id === 'compras-lab')         { clbInit(); }
   if (id === 'historial-ventas')    { hvPage=0; initHistorialFechas(); cargarHistorialVentas(); }
@@ -5045,7 +5151,7 @@ function go(id) {
   if (id === 'creditos')            { loadCreditos(); var _csf=document.getElementById('cred-suc-filter'); if(_csf) _csf.style.display=currentUser?.rol==='sucursal'?'none':''; }
   if (id === 'landings')            { cargarLandings(); }
   if (id === 'comisiones')          { initComisiones(); }
-  if (id === 'lc-crm')              { cargarLcCrm(); }
+  if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
 const LAB_ESTADOS = {
@@ -15764,6 +15870,7 @@ function selVtaPac(id, nombre, tel) {
   info.style.display='flex';
   info.innerHTML=`<div style="font-size:13px;font-weight:600;color:var(--beige);flex:1">${nombre} <span style="font-size:11px;color:var(--muted);font-weight:400">${tel||''}</span></div><button onclick="vtaPaciente=null;document.getElementById('vta-pac-info').style.display='none';document.getElementById('vta-pac-search').value='';document.getElementById('vta-monedero-wrap').style.display='none'" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px">✕</button>`;
   checkMonederoBalance(id);
+  if (typeof vtaLcCheckRx === 'function') vtaLcCheckRx(id, nombre);
 }
 
 let qrScanStream = null;
@@ -16178,6 +16285,14 @@ async function _procesarVentaInner() {
     }
     // Auto-register LC for CRM tracking (non-blocking)
     _lcAutoRegistrar(venta.id, ventaSucursal, canalVenta).catch(e => console.warn('[LC]', e));
+    // Auto-create lab orders for LC items with Rx data (non-blocking)
+    if (vtaPaciente?.id && typeof vtaLcCreateOrder === 'function') {
+      for (const item of vtaItems) {
+        if (item._lcOrderData) {
+          vtaLcCreateOrder(item._lcOrderData.prod, item._lcOrderData.rxLC, folio, vtaPaciente.id, ventaSucursal, fechaEntrega, horaEntrega).catch(e => console.warn('[LC Orden]', e));
+        }
+      }
+    }
     const parts=[`✓ ${folio} — ${estado}`];
     if (saldo>0) parts.push(`Saldo: $${saldo.toFixed(2)}`);
     if (monAplicar>0) parts.push(`Monedero: -$${monAplicar.toFixed(2)}`);
@@ -16261,21 +16376,20 @@ function filtrarProductos(keepPage) {
   const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
   const cat=document.getElementById('prod-cat-filter')?.value||'';
   const depto=document.getElementById('prod-depto-filter')?.value||'';
-  let f=productosCache;
+  let f=productosCache.filter(p=>p.categoria!=='Lente de contacto');
   if (cat) f=f.filter(p=>p.categoria===cat);
   if (depto) f=f.filter(p=>p.departamento===depto);
   if (q) f=f.filter(p=>`${p.nombre} ${p.marca||''} ${p.modelo||''} ${p.codigo_barras||''} ${p.subcategoria||''}`.toLowerCase().includes(q));
 
+  const _noLc=productosCache.filter(p=>p.categoria!=='Lente de contacto');
   const deptCount={};
-  productosCache.forEach(p=>{const d=p.departamento||'Sin definir';deptCount[d]=(deptCount[d]||0)+1;});
-  const totalVal=productosCache.reduce((s,p)=>s+Number(p.precio_venta)*(p.stock>0?p.stock:0),0);
+  _noLc.forEach(p=>{const d=p.departamento||'Sin definir';deptCount[d]=(deptCount[d]||0)+1;});
 
   document.getElementById('prod-stats').innerHTML=`
-    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${productosCache.length}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Total</div></div>
+    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${_noLc.length}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Total</div></div>
     <div style="background:var(--surface);border:1px solid rgba(226,198,166,0.12);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">${f.length}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Filtrados</div></div>
     <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${deptCount['Armazones']||0}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Armazones</div></div>
     <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${deptCount['Materiales opticos']||0}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Materiales</div></div>
-    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${deptCount['Lentes de contacto']||0}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Contacto</div></div>
     <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;flex:1;min-width:80px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${deptCount['Accesorios']||0}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Accesorios</div></div>`;
 
   const list=document.getElementById('prod-list');
@@ -19078,143 +19192,6 @@ function agregarMaterialConfigVta() {
 }
 
 // ── MÓDULO COMISIONES ──
-// ═══════════════════════════════════════════════════════════
-// CRM LENTES DE CONTACTO
-// ═══════════════════════════════════════════════════════════
-var _lcData = [];
-var _lcFiltered = [];
-
-async function cargarLcCrm() {
-  const list = document.getElementById('lc-list');
-  list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando...</div>';
-  try {
-    const { data, error } = await db.from('lc_seguimiento').select('*, pacientes(nombre, apellidos, telefono)').order('fecha_recompra', { ascending: true });
-    if (error) throw error;
-    _lcData = data || [];
-  } catch(e) { toast('Error cargando LC: ' + e.message, true); _lcData = []; }
-  renderLcStats();
-  filtrarLcCrm();
-  // Update badge
-  var hoy = hoyLocal();
-  var vencidos = _lcData.filter(r => r.estado === 'activo' && r.fecha_recompra <= hoy).length;
-  var badge = document.getElementById('badge-lc-crm');
-  if (badge) { badge.style.display = vencidos > 0 ? '' : 'none'; badge.textContent = vencidos; }
-}
-
-function renderLcStats() {
-  var hoy = hoyLocal();
-  var hoyD = new Date(hoy);
-  var d7 = new Date(hoyD); d7.setDate(d7.getDate() + 7);
-  var d15 = new Date(hoyD); d15.setDate(d15.getDate() + 15);
-  var d30 = new Date(hoyD); d30.setDate(d30.getDate() + 30);
-  var activos = _lcData.filter(r => r.estado === 'activo');
-  var vencidos = activos.filter(r => r.fecha_recompra <= hoy).length;
-  var prox7 = activos.filter(r => r.fecha_recompra > hoy && r.fecha_recompra <= d7.toISOString().slice(0,10)).length;
-  var prox15 = activos.filter(r => r.fecha_recompra > hoy && r.fecha_recompra <= d15.toISOString().slice(0,10)).length;
-  var prox30 = activos.filter(r => r.fecha_recompra > hoy && r.fecha_recompra <= d30.toISOString().slice(0,10)).length;
-  var recomprados = _lcData.filter(r => r.estado === 'recomprado').length;
-  var stats = document.getElementById('lc-stats');
-  stats.innerHTML = [
-    { lbl:'Vencidos', val:vencidos, color:'#e08080', icon:'🔴' },
-    { lbl:'Próx 7d', val:prox7, color:'#d4b84a', icon:'⚠️' },
-    { lbl:'Próx 15d', val:prox15, color:'#8ab0e8', icon:'📅' },
-    { lbl:'Próx 30d', val:prox30, color:'#72b8c4', icon:'📆' },
-    { lbl:'Total activos', val:activos.length, color:'var(--beige)', icon:'👁' },
-    { lbl:'Recomprados', val:recomprados, color:'#72c47e', icon:'✅' }
-  ].map(s => '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:'+s.color+'">'+s.val+'</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">'+s.icon+' '+s.lbl+'</div></div>').join('');
-}
-
-function filtrarLcCrm() {
-  var q = (document.getElementById('lc-search')?.value || '').toLowerCase().trim();
-  var filtro = document.getElementById('lc-filtro-estado')?.value || 'pendientes';
-  var sucFiltro = document.getElementById('lc-filtro-suc')?.value || '';
-  var hoy = hoyLocal();
-  var hoyD = new Date(hoy);
-  var f = _lcData;
-  // Filtro estado
-  if (filtro === 'vencidos') f = f.filter(r => r.estado === 'activo' && r.fecha_recompra <= hoy);
-  else if (filtro === 'proximos7') { var d=new Date(hoyD); d.setDate(d.getDate()+7); f = f.filter(r => r.estado === 'activo' && r.fecha_recompra > hoy && r.fecha_recompra <= d.toISOString().slice(0,10)); }
-  else if (filtro === 'proximos15') { var d=new Date(hoyD); d.setDate(d.getDate()+15); f = f.filter(r => r.estado === 'activo' && r.fecha_recompra > hoy && r.fecha_recompra <= d.toISOString().slice(0,10)); }
-  else if (filtro === 'proximos30') { var d=new Date(hoyD); d.setDate(d.getDate()+30); f = f.filter(r => r.estado === 'activo' && r.fecha_recompra > hoy && r.fecha_recompra <= d.toISOString().slice(0,10)); }
-  else if (filtro === 'pendientes') f = f.filter(r => r.estado === 'activo');
-  else if (filtro === 'recomprado') f = f.filter(r => r.estado === 'recomprado');
-  // Filtro sucursal
-  if (sucFiltro) f = f.filter(r => r.sucursal === sucFiltro);
-  // Búsqueda texto
-  if (q) f = f.filter(r => { var pac = r.pacientes ? (r.pacientes.nombre||'')+' '+(r.pacientes.apellidos||'') : ''; return (pac+' '+r.producto).toLowerCase().includes(q); });
-  _lcFiltered = f;
-  renderLcList();
-}
-
-function renderLcList() {
-  var list = document.getElementById('lc-list');
-  if (!_lcFiltered.length) { list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Sin registros</div>'; return; }
-  var hoy = hoyLocal();
-  list.innerHTML = _lcFiltered.map(function(r) {
-    var pac = r.pacientes ? (r.pacientes.nombre||'')+' '+(r.pacientes.apellidos||'') : 'Sin paciente';
-    var tel = r.pacientes?.telefono || '';
-    var diasRest = Math.round((new Date(r.fecha_recompra) - new Date(hoy)) / 86400000);
-    var vencido = diasRest <= 0;
-    var urgente = diasRest > 0 && diasRest <= 7;
-    var borderColor = vencido ? 'rgba(224,128,128,0.2)' : urgente ? 'rgba(212,184,74,0.2)' : 'rgba(255,255,255,0.04)';
-    var diasLbl = vencido ? '<span style="color:#e08080;font-weight:700">Vencido hace '+ Math.abs(diasRest) +' días</span>' : '<span style="color:'+(urgente?'#d4b84a':'#72c47e')+'">Faltan '+diasRest+' días</span>';
-    var estadoBadge = r.estado === 'recomprado' ? '<span style="font-size:8px;padding:1px 5px;background:rgba(114,196,126,0.15);color:#72c47e;border-radius:4px;font-weight:700">✅ RECOMPRADO</span>' : '';
-    var notifBadge = r.notificado ? '<span style="font-size:8px;padding:1px 5px;background:rgba(56,189,248,0.12);color:#38bdf8;border-radius:4px">📱 Notificado</span>' : '';
-    var canalBadge = r.canal_venta ? '<span style="font-size:8px;padding:1px 4px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:3px">'+r.canal_venta+'</span>' : '';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid '+borderColor+';border-radius:10px">' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:var(--white)">'+pac+'</span>'+estadoBadge+notifBadge+canalBadge+'</div>' +
-        '<div style="font-size:11px;color:var(--beige);margin-top:2px">👁 '+r.producto+'</div>' +
-        '<div style="font-size:10px;color:var(--muted);margin-top:1px">Compra: '+r.fecha_compra+' · '+(r.cantidad_cajas>1?r.cantidad_cajas+' cajas · ':'')+r.duracion_dias+'d → Recompra: <b style="color:'+(vencido?'#e08080':'var(--white)')+'">'+r.fecha_recompra+'</b> · '+r.sucursal+'</div>' +
-        '<div style="font-size:10px;margin-top:2px">'+diasLbl+'</div>' +
-      '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">' +
-        (r.estado === 'activo' && tel ? '<button onclick="lcEnviarWA(\''+r.id+'\',\''+tel.replace(/'/g,"\\'")+'\')" class="btn btn-g" style="font-size:10px;padding:4px 8px;white-space:nowrap">📱 WA</button>' : '') +
-        (r.estado === 'activo' ? '<button onclick="lcMarcarRecomprado(\''+r.id+'\')" class="btn btn-g" style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#72c47e">✅ Recompró</button>' : '') +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-async function lcEnviarWA(lcId, tel) {
-  var reg = _lcData.find(r => r.id === lcId);
-  if (!reg) return;
-  var pac = reg.pacientes ? (reg.pacientes.nombre||'').split(' ')[0] : 'Cliente';
-  var msg = 'Hola ' + pac + ', le recordamos que es tiempo de renovar sus lentes de contacto (' + reg.producto + '). ¡Le esperamos en Ópticas Car & Era!\n\nHorario:\nLun.-Sab. 10:00am-7:00pm | Dom. 11:00am-5:00pm';
-  var cleanTel = tel.replace(/\D/g, '');
-  if (cleanTel.length === 10) cleanTel = '52' + cleanTel;
-  if (!cleanTel.startsWith('521')) cleanTel = cleanTel.replace(/^52/, '521');
-  // Try API first
-  try {
-    var res = await fetch('/.netlify/functions/whatsapp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: cleanTel, message: msg })
-    });
-    if (res.ok) {
-      toast('📱 Recordatorio enviado a ' + pac);
-      await db.from('lc_seguimiento').update({ notificado: true, fecha_notificacion: new Date().toISOString() }).eq('id', lcId);
-      var r = _lcData.find(x => x.id === lcId);
-      if (r) { r.notificado = true; r.fecha_notificacion = new Date().toISOString(); }
-      filtrarLcCrm();
-      return;
-    }
-  } catch(e) {}
-  // Fallback wa.me
-  window.open('https://wa.me/' + cleanTel + '?text=' + encodeURIComponent(msg), '_blank');
-  await db.from('lc_seguimiento').update({ notificado: true, fecha_notificacion: new Date().toISOString() }).eq('id', lcId);
-  var r2 = _lcData.find(x => x.id === lcId);
-  if (r2) { r2.notificado = true; }
-  filtrarLcCrm();
-}
-
-async function lcMarcarRecomprado(lcId) {
-  if (!confirm('¿Marcar como recomprado?')) return;
-  await db.from('lc_seguimiento').update({ estado: 'recomprado', updated_at: new Date().toISOString() }).eq('id', lcId);
-  toast('✅ Marcado como recomprado');
-  cargarLcCrm();
-}
-
 // Auto-register LC on sale (called from _procesarVentaInner)
 async function _lcAutoRegistrar(ventaId, ventaSucursal, canalVenta) {
   try {
@@ -19407,6 +19384,7 @@ async function calcularComisiones() {
 <script src="js/mod-produccion.js?v=125"></script>
 <script src="js/mod-landings.js?v=125"></script>
 <script src="js/mod-creditos.js?v=125"></script>
+<script src="js/mod-lc.js?v=166"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->
@@ -21445,188 +21423,7 @@ async function clbComparativoCompras(fechaIni, fechaFin) {
   }
 }
 
-// ═══════════════════════════════════════════════════
-//  CATÁLOGO TIENDA ONLINE — gestión de imágenes LC
-// ═══════════════════════════════════════════════════
-
-// Same grouping logic as tienda.html
-function lcGroupProducts(rawProducts) {
-  var groups = {};
-  rawProducts.forEach(function(p) {
-    var name = (p.nombre||'').toUpperCase().trim();
-    var baseName = name
-      .replace(/\s*[-+]\d+\.\d+(\s*[-+]\d+\.\d+)?\s*\*?\s*\d*\s*/g, ' ')
-      .replace(/\s*(NEGATIVOS?|POSITIVOS?|ESFERICOS?|NEUTROS?|PLANOS?)\s*/gi, ' ')
-      .replace(/\s*(GRAY|BLUE|GREEN|HONEY|BROWN|HAZEL|VERDE|BRILLANT|STERLING)\s*[-\w]*/gi, '')
-      .replace(/\s*(DESDE|HASTA|DE|A)\s*[-+]?\d+[\d.]*/gi, '')
-      .replace(/\s*\(.*?\)\s*/g, ' ')
-      .replace(/\s*\d+\s*(LENTE|CAJA)S?\s*/gi, '')
-      .replace(/\s*(CILINDROS?)\s*[-\w\s.]*/gi, '')
-      .replace(/\s*(ALTOS?|BAJOS?)\s*/gi, '')
-      .replace(/\s+/g, ' ').trim();
-    if (!baseName || baseName.length < 3) baseName = name.split(/\s+/).slice(0,3).join(' ');
-    var tipo = 'Esférico';
-    if (/TORIC|ASTIGMAT/i.test(name)) tipo = 'Tórico';
-    else if (/MULTIFOCAL/i.test(name)) tipo = 'Multifocal';
-    else if (/COLOR|FRESH\s*LOOK/i.test(name) && !/ONE DAY|ONEDAY/i.test(name)) tipo = 'Color';
-    var key = baseName + '|' + tipo;
-    if (!groups[key]) { groups[key] = { precios: [], marca: (p.marca||'').trim() }; }
-    var pv = parseFloat(p.precio_venta)||0;
-    if (pv > 0) groups[key].precios.push(pv);
-  });
-  var BRAND_MAP={'acuvue':'Acuvue','air':'Air Optix','air optix':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','lenticon':'Lenticon','lumitoric':'Lenticon','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','total30':'Total30','precision1':'Precision1','infuse':'Infuse','start':'Start','halloween':'Especial'};
-  return Object.keys(groups).map(function(key) {
-    var parts = key.split('|');
-    var g = groups[key];
-    var precios = g.precios.sort(function(a,b){return a-b;});
-    var cleanName = parts[0].replace(/\b\w/g, function(c){return c.toUpperCase();}).replace(/\b(De|Con|Para|En|Al|El|La|Los|Las|Y|O|A)\b/gi, function(m){return m.toLowerCase();});
-    var rawName = (cleanName.split(' ')[0]||'').toLowerCase();
-    var rawMarca = (g.marca||'').toLowerCase();
-    var marca = BRAND_MAP[rawName] || BRAND_MAP[rawMarca] || g.marca || cleanName.split(' ')[0];
-    return { key: cleanName.toLowerCase().replace(/\s+/g,'_'), nombre: cleanName, marca: marca, tipo: parts[1], precio: precios.length?precios[Math.floor(precios.length/2)]:0 };
-  }).filter(function(p){return p.precio>0;}).sort(function(a,b){return (a.marca||'').localeCompare(b.marca||'') || a.nombre.localeCompare(b.nombre);});
-}
-
-async function abrirCatalogoTienda() {
-  toast('Cargando catálogo LC...');
-  try {
-    // Load raw products
-    var all = [], offset = 0;
-    while(true) {
-      var res = await db.from('productos').select('id,nombre,marca,precio_venta,categoria').ilike('categoria','%contacto%').range(offset,offset+499).limit(500);
-      if (!res.data || !res.data.length) break;
-      all = all.concat(res.data);
-      if (res.data.length < 500) break;
-      offset += 500;
-    }
-
-    // Load image map from app_config
-    var imgRes = await db.from('app_config').select('value').eq('id','lc_imagenes').limit(1);
-    var imgMap = {};
-    try { imgMap = JSON.parse((imgRes.data && imgRes.data[0]) ? imgRes.data[0].value : '{}'); } catch(e) {}
-
-    var grouped = lcGroupProducts(all);
-    var conImg = grouped.filter(function(g){ return !!imgMap[g.key]; }).length;
-
-    var el = document.createElement('div');
-    el.className = 'm-overlay open';
-    el.id = 'catalogo-tienda-modal';
-    var box = document.createElement('div');
-    box.className = 'm-box';
-    box.style.cssText = 'max-width:820px;max-height:90vh;overflow-y:auto;padding:20px;background:var(--surface)';
-
-    var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">' +
-      '<div><h3 style="font-family:Cormorant Garamond,serif;font-size:20px;color:var(--beige);margin:0">🛒 Catálogo Tienda Online</h3>' +
-      '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + grouped.length + ' productos agrupados · ' + conImg + ' con imagen · (' + all.length + ' SKUs en BD)</div></div>' +
-      '<div style="display:flex;gap:6px;align-items:center">' +
-        '<a href="/tienda" target="_blank" class="btn btn-g btn-sm" style="font-size:11px;text-decoration:none;color:var(--accent)">👁 Ver tienda</a>' +
-        '<button onclick="document.getElementById(\'catalogo-tienda-modal\').remove()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>' +
-      '</div></div>';
-
-    // Hidden file input
-    html += '<input type="file" id="lc-img-input" accept="image/*" style="display:none" onchange="lcUploadImg(this)">';
-
-    // Table
-    html += '<div style="border-radius:10px;border:1px solid rgba(255,255,255,.08);overflow:hidden">' +
-      '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
-      '<thead><tr style="background:rgba(255,255,255,.03)">' +
-      '<th style="padding:8px;text-align:center;width:60px;color:var(--muted);font-size:10px">IMAGEN</th>' +
-      '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">PRODUCTO</th>' +
-      '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">TIPO</th>' +
-      '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">PRECIO</th>' +
-      '<th style="padding:8px;text-align:center;width:70px;color:var(--muted);font-size:10px">ACCIÓN</th>' +
-      '</tr></thead><tbody>';
-
-    grouped.forEach(function(p) {
-      var imgUrl = imgMap[p.key] || '';
-      var imgHtml = imgUrl
-        ? '<img src="'+imgUrl+'" style="width:44px;height:44px;object-fit:contain;border-radius:6px;background:rgba(255,255,255,.04)" onerror="this.src=\'\';">'
-        : '<div style="width:44px;height:44px;border-radius:6px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--muted)">👁</div>';
-
-      html += '<tr style="border-top:1px solid rgba(255,255,255,.04)" data-key="'+p.key+'">' +
-        '<td style="padding:6px 8px;text-align:center">' + imgHtml + '</td>' +
-        '<td style="padding:6px 8px"><div style="font-weight:600;color:var(--white)">' + p.nombre + '</div><div style="font-size:10px;color:var(--muted)">' + (p.marca||'') + '</div></td>' +
-        '<td style="padding:6px 8px;text-align:center;font-size:11px">' + (p.tipo||'Esf') + '</td>' +
-        '<td style="padding:6px 8px;text-align:center;font-family:Outfit;color:var(--accent)">$' + (p.precio||0).toLocaleString('es-MX') + '</td>' +
-        '<td style="padding:6px 8px;text-align:center">' +
-          '<button onclick="lcClickUpload(\''+p.key+'\')" style="background:rgba(107,163,212,.1);border:1px solid rgba(107,163,212,.2);border-radius:6px;padding:3px 8px;color:#6ba3d4;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif" title="Subir imagen">📸</button>' +
-          (imgUrl ? ' <button onclick="lcRemoveImg(\''+p.key+'\')" style="background:none;border:none;color:#f04a6a;cursor:pointer;font-size:11px" title="Quitar imagen">✕</button>' : '') +
-        '</td></tr>';
-    });
-
-    html += '</tbody></table></div>';
-    box.innerHTML = html;
-    el.appendChild(box);
-    document.body.appendChild(el);
-    window._lcImgMap = imgMap;
-    window._lcGrouped = grouped;
-  } catch(e) { toast('Error: ' + e.message, true); console.error(e); }
-}
-
-var _lcUploadKey = null;
-function lcClickUpload(key) {
-  _lcUploadKey = key;
-  document.getElementById('lc-img-input').click();
-}
-
-async function lcUploadImg(input) {
-  var file = input.files[0];
-  if (!file || !_lcUploadKey) return;
-  input.value = '';
-
-  toast('Subiendo imagen...');
-  var reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      var res = await fetch('/.netlify/functions/img-upload', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          auth: { id: currentUser?.id, pass: currentUser?.pass },
-          image_base64: e.target.result,
-          filename: 'lc-' + _lcUploadKey
-        })
-      });
-      var data = await res.json();
-      if (!data.ok) { toast('Error: ' + (data.error||''), true); return; }
-
-      // Save URL in map
-      var imgMap = window._lcImgMap || {};
-      imgMap[_lcUploadKey] = data.url;
-
-      // Save map to app_config
-      await fetch('/.netlify/functions/dbwrite', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          action: 'upsert', table: 'app_config',
-          auth: { id: currentUser?.id, pass: currentUser?.pass },
-          data: { id: 'lc_imagenes', value: JSON.stringify(imgMap) }
-        })
-      });
-
-      toast('✓ Imagen guardada');
-      document.getElementById('catalogo-tienda-modal')?.remove();
-      abrirCatalogoTienda();
-    } catch(err) { toast('Error subiendo: ' + err.message, true); }
-  };
-  reader.readAsDataURL(file);
-}
-
-async function lcRemoveImg(key) {
-  if (!confirm('¿Quitar la imagen de este producto?')) return;
-  var imgMap = window._lcImgMap || {};
-  delete imgMap[key];
-  await fetch('/.netlify/functions/dbwrite', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      action: 'upsert', table: 'app_config',
-      auth: { id: currentUser?.id, pass: currentUser?.pass },
-      data: { id: 'lc_imagenes', value: JSON.stringify(imgMap) }
-    })
-  });
-  toast('✓ Imagen eliminada');
-  document.getElementById('catalogo-tienda-modal')?.remove();
-  abrirCatalogoTienda();
-}
+// LC Catálogo Tienda + CRM + grouping migrado a js/mod-lc.js v166
 </script>
 
 <script>
