@@ -117,10 +117,23 @@ async function init() {
   _faltasDias = (params.get('faltas') || '').split(',').filter(function(d) { return d; });
   if (!_token) { showError('Link invalido. No se encontro token.'); return; }
 
-  // Load firma record by token
-  var firmas = await supaRead('asistencia_firmas?token=eq.' + _token + '&select=*');
-  if (!firmas || firmas.length === 0) { showError('Token no encontrado o expirado.'); return; }
-  _firmaData = firmas[0];
+  // Load firma record by token (via dbwrite to bypass RLS)
+  try {
+    var firmaRes = await fetch(DBWRITE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'read',
+        table: 'asistencia_firmas',
+        auth: { id: 'firma_token', pass: _token }
+      })
+    });
+    var firmaJson = await firmaRes.json();
+    if (!firmaRes.ok || !firmaJson.data) { showError('Token no encontrado o expirado.'); return; }
+    _firmaData = firmaJson.data;
+  } catch(e) {
+    showError('Error cargando reporte. Intenta de nuevo.'); return;
+  }
 
   // Check if already signed
   if (_firmaData.firmado_at) {

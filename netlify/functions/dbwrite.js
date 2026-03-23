@@ -101,20 +101,41 @@ exports.handler = async (event) => {
   // ── Validate request ──
   if (!table || !action || !auth || !auth.id || !auth.pass)
     return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'Missing required fields (table, action, auth)' }) };
-  if (!['insert','update','delete','upsert'].includes(action))
+  if (!['insert','update','delete','upsert','read'].includes(action))
     return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'Invalid action: ' + action }) };
   if (!ALLOWED_TABLES.includes(table))
     return { statusCode: 403, headers: H, body: JSON.stringify({ error: 'Table not allowed: ' + table }) };
 
   // ── Token-based auth for asistencia_firmas (public signature page) ──
-  if (auth.id === 'firma_token' && table === 'asistencia_firmas' && action === 'update') {
-    // Validate token exists and is not expired
-    const check = await supaREST('GET', `asistencia_firmas?token=eq.${auth.pass}&select=id,firmado_at,token_expires`, null, {});
+  if (auth.id === 'firma_token' && table === 'asistencia_firmas' && (action === 'update' || action === 'read')) {
+    // Validate token exists
+    const check = await supaREST('GET', `asistencia_firmas?token=eq.${auth.pass}&select=*`, null, {});
     const rec = check.data && check.data[0];
     if (!rec) return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Token no encontrado' }) };
+
+    // For read action, return the firma record directly (bypasses RLS)
+    if (action === 'read') {
+      return { statusCode: 200, headers: H, body: JSON.stringify({ data: rec, error: null }) };
+    }
+
+    // For update, validate not already signed and not expired
     if (rec.firmado_at) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'Ya firmado' }) };
     if (rec.token_expires && new Date(rec.token_expires) < new Date()) return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Token expirado' }) };
     // Auth OK — proceed with update (skip normal user auth below)
+
+  // ── Token-based auth for portal factura requests ──
+  } else if (auth.id === 'portal_factura' && (table === 'facturas' || table === 'pacientes')) {
+    // Validate portal token exists in ventas
+    const check = await supaREST('GET', `ventas?token_portal=eq.${auth.pass}&select=id,folio,paciente_id`, null, {});
+    const venta = check.data && check.data[0];
+    if (!venta) return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Token de portal no válido' }) };
+    // Only allow: insert into facturas OR update datos_fiscales on the linked paciente
+    if (table === 'facturas' && action !== 'insert')
+      return { statusCode: 403, headers: H, body: JSON.stringify({ error: 'Solo se permite crear solicitudes' }) };
+    if (table === 'pacientes' && action !== 'update')
+      return { statusCode: 403, headers: H, body: JSON.stringify({ error: 'Solo se permite actualizar datos fiscales' }) };
+    // Auth OK — proceed (skip normal user auth below)
+
   } else {
   // ── Authenticate user ──
   const custom = await getCustomUsers();
