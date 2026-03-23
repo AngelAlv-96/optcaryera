@@ -1263,7 +1263,7 @@ async function asistRenderExpedientes() {
       html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)"><th style="text-align:left;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Periodo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Tipo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Firma</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Fecha firma</th><th style="padding:4px"></th></tr></thead><tbody>';
       firmas.forEach(function(f) {
         var isSigned = !!f.firmado_at;
-        var isActa = f.token && f.periodo_inicio; // check if it has faltas data — we can detect from the URL params stored
+        var isActa = f.nota && f.nota.startsWith('acta|');
         var signBadge = isSigned
           ? '<span style="background:rgba(74,240,200,0.15);color:#4af0c8;padding:1px 6px;border-radius:8px;font-size:9px">Firmado</span>'
           : '<span style="background:rgba(245,166,35,0.15);color:#f5a623;padding:1px 6px;border-radius:8px;font-size:9px">Pendiente</span>';
@@ -1271,7 +1271,7 @@ async function asistRenderExpedientes() {
 
         html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
         html += '<td style="padding:4px">' + f.periodo_inicio + ' al ' + f.periodo_fin + '</td>';
-        html += '<td style="padding:4px;text-align:center"><span style="font-size:9px">Asistencia</span></td>';
+        html += '<td style="padding:4px;text-align:center"><span style="font-size:9px;' + (isActa ? 'color:#e74c3c;font-weight:600' : '') + '">' + (isActa ? 'Acta falta' : 'Asistencia') + '</span></td>';
         html += '<td style="padding:4px;text-align:center">' + signBadge + '</td>';
         html += '<td style="padding:4px;text-align:center;font-size:9px">' + fechaFirma + '</td>';
         html += '<td style="padding:4px;text-align:right">';
@@ -1694,14 +1694,16 @@ async function asistEjecutarEnvio() {
       var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
       var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-      await db.from('asistencia_firmas').insert({
+      var insertData = {
         uid: emp.uid,
         periodo_inicio: inicio,
         periodo_fin: fin,
         token: token,
         token_expires: expires,
         enviado_at: new Date().toISOString()
-      });
+      };
+      if (tipo === 'acta') insertData.nota = 'acta|' + faltasStr;
+      await db.from('asistencia_firmas').insert(insertData);
 
       // Build link
       var link = window.location.origin + '/firma-asistencia?token=' + token;
@@ -1965,14 +1967,23 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   var regPatronal = exp.reg_patronal || '';
   var domicilio = exp.domicilio_fiscal || 'Ciudad Juarez, Chihuahua, Mexico';
 
+  // Detect if this is an acta de falta
+  var isActa = _asistCurrentFirma && _asistCurrentFirma.nota && _asistCurrentFirma.nota.startsWith('acta|');
+  var actaFaltas = isActa ? _asistCurrentFirma.nota.split('|')[1].split(',').map(function(f) { return f.trim(); }).filter(Boolean) : [];
+
   var html = '';
   // Header — empresa
-  html += '<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:12px">';
+  html += '<div style="text-align:center;border-bottom:2px solid ' + (isActa ? '#c00' : '#000') + ';padding-bottom:10px;margin-bottom:12px">';
   html += '<div style="font-size:14pt;font-weight:bold;letter-spacing:1px">' + razonSocial.toUpperCase() + '</div>';
-  if (rfcPatronal) html += '<div style="font-size:9pt">RFC: ' + rfcPatronal + (regPatronal ? ' &nbsp;|&nbsp; Reg. Patronal IMSS: ' + regPatronal : '') + '</div>';
-  html += '<div style="font-size:9pt;color:#555">' + domicilio + '</div>';
-  html += '<div style="font-size:12pt;font-weight:bold;margin-top:8px">CONTROL DE ASISTENCIA</div>';
-  html += '<div style="font-size:9pt;color:#555">Art. 804 Fraccion III — Ley Federal del Trabajo</div>';
+  if (rfcPatronal) html += '<div style="font-size:10pt">RFC: ' + rfcPatronal + (regPatronal ? ' &nbsp;|&nbsp; Reg. Patronal IMSS: ' + regPatronal : '') + '</div>';
+  html += '<div style="font-size:10pt;color:#555">' + domicilio + '</div>';
+  if (isActa) {
+    html += '<div style="font-size:16pt;font-weight:bold;margin-top:10px;color:#c00;letter-spacing:2px">ACTA DE FALTA INJUSTIFICADA</div>';
+    html += '<div style="font-size:10pt;color:#555">Art. 47 Fraccion X — Ley Federal del Trabajo</div>';
+  } else {
+    html += '<div style="font-size:13pt;font-weight:bold;margin-top:8px">CONTROL DE ASISTENCIA</div>';
+    html += '<div style="font-size:10pt;color:#555">Art. 804 Fraccion III — Ley Federal del Trabajo</div>';
+  }
   html += '</div>';
 
   // Employee info — datos LFT
@@ -1997,6 +2008,35 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '<tr><td style="padding:2px 0"><b>Periodo:</b> ' + range.start + ' al ' + range.end + '</td>';
   html += '<td style="padding:2px 0"><b>Fecha de emision:</b> ' + _asistHoyLocal() + '</td></tr>';
   html += '</table>';
+
+  if (isActa && actaFaltas.length > 0) {
+    // ── ACTA FORMAT: fechas de falta + declaración formal ──
+    html += '<div style="border:2px solid #c00;border-radius:4px;padding:12px;margin-bottom:15px">';
+    html += '<div style="font-size:11pt;font-weight:bold;color:#c00;margin-bottom:8px">FECHA(S) DE INASISTENCIA</div>';
+    actaFaltas.forEach(function(f) {
+      var fechaLarga = new Date(f + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      html += '<div style="padding:6px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between">';
+      html += '<span style="font-weight:700;font-size:11pt">' + fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1) + '</span>';
+      html += '<span style="color:#c00;font-weight:bold;font-size:10pt">Falta injustificada</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Declaración formal
+    html += '<div style="font-size:11pt;line-height:1.8;margin-bottom:15px">';
+    html += '<p style="margin-bottom:10px">En la ciudad de <b>' + domicilio.split(',')[0] + '</b>, a <b>' + new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</b>, se levanta la presente acta administrativa para hacer constar que:</p>';
+    html += '<p style="margin-bottom:10px">El(la) trabajador(a) <b>' + nombreCompleto + '</b>, adscrito(a) a la sucursal <b>' + empSuc + '</b>, <b style="color:#c00">no se presento a laborar</b> en la(s) fecha(s) arriba senalada(s), sin contar con autorizacion previa ni justificacion alguna para su ausencia.</p>';
+    html += '<p style="margin-bottom:8px">Se hace de su conocimiento que:</p>';
+    html += '<div style="border-left:3px solid #c00;padding:8px 14px;margin:6px 0 10px">';
+    html += '<p style="margin-bottom:6px"><b>1.</b> La falta de asistencia injustificada constituye un incumplimiento a las obligaciones laborales.</p>';
+    html += '<p style="margin-bottom:6px"><b>2.</b> De conformidad con el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, la acumulacion de <b>mas de 3 faltas en un periodo de 30 dias sin permiso del patron o sin causa justificada</b>, es causal de rescision de la relacion de trabajo sin responsabilidad para el patron.</p>';
+    html += '<p><b>3.</b> La presente acta se integra al expediente laboral del trabajador conforme al <b>Articulo 804, Fraccion III</b> de la LFT.</p>';
+    html += '</div>';
+    html += '<p>El(la) trabajador(a) manifiesta estar enterado(a) del contenido de la presente acta y firma de conformidad.</p>';
+    html += '</div>';
+
+  } else {
+  // ── REPORTE FORMAT: tabla de asistencia normal ──
 
   // Attendance table
   html += '<table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:15px">';
@@ -2054,6 +2094,7 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Retardos</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center">' + totalRetardos + ' (' + totalRetMin + ' min)</td></tr>';
   html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Faltas</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center;color:' + (totalFaltas > 0 ? '#c00' : '') + '">' + totalFaltas + '</td></tr>';
   html += '</table>';
+  } // end else (reporte format)
 
   // Signature section
   html += '<div style="margin-top:30px;display:flex;justify-content:space-between;gap:40px">';
