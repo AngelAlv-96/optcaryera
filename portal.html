@@ -460,7 +460,7 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
         <div><label style="font-size:10px;color:var(--muted)">Forma de pago</label><select id="pf-forma" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:11px;box-sizing:border-box"><option value="01">01 - Efectivo</option><option value="03">03 - Transferencia</option><option value="04">04 - Tarjeta crédito</option><option value="28">28 - Tarjeta débito</option><option value="99">99 - Por definir</option></select></div>
       </div>
       <div style="margin-top:8px"><label style="font-size:10px;color:var(--muted)">Email para enviar factura</label><input type="email" id="pf-email" placeholder="tu@email.com" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:13px;box-sizing:border-box"></div>
-      <button id="btn-pf-emitir" onclick="emitirFacturaPortal()" style="display:block;width:100%;text-align:center;margin-top:12px;padding:14px;background:linear-gradient(135deg,#d4a24a,#b8892e);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">🧾 Emitir factura</button>
+      <button id="btn-pf-emitir" onclick="emitirFacturaPortal()" style="display:block;width:100%;text-align:center;margin-top:12px;padding:14px;background:linear-gradient(135deg,#d4a24a,#b8892e);border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer">🧾 Solicitar factura</button>
       <div id="pf-result" style="margin-top:10px"></div>
     </div></div>
 
@@ -579,43 +579,56 @@ async function emitirFacturaPortal() {
   var btn = document.getElementById('btn-pf-emitir');
   if (btn.disabled) return;
   btn.disabled = true;
-  btn.textContent = '⏳ Emitiendo factura...';
+  btn.textContent = '⏳ Enviando solicitud...';
 
   try {
     var rfc = (document.getElementById('pf-rfc').value || '').trim().toUpperCase();
     var razon = (document.getElementById('pf-razon').value || '').trim();
     var regimen = document.getElementById('pf-regimen').value;
     var cp = (document.getElementById('pf-cp').value || '').trim();
-    var uso = document.getElementById('pf-uso').value;
-    var forma = document.getElementById('pf-forma').value;
     var email = (document.getElementById('pf-email').value || '').trim();
 
-    if (!rfc || !razon || !regimen || !cp) {
-      document.getElementById('pf-result').innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px">Completa RFC, razón social, régimen y CP</div>';
+    if (!rfc || !razon) {
+      document.getElementById('pf-result').innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px">Completa al menos RFC y razón social</div>';
       return;
     }
 
-    var resp = await fetch('/.netlify/functions/factura', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'crear',
-        venta_folio: _portalVenta.folio,
-        cliente: { tax_id: rfc, legal_name: razon, tax_system: regimen, zip: cp, use: uso, email: email || undefined },
-        forma_pago: forma,
-        auth: { id: 'portal', pass: _portalVenta.token_portal }
-      })
+    // Check if already requested
+    var { data: existing } = await db.from('facturas').select('id,status').eq('venta_folio', _portalVenta.folio).limit(1);
+    if (existing && existing.length > 0) {
+      var st = existing[0].status;
+      if (st === 'valid') {
+        document.getElementById('pf-result').innerHTML = '<div style="padding:12px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:10px;text-align:center;color:#4ade80;font-size:12px">✅ Esta venta ya tiene factura emitida. Contacta a la óptica para obtener tu PDF/XML.</div>';
+        return;
+      }
+      if (st === 'pending') {
+        document.getElementById('pf-result').innerHTML = '<div style="padding:12px;background:rgba(245,166,35,0.1);border:1px solid rgba(245,166,35,0.2);border-radius:10px;text-align:center;color:#f5a623;font-size:12px">📋 Ya hay una solicitud de factura para esta venta. Está siendo procesada.</div>';
+        return;
+      }
+    }
+
+    // Save as pending request
+    await db.from('facturas').insert({
+      venta_folio: _portalVenta.folio,
+      facturapi_id: 'pending_portal_' + Date.now(),
+      rfc_cliente: rfc,
+      razon_social: razon,
+      total: Number(_portalVenta.total) || 0,
+      status: 'pending'
     });
 
-    var data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Error al emitir factura');
+    // Save fiscal data to patient
+    if (_portalVenta.paciente_id) {
+      try {
+        await db.from('pacientes').update({
+          datos_fiscales: { rfc: rfc, razon_social: razon, regimen_fiscal: regimen, cp_fiscal: cp, email: email }
+        }).eq('id', _portalVenta.paciente_id);
+      } catch(e) {}
+    }
 
     document.getElementById('pf-result').innerHTML = '<div style="padding:12px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);border-radius:10px;text-align:center">' +
-      '<div style="font-size:14px;font-weight:700;color:#4ade80;margin-bottom:8px">✅ Factura emitida</div>' +
-      '<div style="display:flex;gap:8px;justify-content:center">' +
-      '<a href="/.netlify/functions/factura?action=pdf&id=' + data.facturapi_id + '" target="_blank" style="padding:8px 16px;background:#3b82f6;color:white;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">📄 Descargar PDF</a>' +
-      '<a href="/.netlify/functions/factura?action=xml&id=' + data.facturapi_id + '" target="_blank" style="padding:8px 16px;background:#6366f1;color:white;border-radius:8px;text-decoration:none;font-size:12px;font-weight:600">📋 Descargar XML</a>' +
-      '</div></div>';
+      '<div style="font-size:14px;font-weight:700;color:#4ade80;margin-bottom:4px">✅ Solicitud enviada</div>' +
+      '<div style="font-size:12px;color:var(--muted)">Tu factura será emitida por nuestro equipo de contabilidad. Te notificaremos cuando esté lista.</div></div>';
   } catch(err) {
     document.getElementById('pf-result').innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px">' + err.message + '</div>';
   } finally {
