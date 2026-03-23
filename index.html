@@ -2778,6 +2778,9 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="caja" checked> Caja</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="vision-segura" checked> Visi&oacute;n Segura</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="compras-lab" checked> Compras Lab</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="lentes-contacto" checked> Lentes de Contacto</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="comisiones" checked> Comisiones</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="asistencia" checked> Recursos Humanos</label>
                 </div>
               </div>
               <div style="margin-top:12px">
@@ -4943,22 +4946,22 @@ function setupApp(u) {
       document.getElementById('nav-admin-config').style.display = 'none';
       document.getElementById('nav-admin-clari').style.display = 'none';
       document.getElementById('nav-admin-landings').style.display = 'none';
-      document.getElementById('nav-report-comisiones').style.display = u.rol === 'gerencia' ? '' : 'none';
-      document.getElementById('nav-report-asistencia').style.display = u.rol === 'gerencia' ? '' : 'none';
+      document.getElementById('nav-report-comisiones').style.display = 'none';
+      document.getElementById('nav-report-asistencia').style.display = 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
-      var roleControlled = ['configuracion','clari','landings','comisiones','asistencia'];
-      var alwaysVisible = ['lentes-contacto'];
+      var roleControlled = ['configuracion','clari','landings'];
+
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
         if (m && !roleControlled.includes(m[1])) {
-          ni.style.display = (u.permisos.includes(m[1]) || alwaysVisible.includes(m[1])) ? '' : 'none';
+          ni.style.display = u.permisos.includes(m[1]) ? '' : 'none';
         }
       });
     } else if (u.rol === 'sucursal') {
       var defaultSucPerms = ['dashboard','pacientes','preregistro','historia','orden','laboratorio','garantias','ventas','productos','historial-ventas','creditos','caja','vision-segura','lentes-contacto'];
-      var roleControlled2 = ['configuracion','clari','landings','comisiones'];
+      var roleControlled2 = ['configuracion','clari','landings'];
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
         if (m && !roleControlled2.includes(m[1])) {
