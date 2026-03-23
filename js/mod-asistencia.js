@@ -1341,7 +1341,7 @@ async function asistVerDocumento(uid, firmaId) {
   html += '</div>';
 
   // Preview area
-  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:24px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:12pt;line-height:1.5">';
+  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:20px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:11pt;line-height:1.4">';
   html += _asistBuildReporteHTML(empName, empSuc, _asistReporteRange, records, _asistReporteFirmaEmp, null);
   html += '</div>';
 
@@ -1925,7 +1925,7 @@ async function asistGenerarReporte(uid) {
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">Reporte de Asistencia — ' + empName + '</h2>';
 
   // Preview area
-  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:24px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:12pt;line-height:1.5">';
+  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:20px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:11pt;line-height:1.4">';
   html += _asistBuildReporteHTML(empName, empSuc, _asistReporteRange, records, _asistReporteFirmaEmp, null);
   html += '</div>';
 
@@ -1971,13 +1971,13 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
 
   var html = '';
   // Header — empresa
-  html += '<div style="text-align:center;border-bottom:2px solid ' + (isActa ? '#c00' : '#000') + ';padding-bottom:10px;margin-bottom:12px">';
-  html += '<div style="font-size:14pt;font-weight:bold;letter-spacing:1px">' + razonSocial.toUpperCase() + '</div>';
-  if (rfcPatronal) html += '<div style="font-size:10pt">RFC: ' + rfcPatronal + (regPatronal ? ' &nbsp;|&nbsp; Reg. Patronal IMSS: ' + regPatronal : '') + '</div>';
-  html += '<div style="font-size:10pt;color:#555">' + domicilio + '</div>';
+  html += '<div style="text-align:center;border-bottom:2px solid ' + (isActa ? '#c00' : '#000') + ';padding-bottom:6px;margin-bottom:8px">';
+  html += '<div style="font-size:12pt;font-weight:bold;letter-spacing:1px">' + razonSocial.toUpperCase() + '</div>';
+  if (rfcPatronal) html += '<div style="font-size:9pt">RFC: ' + rfcPatronal + (regPatronal ? ' &nbsp;|&nbsp; Reg. Patronal IMSS: ' + regPatronal : '') + '</div>';
+  html += '<div style="font-size:9pt;color:#555">' + domicilio + '</div>';
   if (isActa) {
-    html += '<div style="font-size:16pt;font-weight:bold;margin-top:10px;color:#c00;letter-spacing:2px">ACTA DE FALTA INJUSTIFICADA</div>';
-    html += '<div style="font-size:10pt;color:#555">Art. 47 Fraccion X — Ley Federal del Trabajo</div>';
+    html += '<div style="font-size:14pt;font-weight:bold;margin-top:8px;color:#c00;letter-spacing:2px">ACTA DE FALTA INJUSTIFICADA</div>';
+    html += '<div style="font-size:9pt;color:#555">Art. 47 Fraccion X — Ley Federal del Trabajo</div>';
   } else {
     html += '<div style="font-size:13pt;font-weight:bold;margin-top:8px">CONTROL DE ASISTENCIA</div>';
     html += '<div style="font-size:10pt;color:#555">Art. 804 Fraccion III — Ley Federal del Trabajo</div>';
@@ -1985,49 +1985,50 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '</div>';
 
   // Employee info — datos LFT
-  html += '<table style="width:100%;font-size:10.5pt;margin-bottom:12px;border-collapse:collapse">';
-  html += '<tr><td style="padding:2px 0;width:50%"><b>Nombre del trabajador:</b> ' + nombreCompleto + '</td>';
-  html += '<td style="padding:2px 0"><b>Sucursal:</b> ' + empSuc + '</td></tr>';
+  var _tc = 'color:#000;'; // force dark text on white bg
+  html += '<table style="width:100%;font-size:9.5pt;margin-bottom:10px;border-collapse:collapse;' + _tc + '">';
+  html += '<tr><td style="padding:2px 0;width:50%;' + _tc + '"><b>Nombre del trabajador:</b> ' + nombreCompleto + '</td>';
+  html += '<td style="padding:2px 0;' + _tc + '"><b>Sucursal:</b> ' + empSuc + '</td></tr>';
   if (exp.curp || exp.rfc) {
-    html += '<tr><td style="padding:2px 0"><b>CURP:</b> ' + (exp.curp || '—') + '</td>';
-    html += '<td style="padding:2px 0"><b>RFC:</b> ' + (exp.rfc || '—') + '</td></tr>';
+    html += '<tr><td style="padding:2px 0;' + _tc + '"><b>CURP:</b> ' + (exp.curp || '—') + '</td>';
+    html += '<td style="padding:2px 0;' + _tc + '"><b>RFC:</b> ' + (exp.rfc || '—') + '</td></tr>';
   }
   if (exp.nss) {
-    html += '<tr><td style="padding:2px 0"><b>NSS (IMSS):</b> ' + exp.nss + '</td>';
-    html += '<td style="padding:2px 0"><b>Puesto:</b> ' + (exp.puesto || '—') + '</td></tr>';
+    html += '<tr><td style="padding:2px 0;' + _tc + '"><b>NSS (IMSS):</b> ' + exp.nss + '</td>';
+    html += '<td style="padding:2px 0;' + _tc + '"><b>Puesto:</b> ' + (exp.puesto || '—') + '</td></tr>';
   } else if (exp.puesto) {
-    html += '<tr><td style="padding:2px 0"><b>Puesto:</b> ' + exp.puesto + '</td>';
-    html += '<td style="padding:2px 0"><b>Departamento:</b> ' + (exp.departamento || '—') + '</td></tr>';
+    html += '<tr><td style="padding:2px 0;' + _tc + '"><b>Puesto:</b> ' + exp.puesto + '</td>';
+    html += '<td style="padding:2px 0;' + _tc + '"><b>Departamento:</b> ' + (exp.departamento || '—') + '</td></tr>';
   }
   if (exp.fecha_ingreso || exp.jornada) {
-    html += '<tr><td style="padding:2px 0"><b>Fecha de ingreso:</b> ' + (exp.fecha_ingreso || '—') + '</td>';
-    html += '<td style="padding:2px 0"><b>Jornada:</b> ' + (exp.jornada || 'Diurna') + '</td></tr>';
+    html += '<tr><td style="padding:2px 0;' + _tc + '"><b>Fecha de ingreso:</b> ' + (exp.fecha_ingreso || '—') + '</td>';
+    html += '<td style="padding:2px 0;' + _tc + '"><b>Jornada:</b> ' + (exp.jornada || 'Diurna') + '</td></tr>';
   }
-  html += '<tr><td style="padding:2px 0"><b>Periodo:</b> ' + range.start + ' al ' + range.end + '</td>';
-  html += '<td style="padding:2px 0"><b>Fecha de emision:</b> ' + _asistHoyLocal() + '</td></tr>';
+  html += '<tr><td style="padding:2px 0;' + _tc + '"><b>Periodo:</b> ' + range.start + ' al ' + range.end + '</td>';
+  html += '<td style="padding:2px 0;' + _tc + '"><b>Fecha de emision:</b> ' + _asistHoyLocal() + '</td></tr>';
   html += '</table>';
 
   if (isActa && actaFaltas.length > 0) {
     // ── ACTA FORMAT: fechas de falta + declaración formal ──
-    html += '<div style="border:2px solid #c00;border-radius:4px;padding:12px;margin-bottom:15px">';
-    html += '<div style="font-size:11pt;font-weight:bold;color:#c00;margin-bottom:8px">FECHA(S) DE INASISTENCIA</div>';
+    html += '<div style="border:2px solid #c00;border-radius:4px;padding:8px 12px;margin-bottom:10px">';
+    html += '<div style="font-size:10pt;font-weight:bold;color:#c00;margin-bottom:4px">FECHA(S) DE INASISTENCIA</div>';
     actaFaltas.forEach(function(f) {
       var fechaLarga = new Date(f + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      html += '<div style="padding:6px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between">';
-      html += '<span style="font-weight:700;font-size:11pt">' + fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1) + '</span>';
-      html += '<span style="color:#c00;font-weight:bold;font-size:10pt">Falta injustificada</span>';
+      html += '<div style="padding:4px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between">';
+      html += '<span style="font-weight:700;font-size:10pt">' + fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1) + '</span>';
+      html += '<span style="color:#c00;font-weight:bold;font-size:9pt">Falta injustificada</span>';
       html += '</div>';
     });
     html += '</div>';
 
     // Declaración formal
-    html += '<div style="font-size:11pt;line-height:1.8;margin-bottom:15px">';
-    html += '<p style="margin-bottom:10px">En la ciudad de <b>' + domicilio.split(',')[0] + '</b>, a <b>' + new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</b>, se levanta la presente acta administrativa para hacer constar que:</p>';
-    html += '<p style="margin-bottom:10px">El(la) trabajador(a) <b>' + nombreCompleto + '</b>, adscrito(a) a la sucursal <b>' + empSuc + '</b>, <b style="color:#c00">no se presento a laborar</b> en la(s) fecha(s) arriba senalada(s), sin contar con autorizacion previa ni justificacion alguna para su ausencia.</p>';
-    html += '<p style="margin-bottom:8px">Se hace de su conocimiento que:</p>';
-    html += '<div style="border-left:3px solid #c00;padding:8px 14px;margin:6px 0 10px">';
-    html += '<p style="margin-bottom:6px"><b>1.</b> La falta de asistencia injustificada constituye un incumplimiento a las obligaciones laborales.</p>';
-    html += '<p style="margin-bottom:6px"><b>2.</b> De conformidad con el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, la acumulacion de <b>mas de 3 faltas en un periodo de 30 dias sin permiso del patron o sin causa justificada</b>, es causal de rescision de la relacion de trabajo sin responsabilidad para el patron.</p>';
+    html += '<div style="font-size:10pt;line-height:1.5;margin-bottom:10px">';
+    html += '<p style="margin-bottom:6px">En la ciudad de <b>Cd. Juarez, Chih.</b>, a <b>' + new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</b>, se levanta la presente acta administrativa para hacer constar que:</p>';
+    html += '<p style="margin-bottom:6px">El(la) trabajador(a) <b>' + nombreCompleto + '</b>, adscrito(a) a la sucursal <b>' + empSuc + '</b>, <b style="color:#c00">no se presento a laborar</b> en la(s) fecha(s) arriba senalada(s), sin contar con autorizacion previa ni justificacion alguna para su ausencia.</p>';
+    html += '<p style="margin-bottom:4px">Se hace de su conocimiento que:</p>';
+    html += '<div style="border-left:3px solid #c00;padding:4px 12px;margin:4px 0 8px">';
+    html += '<p style="margin-bottom:4px"><b>1.</b> La falta de asistencia injustificada constituye un incumplimiento a las obligaciones laborales.</p>';
+    html += '<p style="margin-bottom:4px"><b>2.</b> De conformidad con el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, la acumulacion de <b>mas de 3 faltas en un periodo de 30 dias sin permiso del patron o sin causa justificada</b>, es causal de rescision de la relacion de trabajo sin responsabilidad para el patron.</p>';
     html += '<p><b>3.</b> La presente acta se integra al expediente laboral del trabajador conforme al <b>Articulo 804, Fraccion III</b> de la LFT.</p>';
     html += '</div>';
     html += '<p>El(la) trabajador(a) manifiesta estar enterado(a) del contenido de la presente acta y firma de conformidad.</p>';
@@ -2094,31 +2095,35 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '</table>';
   } // end else (reporte format)
 
-  // Signature section
-  html += '<div style="margin-top:30px;display:flex;justify-content:space-between;gap:40px">';
+  // Signature section — 3 columns: firma digital (left) + firma trabajador (center) + firma patron (right)
+  html += '<div style="margin-top:15px;display:flex;justify-content:space-between;gap:20px;align-items:flex-end">';
 
-  // Employee signature
-  html += '<div style="flex:1;text-align:center">';
+  // Digital signature (left, own field)
+  html += '<div style="text-align:center;width:140px;flex-shrink:0">';
   if (firmaEmp) {
-    html += '<img src="' + firmaEmp + '" style="max-width:200px;max-height:80px;display:block;margin:0 auto 4px">';
-    html += '<div style="font-size:8pt;color:#888">Firma digital</div>';
+    html += '<img src="' + firmaEmp + '" style="max-width:130px;max-height:55px;display:block;margin:0 auto 2px">';
   }
-  html += '<div style="min-height:60px"></div>';
-  html += '<div style="border-top:1px solid #000;padding-top:4px">';
-  html += '<div style="font-size:10pt;font-weight:bold">' + empName + '</div>';
-  html += '<div style="font-size:8pt;color:#555">Firma del trabajador</div>';
+  if (firmaPatron) {
+    html += '<img src="' + firmaPatron + '" style="max-width:130px;max-height:55px;display:block;margin:4px auto 2px">';
+  }
+  html += '<div style="border-top:1px solid #999;padding-top:2px;margin-top:4px">';
+  html += '<div style="font-size:7pt;color:#888">Firma(s) digital(es)</div>';
   html += '</div></div>';
 
-  // Patron signature
+  // Employee physical signature (center)
   html += '<div style="flex:1;text-align:center">';
-  if (firmaPatron) {
-    html += '<img src="' + firmaPatron + '" style="max-width:200px;max-height:80px;display:block;margin:0 auto 4px">';
-    html += '<div style="font-size:8pt;color:#888">Firma digital</div>';
-  }
-  html += '<div style="min-height:60px"></div>';
-  html += '<div style="border-top:1px solid #000;padding-top:4px">';
-  html += '<div style="font-size:10pt;font-weight:bold">' + (exp.razon_social || 'Representante de la empresa') + '</div>';
-  html += '<div style="font-size:8pt;color:#555">Firma del patron o representante legal</div>';
+  html += '<div style="min-height:40px"></div>';
+  html += '<div style="border-top:1px solid #000;padding-top:3px">';
+  html += '<div style="font-size:9pt;font-weight:bold">' + empName + '</div>';
+  html += '<div style="font-size:7pt;color:#555">Firma del trabajador</div>';
+  html += '</div></div>';
+
+  // Patron physical signature (right)
+  html += '<div style="flex:1;text-align:center">';
+  html += '<div style="min-height:40px"></div>';
+  html += '<div style="border-top:1px solid #000;padding-top:3px">';
+  html += '<div style="font-size:9pt;font-weight:bold">' + (exp.razon_social || 'Representante de la empresa') + '</div>';
+  html += '<div style="font-size:7pt;color:#555">Firma del patron o representante legal</div>';
   html += '</div></div>';
 
   html += '</div>';
@@ -2127,10 +2132,10 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   var firmaToken = (_asistCurrentFirma && _asistCurrentFirma.token) ? _asistCurrentFirma.token : '';
   var firmaFecha = (_asistCurrentFirma && _asistCurrentFirma.firmado_at) ? new Date(_asistCurrentFirma.firmado_at).toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
   if (firmaToken || firmaFecha) {
-    html += '<div style="margin-top:20px;border:2px solid #999;border-radius:6px;padding:8px 12px;font-size:8pt;color:#555;display:flex;align-items:center;gap:12px">';
-    html += '<div style="font-size:14pt;color:#999">&#128274;</div>';
+    html += '<div style="margin-top:10px;border:1px solid #999;border-radius:4px;padding:5px 10px;font-size:7pt;color:#555;display:flex;align-items:center;gap:8px">';
+    html += '<div style="font-size:11pt;color:#999">&#128274;</div>';
     html += '<div>';
-    html += '<div style="font-weight:bold;font-size:9pt;color:#333">Sello de verificacion digital</div>';
+    html += '<div style="font-weight:bold;font-size:8pt;color:#333">Sello de verificacion digital</div>';
     if (firmaFecha) html += '<div>Fecha y hora de firma: <b>' + firmaFecha + '</b></div>';
     if (firmaToken) html += '<div>Token: <span style="font-family:monospace;letter-spacing:1px">' + firmaToken.substring(0, 12) + '...' + firmaToken.substring(firmaToken.length - 8) + '</span></div>';
     html += '<div>Verificar en: optcaryera.netlify.app/firma-asistencia</div>';
@@ -2138,7 +2143,7 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   }
 
   // Footer
-  html += '<div style="margin-top:12px;text-align:center;font-size:8pt;color:#888;border-top:1px solid #ddd;padding-top:8px">';
+  html += '<div style="margin-top:6px;text-align:center;font-size:7pt;color:#888;border-top:1px solid #ddd;padding-top:4px">';
   html += 'Documento generado el ' + _asistHoyLocal() + ' — Opticas Car & Era — Art. 804 Frac. III LFT';
   html += '</div>';
 
@@ -2201,7 +2206,7 @@ function asistImprimirReporte() {
     var records = (res.data || []);
     var finalHTML = _asistBuildReporteHTML(empName, empSuc, _asistReporteRange, records, _asistReporteFirmaEmp, firmaPatron);
 
-    var CARTA_CSS = '@page { size: letter; margin: 15mm; } * { margin:0; padding:0; box-sizing:border-box; } body { font-family: "Times New Roman", serif; font-size: 11pt; color: #000; line-height: 1.4; -webkit-print-color-adjust: exact; print-color-adjust: exact; }';
+    var CARTA_CSS = '@page { size: letter; margin: 12mm 15mm; } * { margin:0; padding:0; box-sizing:border-box; } body { font-family: "Times New Roman", serif; font-size: 10pt; color: #000; line-height: 1.3; -webkit-print-color-adjust: exact; print-color-adjust: exact; }';
     var fullHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' + CARTA_CSS + '</style></head><body>' + finalHTML + '</body></html>';
 
     if (typeof silentPrintHTML === 'function') {
