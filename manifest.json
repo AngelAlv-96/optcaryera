@@ -1,0 +1,9 @@
+{
+  "name": "Car & Era \u2014 \u00d3ptica",
+  "short_name": "Car & Era",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "description": "Sistema de gesti\u00f3n \u00d3pticas Car & Era"
+}
