@@ -452,7 +452,7 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
         <div><label style="font-size:10px;color:var(--muted)">Razón social</label><input type="text" id="pf-razon" placeholder="Nombre o empresa" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:13px;box-sizing:border-box"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-        <div><label style="font-size:10px;color:var(--muted)">Régimen fiscal</label><select id="pf-regimen" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:11px;box-sizing:border-box"><option value="">Seleccionar...</option><option value="601">601 - General de Ley PM</option><option value="605">605 - Sueldos y Salarios</option><option value="606">606 - Arrendamiento</option><option value="612">612 - Actividad Empresarial PF</option><option value="616">616 - Sin obligaciones fiscales</option><option value="625">625 - RESICO PF</option><option value="626">626 - RESICO PM</option></select></div>
+        <div><label style="font-size:10px;color:var(--muted)">Régimen fiscal</label><select id="pf-regimen" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:11px;box-sizing:border-box"><option value="">Seleccionar...</option><option value="601">601 - General de Ley PM</option><option value="603">603 - PM con Fines no Lucrativos</option><option value="605">605 - Sueldos y Salarios</option><option value="606">606 - Arrendamiento</option><option value="612">612 - Actividad Empresarial PF</option><option value="616">616 - Sin obligaciones fiscales</option><option value="621">621 - Incorporación Fiscal</option><option value="625">625 - RESICO PF</option><option value="626">626 - RESICO PM</option></select></div>
         <div><label style="font-size:10px;color:var(--muted)">Código postal fiscal</label><input type="text" id="pf-cp" placeholder="32000" maxlength="5" style="width:100%;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:13px;box-sizing:border-box"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
@@ -607,22 +607,41 @@ async function emitirFacturaPortal() {
       }
     }
 
-    // Save as pending request
-    await db.from('facturas').insert({
-      venta_folio: _portalVenta.folio,
-      facturapi_id: 'pending_portal_' + Date.now(),
-      rfc_cliente: rfc,
-      razon_social: razon,
-      total: Number(_portalVenta.total) || 0,
-      status: 'pending'
+    // Save as pending request via dbwrite (RLS blocks direct inserts)
+    var insRes = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'facturas', action: 'insert',
+        data: {
+          venta_folio: _portalVenta.folio,
+          facturapi_id: 'pending_portal_' + Date.now(),
+          rfc_cliente: rfc,
+          razon_social: razon,
+          total: Number(_portalVenta.total) || 0,
+          status: 'pending'
+        },
+        auth: { id: 'portal_factura', pass: token }
+      })
     });
+    if (!insRes.ok) {
+      var errData = await insRes.json().catch(function() { return {}; });
+      throw new Error(errData.error || 'Error al guardar solicitud');
+    }
 
-    // Save fiscal data to patient
+    // Save fiscal data to patient via dbwrite
     if (_portalVenta.paciente_id) {
       try {
-        await db.from('pacientes').update({
-          datos_fiscales: { rfc: rfc, razon_social: razon, regimen_fiscal: regimen, cp_fiscal: cp, email: email }
-        }).eq('id', _portalVenta.paciente_id);
+        await fetch('/.netlify/functions/dbwrite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            table: 'pacientes', action: 'update',
+            data: { datos_fiscales: { rfc: rfc, razon_social: razon, regimen_fiscal: regimen, cp_fiscal: cp, email: email } },
+            filters: [{ col: 'id', op: 'eq', val: _portalVenta.paciente_id }],
+            auth: { id: 'portal_factura', pass: token }
+          })
+        });
       } catch(e) {}
     }
 

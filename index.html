@@ -1229,6 +1229,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <div class="nav-item" id="nav-report-contabilidad" style="display:none" onclick="go('contabilidad')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 2v20h16"/><path d="M4 18l4-4 4 2 4-6 4-2"/></svg>
           Contabilidad
+          <span class="nav-badge" id="badge-facturas" style="display:none">0</span>
         </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
@@ -6024,6 +6025,12 @@ async function loadDash() {
     setTimeout(function() {
       db.from('lc_seguimiento').select('id',{count:'exact',head:true}).eq('estado','activo').lte('fecha_recompra', today).then(function(r) {
         var badge = document.getElementById('badge-lc-crm');
+        var cnt = r?.count || 0;
+        if (badge) { badge.style.display = cnt > 0 ? '' : 'none'; badge.textContent = cnt; }
+      });
+      // Badge facturas pendientes
+      db.from('facturas').select('id',{count:'exact',head:true}).eq('status','pending').then(function(r) {
+        var badge = document.getElementById('badge-facturas');
         var cnt = r?.count || 0;
         if (badge) { badge.style.display = cnt > 0 ? '' : 'none'; badge.textContent = cnt; }
       });
@@ -19465,7 +19472,7 @@ async function calcularComisiones() {
 <script src="js/mod-creditos.js?v=125"></script>
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=169"></script>
-<script src="js/mod-contabilidad.js?v=170"></script>
+<script src="js/mod-contabilidad.js?v=174"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->

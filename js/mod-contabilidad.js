@@ -732,20 +732,26 @@ var _factCatalogos = {
   ]
 };
 
+// Store emitidas for local filtering
+var _factEmitidas = [];
+
 async function contRenderFacturacion() {
   var cont = document.getElementById('cont-content-facturacion');
   if (!cont) return;
   cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando facturas...</div>';
 
   try {
-    var facturasRes = await db.from('facturas').select('*').order('created_at', { ascending: false }).limit(100);
+    var facturasRes = await db.from('facturas').select('*').order('created_at', { ascending: false }).limit(200);
     var allFacturas = facturasRes.data || [];
     var pendientes = allFacturas.filter(function(f) { return f.status === 'pending'; });
-    var facturas = allFacturas.filter(function(f) { return f.status !== 'pending'; });
+    _factEmitidas = allFacturas.filter(function(f) { return f.status !== 'pending'; });
+
+    // Update sidebar badge
+    _contActualizarBadgeFacturas(pendientes.length);
 
     var html = '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px">';
     html += '<button class="btn btn-p btn-sm" onclick="contMostrarFormFactura()" style="font-size:12px">🧾 Registrar factura</button>';
-    html += '<span style="font-size:12px;color:var(--muted)">' + facturas.filter(function(f){return f.status==='valid'}).length + ' emitidas</span>';
+    html += '<span style="font-size:12px;color:var(--muted)">' + _factEmitidas.filter(function(f){return f.status==='valid'}).length + ' emitidas</span>';
     if (pendientes.length > 0) html += '<span style="font-size:11px;background:rgba(245,166,35,0.15);color:#f5a623;padding:3px 8px;border-radius:6px;font-weight:600">' + pendientes.length + ' pendientes</span>';
     html += '</div>';
 
@@ -754,77 +760,154 @@ async function contRenderFacturacion() {
 
     // Pending requests
     if (pendientes.length > 0) {
-      html += '<div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(245,166,35,0.15)">';
-      html += '<h4 style="font-size:13px;margin-bottom:10px;color:#f5a623">📋 Solicitudes pendientes de factura</h4>';
-      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RFC</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RAZÓN SOCIAL</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">SOLICITADO</th>';
-      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS VENTA</th>';
-      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">ACCIÓN</th>';
-      html += '</tr></thead><tbody>';
-
-      // Need to check venta status for each pending
+      // Fetch venta status + paciente data for all pending
       var pendFolios = pendientes.map(function(p) { return p.venta_folio; });
-      var { data: ventasStatus } = await db.from('ventas').select('folio,estado,total').in('folio', pendFolios);
+      var { data: ventasStatus } = await db.from('ventas').select('folio,estado,total,paciente_id,pacientes(nombre,apellidos,datos_fiscales)').in('folio', pendFolios);
       var statusMap = {};
       (ventasStatus || []).forEach(function(v) { statusMap[v.folio] = v; });
+
+      html += '<div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(245,166,35,0.15)">';
+      html += '<h4 style="font-size:13px;margin-bottom:10px;color:#f5a623">📋 Solicitudes pendientes (' + pendientes.length + ')</h4>';
 
       pendientes.forEach(function(p) {
         var vs = statusMap[p.venta_folio] || {};
         var esLiquidada = vs.estado === 'Liquidada';
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-        html += '<td style="padding:8px;font-weight:600">' + p.venta_folio + '</td>';
-        html += '<td style="padding:8px">' + (p.rfc_cliente || '—') + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + (p.razon_social || '—') + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(p.created_at?.substring(0, 10)) + '</td>';
-        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (esLiquidada ? 'background:rgba(74,222,128,0.15);color:#4ade80' : 'background:rgba(245,166,35,0.15);color:#f5a623') + '">' + (vs.estado || '—') + '</span></td>';
-        html += '<td style="padding:8px;text-align:center">';
-        if (esLiquidada) {
-          html += '<button class="btn btn-p" style="padding:3px 10px;font-size:10px;margin-right:4px" onclick="contMarcarEmitidaRapido(' + p.id + ',\'' + p.venta_folio + '\')">✅ Emitida</button>';
-          html += '<button class="btn btn-g" style="padding:3px 8px;font-size:10px;margin-right:4px" onclick="contFacturarDesdeHistorial(\'' + p.venta_folio + '\')">Ver datos</button>';
-        } else {
-          html += '<span style="font-size:10px;color:var(--muted)">Esperando pago</span>';
+        var pac = vs.pacientes || {};
+        var pacNombre = pac.nombre ? (pac.nombre + ' ' + (pac.apellidos || '')).trim() : '';
+        var df = pac.datos_fiscales || {};
+        if (typeof df === 'string') try { df = JSON.parse(df); } catch(e) { df = {}; }
+
+        // Card per pending request
+        html += '<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.04)">';
+        // Header row
+        html += '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="this.parentElement.querySelector(\'.fact-detail\').style.display=this.parentElement.querySelector(\'.fact-detail\').style.display===\'none\'?\'\':\'none\'">';
+        html += '<span style="font-weight:700;font-size:13px;color:var(--beige)">' + p.venta_folio + '</span>';
+        html += '<span style="font-size:11px;color:var(--text)">' + (p.rfc_cliente || '') + '</span>';
+        html += '<span style="font-size:11px;color:var(--muted)">' + (p.razon_social || '') + '</span>';
+        html += '<span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (esLiquidada ? 'background:rgba(74,222,128,0.15);color:#4ade80' : 'background:rgba(245,166,35,0.15);color:#f5a623') + '">' + (vs.estado || '—') + '</span>';
+        if (vs.total) html += '<span style="font-size:11px;color:var(--accent);font-weight:600;margin-left:auto">' + _contMoney(vs.total) + '</span>';
+        html += '<span style="font-size:10px;color:var(--muted)">▼</span>';
+        html += '</div>';
+
+        // Expandable detail
+        html += '<div class="fact-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">';
+        html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:11px;margin-bottom:10px">';
+        if (pacNombre) html += '<div><span style="color:var(--muted);font-size:9px;display:block">PACIENTE</span>' + pacNombre + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">RFC</span>' + (p.rfc_cliente || '—') + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">RAZÓN SOCIAL</span>' + (p.razon_social || '—') + '</div>';
+
+        // Show fiscal data from patient or from request context
+        var regLabel = '';
+        if (df.regimen_fiscal) {
+          var found = (_factCatalogos.regimen || []).find(function(r) { return r.v === df.regimen_fiscal; });
+          regLabel = found ? df.regimen_fiscal + ' - ' + found.t : df.regimen_fiscal;
         }
-        html += ' <button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#f87171" onclick="contEliminarSolicitud(' + p.id + ')">✕</button>';
-        html += '</td>';
-        html += '</tr>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">RÉGIMEN</span>' + (regLabel || '—') + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">CP FISCAL</span>' + (df.cp_fiscal || '—') + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">EMAIL</span>' + (df.email || '—') + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">SOLICITADO</span>' + _contFechaCorta(p.created_at?.substring(0, 10)) + '</div>';
+        html += '<div><span style="color:var(--muted);font-size:9px;display:block">TOTAL VENTA</span>' + (vs.total ? _contMoney(vs.total) : '—') + '</div>';
+        html += '</div>';
+
+        // Actions
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+        if (esLiquidada) {
+          html += '<button class="btn btn-p" style="padding:5px 14px;font-size:11px" onclick="event.stopPropagation();contMarcarEmitidaRapido(' + p.id + ',\'' + p.venta_folio + '\')">✅ Marcar emitida</button>';
+          html += '<button class="btn btn-g" style="padding:5px 10px;font-size:11px" onclick="event.stopPropagation();contFacturarDesdeHistorial(\'' + p.venta_folio + '\')">📝 Editar y emitir</button>';
+        } else {
+          html += '<span style="font-size:11px;color:var(--muted);padding:5px 0">⏳ Esperando pago — no se puede emitir</span>';
+        }
+        html += '<button class="btn btn-g" style="padding:5px 8px;font-size:11px;color:#f87171" onclick="event.stopPropagation();contEliminarSolicitud(' + p.id + ')">✕ Eliminar</button>';
+        html += '</div>';
+
+        html += '</div>'; // fact-detail
+        html += '</div>'; // card
       });
-      html += '</tbody></table></div></div>';
+      html += '</div>'; // section
     }
 
-    // List
-    if (facturas.length > 0) {
-      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-      html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO VENTA</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RFC</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RAZÓN SOCIAL</th>';
-      html += '<th style="padding:8px;text-align:right;color:var(--muted);font-size:10px">TOTAL</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FECHA</th>';
-      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS</th>';
-      html += '</tr></thead><tbody>';
-      facturas.forEach(function(f) {
-        var isCancelled = f.status === 'cancelled';
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);' + (isCancelled ? 'opacity:0.5' : '') + '">';
-        html += '<td style="padding:8px;font-weight:600">' + f.venta_folio + '</td>';
-        html += '<td style="padding:8px">' + (f.rfc_cliente || '—') + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + (f.razon_social || '—') + '</td>';
-        html += '<td style="padding:8px;text-align:right;color:var(--accent)">' + _contMoney(f.total) + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(f.created_at?.substring(0, 10)) + '</td>';
-        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Emitida') + '</span></td>';
-        html += '</tr>';
-      });
-      html += '</tbody></table></div>';
-    } else {
-      html += '<div style="padding:32px;text-align:center;color:var(--muted);font-size:12px">Sin facturas emitidas</div>';
-    }
+    // ── Emitidas section with search & filters ──
+    html += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">';
+    html += '<h4 style="font-size:13px;color:var(--text);margin:0">Facturas emitidas</h4>';
+    html += '<input type="text" id="fact-search" placeholder="Buscar folio, RFC o razón social..." oninput="contFiltrarEmitidas()" style="flex:1;min-width:180px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 10px;color:var(--text);font-size:11px">';
+    html += '<select id="fact-periodo" onchange="contFiltrarEmitidas()" style="background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:6px 8px;color:var(--text);font-size:11px">';
+    html += '<option value="all">Todo</option><option value="1">Este mes</option><option value="3">Últimos 3 meses</option><option value="12">Último año</option>';
+    html += '</select>';
+    html += '<span id="fact-count" style="font-size:10px;color:var(--muted)"></span>';
+    html += '</div>';
+    html += '<div id="fact-emitidas-table"></div>';
 
     cont.innerHTML = html;
+    contFiltrarEmitidas();
   } catch(err) {
     cont.innerHTML = '<div style="padding:24px;text-align:center;color:#f87171;font-size:12px">Error: ' + err.message + '</div>';
+  }
+}
+
+function contFiltrarEmitidas() {
+  var search = (document.getElementById('fact-search')?.value || '').trim().toLowerCase();
+  var periodo = document.getElementById('fact-periodo')?.value || 'all';
+  var container = document.getElementById('fact-emitidas-table');
+  if (!container) return;
+
+  var filtered = _factEmitidas;
+
+  // Filter by search
+  if (search) {
+    filtered = filtered.filter(function(f) {
+      return (f.venta_folio || '').toLowerCase().indexOf(search) >= 0 ||
+        (f.rfc_cliente || '').toLowerCase().indexOf(search) >= 0 ||
+        (f.razon_social || '').toLowerCase().indexOf(search) >= 0;
+    });
+  }
+
+  // Filter by period
+  if (periodo !== 'all') {
+    var meses = parseInt(periodo);
+    var desde = new Date();
+    desde.setMonth(desde.getMonth() - meses);
+    var desdeStr = desde.toISOString().substring(0, 10);
+    filtered = filtered.filter(function(f) {
+      return (f.created_at || '') >= desdeStr;
+    });
+  }
+
+  document.getElementById('fact-count').textContent = filtered.length + ' resultado' + (filtered.length !== 1 ? 's' : '');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Sin facturas' + (search ? ' para "' + search + '"' : '') + '</div>';
+    return;
+  }
+
+  var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
+  html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO</th>';
+  html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RFC</th>';
+  html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RAZÓN SOCIAL</th>';
+  html += '<th style="padding:8px;text-align:right;color:var(--muted);font-size:10px">TOTAL</th>';
+  html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FECHA</th>';
+  html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS</th>';
+  html += '</tr></thead><tbody>';
+  filtered.forEach(function(f) {
+    var isCancelled = f.status === 'cancelled';
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);' + (isCancelled ? 'opacity:0.5' : '') + '">';
+    html += '<td style="padding:8px;font-weight:600">' + f.venta_folio + '</td>';
+    html += '<td style="padding:8px">' + (f.rfc_cliente || '—') + '</td>';
+    html += '<td style="padding:8px;color:var(--muted)">' + (f.razon_social || '—') + '</td>';
+    html += '<td style="padding:8px;text-align:right;color:var(--accent)">' + _contMoney(f.total) + '</td>';
+    html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(f.created_at?.substring(0, 10)) + '</td>';
+    html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Emitida') + '</span></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+function _contActualizarBadgeFacturas(count) {
+  var badge = document.getElementById('badge-facturas');
+  if (badge) {
+    badge.style.display = count > 0 ? '' : 'none';
+    badge.textContent = count;
   }
 }
 
