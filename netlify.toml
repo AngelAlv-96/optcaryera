@@ -13,6 +13,16 @@
 [functions."review-cron"]
   schedule = "0 18 * * *"
 
+# Asistencia — checks missing check-ins every 30 min (10am-12pm CST = 16-18 UTC)
+[functions."asistencia-cron"]
+  schedule = "*/30 16-18 * * *"
+
+# Firma asistencia page
+[[redirects]]
+  from = "/firma-asistencia"
+  to = "/firma-asistencia.html"
+  status = 200
+
 # Dynamic landing pages: /l/slug → function
 [[redirects]]
   from = "/l/*"

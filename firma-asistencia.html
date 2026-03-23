@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Firma de Asistencia — Car & Era</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background:#0f1117; color:#e8e8e8; min-height:100vh; }
+  .container { max-width:600px; margin:0 auto; padding:16px; }
+  .header { text-align:center; padding:20px 0 16px; border-bottom:1px solid rgba(255,255,255,0.08); margin-bottom:16px; }
+  .header h1 { font-size:18px; font-weight:700; color:#d4a853; letter-spacing:.05em; }
+  .header p { font-size:11px; color:#888; margin-top:4px; }
+  .card { background:#1a1d27; border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .card h2 { font-size:13px; font-weight:700; color:#d4a853; margin-bottom:10px; text-transform:uppercase; letter-spacing:.04em; }
+  .info-row { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .info-row .label { color:#888; }
+  .info-row .value { font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  th { text-align:left; padding:6px 4px; color:#888; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid rgba(255,255,255,0.08); }
+  td { padding:5px 4px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  .td-center { text-align:center; }
+  .badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; font-weight:600; }
+  .badge-ok { background:rgba(74,240,200,0.15); color:#4af0c8; }
+  .badge-late { background:rgba(245,166,35,0.15); color:#f5a623; }
+  .badge-absent { background:rgba(231,76,60,0.15); color:#e74c3c; }
+  .stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px; }
+  .stat { text-align:center; background:rgba(255,255,255,0.03); border-radius:8px; padding:10px 6px; }
+  .stat .num { font-size:20px; font-weight:700; color:#d4a853; }
+  .stat .lbl { font-size:9px; color:#888; text-transform:uppercase; letter-spacing:.04em; }
+  .sig-area { background:#fff; border-radius:8px; margin:12px 0; position:relative; touch-action:none; }
+  .sig-area canvas { display:block; border-radius:8px; width:100%; }
+  .sig-hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#ccc; font-size:13px; pointer-events:none; transition:opacity .3s; }
+  .btn { display:block; width:100%; padding:14px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; margin-top:8px; }
+  .btn-primary { background:#d4a853; color:#000; }
+  .btn-primary:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-secondary { background:rgba(255,255,255,0.06); color:#888; font-size:12px; }
+  .success { text-align:center; padding:40px 20px; }
+  .success .icon { font-size:48px; margin-bottom:12px; }
+  .success h2 { color:#4af0c8; font-size:18px; margin-bottom:8px; }
+  .success p { color:#888; font-size:13px; }
+  .error { text-align:center; padding:40px 20px; color:#e74c3c; }
+  .loading { text-align:center; padding:60px 20px; color:#888; font-size:13px; }
+  @media print {
+    body { background:#fff; color:#000; }
+    .card { border:1px solid #ddd; }
+    .btn, .sig-hint, .no-print { display:none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Opticas Car & Era</h1>
+    <p>Control de Asistencia</p>
+  </div>
+  <div id="content">
+    <div class="loading">Cargando reporte...</div>
+  </div>
+</div>
+
+<script>
+var SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imljc25sZ2VlcmVlcGVzYnJkamhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYyMjQ2MDcsImV4cCI6MjA1MTgwMDYwN30.sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+var DBWRITE_URL = '/.netlify/functions/dbwrite';
+
+var _token = null;
+var _firmaData = null;
+var _signatureDrawn = false;
+var _canvas = null;
+var _ctx = null;
+var _drawing = false;
+var _isActa = false;
+var _faltasDias = [];
+
+async function supaRead(path) {
+  var res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+  });
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+function formatHora(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+function dayLabel(dateStr) {
+  var d = new Date(dateStr + 'T12:00:00');
+  return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
+}
+
+async function init() {
+  var params = new URLSearchParams(window.location.search);
+  _token = params.get('token');
+  _isActa = params.get('acta') === '1';
+  _faltasDias = (params.get('faltas') || '').split(',').filter(function(d) { return d; });
+  if (!_token) { showError('Link invalido. No se encontro token.'); return; }
+
+  // Load firma record by token
+  var firmas = await supaRead('asistencia_firmas?token=eq.' + _token + '&select=*');
+  if (!firmas || firmas.length === 0) { showError('Token no encontrado o expirado.'); return; }
+  _firmaData = firmas[0];
+
+  // Check if already signed
+  if (_firmaData.firmado_at) {
+    showSuccess('Este reporte ya fue firmado el ' + new Date(_firmaData.firmado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    return;
+  }
+
+  // Check expiry
+  if (_firmaData.token_expires && new Date(_firmaData.token_expires) < new Date()) {
+    showError('Este link ha expirado. Solicita uno nuevo a tu supervisor.');
+    return;
+  }
+
+  // Load employee info
+  var cfgRes = await supaRead('app_config?id=in.(empleados_telefono,horarios_asistencia,custom_users,asesores)&select=id,value');
+  var phoneMap = {}, users = {}, asesoresCfg = {}, horarios = {};
+  (cfgRes || []).forEach(function(c) {
+    var v = typeof c.value === 'string' ? JSON.parse(c.value) : c.value;
+    if (c.id === 'empleados_telefono') phoneMap = v || {};
+    if (c.id === 'custom_users') users = v || {};
+    if (c.id === 'asesores') asesoresCfg = v || {};
+    if (c.id === 'horarios_asistencia') horarios = v || {};
+  });
+
+  // Resolve employee name
+  var uid = _firmaData.uid;
+  var empName = uid;
+  var empSuc = 'N/A';
+  if (uid.startsWith('asesor_')) {
+    var sucs = (asesoresCfg && asesoresCfg.sucursales) || {};
+    for (var suc in sucs) {
+      (sucs[suc] || []).forEach(function(n) {
+        if ('asesor_' + n.toLowerCase().replace(/\s+/g, '_') === uid) { empName = n; empSuc = suc; }
+      });
+    }
+  } else if (uid.startsWith('extra_')) {
+    var extras = (horarios && horarios.empleados_extra) || {};
+    if (extras[uid]) { empName = extras[uid].nombre; empSuc = extras[uid].sucursal; }
+  } else {
+    var u = users[uid] || {};
+    empName = u.nombre || uid;
+    empSuc = u.sucursal || 'N/A';
+  }
+
+  // Load attendance records for period
+  var records = await supaRead('asistencia?uid=eq.' + uid + '&fecha=gte.' + _firmaData.periodo_inicio + '&fecha=lte.' + _firmaData.periodo_fin + '&order=fecha');
+  records = records || [];
+
+  // Build record lookup by date
+  var recByDate = {};
+  records.forEach(function(r) { recByDate[r.fecha] = r; });
+
+  // Generate all dates in range
+  var dates = [];
+  var d = new Date(_firmaData.periodo_inicio + 'T12:00:00');
+  var end = new Date(_firmaData.periodo_fin + 'T12:00:00');
+  while (d <= end) { dates.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate() + 1); }
+
+  // Calculate stats
+  var totalDias = 0, diasTrab = 0, totalHoras = 0, retardos = 0, faltas = 0, totalRetMin = 0;
+  var tableRows = '';
+  dates.forEach(function(fecha) {
+    var rec = recByDate[fecha] || {};
+    var dl = dayLabel(fecha);
+    var hasEntry = !!rec.entrada;
+    var estado = '';
+    var badgeClass = '';
+
+    // Simple schedule check (default hours)
+    var dayKey = ['dom','lun','mar','mie','jue','vie','sab'][new Date(fecha + 'T12:00:00').getDay()];
+    var sched = (horarios && horarios.default) ? horarios.default[dayKey] : null;
+    if (horarios && horarios.override && horarios.override[uid]) {
+      var ov = horarios.override[uid][dayKey];
+      if (ov === null) sched = null;
+      else if (ov) sched = ov;
+    }
+    if (!sched) return; // day off
+
+    totalDias++;
+    if (hasEntry) {
+      diasTrab++;
+      if (rec.horas_trabajadas) totalHoras += parseFloat(rec.horas_trabajadas);
+      if (rec.retardo_min > 0) { retardos++; totalRetMin += rec.retardo_min; estado = 'Retardo'; badgeClass = 'badge-late'; }
+      else { estado = 'A tiempo'; badgeClass = 'badge-ok'; }
+    } else {
+      if (fecha < new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' })) {
+        faltas++; estado = 'Falta'; badgeClass = 'badge-absent';
+      } else {
+        estado = '—';
+      }
+    }
+
+    var comidaMin = '';
+    if (rec.comida_inicio && rec.comida_fin) {
+      comidaMin = Math.round((new Date(rec.comida_fin).getTime() - new Date(rec.comida_inicio).getTime()) / 60000) + 'min';
+    }
+
+    tableRows += '<tr>';
+    tableRows += '<td>' + fecha.slice(5) + '</td>';
+    tableRows += '<td>' + dl + '</td>';
+    tableRows += '<td class="td-center">' + formatHora(rec.entrada) + '</td>';
+    tableRows += '<td class="td-center">' + formatHora(rec.comida_inicio) + '</td>';
+    tableRows += '<td class="td-center">' + formatHora(rec.comida_fin) + '</td>';
+    tableRows += '<td class="td-center">' + formatHora(rec.salida) + '</td>';
+    tableRows += '<td class="td-center">' + (rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas).toFixed(1) + 'h' : '—') + '</td>';
+    tableRows += '<td class="td-center">' + (estado ? '<span class="badge ' + badgeClass + '">' + estado + '</span>' : '') + '</td>';
+    tableRows += '</tr>';
+  });
+
+  // Render
+  var html = '';
+
+  // Employee info
+  html += '<div class="card">';
+  html += '<h2>Datos del empleado</h2>';
+  html += '<div class="info-row"><span class="label">Nombre</span><span class="value">' + empName + '</span></div>';
+  html += '<div class="info-row"><span class="label">Sucursal</span><span class="value">' + empSuc + '</span></div>';
+  html += '<div class="info-row"><span class="label">Periodo</span><span class="value">' + _firmaData.periodo_inicio + ' al ' + _firmaData.periodo_fin + '</span></div>';
+  html += '</div>';
+
+  // Stats
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="num">' + diasTrab + '/' + totalDias + '</div><div class="lbl">Dias</div></div>';
+  html += '<div class="stat"><div class="num">' + totalHoras.toFixed(1) + '</div><div class="lbl">Horas</div></div>';
+  html += '<div class="stat"><div class="num">' + retardos + '</div><div class="lbl">Retardos</div></div>';
+  html += '</div>';
+  if (faltas > 0 || totalRetMin > 0) {
+    html += '<div class="stats" style="grid-template-columns:1fr 1fr">';
+    html += '<div class="stat"><div class="num" style="color:#e74c3c">' + faltas + '</div><div class="lbl">Faltas</div></div>';
+    html += '<div class="stat"><div class="num" style="color:#f5a623">' + totalRetMin + '</div><div class="lbl">Min retardo</div></div>';
+    html += '</div>';
+  }
+
+  // Table
+  html += '<div class="card">';
+  html += '<h2>Detalle de asistencia</h2>';
+  html += '<div style="overflow-x:auto">';
+  html += '<table><thead><tr>';
+  html += '<th>Fecha</th><th>Dia</th><th class="td-center">Entrada</th><th class="td-center">Comida</th><th class="td-center">Regreso</th><th class="td-center">Salida</th><th class="td-center">Horas</th><th class="td-center">Estado</th>';
+  html += '</tr></thead><tbody>' + tableRows + '</tbody></table>';
+  html += '</div></div>';
+
+  // ── ACTA DE FALTA INJUSTIFICADA (if applicable) ──
+  if (_isActa && _faltasDias.length > 0) {
+    html += '<div class="card" style="border:2px solid #e74c3c">';
+    html += '<h2 style="color:#e74c3c">Acta de Falta Injustificada</h2>';
+    html += '<div style="font-size:11px;line-height:1.6;color:#ccc">';
+    html += '<p style="margin-bottom:8px">De conformidad con lo establecido en el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, se hace constar que el(la) trabajador(a):</p>';
+    html += '<p style="margin-bottom:8px;font-weight:600;font-size:13px;color:#fff">' + empName + '</p>';
+    html += '<p style="margin-bottom:8px">Adscrito(a) a la sucursal <b>' + empSuc + '</b>, registro la(s) siguiente(s) falta(s) de asistencia sin justificacion:</p>';
+
+    html += '<div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:8px;padding:10px;margin:10px 0">';
+    _faltasDias.forEach(function(f) {
+      var dl2 = dayLabel(f);
+      html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">';
+      html += '<span style="font-weight:600">' + f + '</span><span style="color:#888">' + dl2 + '</span>';
+      html += '<span class="badge badge-absent">Falta injustificada</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    html += '<p style="margin-bottom:6px">El(la) trabajador(a) manifiesta:</p>';
+    html += '<ul style="margin:0 0 10px 16px;color:#aaa;font-size:10px">';
+    html += '<li>Que no se presento a laborar en la(s) fecha(s) indicada(s)</li>';
+    html += '<li>Que no conto con autorizacion previa ni justificacion para su ausencia</li>';
+    html += '<li>Que tiene conocimiento de que la acumulacion de mas de 3 faltas injustificadas en un periodo de 30 dias es causal de rescision laboral conforme al Art. 47 Frac. X de la LFT</li>';
+    html += '</ul>';
+
+    html += '<p style="font-size:10px;color:#888;margin-top:8px"><b>Nota:</b> Este documento forma parte del expediente laboral del trabajador. La firma digital tiene la misma validez que la firma autografa conforme a la legislacion vigente.</p>';
+    html += '</div></div>';
+  }
+
+  // Signature area
+  html += '<div class="card">';
+  if (_isActa && _faltasDias.length > 0) {
+    html += '<h2>Firma del empleado</h2>';
+    html += '<p style="font-size:11px;color:#888;margin-bottom:8px">Al firmar, reconozco las faltas indicadas y confirmo los datos de asistencia.</p>';
+  } else {
+    html += '<h2>Firma del empleado</h2>';
+    html += '<p style="font-size:11px;color:#888;margin-bottom:8px">Al firmar, confirmo que los datos de asistencia mostrados son correctos.</p>';
+  }
+  html += '<div class="sig-area" id="sig-container">';
+  html += '<canvas id="sig-canvas" height="150"></canvas>';
+  html += '<span class="sig-hint" id="sig-hint">Firma aqui</span>';
+  html += '</div>';
+  html += '<button class="btn btn-secondary no-print" onclick="clearSignature()">Limpiar firma</button>';
+  html += '<button class="btn btn-primary no-print" id="btn-firmar" onclick="submitSignature()" disabled>' + (_isActa ? 'Firmar acta y reporte' : 'Firmar reporte') + '</button>';
+  html += '</div>';
+
+  var lftRef = _isActa ? 'Art. 47 Frac. X y Art. 804 Frac. III LFT' : 'Art. 804 LFT';
+  html += '<p style="font-size:9px;color:#555;text-align:center;margin-top:16px">Opticas Car & Era — Ciudad Juarez, Chihuahua — ' + lftRef + '</p>';
+
+  document.getElementById('content').innerHTML = html;
+  initSignaturePad();
+}
+
+function initSignaturePad() {
+  _canvas = document.getElementById('sig-canvas');
+  if (!_canvas) return;
+  var container = document.getElementById('sig-container');
+  _canvas.width = container.offsetWidth;
+  _ctx = _canvas.getContext('2d');
+  _ctx.strokeStyle = '#000';
+  _ctx.lineWidth = 2;
+  _ctx.lineCap = 'round';
+  _ctx.lineJoin = 'round';
+
+  // Mouse events
+  _canvas.addEventListener('mousedown', sigStart);
+  _canvas.addEventListener('mousemove', sigMove);
+  _canvas.addEventListener('mouseup', sigEnd);
+  _canvas.addEventListener('mouseleave', sigEnd);
+
+  // Touch events
+  _canvas.addEventListener('touchstart', function(e) { e.preventDefault(); sigStart(e.touches[0]); }, { passive: false });
+  _canvas.addEventListener('touchmove', function(e) { e.preventDefault(); sigMove(e.touches[0]); }, { passive: false });
+  _canvas.addEventListener('touchend', sigEnd);
+}
+
+function getPos(e) {
+  var rect = _canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function sigStart(e) {
+  _drawing = true;
+  var p = getPos(e);
+  _ctx.beginPath();
+  _ctx.moveTo(p.x, p.y);
+  // Hide hint
+  var hint = document.getElementById('sig-hint');
+  if (hint) hint.style.opacity = '0';
+}
+
+function sigMove(e) {
+  if (!_drawing) return;
+  var p = getPos(e);
+  _ctx.lineTo(p.x, p.y);
+  _ctx.stroke();
+  _signatureDrawn = true;
+  var btn = document.getElementById('btn-firmar');
+  if (btn) btn.disabled = false;
+}
+
+function sigEnd() { _drawing = false; }
+
+function clearSignature() {
+  if (!_ctx || !_canvas) return;
+  _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+  _signatureDrawn = false;
+  var btn = document.getElementById('btn-firmar');
+  if (btn) btn.disabled = true;
+  var hint = document.getElementById('sig-hint');
+  if (hint) hint.style.opacity = '1';
+}
+
+async function submitSignature() {
+  if (!_signatureDrawn || !_canvas || !_firmaData) return;
+  var btn = document.getElementById('btn-firmar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  var sigData = _canvas.toDataURL('image/png');
+
+  try {
+    // Save via dbwrite — use special auth-free token-based update
+    // We'll PATCH asistencia_firmas where token matches and not yet signed
+    var res = await fetch(DBWRITE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update',
+        table: 'asistencia_firmas',
+        data: { firma_empleado: sigData, firmado_at: new Date().toISOString() },
+        filter: { column: 'token', value: _token },
+        auth: { id: 'firma_token', pass: _token }
+      })
+    });
+    if (!res.ok) throw new Error('Error guardando firma');
+    showSuccess('Tu firma ha sido registrada correctamente.');
+  } catch(e) {
+    console.error('[Firma] Error:', e);
+    if (btn) { btn.disabled = false; btn.textContent = 'Firmar reporte'; }
+    alert('Error guardando la firma. Intenta de nuevo.');
+  }
+}
+
+function showError(msg) {
+  document.getElementById('content').innerHTML = '<div class="error"><p style="font-size:36px;margin-bottom:12px">⚠️</p><p>' + msg + '</p></div>';
+}
+
+function showSuccess(msg) {
+  document.getElementById('content').innerHTML = '<div class="success"><div class="icon">✅</div><h2>Firma registrada</h2><p>' + msg + '</p></div>';
+}
+
+init();
+</script>
+</body>
+</html>

@@ -464,6 +464,288 @@ function hoyLocal() {
   return new Date().toLocaleDateString('en-CA');
 }
 
+// ── ATTENDANCE COMMAND DETECTION (typo-tolerant + synonyms) ──
+function _detectAsistCmd(text) {
+  var t = text.replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/[^\w\s]/g,'').trim();
+
+  // Entrada: exact + typos + synonyms
+  if (/^entrad[ao]?$/.test(t)) return 'entrada';
+  if (/^(ya\s+)?llegu[eé]$/.test(t)) return 'entrada';
+  if (/^ya\s+(estoy|llegue|vine)/.test(t)) return 'entrada';
+  if (/^(llegue|llegué|check\s*in|checkin)$/.test(t)) return 'entrada';
+  if (/^(buenos?\s+dias?|buen\s+dia)$/.test(t)) return 'entrada';
+  if (/^(entre|entro|entrda|netrada|entra)$/.test(t)) return 'entrada';
+
+  // Salida: exact + typos + synonyms
+  if (/^salid[ao]?$/.test(t)) return 'salida';
+  if (/^(ya\s+me\s+voy|me\s+voy|me\s+retiro)/.test(t)) return 'salida';
+  if (/^(check\s*out|checkout|bye|adios|sali|salgo)$/.test(t)) return 'salida';
+  if (/^(sailda|slida|saldia|dalida)$/.test(t)) return 'salida';
+
+  // Comida: exact + typos + synonyms
+  if (/^comid[ao]?$/.test(t)) return 'comida';
+  if (/^(voy\s+a\s+comer|a\s+comer|hora\s+de\s+comer)/.test(t)) return 'comida';
+  if (/^(almuerzo|lunch|lonche|lonch|comda|comdia)$/.test(t)) return 'comida';
+
+  // Regreso: exact + typos + synonyms
+  if (/^regres[eo]?$/.test(t)) return 'regreso';
+  if (/^(ya\s+regrese|ya\s+volvi|ya\s+llegue\s+de\s+comer)/.test(t)) return 'regreso';
+  if (/^(volvi|regrese|rgereso|regrso|regresp)$/.test(t)) return 'regreso';
+
+  return null;
+}
+
+async function cmdAsistencia(phone, action, profileName) {
+  try {
+    // 1. Load phone→uid mapping
+    var phoneMapData = await supaFetch('app_config?id=eq.empleados_telefono&select=value');
+    if (!phoneMapData || !phoneMapData[0] || !phoneMapData[0].value) {
+      return { reply: '⚠️ El sistema de asistencia no está configurado. Contacta al administrador.' };
+    }
+    var phoneMap = typeof phoneMapData[0].value === 'string' ? JSON.parse(phoneMapData[0].value) : phoneMapData[0].value;
+
+    // Normalize phone: strip non-digits, match on last 10
+    var cleanPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+    var last10 = cleanPhone.slice(-10);
+    var uid = null;
+    for (var mapPhone in phoneMap) {
+      var mapClean = mapPhone.replace(/[\s\-\(\)\+]/g, '');
+      if (mapClean.slice(-10) === last10) { uid = phoneMap[mapPhone]; break; }
+    }
+    if (!uid) {
+      return { reply: '⚠️ Tu número no está registrado para asistencia. Contacta al administrador.' };
+    }
+
+    // 2. Get employee info from custom_users + asesores
+    var empName = uid;
+    var empSuc = 'N/A';
+    if (uid.startsWith('asesor_')) {
+      // Resolve from asesores config
+      var asesData = await supaFetch('app_config?id=eq.asesores&select=value');
+      if (asesData && asesData[0] && asesData[0].value) {
+        var asesCfg = typeof asesData[0].value === 'string' ? JSON.parse(asesData[0].value) : asesData[0].value;
+        var allAses = [];
+        var sucursales = asesCfg.sucursales || {};
+        for (var suc in sucursales) { (sucursales[suc] || []).forEach(function(n) { allAses.push({ nombre: n, sucursal: suc }); }); }
+        (asesCfg.globales || []).forEach(function(n) { allAses.push({ nombre: n, sucursal: 'Global' }); });
+        var match = allAses.find(function(a) { return 'asesor_' + a.nombre.toLowerCase().replace(/\s+/g, '_') === uid; });
+        if (match) { empName = match.nombre; empSuc = match.sucursal; }
+      }
+    } else if (uid.startsWith('extra_')) {
+      // Resolve from horarios_asistencia.empleados_extra
+      var extraData = await supaFetch('app_config?id=eq.horarios_asistencia&select=value');
+      if (extraData && extraData[0] && extraData[0].value) {
+        var horCfg = typeof extraData[0].value === 'string' ? JSON.parse(extraData[0].value) : extraData[0].value;
+        var extras = horCfg.empleados_extra || {};
+        if (extras[uid]) { empName = extras[uid].nombre; empSuc = extras[uid].sucursal || 'Laboratorio'; }
+      }
+    } else {
+      var usersData = await supaFetch('app_config?id=eq.custom_users&select=value');
+      var users = {};
+      if (usersData && usersData[0] && usersData[0].value) {
+        users = typeof usersData[0].value === 'string' ? JSON.parse(usersData[0].value) : usersData[0].value;
+      }
+      var emp = users[uid] || {};
+      empName = emp.nombre || uid;
+      empSuc = emp.sucursal || 'N/A';
+    }
+
+    // 3. Get current date/time in America/Chihuahua
+    var nowChihuahua = new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' });
+    var nowLocal = new Date(nowChihuahua);
+    var fechaLocal = nowLocal.toLocaleDateString('en-CA'); // YYYY-MM-DD
+    var horaLocal = nowLocal.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // 4. Load schedule
+    var schedData = await supaFetch('app_config?id=eq.horarios_asistencia&select=value');
+    var horarios = { default: { lun:{entrada:'10:00',salida:'19:00'}, mar:{entrada:'10:00',salida:'19:00'}, mie:{entrada:'10:00',salida:'19:00'}, jue:{entrada:'10:00',salida:'19:00'}, vie:{entrada:'10:00',salida:'19:00'}, sab:{entrada:'10:00',salida:'19:00'}, dom:{entrada:'11:00',salida:'17:00'} }, tolerancia_min: 10, override: {} };
+    if (schedData && schedData[0] && schedData[0].value) {
+      horarios = typeof schedData[0].value === 'string' ? JSON.parse(schedData[0].value) : schedData[0].value;
+    }
+
+    var dayNames = ['dom','lun','mar','mie','jue','vie','sab'];
+    var dayKey = dayNames[nowLocal.getDay()];
+    var sched = horarios.default ? horarios.default[dayKey] : null;
+    if (horarios.override && horarios.override[uid]) {
+      var ov = horarios.override[uid][dayKey];
+      if (ov === null) sched = null;
+      else if (ov) sched = ov;
+    }
+
+    // 5. Check existing record for today
+    var existing = await supaFetch('asistencia?uid=eq.' + uid + '&fecha=eq.' + fechaLocal + '&select=*');
+    var record = (existing && existing.length > 0) ? existing[0] : null;
+
+    var nowISO = new Date().toISOString();
+
+    if (action === 'entrada') {
+      if (record && record.entrada) {
+        var entH = new Date(record.entrada).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
+        return { reply: '⚠️ Ya registraste tu entrada hoy a las ' + entH, uid: uid };
+      }
+      // Calculate retardo
+      var retardoMin = 0;
+      if (sched && sched.entrada) {
+        var schedParts = sched.entrada.split(':');
+        var schedMin = parseInt(schedParts[0]) * 60 + parseInt(schedParts[1]);
+        var actualMin = nowLocal.getHours() * 60 + nowLocal.getMinutes();
+        var tolerancia = horarios.tolerancia_min || 10;
+        retardoMin = Math.max(0, actualMin - (schedMin + tolerancia));
+      }
+      // UPSERT
+      var payload = { uid: uid, fecha: fechaLocal, entrada: nowISO, retardo_min: retardoMin, sucursal: empSuc };
+      if (record) {
+        await supaFetch('asistencia?id=eq.' + record.id, { method: 'PATCH', body: JSON.stringify(payload), prefer: 'return=minimal' });
+      } else {
+        await supaFetch('asistencia', { method: 'POST', body: JSON.stringify(payload), prefer: 'return=minimal' });
+      }
+      var replyMsg = '✅ Entrada registrada\n⏰ ' + horaLocal + '\n🏪 ' + empSuc;
+      if (retardoMin > 0) {
+        replyMsg += '\n⚠️ Retardo: ' + retardoMin + ' min';
+        // Notify admin
+        try {
+          var cfgWA = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+          if (cfgWA && cfgWA[0] && cfgWA[0].value) {
+            var waCfg = typeof cfgWA[0].value === 'string' ? JSON.parse(cfgWA[0].value) : cfgWA[0].value;
+            var admPhones = waCfg.admin_phones || [];
+            for (var i = 0; i < admPhones.length; i++) {
+              await sendWhatsAppReply(admPhones[i], '⚠️ *Retardo*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n⏰ ' + horaLocal + ' (' + retardoMin + ' min tarde)');
+            }
+          }
+        } catch(e) { console.warn('[Asistencia] Admin notify error:', e.message); }
+      }
+
+      // ── Check for recent unjustified absences (send acta if found) ──
+      try {
+        var faltasDias = [];
+        // Check last 7 days for days with no entry where employee was scheduled
+        for (var dBack = 1; dBack <= 7; dBack++) {
+          var checkDate = new Date(nowChihuahua);
+          checkDate.setDate(checkDate.getDate() - dBack);
+          var checkFecha = checkDate.toLocaleDateString('en-CA');
+          var checkDayKey = dayNames[checkDate.getDay()];
+          // Check schedule for that day
+          var checkSched = horarios.default ? horarios.default[checkDayKey] : null;
+          if (horarios.override && horarios.override[uid]) {
+            var checkOv = horarios.override[uid][checkDayKey];
+            if (checkOv === null) checkSched = null;
+            else if (checkOv) checkSched = checkOv;
+          }
+          if (!checkSched) continue; // day off
+          // Check if there's a record (skip authorized absences: Vacaciones, Permiso, Incapacidad, Dia personal)
+          var checkRec = await supaFetch('asistencia?uid=eq.' + uid + '&fecha=eq.' + checkFecha + '&select=entrada,es_falta,nota');
+          var hasPermiso = checkRec && checkRec.length > 0 && checkRec[0].nota && /vacaciones|permiso|incapacidad|dia personal/i.test(checkRec[0].nota);
+          if (hasPermiso) continue; // authorized absence, skip
+          if (!checkRec || checkRec.length === 0 || (!checkRec[0].entrada && !checkRec[0].es_falta)) {
+            faltasDias.push(checkFecha);
+            // Mark as falta in DB
+            if (!checkRec || checkRec.length === 0) {
+              await supaFetch('asistencia', { method: 'POST', body: JSON.stringify({ uid: uid, fecha: checkFecha, es_falta: true, sucursal: empSuc }), prefer: 'return=minimal' });
+            }
+          }
+        }
+
+        if (faltasDias.length > 0) {
+          // Generate acta token and send link
+          var actaCrypto = require('crypto');
+          var actaToken = actaCrypto.randomBytes(24).toString('hex');
+          var actaExpires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(); // 72h
+          var actaPeriodoInicio = faltasDias[faltasDias.length - 1]; // earliest
+          var actaPeriodoFin = fechaLocal; // today
+
+          await supaFetch('asistencia_firmas', {
+            method: 'POST',
+            body: JSON.stringify({
+              uid: uid,
+              periodo_inicio: actaPeriodoInicio,
+              periodo_fin: actaPeriodoFin,
+              token: actaToken,
+              token_expires: actaExpires,
+              enviado_at: nowISO
+            }),
+            prefer: 'return=minimal'
+          });
+
+          var SITE = process.env.URL || 'https://optcaryera.netlify.app';
+          var actaLink = SITE + '/firma-asistencia?token=' + actaToken + '&acta=1&faltas=' + faltasDias.join(',');
+
+          // Send acta link to employee (after a small delay so entry msg arrives first)
+          setTimeout(async function() {
+            try {
+              var faltasListStr = faltasDias.map(function(f) { return f; }).join(', ');
+              await sendWhatsAppReply(phone, '📋 *Acta de falta injustificada*\n\nSe registraron ' + faltasDias.length + ' falta(s) sin justificar:\n📅 ' + faltasListStr + '\n\nRevisa y firma el acta aqui:\n👉 ' + actaLink + '\n\nEl link expira en 72 horas.\n\n_Art. 47 Frac. X — Ley Federal del Trabajo_');
+              console.log('[Asistencia] Sent acta link to ' + empName + ' for ' + faltasDias.length + ' falta(s)');
+            } catch(e2) { console.warn('[Asistencia] Acta send error:', e2.message); }
+          }, 2000);
+
+          // Notify admin
+          var cfgWA2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+          if (cfgWA2 && cfgWA2[0] && cfgWA2[0].value) {
+            var waCfg2 = typeof cfgWA2[0].value === 'string' ? JSON.parse(cfgWA2[0].value) : cfgWA2[0].value;
+            var admPhones2 = waCfg2.admin_phones || [];
+            for (var a2 = 0; a2 < admPhones2.length; a2++) {
+              await sendWhatsAppReply(admPhones2[a2], '📋 *Acta de falta enviada*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n📅 Faltas: ' + faltasDias.join(', ') + '\n\nSe envio link de firma automaticamente.');
+            }
+          }
+        }
+      } catch(faltaErr) { console.warn('[Asistencia] Falta check error:', faltaErr.message); }
+
+      return { reply: replyMsg, uid: uid };
+
+    } else if (action === 'comida') {
+      if (!record || !record.entrada) {
+        return { reply: '⚠️ No tienes entrada registrada hoy. Envía "entrada" primero.', uid: uid };
+      }
+      if (record.comida_inicio) {
+        var comH = new Date(record.comida_inicio).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
+        return { reply: '⚠️ Ya registraste tu hora de comida a las ' + comH, uid: uid };
+      }
+      await supaFetch('asistencia?id=eq.' + record.id, { method: 'PATCH', body: JSON.stringify({ comida_inicio: nowISO }), prefer: 'return=minimal' });
+      return { reply: '🍽️ Hora de comida registrada\n⏰ ' + horaLocal + '\n¡Buen provecho! Recuerda enviar "regreso" al volver.', uid: uid };
+
+    } else if (action === 'regreso') {
+      if (!record || !record.comida_inicio) {
+        return { reply: '⚠️ No tienes hora de comida registrada. Envía "comida" primero.', uid: uid };
+      }
+      if (record.comida_fin) {
+        var regH = new Date(record.comida_fin).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
+        return { reply: '⚠️ Ya registraste tu regreso de comida a las ' + regH, uid: uid };
+      }
+      var comidaMs = new Date(nowISO).getTime() - new Date(record.comida_inicio).getTime();
+      var comidaMin = Math.round(comidaMs / 60000);
+      await supaFetch('asistencia?id=eq.' + record.id, { method: 'PATCH', body: JSON.stringify({ comida_fin: nowISO }), prefer: 'return=minimal' });
+      return { reply: '✅ Regreso de comida registrado\n⏰ ' + horaLocal + '\n🍽️ Tiempo de comida: ' + comidaMin + ' min', uid: uid };
+
+    } else if (action === 'salida') {
+      if (!record || !record.entrada) {
+        return { reply: '⚠️ No tienes entrada registrada hoy. Envía "entrada" primero.', uid: uid };
+      }
+      if (record.salida) {
+        var salH = new Date(record.salida).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
+        return { reply: '⚠️ Ya registraste tu salida hoy a las ' + salH, uid: uid };
+      }
+      // Calculate hours worked (minus lunch if applicable)
+      var totalMs = new Date(nowISO).getTime() - new Date(record.entrada).getTime();
+      var lunchMs = 0;
+      if (record.comida_inicio && record.comida_fin) {
+        lunchMs = new Date(record.comida_fin).getTime() - new Date(record.comida_inicio).getTime();
+      } else if (record.comida_inicio && !record.comida_fin) {
+        // Forgot to send "regreso" — count lunch as ongoing until now
+        lunchMs = new Date(nowISO).getTime() - new Date(record.comida_inicio).getTime();
+      }
+      var netMs = totalMs - lunchMs;
+      var horas = Math.round(netMs / 36000) / 100; // 2 decimal places
+      await supaFetch('asistencia?id=eq.' + record.id, { method: 'PATCH', body: JSON.stringify({ salida: nowISO, horas_trabajadas: horas }), prefer: 'return=minimal' });
+      return { reply: '✅ Salida registrada\n⏰ ' + horaLocal + '\n⏱️ Horas trabajadas: ' + horas.toFixed(2) + 'h', uid: uid };
+    }
+
+    return { reply: '⚠️ Comando no reconocido.' };
+  } catch(err) {
+    console.error('[Asistencia] Error:', err.message);
+    return { reply: '❌ Error registrando asistencia. Intenta de nuevo.' };
+  }
+}
+
 // ── ADMIN COMMAND: VENTAS ──
 async function cmdVentas() {
   var today = hoyLocal();
@@ -1223,9 +1505,42 @@ exports.handler = async function(event) {
           }
       }
 
+      // ── ATTENDANCE CHECK-IN/OUT (all registered employee phones) ──
+      var asistHandled = false;
+      var isEmployeePhone = false;
+      if (!isAuthResponse) {
+        // Check if this phone belongs to a registered employee
+        var empPhoneData = await supaFetch('app_config?id=eq.empleados_telefono&select=value');
+        if (empPhoneData && empPhoneData[0] && empPhoneData[0].value) {
+          var empPhoneMap = typeof empPhoneData[0].value === 'string' ? JSON.parse(empPhoneData[0].value) : empPhoneData[0].value;
+          var cleanFrom = from.replace(/[\s\-\(\)\+]/g, '');
+          var fromLast10 = cleanFrom.slice(-10);
+          for (var empPh in empPhoneMap) {
+            if (empPh.replace(/[\s\-\(\)\+]/g, '').slice(-10) === fromLast10) { isEmployeePhone = true; break; }
+          }
+        }
+
+        var asistAction = _detectAsistCmd(lowerText);
+        if (asistAction) {
+          var asistResult = await cmdAsistencia(from, asistAction, userName);
+          await sendWhatsAppReply(from, asistResult.reply);
+          await saveMessage(from, 'user', userText, userName);
+          await saveMessage(from, 'assistant', asistResult.reply);
+          console.log('[Asistencia] ' + asistAction + ' (raw: ' + lowerText + ') by ' + (asistResult.uid || from));
+          asistHandled = true;
+        } else if (isEmployeePhone && !isAdmin) {
+          // Employee phone but not a valid command — block Clari, show help
+          var helpReply = '⏰ *Reloj Checador*\n\nComandos disponibles:\n\n✅ *entrada* — Registrar llegada\n🍽️ *comida* — Iniciar hora de comida\n🔙 *regreso* — Regresar de comida\n🚪 *salida* — Registrar salida\n\nEnvía solo la palabra del comando.';
+          await sendWhatsAppReply(from, helpReply);
+          await saveMessage(from, 'user', userText, userName);
+          await saveMessage(from, 'assistant', helpReply);
+          asistHandled = true;
+        }
+      }
+
       // ── ADMIN COMMANDS ──
       var cmdHandled = false;
-      if (!isAuthResponse && isAdmin) {
+      if (!isAuthResponse && !asistHandled && isAdmin) {
           // DOLAR command
           var dolarMatch = userText.match(/^d[oó]lar\s+(\d+\.?\d*)/i);
           if (dolarMatch) {
@@ -1351,7 +1666,7 @@ exports.handler = async function(event) {
 
       // ── REVIEW/NPS RESPONSE HANDLING ──
       // Quick Reply buttons from opinion_servicio template
-      if (!isAuthResponse && !cmdHandled) {
+      if (!isAuthResponse && !asistHandled && !cmdHandled) {
         var reviewButtons = ['todo excelente', 'buenas promos', 'podría mejorar', 'podria mejorar'];
         if (reviewButtons.includes(lowerText)) {
           // Check if this customer has a recent [Review] entry (last 7 days)
@@ -1398,7 +1713,7 @@ exports.handler = async function(event) {
       }
 
       // ── CLARI AI (default for non-admin or unmatched commands) ──
-      if (!isAuthResponse && !cmdHandled) {
+      if (!isAuthResponse && !asistHandled && !cmdHandled) {
         var reply = await getAIResponse(userText, userName, from);
         
         // Check if AI response contains CREAR_VENTA command

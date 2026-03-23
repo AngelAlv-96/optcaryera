@@ -1217,6 +1217,14 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
           Visión Segura
         </div>
+        <div class="nav-item" id="nav-report-comisiones" style="display:none" onclick="go('comisiones')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Comisiones
+        </div>
+        <div class="nav-item" id="nav-report-asistencia" style="display:none" onclick="go('asistencia')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Recursos Humanos
+        </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
@@ -1230,10 +1238,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <div class="nav-item" id="nav-admin-landings" style="display:none" onclick="go('landings')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/><path d="M10 14l2-2 2 2"/><path d="M12 12v6"/></svg>
           Landing Pages
-        </div>
-        <div class="nav-item" id="nav-admin-comisiones" style="display:none" onclick="go('comisiones')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Comisiones
         </div>
       </div>
         <div class="user-pill">
@@ -4187,6 +4191,29 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
       </div>
 
+      <!-- ASISTENCIA (Reloj Checador) -->
+      <div class="view" id="view-asistencia">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Recursos Humanos</h2><p>Asistencia · Expedientes · Permisos</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="asistEnvioManual()">📩 Enviar reporte/acta</button>
+            <button class="btn btn-g btn-sm" onclick="initAsistencia()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="asist-tabs">
+            <button class="lc-tab active" onclick="asistSwitchTab('diario')" id="asist-tab-diario">⏰ Asistencia</button>
+            <button class="lc-tab" onclick="asistSwitchTab('resumen')" id="asist-tab-resumen">📊 Reportes</button>
+            <button class="lc-tab" onclick="asistSwitchTab('expediente')" id="asist-tab-expediente" style="display:none">📋 Expedientes</button>
+            <button class="lc-tab" onclick="asistSwitchTab('config')" id="asist-tab-config" style="display:none">⚙️ Config</button>
+          </div>
+          <div id="asist-content-diario"></div>
+          <div id="asist-content-resumen" style="display:none"></div>
+          <div id="asist-content-expediente" style="display:none"></div>
+          <div id="asist-content-config" style="display:none"></div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -4900,25 +4927,28 @@ function setupApp(u) {
       document.getElementById('nav-admin-config').style.display = '';
       document.getElementById('nav-admin-clari').style.display = '';
       document.getElementById('nav-admin-landings').style.display = '';
-      document.getElementById('nav-admin-comisiones').style.display = '';
+      document.getElementById('nav-report-comisiones').style.display = '';
+      document.getElementById('nav-report-asistencia').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
       document.getElementById('nav-admin-config').style.display = 'none';
       document.getElementById('nav-admin-clari').style.display = 'none';
       document.getElementById('nav-admin-landings').style.display = 'none';
-      document.getElementById('nav-admin-comisiones').style.display = 'none';
+      document.getElementById('nav-report-comisiones').style.display = 'none';
+      document.getElementById('nav-report-asistencia').style.display = 'none';
       document.getElementById('nav-ventas-section').style.display = 'none';
     } else {
       document.getElementById('nav-admin-label').style.display = 'none';
       document.getElementById('nav-admin-config').style.display = 'none';
       document.getElementById('nav-admin-clari').style.display = 'none';
       document.getElementById('nav-admin-landings').style.display = 'none';
-      document.getElementById('nav-admin-comisiones').style.display = u.rol === 'gerencia' ? '' : 'none';
+      document.getElementById('nav-report-comisiones').style.display = u.rol === 'gerencia' ? '' : 'none';
+      document.getElementById('nav-report-asistencia').style.display = u.rol === 'gerencia' ? '' : 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
-      var roleControlled = ['configuracion','clari','landings','comisiones'];
+      var roleControlled = ['configuracion','clari','landings','comisiones','asistencia'];
       var alwaysVisible = ['lentes-contacto'];
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
@@ -5123,7 +5153,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, configuracion:21, clari:22, landings:23, comisiones:24, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, configuracion:23, clari:24, landings:25, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5151,6 +5181,7 @@ function go(id) {
   if (id === 'creditos')            { loadCreditos(); var _csf=document.getElementById('cred-suc-filter'); if(_csf) _csf.style.display=currentUser?.rol==='sucursal'?'none':''; }
   if (id === 'landings')            { cargarLandings(); }
   if (id === 'comisiones')          { initComisiones(); }
+  if (id === 'asistencia')          { initAsistencia(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
@@ -19395,6 +19426,7 @@ async function calcularComisiones() {
 <script src="js/mod-landings.js?v=125"></script>
 <script src="js/mod-creditos.js?v=125"></script>
 <script src="js/mod-lc.js?v=166"></script>
+<script src="js/mod-asistencia.js?v=169"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->
