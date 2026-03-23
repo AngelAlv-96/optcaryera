@@ -213,11 +213,12 @@ async function initAsistencia() {
   var cont = document.getElementById('asist-content-diario');
   if (cont) cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando...</div>';
 
-  // Show admin-only tabs
+  // Show tabs for admin and gerencia
+  var isAdminOrGerencia = currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'gerencia');
   var cfgTab = document.getElementById('asist-tab-config');
-  if (cfgTab) cfgTab.style.display = (currentUser && currentUser.rol === 'admin') ? '' : 'none';
+  if (cfgTab) cfgTab.style.display = isAdminOrGerencia ? '' : 'none';
   var expTab = document.getElementById('asist-tab-expediente');
-  if (expTab) expTab.style.display = (currentUser && currentUser.rol === 'admin') ? '' : 'none';
+  if (expTab) expTab.style.display = isAdminOrGerencia ? '' : 'none';
 
   try {
     // Load config in parallel
@@ -380,7 +381,7 @@ async function asistCargarDiario(fecha) {
       html += '<td style="padding:8px;text-align:center">' + (rec.retardo_min > 0 ? '<span style="color:#f5a623">' + rec.retardo_min + ' min</span>' : '—') + '</td>';
       html += '<td style="padding:8px;text-align:center">' + estadoBadge + '</td>';
       html += '<td style="padding:8px;text-align:center">';
-      if (currentUser && currentUser.rol === 'admin') {
+      if (currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'gerencia')) {
         html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="asistEditarNota(\'' + r.emp.uid + '\',\'' + _asistFechaDiario + '\',' + (rec.id||'null') + ')" title="' + (rec.nota || 'Sin nota') + '">' + (rec.nota ? '📝' : '+') + '</button>';
       } else {
         html += '<span style="font-size:10px;color:var(--muted)">' + (rec.nota || '—') + '</span>';
