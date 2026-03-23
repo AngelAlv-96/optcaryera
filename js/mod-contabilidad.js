@@ -744,7 +744,7 @@ async function contRenderFacturacion() {
     var facturas = allFacturas.filter(function(f) { return f.status !== 'pending'; });
 
     var html = '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px">';
-    html += '<button class="btn btn-p btn-sm" onclick="contMostrarFormFactura()" style="font-size:12px">🧾 Facturar venta</button>';
+    html += '<button class="btn btn-p btn-sm" onclick="contMostrarFormFactura()" style="font-size:12px">🧾 Registrar factura</button>';
     html += '<span style="font-size:12px;color:var(--muted)">' + facturas.filter(function(f){return f.status==='valid'}).length + ' emitidas</span>';
     if (pendientes.length > 0) html += '<span style="font-size:11px;background:rgba(245,166,35,0.15);color:#f5a623;padding:3px 8px;border-radius:6px;font-weight:600">' + pendientes.length + ' pendientes</span>';
     html += '</div>';
@@ -783,7 +783,8 @@ async function contRenderFacturacion() {
         html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (esLiquidada ? 'background:rgba(74,222,128,0.15);color:#4ade80' : 'background:rgba(245,166,35,0.15);color:#f5a623') + '">' + (vs.estado || '—') + '</span></td>';
         html += '<td style="padding:8px;text-align:center">';
         if (esLiquidada) {
-          html += '<button class="btn btn-p" style="padding:3px 10px;font-size:10px" onclick="contFacturarDesdeHistorial(\'' + p.venta_folio + '\')">Emitir</button>';
+          html += '<button class="btn btn-p" style="padding:3px 10px;font-size:10px;margin-right:4px" onclick="contMarcarEmitidaRapido(' + p.id + ',\'' + p.venta_folio + '\')">✅ Emitida</button>';
+          html += '<button class="btn btn-g" style="padding:3px 8px;font-size:10px;margin-right:4px" onclick="contFacturarDesdeHistorial(\'' + p.venta_folio + '\')">Ver datos</button>';
         } else {
           html += '<span style="font-size:10px;color:var(--muted)">Esperando pago</span>';
         }
@@ -804,7 +805,6 @@ async function contRenderFacturacion() {
       html += '<th style="padding:8px;text-align:right;color:var(--muted);font-size:10px">TOTAL</th>';
       html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FECHA</th>';
       html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS</th>';
-      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">ACCIONES</th>';
       html += '</tr></thead><tbody>';
       facturas.forEach(function(f) {
         var isCancelled = f.status === 'cancelled';
@@ -814,14 +814,7 @@ async function contRenderFacturacion() {
         html += '<td style="padding:8px;color:var(--muted)">' + (f.razon_social || '—') + '</td>';
         html += '<td style="padding:8px;text-align:right;color:var(--accent)">' + _contMoney(f.total) + '</td>';
         html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(f.created_at?.substring(0, 10)) + '</td>';
-        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Vigente') + '</span></td>';
-        html += '<td style="padding:8px;text-align:center">';
-        if (!isCancelled) {
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;margin-right:2px" onclick="contDescargarPDF(\'' + f.facturapi_id + '\')">PDF</button>';
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;margin-right:2px" onclick="contDescargarXML(\'' + f.facturapi_id + '\')">XML</button>';
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#f87171" onclick="contCancelarFactura(\'' + f.facturapi_id + '\',\'' + f.venta_folio + '\')">✕</button>';
-        }
-        html += '</td>';
+        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Emitida') + '</span></td>';
         html += '</tr>';
       });
       html += '</tbody></table></div>';
@@ -840,7 +833,7 @@ function contMostrarFormFactura() {
   if (!f) return;
   var html = '<div style="background:var(--surface);border-radius:12px;padding:16px">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
-  html += '<h4 style="font-size:13px;color:var(--text)">🧾 Emitir factura CFDI</h4>';
+  html += '<h4 style="font-size:13px;color:var(--text)">🧾 Registrar factura emitida</h4>';
   html += '<button class="btn btn-g btn-sm" onclick="contCerrarFormFactura()" style="font-size:10px">✕ Cerrar</button>';
   html += '</div>';
 
@@ -873,13 +866,11 @@ function contMostrarFormFactura() {
   html += '</div>';
 
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">';
-  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Forma de pago</label><select id="fact-forma" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:11px">';
-  _factCatalogos.formaPago.forEach(function(fp) { html += '<option value="' + fp.v + '">' + fp.v + ' - ' + fp.t + '</option>'; });
-  html += '</select></div>';
-  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Email (opcional)</label><input type="email" id="fact-email" placeholder="cliente@email.com" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Email del cliente (opcional)</label><input type="email" id="fact-email" placeholder="cliente@email.com" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">UUID fiscal (opcional)</label><input type="text" id="fact-uuid" placeholder="UUID de la factura emitida en SAT" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '</div>';
 
-  html += '<div style="margin-top:12px"><button class="btn btn-p btn-sm" id="fact-btn-emitir" onclick="contEmitirFactura()" style="font-size:12px">🧾 Emitir factura</button></div>';
+  html += '<div style="margin-top:12px"><button class="btn btn-p btn-sm" id="fact-btn-emitir" onclick="contEmitirFactura()" style="font-size:12px">✅ Marcar como emitida</button></div>';
   html += '</div>';
 
   html += '</div>';
@@ -953,7 +944,7 @@ async function contEmitirFactura() {
   if (!window._actionBusy) window._actionBusy = {};
   window._actionBusy['emitirFactura'] = true;
   var btn = document.getElementById('fact-btn-emitir');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Emitiendo factura...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
 
   try {
     var folio = window._factVentaFolio;
@@ -964,72 +955,55 @@ async function contEmitirFactura() {
     var regimen = document.getElementById('fact-regimen').value;
     var cp = (document.getElementById('fact-cp').value || '').trim();
     var uso = document.getElementById('fact-uso').value;
-    var forma = document.getElementById('fact-forma').value;
     var email = (document.getElementById('fact-email').value || '').trim();
+    var uuid = (document.getElementById('fact-uuid').value || '').trim();
 
-    if (!rfc || !razon || !regimen || !cp) {
-      toast('Completa RFC, razón social, régimen y CP', 'warn');
+    if (!rfc || !razon) {
+      toast('Completa al menos RFC y razón social', 'warn');
       return;
     }
 
-    var resp = await fetch('/.netlify/functions/factura', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'crear',
-        venta_folio: folio,
-        cliente: {
-          tax_id: rfc,
-          legal_name: razon,
-          tax_system: regimen,
-          zip: cp,
-          use: uso,
-          email: email || undefined
-        },
-        forma_pago: forma,
-        auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
-      })
+    // Get venta total
+    var { data: ventas } = await db.from('ventas').select('total,paciente_id').eq('folio', folio).limit(1);
+    var venta = ventas && ventas[0];
+
+    // Delete pending request if exists, then insert as valid
+    try { await db.from('facturas').delete().eq('venta_folio', folio).eq('status', 'pending'); } catch(e) {}
+
+    await db.from('facturas').insert({
+      venta_folio: folio,
+      facturapi_id: uuid || ('manual_' + Date.now()),
+      rfc_cliente: rfc,
+      razon_social: razon,
+      total: venta ? Number(venta.total) : 0,
+      status: 'valid'
     });
 
-    var data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Error al emitir factura');
+    // Save fiscal data to patient for reuse
+    if (venta && venta.paciente_id) {
+      try {
+        await db.from('pacientes').update({
+          datos_fiscales: { rfc: rfc, razon_social: razon, regimen_fiscal: regimen, cp_fiscal: cp, uso_cfdi: uso, email: email }
+        }).eq('id', venta.paciente_id);
+      } catch(e) {}
+    }
 
-    // Remove pending request if exists
-    try { await db.from('facturas').delete().eq('venta_folio', folio).eq('status', 'pending'); } catch(e) {}
-    toast('Factura emitida exitosamente', 'ok');
+    toast('Factura registrada como emitida', 'ok');
     contCerrarFormFactura();
     contRenderFacturacion();
   } catch(err) {
     toast('Error: ' + err.message, 'err');
   } finally {
     window._actionBusy['emitirFactura'] = false;
-    if (btn) { btn.disabled = false; btn.textContent = '🧾 Emitir factura'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Marcar como emitida'; }
   }
 }
 
-function contDescargarPDF(facturapi_id) {
-  window.open('/.netlify/functions/factura?action=pdf&id=' + facturapi_id, '_blank');
-}
-
-function contDescargarXML(facturapi_id) {
-  window.open('/.netlify/functions/factura?action=xml&id=' + facturapi_id, '_blank');
-}
-
-async function contCancelarFactura(facturapi_id, folio) {
-  if (!confirm('¿Cancelar la factura de la venta ' + folio + '? Esta acción se reporta al SAT.')) return;
+async function contMarcarEmitidaRapido(facturaId, folio) {
+  if (!confirm('¿Marcar la factura de ' + folio + ' como emitida?')) return;
   try {
-    var resp = await fetch('/.netlify/functions/factura', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'cancelar',
-        facturapi_id: facturapi_id,
-        auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
-      })
-    });
-    var data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Error');
-    toast('Factura cancelada', 'ok');
+    await db.from('facturas').update({ status: 'valid', facturapi_id: 'manual_' + Date.now() }).eq('id', facturaId);
+    toast('Factura marcada como emitida', 'ok');
     contRenderFacturacion();
   } catch(err) {
     toast('Error: ' + err.message, 'err');
