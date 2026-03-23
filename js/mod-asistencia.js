@@ -1040,7 +1040,7 @@ async function asistRenderExpedientes() {
     html += '<input type="text" id="exp-' + emp.uid + '-puesto" value="' + (exp.puesto || '').replace(/"/g,'&quot;') + '" style="' + inputStyle + '" placeholder="Ej: Asesor optico"></div>';
     html += '<div><div style="' + lblStyle + '">Departamento</div>';
     html += '<select id="exp-' + emp.uid + '-depto" style="' + inputStyle + '">';
-    ['Ventas','Laboratorio','Administracion'].forEach(function(d) {
+    ['Laboratorio','Optometristas','Ventas','Administracion'].forEach(function(d) {
       html += '<option value="' + d + '"' + (exp.departamento === d ? ' selected' : '') + '>' + d + '</option>';
     });
     html += '</select></div>';
