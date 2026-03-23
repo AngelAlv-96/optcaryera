@@ -1327,11 +1327,13 @@ async function asistVerDocumento(uid, firmaId) {
     overlay = document.createElement('div');
     overlay.id = 'asist-reporte-overlay';
     overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('open'); overlay.remove(); } };
     document.body.appendChild(overlay);
   }
 
   var html = '<div style="background:var(--bg);border-radius:16px;max-width:850px;width:95vw;max-height:90vh;overflow-y:auto;padding:20px;position:relative">';
-  html += '<button onclick="document.getElementById(\'asist-reporte-overlay\').classList.remove(\'open\')" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
+  html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
   html += '<h2 style="font-size:15px;margin-bottom:4px;color:var(--beige)">Reporte de Asistencia — ' + empName + '</h2>';
   html += '<div style="font-size:11px;color:var(--muted);margin-bottom:16px">' + firma.periodo_inicio + ' al ' + firma.periodo_fin;
   if (firma.firmado_at) html += ' — Firmado el ' + new Date(firma.firmado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' });
@@ -1401,6 +1403,8 @@ function asistPreviewFormato(tipo) {
     overlay = document.createElement('div');
     overlay.id = 'asist-reporte-overlay';
     overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('open'); overlay.remove(); } };
     document.body.appendChild(overlay);
   }
 
@@ -1414,7 +1418,7 @@ function asistPreviewFormato(tipo) {
   }
 
   var html = '<div style="background:var(--bg);border-radius:16px;max-width:850px;width:95vw;max-height:90vh;overflow-y:auto;padding:20px;position:relative">';
-  html += '<button onclick="document.getElementById(\'asist-reporte-overlay\').classList.remove(\'open\')" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
+  html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">' + (tipo === 'reporte' ? 'Formato: Reporte de Asistencia' : 'Formato: Acta de Falta Injustificada') + '</h2>';
   html += '<div style="background:#fff;color:#000;padding:20px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:11pt;line-height:1.4">';
   html += previewHTML;
@@ -1563,13 +1567,15 @@ async function asistEnvioManual() {
     overlay = document.createElement('div');
     overlay.id = 'asist-reporte-overlay';
     overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('open'); overlay.remove(); } };
     document.body.appendChild(overlay);
   }
 
   var inputStyle = 'background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 10px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none;width:100%';
 
   var html = '<div style="background:var(--bg);border-radius:16px;max-width:550px;width:95vw;padding:20px;position:relative">';
-  html += '<button onclick="document.getElementById(\'asist-reporte-overlay\').classList.remove(\'open\')" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
+  html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">Enviar reporte o acta por WhatsApp</h2>';
 
   // Type selector
@@ -1698,7 +1704,7 @@ async function asistEjecutarEnvio() {
 
   if (btn) { btn.disabled = false; btn.textContent = '📩 Enviar por WhatsApp'; }
   if (typeof toast === 'function') toast(enviados + ' mensaje(s) enviado(s)');
-  document.getElementById('asist-reporte-overlay')?.classList.remove('open');
+  var ov = document.getElementById('asist-reporte-overlay'); if (ov) { ov.classList.remove('open'); ov.remove(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1725,6 +1731,8 @@ async function asistAbrirPermisos() {
     overlay = document.createElement('div');
     overlay.id = 'asist-reporte-overlay';
     overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('open'); overlay.remove(); } };
     document.body.appendChild(overlay);
   }
 
@@ -1733,7 +1741,7 @@ async function asistAbrirPermisos() {
   var permisos = permRes.data || [];
 
   var html = '<div style="background:var(--bg);border-radius:16px;max-width:700px;width:95vw;max-height:90vh;overflow-y:auto;padding:20px;position:relative">';
-  html += '<button onclick="document.getElementById(\'asist-reporte-overlay\').classList.remove(\'open\')" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
+  html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">Permisos, Vacaciones e Incapacidades</h2>';
 
   // Add permission form
@@ -1878,11 +1886,13 @@ async function asistGenerarReporte(uid) {
     overlay = document.createElement('div');
     overlay.id = 'asist-reporte-overlay';
     overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) { overlay.classList.remove('open'); overlay.remove(); } };
     document.body.appendChild(overlay);
   }
 
   var html = '<div style="background:var(--bg);border-radius:16px;max-width:850px;width:95vw;max-height:90vh;overflow-y:auto;padding:20px;position:relative">';
-  html += '<button onclick="document.getElementById(\'asist-reporte-overlay\').classList.remove(\'open\')" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
+  html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">Reporte de Asistencia — ' + empName + '</h2>';
 
   // Preview area
