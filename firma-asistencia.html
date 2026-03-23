@@ -394,7 +394,7 @@ async function submitSignature() {
         action: 'update',
         table: 'asistencia_firmas',
         data: { firma_empleado: sigData, firmado_at: new Date().toISOString() },
-        filter: { column: 'token', value: _token },
+        filters: [{ col: 'token', op: 'eq', val: _token }],
         auth: { id: 'firma_token', pass: _token }
       })
     });
