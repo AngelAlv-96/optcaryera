@@ -857,14 +857,14 @@ async function contBuscarVentaFactura() {
   preview.style.display = '';
 
   try {
-    // Try exact match first, then partial match (e.g. "10530" matches "AME-10530")
-    var { data: ventas } = await db.from('ventas').select('folio,total,sucursal,estado,created_at,paciente_id,paciente_nombre,asesor').or('folio.eq.' + folio + ',folio.ilike.%' + folio).order('created_at', { ascending: false }).limit(5);
+    // Search by exact folio or partial match
+    var { data: ventas } = await db.from('ventas').select('folio,total,sucursal,estado,created_at,paciente_id,asesor,pacientes(nombre,apellidos)').ilike('folio', '%' + folio + '%').order('created_at', { ascending: false }).limit(5);
     var venta = ventas && ventas[0];
     if (!venta) { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Venta no encontrada</span>'; return; }
     // If multiple matches, show selector
     if (ventas.length > 1) {
       var opts = ventas.map(function(v) {
-        return '<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'transparent\'" onclick="document.getElementById(\'fact-folio\').value=\'' + v.folio + '\';contBuscarVentaFactura()"><b>' + v.folio + '</b> · ' + (v.paciente_nombre || '—') + ' · ' + v.sucursal + ' · $' + Number(v.total).toFixed(2) + '</div>';
+        return '<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'transparent\'" onclick="document.getElementById(\'fact-folio\').value=\'' + v.folio + '\';contBuscarVentaFactura()"><b>' + v.folio + '</b> · ' + (v.pacientes ? (v.pacientes.nombre + ' ' + (v.pacientes.apellidos||'')).trim() : '—') + ' · ' + v.sucursal + ' · $' + Number(v.total).toFixed(2) + '</div>';
       }).join('');
       preview.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">Múltiples resultados — selecciona:</div>' + opts;
       return;
@@ -876,7 +876,7 @@ async function contBuscarVentaFactura() {
     if (existing && existing.length > 0) { preview.innerHTML = '<span style="font-size:11px;color:#f5a623">Esta venta ya tiene factura vigente</span>'; return; }
 
     window._factVentaFolio = venta.folio;
-    preview.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:12px"><span><b>' + venta.folio + '</b> · ' + (venta.paciente_nombre || '—') + ' · ' + venta.sucursal + '</span><span style="font-weight:700;color:var(--accent)">' + _contMoney(venta.total) + '</span></div>';
+    preview.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:12px"><span><b>' + venta.folio + '</b> · ' + (venta.pacientes ? (venta.pacientes.nombre + ' ' + (venta.pacientes.apellidos||'')).trim() : '—') + ' · ' + venta.sucursal + '</span><span style="font-weight:700;color:var(--accent)">' + _contMoney(venta.total) + '</span></div>';
 
     // Show fiscal data form
     document.getElementById('fact-datos-fiscales').style.display = '';
