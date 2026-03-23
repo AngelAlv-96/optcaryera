@@ -312,7 +312,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
 8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify, ✅ webhook activo, ⬜ probar flujo completo, ⬜ completar validación cuenta
 9. **Google Sign-In**: ✅ configurado
-10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados de Facturapi, ✅ flujo simplificado (solicitudes + marcar emitida), ⬜ eliminar `FACTURAPI_KEY` de env vars Netlify, ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
+10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
