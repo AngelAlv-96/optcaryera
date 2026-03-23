@@ -4545,7 +4545,7 @@ const CHANGELOG = {
 function initVersionFooter() {
   let installDate = localStorage.getItem('caryera_install_' + APP_BUILD);
   if (!installDate) {
-    installDate = new Date().toLocaleString('es-MX', { timeZone: 'America/Ojinaga', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    installDate = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
     localStorage.setItem('caryera_install_' + APP_BUILD, installDate);
   }
   const lbl = document.getElementById('ver-label');
@@ -5003,7 +5003,7 @@ function hoyLocal() {
 function getLocalOffsetMs() {
   const now = new Date();
   const utc = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const local = new Date(now.toLocaleString('en-US', { timeZone: 'America/Ojinaga' }));
+  const local = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
   return utc - local; // positive = local is behind UTC (e.g. 7h * 3600000)
 }
 
@@ -5915,7 +5915,17 @@ async function loadDash() {
   var suc = currentUser?.sucursal || 'Todas';
   var body = document.getElementById('dash-body');
   if (!body) return;
-  var today = hoyLocal();
+  // Antes de las 10am, mostrar resumen del día anterior
+  var nowLocal = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+  var dashDate;
+  if (nowLocal.getHours() < 10) {
+    var ayer = new Date(nowLocal);
+    ayer.setDate(ayer.getDate() - 1);
+    dashDate = ayer.toLocaleDateString('en-CA');
+  } else {
+    dashDate = hoyLocal();
+  }
+  var today = dashDate;
   var utcStart = new Date(today + 'T00:00:00').toISOString();
   var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
 

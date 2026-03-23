@@ -190,7 +190,8 @@ async function saveMessage(senderId, role, content, userName, channel) {
 async function getAIResponse(userMessage, userName, senderId, channel) {
   var config = await getClariConfig();
   var channelNote = channel === 'instagram' ? 'Respondes por Instagram DM.' : 'Respondes por Facebook Messenger.';
-  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
+  var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
 
   // Order lookup (by text only — no phone number available from Messenger/IG)
   var orderContext = '';

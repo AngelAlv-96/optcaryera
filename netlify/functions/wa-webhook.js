@@ -328,7 +328,9 @@ async function cleanOldMessages() {
 // ── AI RESPONSE ──
 async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   var config = await getClariConfig();
-  var systemPrompt = config.personality + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
+  // Fecha y hora actual en Cd. Juárez para contexto
+  var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
 
   // Check if asking about order and lookup
   var orderContext = '';
