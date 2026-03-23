@@ -263,7 +263,7 @@ async function loadCatalogoTab(tv) {
   var combos = {};
   filtered.forEach(function(r) {
     var key = r.material + '|' + r.tratamiento;
-    if (!combos[key]) combos[key] = { material:r.material, tratamiento:r.tratamiento, s1:null, s2:null, nota:r.nota||'' };
+    if (!combos[key]) combos[key] = { material:r.material, tratamiento:r.tratamiento, tv:tv, s1:null, s2:null, nota:r.nota||'' };
     if (r.serie === 1) combos[key].s1 = Number(r.precio);
     if (r.serie === 2) combos[key].s2 = Number(r.precio);
     if (r.nota && !combos[key].nota) combos[key].nota = r.nota;
@@ -298,6 +298,8 @@ async function loadCatalogoTab(tv) {
   h += '<th style="text-align:right;padding:12px 14px;color:var(--beige);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Serie 1</th>';
   h += '<th style="text-align:right;padding:12px 14px;color:var(--beige);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Serie 2</th>';
   h += '<th style="text-align:left;padding:12px 14px;color:var(--muted);font-size:10px">Nota</th>';
+  var isAdmin = currentUser && currentUser.rol === 'admin';
+  if (isAdmin) h += '<th style="width:40px"></th>';
   h += '</tr></thead><tbody>';
 
   var lastMat = '';
@@ -312,8 +314,20 @@ async function loadCatalogoTab(tv) {
     h += '<td style="padding:10px 14px;text-align:right;font-weight:600;color:'+(r.s1?'var(--white)':'rgba(255,255,255,0.2)')+'">'+(r.s1?'$'+r.s1.toLocaleString('es-MX'):'\u2014')+'</td>';
     h += '<td style="padding:10px 14px;text-align:right;font-weight:600;color:'+(r.s2?'var(--white)':'rgba(255,255,255,0.2)')+'">'+(r.s2?'$'+r.s2.toLocaleString('es-MX'):'\u2014')+'</td>';
     h += '<td style="padding:10px 14px;font-size:10px;color:var(--muted)">'+r.nota+'</td>';
+    if (isAdmin) h += '<td style="padding:10px 4px;text-align:center"><button onclick="catDesactivarMaterial(\''+r.tv.replace(/'/g,"\\'")+'\',\''+r.material.replace(/'/g,"\\'")+'\',\''+r.tratamiento.replace(/'/g,"\\'")+'\')\" style="background:none;border:none;cursor:pointer;font-size:14px;opacity:.4;padding:4px" title="Desactivar material">🗑️</button></td>';
     h += '</tr>';
   });
   h += '</tbody></table>';
   document.getElementById('catv-table').innerHTML = h;
+}
+
+async function catDesactivarMaterial(tv, mat, tra) {
+  if (!confirm('¿Desactivar "'+mat+' · '+tra+'" de '+tv+'?\n\nNo afecta ventas existentes, solo deja de aparecer en el catálogo.')) return;
+  try {
+    var resp = await db.from('reglas_materiales').update({activo:false}).eq('tipo_vision',tv).eq('material',mat).eq('tratamiento',tra);
+    if (resp.error) { toast('Error: '+(resp.error.message||resp.error), true); return; }
+    toast(mat+' · '+tra+' desactivado');
+    _reglasCache = null;
+    loadCatalogoTab(tv);
+  } catch(e) { toast('Error: '+e.message, true); }
 }
