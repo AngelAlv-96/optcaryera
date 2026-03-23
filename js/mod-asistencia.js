@@ -508,7 +508,7 @@ async function asistEditarRegistro(uid, nombre, fecha, recordId) {
 
 function asistCerrarModalRegistro() {
   var overlay = document.getElementById('asist-modal-registro');
-  if (overlay) { overlay.classList.remove('open'); overlay.innerHTML = ''; }
+  if (overlay) { overlay.classList.remove('open'); overlay.remove(); }
 }
 
 async function asistGuardarRegistro(uid, fecha, recordId) {
