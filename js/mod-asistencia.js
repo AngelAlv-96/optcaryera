@@ -12,6 +12,7 @@ var _asistAsesores = {};
 var _asistExpedientes = {}; // uid → {nombre_completo, curp, nss, rfc, puesto, departamento, fecha_ingreso, salario, reg_patronal}
 var _asistActiveTab = 'diario';
 var _asistFechaDiario = '';
+var _asistCurrentFirma = null; // firma record for current document view
 
 // ═══════════════════════════════════════════════════════════
 // HELPERS
@@ -1306,6 +1307,7 @@ async function asistVerDocumento(uid, firmaId) {
   var res = await db.from('asistencia_firmas').select('*').eq('id', firmaId).limit(1);
   if (!res.data || res.data.length === 0) { if (typeof toast === 'function') toast('Documento no encontrado','error'); return; }
   var firma = res.data[0];
+  _asistCurrentFirma = firma;
 
   // Use asistGenerarReporte with a specific range and pre-loaded firma
   _asistReporteUid = uid;
@@ -1339,7 +1341,7 @@ async function asistVerDocumento(uid, firmaId) {
   html += '</div>';
 
   // Preview area
-  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:20px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:11pt;line-height:1.4">';
+  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:24px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:12pt;line-height:1.5">';
   html += _asistBuildReporteHTML(empName, empSuc, _asistReporteRange, records, _asistReporteFirmaEmp, null);
   html += '</div>';
 
@@ -1923,7 +1925,7 @@ async function asistGenerarReporte(uid) {
   html += '<h2 style="font-size:15px;margin-bottom:16px;color:var(--beige)">Reporte de Asistencia — ' + empName + '</h2>';
 
   // Preview area
-  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:20px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:11pt;line-height:1.4">';
+  html += '<div id="asist-reporte-preview" style="background:#fff;color:#000;padding:24px;border-radius:8px;font-family:\'Times New Roman\',serif;font-size:12pt;line-height:1.5">';
   html += _asistBuildReporteHTML(empName, empSuc, _asistReporteRange, records, _asistReporteFirmaEmp, null);
   html += '</div>';
 
@@ -1974,7 +1976,7 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '</div>';
 
   // Employee info — datos LFT
-  html += '<table style="width:100%;font-size:9.5pt;margin-bottom:12px;border-collapse:collapse">';
+  html += '<table style="width:100%;font-size:10.5pt;margin-bottom:12px;border-collapse:collapse">';
   html += '<tr><td style="padding:2px 0;width:50%"><b>Nombre del trabajador:</b> ' + nombreCompleto + '</td>';
   html += '<td style="padding:2px 0"><b>Sucursal:</b> ' + empSuc + '</td></tr>';
   if (exp.curp || exp.rfc) {
@@ -1997,10 +1999,10 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   html += '</table>';
 
   // Attendance table
-  html += '<table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:15px">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:15px">';
   html += '<thead><tr style="background:#f0f0f0">';
   ['Fecha','Dia','Entrada','Comida','Regreso','Salida','Horas','Retardo','Estado','Observaciones'].forEach(function(h) {
-    html += '<th style="border:1px solid #999;padding:4px 3px;text-align:center;font-size:8pt">' + h + '</th>';
+    html += '<th style="border:1px solid #999;padding:5px 4px;text-align:center;font-size:9pt;font-weight:bold">' + h + '</th>';
   });
   html += '</tr></thead><tbody>';
 
@@ -2062,7 +2064,8 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
     html += '<img src="' + firmaEmp + '" style="max-width:200px;max-height:80px;display:block;margin:0 auto 4px">';
     html += '<div style="font-size:8pt;color:#888">Firma digital</div>';
   }
-  html += '<div style="border-top:1px solid #000;padding-top:4px;margin-top:' + (firmaEmp ? '4px' : '60px') + '">';
+  html += '<div style="min-height:60px"></div>';
+  html += '<div style="border-top:1px solid #000;padding-top:4px">';
   html += '<div style="font-size:10pt;font-weight:bold">' + empName + '</div>';
   html += '<div style="font-size:8pt;color:#555">Firma del trabajador</div>';
   html += '</div></div>';
@@ -2073,15 +2076,30 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
     html += '<img src="' + firmaPatron + '" style="max-width:200px;max-height:80px;display:block;margin:0 auto 4px">';
     html += '<div style="font-size:8pt;color:#888">Firma digital</div>';
   }
-  html += '<div style="border-top:1px solid #000;padding-top:4px;margin-top:' + (firmaPatron ? '4px' : '60px') + '">';
+  html += '<div style="min-height:60px"></div>';
+  html += '<div style="border-top:1px solid #000;padding-top:4px">';
   html += '<div style="font-size:10pt;font-weight:bold">' + (exp.razon_social || 'Representante de la empresa') + '</div>';
   html += '<div style="font-size:8pt;color:#555">Firma del patron o representante legal</div>';
   html += '</div></div>';
 
   html += '</div>';
 
+  // Validation seal
+  var firmaToken = (_asistCurrentFirma && _asistCurrentFirma.token) ? _asistCurrentFirma.token : '';
+  var firmaFecha = (_asistCurrentFirma && _asistCurrentFirma.firmado_at) ? new Date(_asistCurrentFirma.firmado_at).toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : '';
+  if (firmaToken || firmaFecha) {
+    html += '<div style="margin-top:20px;border:2px solid #999;border-radius:6px;padding:8px 12px;font-size:8pt;color:#555;display:flex;align-items:center;gap:12px">';
+    html += '<div style="font-size:14pt;color:#999">&#128274;</div>';
+    html += '<div>';
+    html += '<div style="font-weight:bold;font-size:9pt;color:#333">Sello de verificacion digital</div>';
+    if (firmaFecha) html += '<div>Fecha y hora de firma: <b>' + firmaFecha + '</b></div>';
+    if (firmaToken) html += '<div>Token: <span style="font-family:monospace;letter-spacing:1px">' + firmaToken.substring(0, 12) + '...' + firmaToken.substring(firmaToken.length - 8) + '</span></div>';
+    html += '<div>Verificar en: optcaryera.netlify.app/firma-asistencia</div>';
+    html += '</div></div>';
+  }
+
   // Footer
-  html += '<div style="margin-top:20px;text-align:center;font-size:8pt;color:#888;border-top:1px solid #ddd;padding-top:8px">';
+  html += '<div style="margin-top:12px;text-align:center;font-size:8pt;color:#888;border-top:1px solid #ddd;padding-top:8px">';
   html += 'Documento generado el ' + _asistHoyLocal() + ' — Opticas Car & Era — Art. 804 Frac. III LFT';
   html += '</div>';
 
