@@ -233,71 +233,99 @@ async function init() {
   // Render
   var html = '';
 
-  // Employee info
-  html += '<div class="card">';
-  html += '<h2>Datos del empleado</h2>';
-  html += '<div class="info-row"><span class="label">Nombre</span><span class="value">' + empName + '</span></div>';
-  html += '<div class="info-row"><span class="label">Sucursal</span><span class="value">' + empSuc + '</span></div>';
-  html += '<div class="info-row"><span class="label">Periodo</span><span class="value">' + _firmaData.periodo_inicio + ' al ' + _firmaData.periodo_fin + '</span></div>';
-  html += '</div>';
-
-  // Stats
-  html += '<div class="stats">';
-  html += '<div class="stat"><div class="num">' + diasTrab + '/' + totalDias + '</div><div class="lbl">Dias</div></div>';
-  html += '<div class="stat"><div class="num">' + totalHoras.toFixed(1) + '</div><div class="lbl">Horas</div></div>';
-  html += '<div class="stat"><div class="num">' + retardos + '</div><div class="lbl">Retardos</div></div>';
-  html += '</div>';
-  if (faltas > 0 || totalRetMin > 0) {
-    html += '<div class="stats" style="grid-template-columns:1fr 1fr">';
-    html += '<div class="stat"><div class="num" style="color:#e74c3c">' + faltas + '</div><div class="lbl">Faltas</div></div>';
-    html += '<div class="stat"><div class="num" style="color:#f5a623">' + totalRetMin + '</div><div class="lbl">Min retardo</div></div>';
-    html += '</div>';
-  }
-
-  // Table
-  html += '<div class="card">';
-  html += '<h2>Detalle de asistencia</h2>';
-  html += '<div style="overflow-x:auto">';
-  html += '<table><thead><tr>';
-  html += '<th>Fecha</th><th>Dia</th><th class="td-center">Entrada</th><th class="td-center">Comida</th><th class="td-center">Regreso</th><th class="td-center">Salida</th><th class="td-center">Horas</th><th class="td-center">Estado</th>';
-  html += '</tr></thead><tbody>' + tableRows + '</tbody></table>';
-  html += '</div></div>';
-
-  // ── ACTA DE FALTA INJUSTIFICADA (if applicable) ──
   if (_isActa && _faltasDias.length > 0) {
-    html += '<div class="card" style="border:2px solid #e74c3c">';
-    html += '<h2 style="color:#e74c3c">Acta de Falta Injustificada</h2>';
-    html += '<div style="font-size:11px;line-height:1.6;color:#ccc">';
-    html += '<p style="margin-bottom:8px">De conformidad con lo establecido en el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, se hace constar que el(la) trabajador(a):</p>';
-    html += '<p style="margin-bottom:8px;font-weight:600;font-size:13px;color:#fff">' + empName + '</p>';
-    html += '<p style="margin-bottom:8px">Adscrito(a) a la sucursal <b>' + empSuc + '</b>, registro la(s) siguiente(s) falta(s) de asistencia sin justificacion:</p>';
+    // ═══════════════════════════════════════════════════════
+    // FORMATO: ACTA DE FALTA INJUSTIFICADA
+    // ═══════════════════════════════════════════════════════
 
-    html += '<div style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.2);border-radius:8px;padding:10px;margin:10px 0">';
+    // Header prominente
+    html += '<div style="text-align:center;border:3px solid #e74c3c;border-radius:10px;padding:16px;margin-bottom:16px;background:rgba(231,76,60,0.06)">';
+    html += '<div style="font-size:20px;font-weight:800;color:#e74c3c;letter-spacing:2px;margin-bottom:4px">ACTA DE FALTA INJUSTIFICADA</div>';
+    html += '<div style="font-size:11px;color:#888">Art. 47, Fraccion X — Ley Federal del Trabajo</div>';
+    html += '</div>';
+
+    // Datos del empleado
+    html += '<div class="card">';
+    html += '<h2>Datos del trabajador</h2>';
+    html += '<div class="info-row"><span class="label">Nombre completo</span><span class="value">' + empName + '</span></div>';
+    html += '<div class="info-row"><span class="label">Sucursal</span><span class="value">' + empSuc + '</span></div>';
+    html += '<div class="info-row"><span class="label">Fecha del acta</span><span class="value">' + new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</span></div>';
+    html += '</div>';
+
+    // Fechas de falta (prominentes)
+    html += '<div class="card" style="border:2px solid #e74c3c">';
+    html += '<h2 style="color:#e74c3c">Fecha(s) de inasistencia</h2>';
     _faltasDias.forEach(function(f) {
       var dl2 = dayLabel(f);
-      html += '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">';
-      html += '<span style="font-weight:600">' + f + '</span><span style="color:#888">' + dl2 + '</span>';
-      html += '<span class="badge badge-absent">Falta injustificada</span>';
+      var fechaLarga = new Date(f + 'T12:00:00').toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">';
+      html += '<span style="font-weight:700;font-size:14px;color:#e8e8e8">' + fechaLarga.charAt(0).toUpperCase() + fechaLarga.slice(1) + '</span>';
+      html += '<span class="badge badge-absent" style="font-size:11px;padding:3px 10px">Falta injustificada</span>';
       html += '</div>';
     });
     html += '</div>';
 
-    html += '<p style="margin-bottom:6px">El(la) trabajador(a) manifiesta:</p>';
-    html += '<ul style="margin:0 0 10px 16px;color:#aaa;font-size:10px">';
-    html += '<li>Que no se presento a laborar en la(s) fecha(s) indicada(s)</li>';
-    html += '<li>Que no conto con autorizacion previa ni justificacion para su ausencia</li>';
-    html += '<li>Que tiene conocimiento de que la acumulacion de mas de 3 faltas injustificadas en un periodo de 30 dias es causal de rescision laboral conforme al Art. 47 Frac. X de la LFT</li>';
-    html += '</ul>';
+    // Declaracion formal
+    html += '<div class="card">';
+    html += '<h2>Declaracion</h2>';
+    html += '<div style="font-size:12px;line-height:1.8;color:#ccc">';
+    html += '<p style="margin-bottom:12px">En la ciudad de <b>Ciudad Juarez, Chihuahua</b>, siendo las <b>' + new Date().toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true }) + '</b> del dia <b>' + new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</b>, se levanta la presente acta administrativa para hacer constar que:</p>';
+    html += '<p style="margin-bottom:12px">El(la) trabajador(a) <b style="color:#fff;font-size:13px">' + empName + '</b>, adscrito(a) a la sucursal <b>' + empSuc + '</b> de <b>Opticas Car & Era</b>, <b style="color:#e74c3c">no se presento a laborar</b> en la(s) fecha(s) arriba senalada(s), sin contar con autorizacion previa ni justificacion alguna para su ausencia.</p>';
+    html += '<p style="margin-bottom:12px">Se hace de su conocimiento que:</p>';
+    html += '<div style="background:rgba(255,255,255,0.03);border-left:3px solid #e74c3c;padding:10px 14px;margin:8px 0 12px;border-radius:0 6px 6px 0">';
+    html += '<p style="margin-bottom:8px"><b>1.</b> La falta de asistencia injustificada constituye un incumplimiento a las obligaciones laborales establecidas en el contrato de trabajo.</p>';
+    html += '<p style="margin-bottom:8px"><b>2.</b> De conformidad con el <b>Articulo 47, Fraccion X</b> de la Ley Federal del Trabajo, la acumulacion de <b>mas de 3 faltas de asistencia en un periodo de 30 dias, sin permiso del patron o sin causa justificada</b>, es causal de rescision de la relacion de trabajo sin responsabilidad para el patron.</p>';
+    html += '<p><b>3.</b> La presente acta se integra al expediente laboral del trabajador conforme al <b>Articulo 804, Fraccion III</b> de la LFT.</p>';
+    html += '</div>';
+    html += '<p style="margin-bottom:8px">El(la) trabajador(a) manifiesta estar enterado(a) del contenido de la presente acta y firma de conformidad.</p>';
+    html += '</div></div>';
 
-    html += '<p style="font-size:10px;color:#888;margin-top:8px"><b>Nota:</b> Este documento forma parte del expediente laboral del trabajador. La firma digital tiene la misma validez que la firma autografa conforme a la legislacion vigente.</p>';
+    // Nota legal
+    html += '<div style="font-size:10px;color:#666;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:8px 12px;margin-bottom:12px">';
+    html += '<b>Nota:</b> Este documento forma parte del expediente laboral del trabajador. La firma digital tiene la misma validez que la firma autografa conforme a la legislacion mexicana vigente en materia de firma electronica.';
+    html += '</div>';
+
+  } else {
+    // ═══════════════════════════════════════════════════════
+    // FORMATO: REPORTE DE ASISTENCIA (sin cambios)
+    // ═══════════════════════════════════════════════════════
+
+    // Employee info
+    html += '<div class="card">';
+    html += '<h2>Datos del empleado</h2>';
+    html += '<div class="info-row"><span class="label">Nombre</span><span class="value">' + empName + '</span></div>';
+    html += '<div class="info-row"><span class="label">Sucursal</span><span class="value">' + empSuc + '</span></div>';
+    html += '<div class="info-row"><span class="label">Periodo</span><span class="value">' + _firmaData.periodo_inicio + ' al ' + _firmaData.periodo_fin + '</span></div>';
+    html += '</div>';
+
+    // Stats
+    html += '<div class="stats">';
+    html += '<div class="stat"><div class="num">' + diasTrab + '/' + totalDias + '</div><div class="lbl">Dias</div></div>';
+    html += '<div class="stat"><div class="num">' + totalHoras.toFixed(1) + '</div><div class="lbl">Horas</div></div>';
+    html += '<div class="stat"><div class="num">' + retardos + '</div><div class="lbl">Retardos</div></div>';
+    html += '</div>';
+    if (faltas > 0 || totalRetMin > 0) {
+      html += '<div class="stats" style="grid-template-columns:1fr 1fr">';
+      html += '<div class="stat"><div class="num" style="color:#e74c3c">' + faltas + '</div><div class="lbl">Faltas</div></div>';
+      html += '<div class="stat"><div class="num" style="color:#f5a623">' + totalRetMin + '</div><div class="lbl">Min retardo</div></div>';
+      html += '</div>';
+    }
+
+    // Table
+    html += '<div class="card">';
+    html += '<h2>Detalle de asistencia</h2>';
+    html += '<div style="overflow-x:auto">';
+    html += '<table><thead><tr>';
+    html += '<th>Fecha</th><th>Dia</th><th class="td-center">Entrada</th><th class="td-center">Comida</th><th class="td-center">Regreso</th><th class="td-center">Salida</th><th class="td-center">Horas</th><th class="td-center">Estado</th>';
+    html += '</tr></thead><tbody>' + tableRows + '</tbody></table>';
     html += '</div></div>';
   }
 
   // Signature area
   html += '<div class="card">';
   if (_isActa && _faltasDias.length > 0) {
-    html += '<h2>Firma del empleado</h2>';
-    html += '<p style="font-size:11px;color:#888;margin-bottom:8px">Al firmar, reconozco las faltas indicadas y confirmo los datos de asistencia.</p>';
+    html += '<h2>Firma del trabajador</h2>';
+    html += '<p style="font-size:12px;color:#888;margin-bottom:8px">Al firmar, reconozco haber sido notificado(a) de la(s) falta(s) injustificada(s) indicadas en la presente acta y de las consecuencias legales que estas conllevan.</p>';
   } else {
     html += '<h2>Firma del empleado</h2>';
     html += '<p style="font-size:11px;color:#888;margin-bottom:8px">Al firmar, confirmo que los datos de asistencia mostrados son correctos.</p>';
@@ -307,7 +335,7 @@ async function init() {
   html += '<span class="sig-hint" id="sig-hint">Firma aqui</span>';
   html += '</div>';
   html += '<button class="btn btn-secondary no-print" onclick="clearSignature()">Limpiar firma</button>';
-  html += '<button class="btn btn-primary no-print" id="btn-firmar" onclick="submitSignature()" disabled>' + (_isActa ? 'Firmar acta y reporte' : 'Firmar reporte') + '</button>';
+  html += '<button class="btn btn-primary no-print" id="btn-firmar" onclick="submitSignature()" disabled>' + (_isActa ? 'Firmar acta' : 'Firmar reporte') + '</button>';
   html += '</div>';
 
   var lftRef = _isActa ? 'Art. 47 Frac. X y Art. 804 Frac. III LFT' : 'Art. 804 LFT';
