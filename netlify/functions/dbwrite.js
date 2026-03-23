@@ -106,6 +106,16 @@ exports.handler = async (event) => {
   if (!ALLOWED_TABLES.includes(table))
     return { statusCode: 403, headers: H, body: JSON.stringify({ error: 'Table not allowed: ' + table }) };
 
+  // ── Token-based auth for asistencia_firmas (public signature page) ──
+  if (auth.id === 'firma_token' && table === 'asistencia_firmas' && action === 'update') {
+    // Validate token exists and is not expired
+    const check = await supaREST('GET', `asistencia_firmas?token=eq.${auth.pass}&select=id,firmado_at,token_expires`, null, {});
+    const rec = check.data && check.data[0];
+    if (!rec) return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Token no encontrado' }) };
+    if (rec.firmado_at) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'Ya firmado' }) };
+    if (rec.token_expires && new Date(rec.token_expires) < new Date()) return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Token expirado' }) };
+    // Auth OK — proceed with update (skip normal user auth below)
+  } else {
   // ── Authenticate user ──
   const custom = await getCustomUsers();
   const allUsers = { ...BASE_USERS };
@@ -115,6 +125,7 @@ exports.handler = async (event) => {
   const user = allUsers[auth.id];
   if (!user || user.pass !== auth.pass)
     return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Autenticación fallida' }) };
+  }
 
   // ── Execute write operation ──
   try {
