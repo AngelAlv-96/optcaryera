@@ -1604,9 +1604,14 @@ async function asistEnvioManual() {
 
   // Acta: faltas dates (only for acta type)
   html += '<div id="envio-faltas-section" style="display:none;margin-bottom:12px">';
-  html += '<div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-transform:uppercase">Fechas de falta (para acta)</div>';
-  html += '<input type="text" id="envio-faltas" placeholder="Ej: 2026-03-20, 2026-03-21" style="' + inputStyle + '">';
-  html += '<div style="font-size:9px;color:var(--muted);margin-top:2px">Separar con comas. Si se deja vacio, se detectan automaticamente.</div>';
+  html += '<div style="font-size:9px;color:var(--muted);margin-bottom:6px;text-transform:uppercase">Fechas de falta</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  html += '<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px">Desde</div>';
+  html += '<input type="date" id="envio-falta-desde" style="' + inputStyle + '"></div>';
+  html += '<div><div style="font-size:9px;color:var(--muted);margin-bottom:4px">Hasta <span style="opacity:0.5">(mismo día si es solo 1)</span></div>';
+  html += '<input type="date" id="envio-falta-hasta" style="' + inputStyle + '"></div>';
+  html += '</div>';
+  html += '<div style="font-size:9px;color:var(--muted);margin-top:4px">Si es un solo día, pon la misma fecha en ambos.</div>';
   html += '</div>';
 
   // Send button
@@ -1631,7 +1636,20 @@ async function asistEjecutarEnvio() {
   var dest = document.querySelector('input[name=envio-dest]:checked')?.value || 'uno';
   var inicio = document.getElementById('envio-inicio')?.value;
   var fin = document.getElementById('envio-fin')?.value;
-  var faltasStr = (document.getElementById('envio-faltas')?.value || '').trim();
+  // Build faltas string from date pickers
+  var faltaDesde = (document.getElementById('envio-falta-desde')?.value || '').trim();
+  var faltaHasta = (document.getElementById('envio-falta-hasta')?.value || '').trim();
+  var faltasStr = '';
+  if (tipo === 'acta' && faltaDesde) {
+    var fechas = [];
+    var d = new Date(faltaDesde + 'T12:00:00');
+    var end = new Date((faltaHasta || faltaDesde) + 'T12:00:00');
+    while (d <= end) {
+      fechas.push(d.toLocaleDateString('en-CA'));
+      d.setDate(d.getDate() + 1);
+    }
+    faltasStr = fechas.join(', ');
+  }
   if (!inicio || !fin) { if (typeof toast === 'function') toast('Selecciona el periodo','error'); return; }
 
   var btn = document.getElementById('btn-envio-manual');
