@@ -44,6 +44,7 @@ Si algo se rompe gravemente:
 │   ├── mod-lc.js         — Módulo LC: catálogo cards + CRM recompra + estadísticas
 │   ├── mod-produccion.js — Producción y surtido lab
 │   ├── mod-asistencia.js  — Módulo RH: asistencia, expedientes, permisos, firmas, reportes LFT
+│   ├── mod-contabilidad.js — Módulo Contabilidad: estado de resultados, gastos OCR, flujo efectivo, facturación CFDI
 │   ├── mod-scanner.js    — Barcode scanner con remap teclado
 │   └── mod-tickets.js    — Tickets térmicos (ventas, cortes, abonos)
 └── netlify/functions/  — Serverless functions (backend)
@@ -64,6 +65,8 @@ Si algo se rompe gravemente:
     ├── conekta-webhook.js  — Webhook Conekta: auto-crea ventas en cada cobro recurrente + notifica WA
     ├── stripe-subscribe.js — ⛔ DEPRECATED (Stripe bloqueado para LC) — mantener como referencia
     ├── asistencia-cron.js  — Cron asistencia: recordatorios ausencia + envío firmas (cada 30min 10am-12pm)
+    ├── factura.js          — Proxy Facturapi: crear/cancelar CFDI, descargar PDF/XML (IVA 8% frontera)
+    ├── stripe-subscribe.js — ⛔ DEPRECATED (Stripe bloqueado para LC) — mantener como referencia
     ├── stripe-webhook.js  — ⛔ DEPRECATED
     └── stripe-portal.js   — ⛔ DEPRECATED
 ```
@@ -75,6 +78,7 @@ Si algo se rompe gravemente:
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
 - **Pagos**: Conekta (suscripciones recurrentes tienda) + Clip API (checkout links portal pacientes + pagos únicos tienda)
+- **Facturación**: Facturapi (CFDI 4.0, IVA 8% zona fronteriza) — sk_test_ configurada, pendiente activar producción
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
 
@@ -126,7 +130,7 @@ Si algo se rompe gravemente:
 - **laboratorio**: producción/surtido/bitácora, sin ventas/caja
 
 ## 📋 MÓDULOS ACTIVOS
-Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`).
+Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`), **Contabilidad** (estado de resultados + gastos con OCR + flujo de efectivo + facturación CFDI — `js/mod-contabilidad.js`).
 
 ## 🏗️ CÓMO FUNCIONA INDEX.HTML
 - Es una SPA: todas las vistas son `<div class="view" id="view-nombre">` que se muestran/ocultan
@@ -237,12 +241,35 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - **Frecuencias**: 30d→mensual, 60d→bimestral, 90d→trimestral (mapeo a Stripe `interval: 'month'`)
 - **Descuento suscripción**: 10% automático (aplicado en frontend antes de enviar a Stripe)
 
+## 📊 CONTABILIDAD (mod-contabilidad.js)
+- 4 pestañas: Estado de Resultados, Gastos, Flujo de Efectivo, Facturación CFDI
+- **Estado de Resultados**: ingresos (venta_pagos + creditos_abonos) vs egresos (compras_lab + gastos), utilidad bruta/neta, desglose por método/categoría, filtros periodo+sucursal
+- **Gastos**: registro manual + foto OCR (Anthropic Vision), categorías (Renta y servicios, Nómina y personal, Proveedores/materiales, Otros operativos), merge con compras_lab (read-only)
+- **Flujo de Efectivo**: entradas vs salidas diarias con saldo acumulado
+- **Facturación**: lista facturas emitidas + solicitudes pendientes
+- Acceso: admin + gerencia + controlable por permisos (checkbox "Contabilidad")
+- DB: tabla `gastos`, tabla `facturas`
+
+## 🧾 FACTURACIÓN CFDI (factura.js + Facturapi)
+- **PAC**: Facturapi (facturapi.io) — organización "Ópticas Car & Era" (XIA190128J61)
+- **IVA**: 8% zona fronteriza (Ciudad Juárez)
+- **factura.js**: zero deps, fetch directo a Facturapi API + Supabase REST
+- **Acciones**: crear (POST /v2/invoices), pdf, xml, cancelar, status
+- **Solo ventas liquidadas** se pueden facturar (validación frontend + backend)
+- **Flujo solicitudes**: empleados/clientes guardan datos fiscales como `status: 'pending'` en tabla `facturas`. Nancy (contabilidad) ve pendientes y emite cuando venta está liquidada.
+- **3 puntos de entrada**: detalle de venta (empleados), portal pacientes (clientes), pestaña Facturación (Nancy)
+- **Datos fiscales reutilizables**: se guardan en `pacientes.datos_fiscales` (JSONB) al facturar o solicitar
+- **Catálogos SAT**: régimen fiscal (601-626), uso CFDI (G01/G03/D01/S01), forma pago (01/03/04/28/99), claves producto (42172001 lentes, 42171600 armazones, 42172100 LC)
+- **Env var Netlify**: `FACTURAPI_KEY` (sk_test_ activa, sk_live_ pendiente)
+- **DB**: tabla `facturas` (venta_folio, facturapi_id, rfc_cliente, razon_social, total, status pending/valid/cancelled)
+
 ## 🧪 USUARIO DEMO
 - Login: demo/demo2024, rol admin
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v169
+## 📊 VERSIÓN ACTIVA: v170
+Cambios v170: Módulo Contabilidad + Facturación CFDI con Facturapi. **Nuevo módulo `js/mod-contabilidad.js`**: 4 pestañas — Estado de Resultados (ingresos de venta_pagos/creditos_abonos vs egresos de compras_lab/gastos, utilidad bruta/neta con margen, desglose por método y categoría), Gastos (registro manual + foto con OCR Anthropic Vision, categorías Renta/Nómina/Proveedores/Otros, merge con compras_lab como read-only, editar/eliminar), Flujo de Efectivo (entradas vs salidas diarias con saldo acumulado, desglose gastos/compras/retiros), Facturación CFDI (lista facturas emitidas + solicitudes pendientes con status de venta). **Facturación CFDI**: nueva función `factura.js` (zero deps, fetch directo a Facturapi + Supabase REST). IVA 8% zona fronteriza. Catálogos SAT (régimen fiscal, uso CFDI, forma de pago, claves producto óptico). Flujo 3 puntos de entrada: empleados solicitan factura desde detalle de venta (solo guardan datos fiscales), clientes solicitan desde portal pacientes, Nancy (contabilidad) ve pendientes y emite cuando venta está liquidada. Solo ventas liquidadas se pueden facturar. Datos fiscales se guardan en `datos_fiscales` JSONB de pacientes para reusar. **Permisos actualizados**: 7 checkboxes nuevos (Lentes de Contacto, Comisiones, Recursos Humanos, Landing Pages, Contabilidad, Configuración, Clari WhatsApp) — ya no hay roleControlled, todos los módulos controlables por permiso. Gerencia tiene acceso completo a RH (4 pestañas + editar notas). **DB nuevas**: tabla `gastos` (fecha, concepto, monto, categoria, subcategoria, sucursal, comprobante_url), tabla `facturas` (venta_folio, facturapi_id, rfc_cliente, razon_social, total, status pending/valid/cancelled), columna `datos_fiscales` JSONB en pacientes. **Env var**: `FACTURAPI_KEY` (sk_test_ configurada en Netlify). **Pendiente**: completar cuenta Facturapi (CSD, datos fiscales, carta manifiesto) para activar modo producción, probar flujo completo con sk_test_.
 Cambios v169: Módulo Recursos Humanos completo — reloj checador por WhatsApp + expedientes LFT + firmas digitales. **Nuevo módulo `js/mod-asistencia.js`** (~1200 líneas): vista `view-asistencia` renombrada a "Recursos Humanos" en sidebar (sección REPORTES), 4 tabs: Asistencia (diario), Reportes (resumen semanal/quincenal + reporte individual), Expedientes (datos LFT + documentos firmados), Config (teléfonos + horarios). **Reloj checador WA**: empleados envían `entrada`/`salida`/`comida`/`regreso` al WA#2 (Twilio). Detección fuzzy de typos y sinónimos (`ya llegué`/`me voy`/`voy a comer`/`buenos días`). Empleados registrados bloqueados de Clari (solo reloj checador, admin excluido). Calcula retardo vs horario programado + tolerancia configurable. Notifica admin por WA en retardos. **Horarios configurables**: por día de semana (L-D), tolerancia en minutos, overrides por empleado (día libre o horario custom). **Expedientes LFT** (Art. 804 Frac. III): nombre completo, CURP, NSS, RFC, puesto, departamento, fecha ingreso, salario, jornada, fecha nacimiento + datos patronales editables por empleado (razón social, RFC patronal, registro IMSS, domicilio fiscal) para 2 registros patronales diferentes. **Firmas digitales**: `firma-asistencia.html` página pública con canvas touch, empleado firma desde su celular via link WA. Token único + expiración 48-72h. Firma se guarda como base64 en `asistencia_firmas`. **Acta de falta injustificada** (Art. 47 Frac. X): se genera automáticamente cuando empleado registra entrada después de faltas — envía link por WA con acta + reporte para firma. **Cron `asistencia-cron.js`**: (1) recordatorio de ausencia 30min después de hora de entrada programada al empleado + admin, (2) envío automático de firmas cada 7-10 días (aleatorio por empleado). **Permisos/vacaciones**: modal para registrar vacaciones, permisos, incapacidades, días personales — el bot y cron los respetan (no genera faltas ni actas). **Dashboard calendario**: muestra próximos 30 días de cumpleaños, aniversarios laborales, permisos/vacaciones. **Preview formatos**: moldes vacíos de reporte LFT y acta de falta imprimibles en carta, con espacio para firma digital + firma física. **Envío manual**: botón en topbar para enviar reportes o actas por WA a un empleado o todos, con selector de tipo/período. **Baja de empleados**: botón que desactiva reloj checador y regresa el teléfono a Clari normal. Exportar Excel en resumen. **Comisiones movido a REPORTES** junto con RH. **DB nuevas**: tabla `asistencia` (uid, fecha, entrada, salida, comida_inicio, comida_fin, horas_trabajadas, retardo_min, es_falta, nota, sucursal), tabla `asistencia_firmas` (uid, periodo_inicio, periodo_fin, firma_empleado base64, token, firmado_at). **app_config**: `empleados_telefono` (phone→uid), `horarios_asistencia` (schedule+overrides+empleados_extra), `expedientes_empleados` (datos LFT por uid).
 Cambios v168: Timezone fix + Dashboard persistente + Clari con fecha/hora. **Timezone**: corregido de `America/Ojinaga` a `America/Chihuahua` en las 3 referencias de index.html — México eliminó DST en 2022, Ojinaga sigue DST de EE.UU. causando 1h de diferencia en primavera/verano. **Dashboard persistente**: resumen del día ahora permanece visible hasta las 10:00 AM del día siguiente (antes desaparecía a medianoche). Lógica en `loadDash()`: si `nowLocal.getHours() < 10` muestra datos de ayer, después muestra hoy. Solo afecta dashboard, todas las demás funciones (caja, ventas, cortes) siguen usando `hoyLocal()` sin cambio. **Clari sabe fecha/hora**: `wa-webhook.js` y `meta-webhook.js` ahora inyectan `FECHA Y HORA ACTUAL: domingo, 22 de marzo de 2026, 10:14 p.m.` dinámicamente en el system prompt de Clari (timezone `America/Chihuahua`). Instrucción explícita de usar el día actual para responder horarios correctos (ej: domingo = 11am-5pm, no 10am-7pm). Aplica a los 3 canales: WhatsApp, Facebook Messenger, Instagram DM.
 Cambios v167: POS + LC integración inteligente con Rx y orden de lab automática. **Nav sidebar**: "Lentes de Contacto" movido de sección Administración a Ventas, visible para todos los roles (admin, gerencia, sucursal). CRM y Estadísticas tabs restringidos a admin only. **Banner Rx en POS**: al hacer click en "Lentes de contacto" en POS, si el paciente tiene Rx Final pero no Rx LC, muestra prompt "¿Convertir a Rx para LC?" (sin mostrar valores de Rx Final). Al confirmar, convierte automáticamente usando fórmula vertex, guarda los campos `lc_*` en `historias_clinicas`, y abre el catálogo filtrado. Si ya tiene Rx LC, muestra graduación + botón "Filtrar por Rx". Banner solo aparece al abrir panel LC (no al seleccionar paciente). **Filtrado inteligente por Rx**: filtra productos por tipo según graduación del paciente — sin CYL muestra solo esféricos, con CYL muestra solo tóricos, con ADD muestra solo multifocales. Color se trata como esférico. Verifica rango de esfera contra `lc_parametros`. Tolerancia CYL ±0.50 (un step, clínicamente correcto). **Orden de lab automática**: al cobrar venta con LC agregados desde panel Rx, se genera automáticamente `ordenes_laboratorio` con tipo "Lente de Contacto", marca/modelo, graduación OD/OI, frecuencia de reemplazo, folio vinculado, fecha/hora entrega, sucursal. Orden se crea al cobrar (no al agregar al carrito) — si se cancela la venta, no se crea orden. Aparece en Cola de producción → Surtido de materiales (flujo normal). **Catálogo bloqueado**: no se abre hasta confirmar conversión de Rx (fuerza al empleado a actualizar historia clínica).
@@ -284,13 +311,10 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 5. Precios Marina pendientes de confirmar
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify, ✅ webhook activo en panel Conekta, ⬜ `CONEKTA_WEBHOOK_KEY` opcional (generar llave de firma en panel), ⬜ probar flujo completo con claves de prueba
-9. **Google Sign-In**: ✅ OAuth 2.0 Client ID creado ("Tienda LC Car y Era"), ✅ `GOOGLE_CLIENT_ID` en Netlify, ✅ GOOGLE_CID en tienda.html
-10. **Conekta cuenta**: Completar validación de cuenta (subir documentos de empresa), activar modo producción — actualmente en Modo Pruebas
-11. ~~**Módulo LC separado en index.html**~~: ✅ Resuelto en v166 — `js/mod-lc.js` con vista dedicada `view-lentes-contacto` (3 tabs: Catálogo cards, CRM, Estadísticas).
-12. **SEGURIDAD menor**: innerHTML con datos de DB sin sanitizar (XSS — riesgo bajo, solo users autenticados escriben)
-12. **SEGURIDAD menor**: Rate limiting en endpoints públicos
-13. **SEGURIDAD menor**: RBAC en dbwrite.js (restricción por rol)
+8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify, ✅ webhook activo, ⬜ probar flujo completo, ⬜ completar validación cuenta
+9. **Google Sign-In**: ✅ configurado
+10. **Facturapi CFDI**: ✅ `FACTURAPI_KEY` sk_test_ en Netlify, ✅ código completo (factura.js + mod-contabilidad.js + portal.html), ⬜ subir CSD del SAT en Facturapi dashboard, ⬜ completar datos fiscales organización, ⬜ firmar carta manifiesto, ⬜ activar modo producción, ⬜ probar flujo completo con sk_test_ (crear factura de prueba)
+11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
