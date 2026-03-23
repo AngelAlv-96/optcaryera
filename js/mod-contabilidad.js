@@ -870,6 +870,7 @@ async function contBuscarVentaFactura() {
       return;
     }
     if (venta.estado === 'Cancelada') { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Esta venta está cancelada</span>'; return; }
+    if (venta.estado !== 'Liquidada') { preview.innerHTML = '<span style="font-size:11px;color:#f5a623">Solo se puede facturar ventas liquidadas (saldo $0). Esta venta tiene estado: ' + venta.estado + '</span>'; return; }
 
     // Check if already invoiced
     var { data: existing } = await db.from('facturas').select('id').eq('venta_folio', venta.folio).eq('status', 'valid').limit(1);

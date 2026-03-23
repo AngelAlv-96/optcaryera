@@ -111,6 +111,7 @@ exports.handler = async (event) => {
       var ventas = await supa('GET', 'ventas?folio=eq.' + encodeURIComponent(venta_folio) + '&select=*&limit=1');
       var venta = ventas && ventas[0];
       if (!venta) return { statusCode: 404, headers: HEADERS, body: '{"error":"Venta no encontrada"}' };
+      if (venta.estado !== 'Liquidada') return { statusCode: 400, headers: HEADERS, body: '{"error":"Solo se puede facturar ventas liquidadas"}' };
 
       // Check if already invoiced
       var existing = await supa('GET', 'facturas?venta_folio=eq.' + encodeURIComponent(venta_folio) + '&status=eq.valid&select=id&limit=1');
