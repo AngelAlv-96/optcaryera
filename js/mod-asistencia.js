@@ -1612,9 +1612,6 @@ async function asistEnvioManual() {
   html += '<div style="font-size:9px;color:var(--muted);margin-top:2px">Separar con comas. Si se deja vacio, se detectan automaticamente.</div>';
   html += '</div>';
 
-  // Toggle faltas section based on type
-  html += '<script>document.querySelectorAll(\'input[name=envio-tipo]\').forEach(function(r){r.addEventListener(\'change\',function(){document.getElementById(\'envio-faltas-section\').style.display=this.value===\'acta\'?\'\':\'none\';})});<\/script>';
-
   // Send button
   html += '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">';
   html += '<button class="btn btn-p btn-sm" id="btn-envio-manual" onclick="asistEjecutarEnvio()">📩 Enviar por WhatsApp</button>';
@@ -1623,6 +1620,13 @@ async function asistEnvioManual() {
   html += '</div>';
   overlay.innerHTML = html;
   overlay.classList.add('open');
+
+  // Toggle faltas section when switching type (script tags don't run in innerHTML)
+  document.querySelectorAll('input[name=envio-tipo]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      document.getElementById('envio-faltas-section').style.display = this.value === 'acta' ? '' : 'none';
+    });
+  });
 }
 
 async function asistEjecutarEnvio() {
