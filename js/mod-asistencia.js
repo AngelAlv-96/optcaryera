@@ -355,7 +355,10 @@ async function asistCargarDiario(fecha) {
     html += '<th style="text-align:center;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Horas</th>';
     html += '<th style="text-align:center;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Retardo</th>';
     html += '<th style="text-align:center;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Estado</th>';
-    html += '<th style="text-align:center;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Nota</th>';
+    html += '<th style="text-align:left;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;max-width:120px">Nota</th>';
+    if (currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'gerencia')) {
+      html += '<th style="text-align:center;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em"></th>';
+    }
     html += '</tr></thead><tbody>';
 
     rows.forEach(function(r) {
@@ -380,13 +383,12 @@ async function asistCargarDiario(fecha) {
       html += '<td style="padding:8px;text-align:center;font-weight:600">' + (rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas).toFixed(2) + 'h' : '—') + '</td>';
       html += '<td style="padding:8px;text-align:center">' + (rec.retardo_min > 0 ? '<span style="color:#f5a623">' + rec.retardo_min + ' min</span>' : '—') + '</td>';
       html += '<td style="padding:8px;text-align:center">' + estadoBadge + '</td>';
-      html += '<td style="padding:8px;text-align:center">';
+      html += '<td style="padding:8px;text-align:left;max-width:120px"><span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block" title="' + (rec.nota || '').replace(/"/g,'&quot;') + '">' + (rec.nota || '—') + '</span></td>';
       if (currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'gerencia')) {
-        html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="asistEditarNota(\'' + r.emp.uid + '\',\'' + _asistFechaDiario + '\',' + (rec.id||'null') + ')" title="' + (rec.nota || 'Sin nota') + '">' + (rec.nota ? '📝' : '+') + '</button>';
-      } else {
-        html += '<span style="font-size:10px;color:var(--muted)">' + (rec.nota || '—') + '</span>';
+        html += '<td style="padding:8px;text-align:center">';
+        html += '<button class="btn btn-g" style="padding:3px 8px;font-size:11px" onclick="asistEditarRegistro(\'' + r.emp.uid + '\',\'' + r.emp.nombre.replace(/'/g,"\\'") + '\',\'' + _asistFechaDiario + '\',' + (rec.id||'null') + ')" title="Editar registro">✏️</button>';
+        html += '</td>';
       }
-      html += '</td>';
       html += '</tr>';
     });
     html += '</tbody></table></div>';
@@ -417,6 +419,171 @@ async function asistEditarNota(uid, fecha, recordId) {
   } catch(e) {
     console.error('[Asistencia] Nota error:', e);
     if (typeof toast === 'function') toast('Error guardando nota', 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODAL: EDITAR REGISTRO MANUAL
+// ═══════════════════════════════════════════════════════════
+
+var _asistEditRec = null; // current record being edited
+
+function _asistTsToTime(ts) {
+  if (!ts) return '';
+  return new Date(ts).toLocaleTimeString('en-GB', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit' });
+}
+
+function _asistTimeToTs(fecha, timeStr) {
+  if (!timeStr) return null;
+  // Build ISO timestamp in America/Chihuahua (UTC-6 always, no DST)
+  return fecha + 'T' + timeStr + ':00-06:00';
+}
+
+async function asistEditarRegistro(uid, nombre, fecha, recordId) {
+  // Load existing record if any
+  _asistEditRec = null;
+  if (recordId && recordId !== 'null') {
+    var res = await db.from('asistencia').select('*').eq('id', recordId).limit(1);
+    if (res.data && res.data[0]) _asistEditRec = res.data[0];
+  }
+  var rec = _asistEditRec || {};
+  var dayKey = _asistDayKey(fecha);
+  var sched = _asistResolveSchedule(uid, dayKey);
+  var schedLabel = sched ? sched.entrada + ' - ' + sched.salida : 'Sin horario';
+
+  var lblS = 'display:block;font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em';
+  var inpS = 'width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none';
+
+  var html = '<div style="padding:20px;max-width:400px;margin:auto">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<div><div style="font-size:16px;font-weight:700">Editar registro</div>';
+  html += '<div style="font-size:11px;color:var(--muted)">' + nombre + ' — ' + fecha + '</div></div>';
+  html += '<button onclick="asistCerrarModalRegistro()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>';
+  html += '</div>';
+
+  // Schedule info
+  html += '<div style="background:rgba(74,240,200,0.06);border:1px solid rgba(74,240,200,0.12);border-radius:8px;padding:8px 12px;margin-bottom:16px;font-size:11px;color:#4af0c8">';
+  html += 'Horario programado: <strong>' + schedLabel + '</strong></div>';
+
+  // Time fields in 2x2 grid
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">';
+
+  html += '<div><label style="' + lblS + '">Entrada</label>';
+  html += '<input type="time" id="asist-edit-entrada" value="' + _asistTsToTime(rec.entrada) + '" style="' + inpS + '"></div>';
+
+  html += '<div><label style="' + lblS + '">Comida</label>';
+  html += '<input type="time" id="asist-edit-comida" value="' + _asistTsToTime(rec.comida_inicio) + '" style="' + inpS + '"></div>';
+
+  html += '<div><label style="' + lblS + '">Regreso</label>';
+  html += '<input type="time" id="asist-edit-regreso" value="' + _asistTsToTime(rec.comida_fin) + '" style="' + inpS + '"></div>';
+
+  html += '<div><label style="' + lblS + '">Salida</label>';
+  html += '<input type="time" id="asist-edit-salida" value="' + _asistTsToTime(rec.salida) + '" style="' + inpS + '"></div>';
+
+  html += '</div>';
+
+  // Nota
+  html += '<div style="margin-bottom:16px"><label style="' + lblS + '">Nota</label>';
+  html += '<input type="text" id="asist-edit-nota" value="' + (rec.nota || '').replace(/"/g,'&quot;') + '" style="' + inpS + '" placeholder="Ej: Llegó tarde por tráfico"></div>';
+
+  // Buttons
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end">';
+  html += '<button class="btn btn-g" onclick="asistCerrarModalRegistro()">Cancelar</button>';
+  html += '<button class="btn" id="asist-edit-save-btn" style="background:var(--accent);color:#000;font-weight:600" onclick="asistGuardarRegistro(\'' + uid + '\',\'' + fecha + '\',' + (recordId||'null') + ')">Guardar</button>';
+  html += '</div></div>';
+
+  // Show modal
+  var overlay = document.getElementById('asist-modal-registro');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'asist-modal-registro';
+    overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) asistCerrarModalRegistro(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:14px;width:90%;max-width:440px;max-height:90vh;overflow-y:auto">' + html + '</div>';
+  overlay.classList.add('open');
+}
+
+function asistCerrarModalRegistro() {
+  var overlay = document.getElementById('asist-modal-registro');
+  if (overlay) { overlay.classList.remove('open'); overlay.innerHTML = ''; }
+}
+
+async function asistGuardarRegistro(uid, fecha, recordId) {
+  var btn = document.getElementById('asist-edit-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  try {
+    var entrada = document.getElementById('asist-edit-entrada').value;
+    var comida = document.getElementById('asist-edit-comida').value;
+    var regreso = document.getElementById('asist-edit-regreso').value;
+    var salida = document.getElementById('asist-edit-salida').value;
+    var nota = document.getElementById('asist-edit-nota').value.trim();
+
+    var entradaTs = _asistTimeToTs(fecha, entrada);
+    var comidaTs = _asistTimeToTs(fecha, comida);
+    var regresoTs = _asistTimeToTs(fecha, regreso);
+    var salidaTs = _asistTimeToTs(fecha, salida);
+
+    // Calculate retardo
+    var retardo = 0;
+    if (entrada) {
+      var dayKey = _asistDayKey(fecha);
+      var sched = _asistResolveSchedule(uid, dayKey);
+      if (sched && sched.entrada) {
+        var tolerance = (_asistHorarios && _asistHorarios.tolerancia) || 5;
+        var schedMin = _asistSchedMinutes(sched.entrada);
+        var actualMin = _asistSchedMinutes(entrada);
+        var diff = actualMin - schedMin - tolerance;
+        retardo = diff > 0 ? diff : 0;
+      }
+    }
+
+    // Calculate hours worked
+    var horas = null;
+    if (entrada && salida) {
+      var entMs = new Date(entradaTs).getTime();
+      var salMs = new Date(salidaTs).getTime();
+      var totalMin = (salMs - entMs) / 60000;
+      // Subtract lunch
+      if (comida && regreso) {
+        var comMs = new Date(comidaTs).getTime();
+        var regMs = new Date(regresoTs).getTime();
+        totalMin -= (regMs - comMs) / 60000;
+      }
+      horas = Math.max(0, parseFloat((totalMin / 60).toFixed(2)));
+    }
+
+    var data = {
+      entrada: entradaTs,
+      comida_inicio: comidaTs,
+      comida_fin: regresoTs,
+      salida: salidaTs,
+      retardo_min: retardo,
+      horas_trabajadas: horas,
+      es_falta: !entrada,
+      nota: nota || null
+    };
+
+    if (recordId && recordId !== 'null' && recordId !== null) {
+      await db.from('asistencia').update(data).eq('id', recordId);
+    } else {
+      data.uid = uid;
+      data.fecha = fecha;
+      data.sucursal = (_asistUsers[uid] || _asistAsesores[uid] || {}).sucursal || '';
+      await db.from('asistencia').insert(data);
+    }
+
+    asistCerrarModalRegistro();
+    asistCargarDiario(_asistFechaDiario);
+    if (typeof toast === 'function') toast('Registro guardado');
+  } catch(e) {
+    console.error('[Asistencia] Guardar registro error:', e);
+    if (typeof toast === 'function') toast('Error guardando registro', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
   }
 }
 
