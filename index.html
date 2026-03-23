@@ -2782,6 +2782,8 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="comisiones" checked> Comisiones</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="asistencia" checked> Recursos Humanos</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="landings" checked> Landing Pages</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="configuracion" checked> Configuraci&oacute;n</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="clari" checked> Clari WhatsApp</label>
                 </div>
               </div>
               <div style="margin-top:12px">
@@ -4952,20 +4954,17 @@ function setupApp(u) {
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
-      var roleControlled = ['configuracion','clari'];
-
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
-        if (m && !roleControlled.includes(m[1])) {
+        if (m) {
           ni.style.display = u.permisos.includes(m[1]) ? '' : 'none';
         }
       });
     } else if (u.rol === 'sucursal') {
       var defaultSucPerms = ['dashboard','pacientes','preregistro','historia','orden','laboratorio','garantias','ventas','productos','historial-ventas','creditos','caja','vision-segura','lentes-contacto'];
-      var roleControlled2 = ['configuracion','clari'];
       document.querySelectorAll('.nav-item[onclick*="go("]').forEach(ni => {
         const m = ni.getAttribute('onclick')?.match(/go\('([^']+)'\)/);
-        if (m && !roleControlled2.includes(m[1])) {
+        if (m) {
           ni.style.display = defaultSucPerms.includes(m[1]) ? '' : 'none';
         }
       });
