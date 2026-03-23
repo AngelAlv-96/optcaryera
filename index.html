@@ -1226,6 +1226,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           Recursos Humanos
         </div>
 
+        <div class="nav-item" id="nav-report-contabilidad" style="display:none" onclick="go('contabilidad')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 2v20h16"/><path d="M4 18l4-4 4 2 4-6 4-2"/></svg>
+          Contabilidad
+        </div>
+
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2782,6 +2787,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="comisiones" checked> Comisiones</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="asistencia" checked> Recursos Humanos</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="landings" checked> Landing Pages</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="contabilidad" checked> Contabilidad</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="configuracion" checked> Configuraci&oacute;n</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="clari" checked> Clari WhatsApp</label>
                 </div>
@@ -4197,6 +4203,28 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
       </div>
 
+      <!-- CONTABILIDAD -->
+      <div class="view" id="view-contabilidad">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Contabilidad</h2><p>Estado de resultados · Gastos · Flujo de efectivo</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="initContabilidad()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="cont-tabs">
+            <button class="lc-tab active" onclick="contSwitchTab('resultados')" id="cont-tab-resultados">📊 Resultados</button>
+            <button class="lc-tab" onclick="contSwitchTab('gastos')" id="cont-tab-gastos">💸 Gastos</button>
+            <button class="lc-tab" onclick="contSwitchTab('flujo')" id="cont-tab-flujo">💰 Flujo</button>
+            <button class="lc-tab" onclick="contSwitchTab('facturacion')" id="cont-tab-facturacion">🧾 Facturación</button>
+          </div>
+          <div id="cont-content-resultados"></div>
+          <div id="cont-content-gastos" style="display:none"></div>
+          <div id="cont-content-flujo" style="display:none"></div>
+          <div id="cont-content-facturacion" style="display:none"></div>
+        </div>
+      </div>
+
       <!-- ASISTENCIA (Reloj Checador) -->
       <div class="view" id="view-asistencia">
         <div class="topbar">
@@ -4935,6 +4963,7 @@ function setupApp(u) {
       document.getElementById('nav-admin-landings').style.display = '';
       document.getElementById('nav-report-comisiones').style.display = '';
       document.getElementById('nav-report-asistencia').style.display = '';
+      document.getElementById('nav-report-contabilidad').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4943,6 +4972,7 @@ function setupApp(u) {
       document.getElementById('nav-admin-landings').style.display = 'none';
       document.getElementById('nav-report-comisiones').style.display = 'none';
       document.getElementById('nav-report-asistencia').style.display = 'none';
+      document.getElementById('nav-report-contabilidad').style.display = 'none';
       document.getElementById('nav-ventas-section').style.display = 'none';
     } else {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4951,6 +4981,7 @@ function setupApp(u) {
       document.getElementById('nav-admin-landings').style.display = 'none';
       document.getElementById('nav-report-comisiones').style.display = 'none';
       document.getElementById('nav-report-asistencia').style.display = 'none';
+      document.getElementById('nav-report-contabilidad').style.display = 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
@@ -5156,7 +5187,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, configuracion:23, clari:24, landings:25, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5185,6 +5216,7 @@ function go(id) {
   if (id === 'landings')            { cargarLandings(); }
   if (id === 'comisiones')          { initComisiones(); }
   if (id === 'asistencia')          { initAsistencia(); }
+  if (id === 'contabilidad')        { initContabilidad(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
@@ -19430,6 +19462,7 @@ async function calcularComisiones() {
 <script src="js/mod-creditos.js?v=125"></script>
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=169"></script>
+<script src="js/mod-contabilidad.js?v=170"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->
