@@ -1263,7 +1263,7 @@ async function asistRenderExpedientes() {
       html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)"><th style="text-align:left;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Periodo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Tipo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Firma</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Fecha firma</th><th style="padding:4px"></th></tr></thead><tbody>';
       firmas.forEach(function(f) {
         var isSigned = !!f.firmado_at;
-        var isActa = f.nota && f.nota.startsWith('acta|');
+        var isActa = f.periodo_inicio === f.periodo_fin;
         var signBadge = isSigned
           ? '<span style="background:rgba(74,240,200,0.15);color:#4af0c8;padding:1px 6px;border-radius:8px;font-size:9px">Firmado</span>'
           : '<span style="background:rgba(245,166,35,0.15);color:#f5a623;padding:1px 6px;border-radius:8px;font-size:9px">Pendiente</span>';
@@ -1694,16 +1694,14 @@ async function asistEjecutarEnvio() {
       var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
       var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-      var insertData = {
+      await db.from('asistencia_firmas').insert({
         uid: emp.uid,
         periodo_inicio: inicio,
         periodo_fin: fin,
         token: token,
         token_expires: expires,
         enviado_at: new Date().toISOString()
-      };
-      if (tipo === 'acta') insertData.nota = 'acta|' + faltasStr;
-      await db.from('asistencia_firmas').insert(insertData);
+      });
 
       // Build link
       var link = window.location.origin + '/firma-asistencia?token=' + token;
@@ -1967,9 +1965,9 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   var regPatronal = exp.reg_patronal || '';
   var domicilio = exp.domicilio_fiscal || 'Ciudad Juarez, Chihuahua, Mexico';
 
-  // Detect if this is an acta de falta
-  var isActa = _asistCurrentFirma && _asistCurrentFirma.nota && _asistCurrentFirma.nota.startsWith('acta|');
-  var actaFaltas = isActa ? _asistCurrentFirma.nota.split('|')[1].split(',').map(function(f) { return f.trim(); }).filter(Boolean) : [];
+  // Detect if this is an acta de falta (same start/end date = single day = acta)
+  var isActa = _asistCurrentFirma && _asistCurrentFirma.periodo_inicio === _asistCurrentFirma.periodo_fin;
+  var actaFaltas = isActa ? [_asistCurrentFirma.periodo_inicio] : [];
 
   var html = '';
   // Header — empresa
