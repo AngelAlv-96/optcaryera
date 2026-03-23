@@ -739,15 +739,60 @@ async function contRenderFacturacion() {
 
   try {
     var facturasRes = await db.from('facturas').select('*').order('created_at', { ascending: false }).limit(100);
-    var facturas = facturasRes.data || [];
+    var allFacturas = facturasRes.data || [];
+    var pendientes = allFacturas.filter(function(f) { return f.status === 'pending'; });
+    var facturas = allFacturas.filter(function(f) { return f.status !== 'pending'; });
 
     var html = '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px">';
     html += '<button class="btn btn-p btn-sm" onclick="contMostrarFormFactura()" style="font-size:12px">🧾 Facturar venta</button>';
-    html += '<span style="font-size:12px;color:var(--muted)">' + facturas.length + ' facturas emitidas</span>';
+    html += '<span style="font-size:12px;color:var(--muted)">' + facturas.filter(function(f){return f.status==='valid'}).length + ' emitidas</span>';
+    if (pendientes.length > 0) html += '<span style="font-size:11px;background:rgba(245,166,35,0.15);color:#f5a623;padding:3px 8px;border-radius:6px;font-weight:600">' + pendientes.length + ' pendientes</span>';
     html += '</div>';
 
     // Form container
     html += '<div id="cont-form-factura" style="display:none;margin-bottom:16px"></div>';
+
+    // Pending requests
+    if (pendientes.length > 0) {
+      html += '<div style="background:var(--surface);border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid rgba(245,166,35,0.15)">';
+      html += '<h4 style="font-size:13px;margin-bottom:10px;color:#f5a623">📋 Solicitudes pendientes de factura</h4>';
+      html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+      html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RFC</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RAZÓN SOCIAL</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">SOLICITADO</th>';
+      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS VENTA</th>';
+      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">ACCIÓN</th>';
+      html += '</tr></thead><tbody>';
+
+      // Need to check venta status for each pending
+      var pendFolios = pendientes.map(function(p) { return p.venta_folio; });
+      var { data: ventasStatus } = await db.from('ventas').select('folio,estado,total').in('folio', pendFolios);
+      var statusMap = {};
+      (ventasStatus || []).forEach(function(v) { statusMap[v.folio] = v; });
+
+      pendientes.forEach(function(p) {
+        var vs = statusMap[p.venta_folio] || {};
+        var esLiquidada = vs.estado === 'Liquidada';
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
+        html += '<td style="padding:8px;font-weight:600">' + p.venta_folio + '</td>';
+        html += '<td style="padding:8px">' + (p.rfc_cliente || '—') + '</td>';
+        html += '<td style="padding:8px;color:var(--muted)">' + (p.razon_social || '—') + '</td>';
+        html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(p.created_at?.substring(0, 10)) + '</td>';
+        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (esLiquidada ? 'background:rgba(74,222,128,0.15);color:#4ade80' : 'background:rgba(245,166,35,0.15);color:#f5a623') + '">' + (vs.estado || '—') + '</span></td>';
+        html += '<td style="padding:8px;text-align:center">';
+        if (esLiquidada) {
+          html += '<button class="btn btn-p" style="padding:3px 10px;font-size:10px" onclick="contFacturarDesdeHistorial(\'' + p.venta_folio + '\')">Emitir</button>';
+        } else {
+          html += '<span style="font-size:10px;color:var(--muted)">Esperando pago</span>';
+        }
+        html += ' <button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#f87171" onclick="contEliminarSolicitud(' + p.id + ')">✕</button>';
+        html += '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div></div>';
+    }
 
     // List
     if (facturas.length > 0) {
@@ -949,6 +994,8 @@ async function contEmitirFactura() {
     var data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Error al emitir factura');
 
+    // Remove pending request if exists
+    try { await db.from('facturas').delete().eq('venta_folio', folio).eq('status', 'pending'); } catch(e) {}
     toast('Factura emitida exitosamente', 'ok');
     contCerrarFormFactura();
     contRenderFacturacion();
@@ -989,7 +1036,16 @@ async function contCancelarFactura(facturapi_id, folio) {
   }
 }
 
-// Helper: facturar desde historial de ventas
+async function contEliminarSolicitud(id) {
+  if (!confirm('¿Eliminar esta solicitud de factura?')) return;
+  try {
+    await db.from('facturas').delete().eq('id', id);
+    toast('Solicitud eliminada', 'ok');
+    contRenderFacturacion();
+  } catch(err) { toast('Error: ' + err.message, 'err'); }
+}
+
+// Helper: facturar desde historial de ventas (Nancy va directo a emitir)
 function contFacturarDesdeHistorial(folio) {
   go('contabilidad');
   setTimeout(function() {
@@ -1002,4 +1058,104 @@ function contFacturarDesdeHistorial(folio) {
       }, 100);
     }, 200);
   }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SOLICITUD DE FACTURA (empleados guardan datos fiscales)
+// ═══════════════════════════════════════════════════════════
+
+async function contSolicitarFactura(folio, ventaId) {
+  // Check if already has factura
+  var { data: existFact } = await db.from('facturas').select('id,status').eq('venta_folio', folio).limit(1);
+  if (existFact && existFact.length > 0) {
+    if (existFact[0].status === 'valid') {
+      toast('Esta venta ya tiene factura emitida', 'warn');
+      return;
+    }
+    if (existFact[0].status === 'pending') {
+      toast('Ya hay solicitud de factura para esta venta', 'warn');
+      return;
+    }
+  }
+
+  // Check if patient has saved fiscal data
+  var datosPrev = {};
+  try {
+    var { data: venta } = await db.from('ventas').select('paciente_id').eq('folio', folio).limit(1);
+    if (venta && venta[0] && venta[0].paciente_id) {
+      var { data: pac } = await db.from('pacientes').select('datos_fiscales').eq('id', venta[0].paciente_id).limit(1);
+      if (pac && pac[0] && pac[0].datos_fiscales) {
+        datosPrev = typeof pac[0].datos_fiscales === 'string' ? JSON.parse(pac[0].datos_fiscales) : pac[0].datos_fiscales;
+      }
+    }
+  } catch(e) {}
+
+  // Show inline modal in the venta detail
+  var wrap = document.getElementById('mvta-acciones');
+  if (!wrap) return;
+  var html = '<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-top:8px;border:1px solid rgba(196,162,101,0.2)" id="fact-solicitud-form">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:12px;color:var(--beige)">🧾 Datos fiscales para factura</b><button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="document.getElementById(\'fact-solicitud-form\').remove()">✕</button></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+  html += '<div><label style="font-size:9px;color:var(--muted)">RFC</label><input type="text" id="sf-rfc" value="' + (datosPrev.rfc || '') + '" placeholder="XAXX010101000" maxlength="13" style="width:100%;padding:5px 6px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:11px;text-transform:uppercase;box-sizing:border-box"></div>';
+  html += '<div><label style="font-size:9px;color:var(--muted)">Razón social</label><input type="text" id="sf-razon" value="' + (datosPrev.razon_social || '') + '" placeholder="Nombre o empresa" style="width:100%;padding:5px 6px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:11px;box-sizing:border-box"></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px">';
+  html += '<div><label style="font-size:9px;color:var(--muted)">Régimen</label><select id="sf-regimen" style="width:100%;padding:5px 4px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:10px;box-sizing:border-box"><option value="">Seleccionar</option>';
+  _factCatalogos.regimen.forEach(function(r) { html += '<option value="' + r.v + '"' + (datosPrev.regimen_fiscal === r.v ? ' selected' : '') + '>' + r.v + ' - ' + r.t + '</option>'; });
+  html += '</select></div>';
+  html += '<div><label style="font-size:9px;color:var(--muted)">CP fiscal</label><input type="text" id="sf-cp" value="' + (datosPrev.cp_fiscal || '') + '" placeholder="32000" maxlength="5" style="width:100%;padding:5px 6px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:11px;box-sizing:border-box"></div>';
+  html += '<div><label style="font-size:9px;color:var(--muted)">Email</label><input type="text" id="sf-email" value="' + (datosPrev.email || '') + '" placeholder="email" style="width:100%;padding:5px 6px;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:11px;box-sizing:border-box"></div>';
+  html += '</div>';
+  html += '<button class="btn btn-p btn-sm" id="sf-btn" onclick="contGuardarSolicitud(\'' + folio + '\')" style="margin-top:8px;font-size:11px">Guardar solicitud de factura</button>';
+  html += '</div>';
+
+  // Remove existing form if any
+  var old = document.getElementById('fact-solicitud-form');
+  if (old) old.remove();
+  wrap.insertAdjacentHTML('beforeend', html);
+}
+
+async function contGuardarSolicitud(folio) {
+  var btn = document.getElementById('sf-btn');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando...';
+
+  try {
+    var rfc = (document.getElementById('sf-rfc').value || '').trim().toUpperCase();
+    var razon = (document.getElementById('sf-razon').value || '').trim();
+    var regimen = document.getElementById('sf-regimen').value;
+    var cp = (document.getElementById('sf-cp').value || '').trim();
+    var email = (document.getElementById('sf-email').value || '').trim();
+
+    if (!rfc || !razon) { toast('Mínimo RFC y razón social', 'warn'); return; }
+
+    // Save as pending factura request
+    await db.from('facturas').insert({
+      venta_folio: folio,
+      facturapi_id: 'pending_' + Date.now(),
+      rfc_cliente: rfc,
+      razon_social: razon,
+      total: 0,
+      status: 'pending'
+    });
+
+    // Save fiscal data to patient
+    try {
+      var { data: venta } = await db.from('ventas').select('paciente_id').eq('folio', folio).limit(1);
+      if (venta && venta[0] && venta[0].paciente_id) {
+        await db.from('pacientes').update({
+          datos_fiscales: { rfc: rfc, razon_social: razon, regimen_fiscal: regimen, cp_fiscal: cp, email: email }
+        }).eq('id', venta[0].paciente_id);
+      }
+    } catch(e) {}
+
+    toast('Solicitud de factura guardada', 'ok');
+    var form = document.getElementById('fact-solicitud-form');
+    if (form) form.innerHTML = '<div style="padding:8px;text-align:center;color:#4ade80;font-size:11px">✓ Solicitud guardada — Nancy la verá en Contabilidad</div>';
+  } catch(err) {
+    toast('Error: ' + err.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar solicitud de factura'; }
+  }
 }
