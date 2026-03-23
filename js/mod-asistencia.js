@@ -407,10 +407,10 @@ async function asistEditarNota(uid, fecha, recordId) {
   if (nota === null) return;
   try {
     if (recordId) {
-      await secureWrite('asistencia', { nota: nota }, { column: 'id', value: recordId });
+      await db.from('asistencia').update({ nota: nota }).eq('id', recordId);
     } else {
       // Create record with just the nota (falta with note)
-      await secureWrite('asistencia', { uid: uid, fecha: fecha, nota: nota, es_falta: true, sucursal: (_asistUsers[uid]||{}).sucursal || '' }, null);
+      await db.from('asistencia').insert({ uid: uid, fecha: fecha, nota: nota, es_falta: true, sucursal: (_asistUsers[uid]||{}).sucursal || '' });
     }
     asistCargarDiario(_asistFechaDiario);
     if (typeof toast === 'function') toast('Nota guardada');
@@ -821,7 +821,7 @@ async function asistGuardarPhoneAsesor(uid) {
 
   _asistPhoneMap[phone] = uid;
   try {
-    await secureWrite('app_config', { value: JSON.stringify(_asistPhoneMap) }, { column: 'id', value: 'empleados_telefono' });
+    await db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' });
     asistRenderConfig();
     if (typeof toast === 'function') toast('Teléfono registrado');
   } catch(e) {
@@ -834,7 +834,7 @@ async function asistDarDeBaja(phone, nombre) {
   if (!confirm('¿Dar de baja a ' + nombre + '?\n\nSe desactiva el reloj checador y su WhatsApp vuelve a funcionar con Clari normal.')) return;
   delete _asistPhoneMap[phone];
   try {
-    await secureWrite('app_config', { value: JSON.stringify(_asistPhoneMap) }, { column: 'id', value: 'empleados_telefono' });
+    await db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' });
     asistRenderConfig();
     if (typeof toast === 'function') toast(nombre + ' dado de baja');
   } catch(e) {
@@ -847,7 +847,7 @@ async function asistEliminarPhone(phone) {
   if (!confirm('¿Eliminar teléfono ' + phone + '?')) return;
   delete _asistPhoneMap[phone];
   try {
-    await secureWrite('app_config', { value: JSON.stringify(_asistPhoneMap) }, { column: 'id', value: 'empleados_telefono' });
+    await db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' });
     asistRenderConfig();
     if (typeof toast === 'function') toast('Teléfono eliminado');
   } catch(e) {
@@ -872,8 +872,8 @@ async function asistAgregarExtra() {
 
   try {
     await Promise.all([
-      secureWrite('app_config', { value: JSON.stringify(_asistHorarios) }, { column: 'id', value: 'horarios_asistencia' }),
-      secureWrite('app_config', { value: JSON.stringify(_asistPhoneMap) }, { column: 'id', value: 'empleados_telefono' })
+      db.from('app_config').upsert({ id: 'horarios_asistencia', value: JSON.stringify(_asistHorarios) }, { onConflict: 'id' }),
+      db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' })
     ]);
     asistRenderConfig();
     if (typeof toast === 'function') toast(nombre + ' agregado');
@@ -893,8 +893,8 @@ async function asistEliminarExtra(uid) {
   }
   try {
     await Promise.all([
-      secureWrite('app_config', { value: JSON.stringify(_asistHorarios) }, { column: 'id', value: 'horarios_asistencia' }),
-      secureWrite('app_config', { value: JSON.stringify(_asistPhoneMap) }, { column: 'id', value: 'empleados_telefono' })
+      db.from('app_config').upsert({ id: 'horarios_asistencia', value: JSON.stringify(_asistHorarios) }, { onConflict: 'id' }),
+      db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' })
     ]);
     asistRenderConfig();
     if (typeof toast === 'function') toast('Empleado eliminado');
@@ -922,7 +922,7 @@ async function asistGuardarHorario() {
   _asistHorarios.tolerancia_min = tolerancia;
 
   try {
-    await secureWrite('app_config', { value: JSON.stringify(_asistHorarios) }, { column: 'id', value: 'horarios_asistencia' });
+    await db.from('app_config').upsert({ id: 'horarios_asistencia', value: JSON.stringify(_asistHorarios) }, { onConflict: 'id' });
     if (typeof toast === 'function') toast('Horarios guardados');
   } catch(e) {
     console.error('[Asistencia] Save schedule error:', e);
@@ -1216,7 +1216,7 @@ async function asistGuardarExpediente(uid) {
     domicilio_fiscal: get('domicilio')
   };
   try {
-    await secureWrite('app_config', { value: JSON.stringify(_asistExpedientes) }, { column: 'id', value: 'expedientes_empleados' });
+    await db.from('app_config').upsert({ id: 'expedientes_empleados', value: JSON.stringify(_asistExpedientes) }, { onConflict: 'id' });
     if (typeof toast === 'function') toast('Expediente guardado');
   } catch(e) {
     console.error('[Asistencia] Save expediente error:', e);
@@ -1490,14 +1490,14 @@ async function asistEjecutarEnvio() {
       var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
       var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-      await secureWrite('asistencia_firmas', {
+      await db.from('asistencia_firmas').insert({
         uid: emp.uid,
         periodo_inicio: inicio,
         periodo_fin: fin,
         token: token,
         token_expires: expires,
         enviado_at: new Date().toISOString()
-      }, null);
+      });
 
       // Build link
       var link = window.location.origin + '/firma-asistencia?token=' + token;
@@ -1651,9 +1651,9 @@ async function asistGuardarPermiso() {
       // Check if record exists
       var existing = await db.from('asistencia').select('id').eq('uid', uid).eq('fecha', fecha);
       if (existing.data && existing.data.length > 0) {
-        await secureWrite('asistencia', { nota: notaText, es_falta: false }, { column: 'id', value: existing.data[0].id });
+        await db.from('asistencia').update({ nota: notaText, es_falta: false }).eq('id', existing.data[0].id);
       } else {
-        await secureWrite('asistencia', { uid: uid, fecha: fecha, nota: notaText, es_falta: false, sucursal: empSuc }, null);
+        await db.from('asistencia').insert({ uid: uid, fecha: fecha, nota: notaText, es_falta: false, sucursal: empSuc });
       }
       count++;
     } catch(e) { console.warn('[Permisos] Error saving ' + fecha, e); }
@@ -1667,7 +1667,7 @@ async function asistGuardarPermiso() {
 async function asistEliminarPermiso(id) {
   if (!confirm('Eliminar este permiso?')) return;
   try {
-    await secureWrite('asistencia', { nota: null, es_falta: true }, { column: 'id', value: id });
+    await db.from('asistencia').update({ nota: null, es_falta: true }).eq('id', id);
     if (typeof toast === 'function') toast('Permiso eliminado');
     asistAbrirPermisos();
   } catch(e) {
