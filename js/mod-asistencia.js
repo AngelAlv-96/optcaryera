@@ -1697,7 +1697,7 @@ async function asistEjecutarEnvio() {
           action: 'send',
           phone: phone,
           message: msg,
-          auth: { id: currentUser?.uid || 'admin', pass: currentUser?.pass || '' }
+          auth: { id: currentUser?.id || 'admin', pass: currentUser?.pass || '' }
         })
       });
       enviados++;
