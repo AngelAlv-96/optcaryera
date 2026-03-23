@@ -702,57 +702,293 @@ async function contCargarFlujo() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// TAB 4: FACTURACIÓN (placeholder)
+// TAB 4: FACTURACIÓN CFDI
 // ═══════════════════════════════════════════════════════════
+
+var _factCatalogos = {
+  regimen: [
+    {v:'601',t:'General de Ley Personas Morales'},
+    {v:'603',t:'Personas Morales con Fines no Lucrativos'},
+    {v:'605',t:'Sueldos y Salarios'},
+    {v:'606',t:'Arrendamiento'},
+    {v:'612',t:'Personas Físicas con Act. Empresarial'},
+    {v:'616',t:'Sin obligaciones fiscales'},
+    {v:'621',t:'Incorporación Fiscal'},
+    {v:'625',t:'RESICO Personas Físicas'},
+    {v:'626',t:'RESICO Personas Morales'}
+  ],
+  uso: [
+    {v:'G01',t:'Adquisición de mercancías'},
+    {v:'G03',t:'Gastos en general'},
+    {v:'D01',t:'Honorarios médicos, dentales y gastos hospitalarios'},
+    {v:'S01',t:'Sin efectos fiscales'}
+  ],
+  formaPago: [
+    {v:'01',t:'Efectivo'},
+    {v:'03',t:'Transferencia electrónica'},
+    {v:'04',t:'Tarjeta de crédito'},
+    {v:'28',t:'Tarjeta de débito'},
+    {v:'99',t:'Por definir'}
+  ]
+};
 
 async function contRenderFacturacion() {
   var cont = document.getElementById('cont-content-facturacion');
   if (!cont) return;
-
-  var html = '<div style="background:var(--surface);border-radius:12px;padding:24px;text-align:center;margin-bottom:20px">';
-  html += '<div style="font-size:40px;margin-bottom:8px">🧾</div>';
-  html += '<h3 style="font-size:16px;margin-bottom:6px;color:var(--text)">Facturación CFDI</h3>';
-  html += '<p style="font-size:12px;color:var(--muted);max-width:400px;margin:0 auto">Para emitir facturas electrónicas se requiere contratar un PAC (Proveedor Autorizado de Certificación). Una vez configurado, aquí podrás generar CFDI directamente desde las ventas.</p>';
-  html += '</div>';
-
-  // Simple tracking - recent sales that might need invoicing
-  html += '<div style="background:var(--surface);border-radius:12px;padding:16px">';
-  html += '<h4 style="font-size:13px;margin-bottom:12px;color:var(--text)">Ventas recientes (últimos 30 días)</h4>';
-  html += '<p style="font-size:11px;color:var(--muted);margin-bottom:12px">Seguimiento manual de ventas que requieren factura</p>';
+  cont.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando facturas...</div>';
 
   try {
-    var hace30 = new Date();
-    hace30.setDate(hace30.getDate() - 30);
-    var desde = hace30.toISOString();
-    var ventasRes = await db.from('ventas').select('folio,total,sucursal,created_at,paciente_nombre').gte('total', 1000).gte('created_at', desde).neq('estado', 'Cancelada').order('created_at', { ascending: false }).limit(50);
-    var ventas = ventasRes.data || [];
+    var facturasRes = await db.from('facturas').select('*').order('created_at', { ascending: false }).limit(100);
+    var facturas = facturasRes.data || [];
 
-    if (ventas.length === 0) {
-      html += '<p style="font-size:11px;color:var(--muted);text-align:center;padding:16px">Sin ventas mayores a $1,000 en los últimos 30 días</p>';
-    } else {
+    var html = '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px">';
+    html += '<button class="btn btn-p btn-sm" onclick="contMostrarFormFactura()" style="font-size:12px">🧾 Facturar venta</button>';
+    html += '<span style="font-size:12px;color:var(--muted)">' + facturas.length + ' facturas emitidas</span>';
+    html += '</div>';
+
+    // Form container
+    html += '<div id="cont-form-factura" style="display:none;margin-bottom:16px"></div>';
+
+    // List
+    if (facturas.length > 0) {
       html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
       html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">PACIENTE</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FOLIO VENTA</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RFC</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">RAZÓN SOCIAL</th>';
       html += '<th style="padding:8px;text-align:right;color:var(--muted);font-size:10px">TOTAL</th>';
-      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">SUCURSAL</th>';
       html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FECHA</th>';
+      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS</th>';
+      html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">ACCIONES</th>';
       html += '</tr></thead><tbody>';
-      ventas.forEach(function(v) {
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-        html += '<td style="padding:8px;font-weight:600">' + (v.folio || '—') + '</td>';
-        html += '<td style="padding:8px">' + (v.paciente_nombre || '—') + '</td>';
-        html += '<td style="padding:8px;text-align:right;color:var(--accent)">' + _contMoney(v.total) + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + (v.sucursal || '—') + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(v.created_at?.substring(0, 10)) + '</td>';
+      facturas.forEach(function(f) {
+        var isCancelled = f.status === 'cancelled';
+        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);' + (isCancelled ? 'opacity:0.5' : '') + '">';
+        html += '<td style="padding:8px;font-weight:600">' + f.venta_folio + '</td>';
+        html += '<td style="padding:8px">' + (f.rfc_cliente || '—') + '</td>';
+        html += '<td style="padding:8px;color:var(--muted)">' + (f.razon_social || '—') + '</td>';
+        html += '<td style="padding:8px;text-align:right;color:var(--accent)">' + _contMoney(f.total) + '</td>';
+        html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(f.created_at?.substring(0, 10)) + '</td>';
+        html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Vigente') + '</span></td>';
+        html += '<td style="padding:8px;text-align:center">';
+        if (!isCancelled) {
+          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;margin-right:2px" onclick="contDescargarPDF(\'' + f.facturapi_id + '\')">PDF</button>';
+          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;margin-right:2px" onclick="contDescargarXML(\'' + f.facturapi_id + '\')">XML</button>';
+          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#f87171" onclick="contCancelarFactura(\'' + f.facturapi_id + '\',\'' + f.venta_folio + '\')">✕</button>';
+        }
+        html += '</td>';
         html += '</tr>';
       });
       html += '</tbody></table></div>';
+    } else {
+      html += '<div style="padding:32px;text-align:center;color:var(--muted);font-size:12px">Sin facturas emitidas</div>';
     }
+
+    cont.innerHTML = html;
   } catch(err) {
-    html += '<p style="color:#f87171;font-size:11px">Error: ' + err.message + '</p>';
+    cont.innerHTML = '<div style="padding:24px;text-align:center;color:#f87171;font-size:12px">Error: ' + err.message + '</div>';
   }
+}
+
+function contMostrarFormFactura() {
+  var f = document.getElementById('cont-form-factura');
+  if (!f) return;
+  var html = '<div style="background:var(--surface);border-radius:12px;padding:16px">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  html += '<h4 style="font-size:13px;color:var(--text)">🧾 Emitir factura CFDI</h4>';
+  html += '<button class="btn btn-g btn-sm" onclick="contCerrarFormFactura()" style="font-size:10px">✕ Cerrar</button>';
+  html += '</div>';
+
+  // Buscar venta
+  html += '<div style="margin-bottom:12px"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Folio de venta</label>';
+  html += '<div style="display:flex;gap:8px"><input type="text" id="fact-folio" placeholder="Ej: AME-0001" style="flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">';
+  html += '<button class="btn btn-g btn-sm" onclick="contBuscarVentaFactura()" style="font-size:11px">Buscar</button></div></div>';
+
+  // Venta preview
+  html += '<div id="fact-venta-preview" style="display:none;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px"></div>';
+
+  // Datos fiscales
+  html += '<div id="fact-datos-fiscales" style="display:none">';
+  html += '<h5 style="font-size:12px;color:var(--text);margin-bottom:8px">Datos fiscales del cliente</h5>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">RFC</label><input type="text" id="fact-rfc" placeholder="XAXX010101000" maxlength="13" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px;text-transform:uppercase"></div>';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Razón social</label><input type="text" id="fact-razon" placeholder="Nombre o empresa" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px">';
+
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Régimen fiscal</label><select id="fact-regimen" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:11px"><option value="">Seleccionar...</option>';
+  _factCatalogos.regimen.forEach(function(r) { html += '<option value="' + r.v + '">' + r.v + ' - ' + r.t + '</option>'; });
+  html += '</select></div>';
+
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Código Postal fiscal</label><input type="text" id="fact-cp" placeholder="32000" maxlength="5" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
+
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Uso CFDI</label><select id="fact-uso" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:11px">';
+  _factCatalogos.uso.forEach(function(u) { html += '<option value="' + u.v + '"' + (u.v === 'G03' ? ' selected' : '') + '>' + u.v + ' - ' + u.t + '</option>'; });
+  html += '</select></div>';
+  html += '</div>';
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Forma de pago</label><select id="fact-forma" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:11px">';
+  _factCatalogos.formaPago.forEach(function(fp) { html += '<option value="' + fp.v + '">' + fp.v + ' - ' + fp.t + '</option>'; });
+  html += '</select></div>';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Email (opcional)</label><input type="email" id="fact-email" placeholder="cliente@email.com" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
+  html += '</div>';
+
+  html += '<div style="margin-top:12px"><button class="btn btn-p btn-sm" id="fact-btn-emitir" onclick="contEmitirFactura()" style="font-size:12px">🧾 Emitir factura</button></div>';
+  html += '</div>';
 
   html += '</div>';
-  cont.innerHTML = html;
+  f.innerHTML = html;
+  f.style.display = '';
+}
+
+function contCerrarFormFactura() {
+  var f = document.getElementById('cont-form-factura');
+  if (f) { f.style.display = 'none'; f.innerHTML = ''; }
+  window._factVentaFolio = null;
+}
+
+async function contBuscarVentaFactura() {
+  var folio = (document.getElementById('fact-folio').value || '').trim().toUpperCase();
+  if (!folio) { toast('Ingresa un folio', 'warn'); return; }
+
+  var preview = document.getElementById('fact-venta-preview');
+  preview.innerHTML = '<span style="font-size:11px;color:var(--muted)">Buscando...</span>';
+  preview.style.display = '';
+
+  try {
+    var { data: venta } = await db.from('ventas').select('folio,total,sucursal,estado,created_at,paciente_id,paciente_nombre,asesor').eq('folio', folio).single();
+    if (!venta) { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Venta no encontrada</span>'; return; }
+    if (venta.estado === 'Cancelada') { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Esta venta está cancelada</span>'; return; }
+
+    // Check if already invoiced
+    var { data: existing } = await db.from('facturas').select('id').eq('venta_folio', folio).eq('status', 'valid').limit(1);
+    if (existing && existing.length > 0) { preview.innerHTML = '<span style="font-size:11px;color:#f5a623">Esta venta ya tiene factura vigente</span>'; return; }
+
+    window._factVentaFolio = folio;
+    preview.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:12px"><span><b>' + venta.folio + '</b> · ' + (venta.paciente_nombre || '—') + ' · ' + venta.sucursal + '</span><span style="font-weight:700;color:var(--accent)">' + _contMoney(venta.total) + '</span></div>';
+
+    // Show fiscal data form
+    document.getElementById('fact-datos-fiscales').style.display = '';
+
+    // Auto-fill if patient has saved fiscal data
+    if (venta.paciente_id) {
+      try {
+        var { data: pac } = await db.from('pacientes').select('datos_fiscales').eq('id', venta.paciente_id).single();
+        if (pac && pac.datos_fiscales) {
+          var df = typeof pac.datos_fiscales === 'string' ? JSON.parse(pac.datos_fiscales) : pac.datos_fiscales;
+          if (df.rfc) document.getElementById('fact-rfc').value = df.rfc;
+          if (df.razon_social) document.getElementById('fact-razon').value = df.razon_social;
+          if (df.regimen_fiscal) document.getElementById('fact-regimen').value = df.regimen_fiscal;
+          if (df.cp_fiscal) document.getElementById('fact-cp').value = df.cp_fiscal;
+          if (df.uso_cfdi) document.getElementById('fact-uso').value = df.uso_cfdi;
+          if (df.email) document.getElementById('fact-email').value = df.email;
+          preview.innerHTML += '<div style="font-size:10px;color:#4ade80;margin-top:4px">✓ Datos fiscales cargados del paciente</div>';
+        }
+      } catch(e) {}
+    }
+  } catch(err) {
+    preview.innerHTML = '<span style="font-size:11px;color:#f87171">Error: ' + err.message + '</span>';
+  }
+}
+
+async function contEmitirFactura() {
+  if (window._actionBusy && window._actionBusy['emitirFactura']) return;
+  if (!window._actionBusy) window._actionBusy = {};
+  window._actionBusy['emitirFactura'] = true;
+  var btn = document.getElementById('fact-btn-emitir');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Emitiendo factura...'; }
+
+  try {
+    var folio = window._factVentaFolio;
+    if (!folio) { toast('Busca una venta primero', 'warn'); return; }
+
+    var rfc = (document.getElementById('fact-rfc').value || '').trim().toUpperCase();
+    var razon = (document.getElementById('fact-razon').value || '').trim();
+    var regimen = document.getElementById('fact-regimen').value;
+    var cp = (document.getElementById('fact-cp').value || '').trim();
+    var uso = document.getElementById('fact-uso').value;
+    var forma = document.getElementById('fact-forma').value;
+    var email = (document.getElementById('fact-email').value || '').trim();
+
+    if (!rfc || !razon || !regimen || !cp) {
+      toast('Completa RFC, razón social, régimen y CP', 'warn');
+      return;
+    }
+
+    var resp = await fetch('/.netlify/functions/factura', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'crear',
+        venta_folio: folio,
+        cliente: {
+          tax_id: rfc,
+          legal_name: razon,
+          tax_system: regimen,
+          zip: cp,
+          use: uso,
+          email: email || undefined
+        },
+        forma_pago: forma,
+        auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error al emitir factura');
+
+    toast('Factura emitida exitosamente', 'ok');
+    contCerrarFormFactura();
+    contRenderFacturacion();
+  } catch(err) {
+    toast('Error: ' + err.message, 'err');
+  } finally {
+    window._actionBusy['emitirFactura'] = false;
+    if (btn) { btn.disabled = false; btn.textContent = '🧾 Emitir factura'; }
+  }
+}
+
+function contDescargarPDF(facturapi_id) {
+  window.open('/.netlify/functions/factura?action=pdf&id=' + facturapi_id, '_blank');
+}
+
+function contDescargarXML(facturapi_id) {
+  window.open('/.netlify/functions/factura?action=xml&id=' + facturapi_id, '_blank');
+}
+
+async function contCancelarFactura(facturapi_id, folio) {
+  if (!confirm('¿Cancelar la factura de la venta ' + folio + '? Esta acción se reporta al SAT.')) return;
+  try {
+    var resp = await fetch('/.netlify/functions/factura', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'cancelar',
+        facturapi_id: facturapi_id,
+        auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Error');
+    toast('Factura cancelada', 'ok');
+    contRenderFacturacion();
+  } catch(err) {
+    toast('Error: ' + err.message, 'err');
+  }
+}
+
+// Helper: facturar desde historial de ventas
+function contFacturarDesdeHistorial(folio) {
+  go('contabilidad');
+  setTimeout(function() {
+    contSwitchTab('facturacion');
+    setTimeout(function() {
+      contMostrarFormFactura();
+      setTimeout(function() {
+        document.getElementById('fact-folio').value = folio;
+        contBuscarVentaFactura();
+      }, 100);
+    }, 200);
+  }, 300);
 }
