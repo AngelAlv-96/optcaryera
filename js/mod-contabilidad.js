@@ -857,15 +857,25 @@ async function contBuscarVentaFactura() {
   preview.style.display = '';
 
   try {
-    var { data: venta } = await db.from('ventas').select('folio,total,sucursal,estado,created_at,paciente_id,paciente_nombre,asesor').eq('folio', folio).single();
+    // Try exact match first, then partial match (e.g. "10530" matches "AME-10530")
+    var { data: ventas } = await db.from('ventas').select('folio,total,sucursal,estado,created_at,paciente_id,paciente_nombre,asesor').or('folio.eq.' + folio + ',folio.ilike.%' + folio).order('created_at', { ascending: false }).limit(5);
+    var venta = ventas && ventas[0];
     if (!venta) { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Venta no encontrada</span>'; return; }
+    // If multiple matches, show selector
+    if (ventas.length > 1) {
+      var opts = ventas.map(function(v) {
+        return '<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'transparent\'" onclick="document.getElementById(\'fact-folio\').value=\'' + v.folio + '\';contBuscarVentaFactura()"><b>' + v.folio + '</b> · ' + (v.paciente_nombre || '—') + ' · ' + v.sucursal + ' · $' + Number(v.total).toFixed(2) + '</div>';
+      }).join('');
+      preview.innerHTML = '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">Múltiples resultados — selecciona:</div>' + opts;
+      return;
+    }
     if (venta.estado === 'Cancelada') { preview.innerHTML = '<span style="font-size:11px;color:#f87171">Esta venta está cancelada</span>'; return; }
 
     // Check if already invoiced
-    var { data: existing } = await db.from('facturas').select('id').eq('venta_folio', folio).eq('status', 'valid').limit(1);
+    var { data: existing } = await db.from('facturas').select('id').eq('venta_folio', venta.folio).eq('status', 'valid').limit(1);
     if (existing && existing.length > 0) { preview.innerHTML = '<span style="font-size:11px;color:#f5a623">Esta venta ya tiene factura vigente</span>'; return; }
 
-    window._factVentaFolio = folio;
+    window._factVentaFolio = venta.folio;
     preview.innerHTML = '<div style="display:flex;justify-content:space-between;font-size:12px"><span><b>' + venta.folio + '</b> · ' + (venta.paciente_nombre || '—') + ' · ' + venta.sucursal + '</span><span style="font-weight:700;color:var(--accent)">' + _contMoney(venta.total) + '</span></div>';
 
     // Show fiscal data form
