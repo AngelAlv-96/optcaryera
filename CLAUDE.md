@@ -315,6 +315,18 @@ Cambios v140: Cancelar ventas con autorización WA (motivo, devolución dinero, 
 Cambios v139: validación precios SALES en Lab Assistant (WA) y Compras Lab (web), OCR extrae serie, modal mapeo con selector de serie, agregar nuevas listas de precios por foto/manual, estimado de compra en Reporte Materiales usa listas oficiales con serie por CIL.
 Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_phones separado de admin_phones, lista precios SALES en Compras Lab.
 
+## 🎯 MÓDULO ESTRATEGIA (mod-estrategia.js)
+- **5 tabs**: Meta del Mes, KPIs, Histórico, Márgenes, Plan 90 Días
+- **Meta automática**: `_estCalcMeta()` — promedio ponderado últimos 3 años del mismo mes (peso 1x/2x/3x) + % crecimiento configurable. Magnolia solo usa datos post-mudanza (2024+)
+- **Datos SICAR**: constante `SICAR_DATA` hardcodeada en JS (ventas mensuales 2021-2026 por sucursal, datos fijos)
+- **Datos sistema nuevo (2026+)**: `_estLoadHistDB()` consulta ventas de la DB agrupadas por mes/sucursal para que 2027+ funcione automático
+- **Override manual**: admin puede editar metas por sucursal/mes → se guarda en `app_config` id=`metas_mensuales`
+- **app_config keys**: `kpis_estrategia` (KPIs 90 días), `estrategia_plan90` (checkboxes plan), `metas_mensuales` (overrides + % crecimiento)
+- **Widget gamificado** en dashboard empleados (sucursal): anillo CSS circular de progreso, meta diaria en ventas (no montos), mascota animada (10 temas rotan por día), frases contextuales (hora/día/racha/récord), auto-refresh 3min
+- **Columna ventas DB**: `created_at` (no `fecha`), `estado` (no `status`), promos en tabla `venta_promociones`
+- **Sucursal en DB**: `Américas` con acento (normalizar con NFD para matching)
+- **Permisos**: checkbox "Estrategia" en Config, admin ve módulo completo, empleados solo ven widget en su dashboard
+
 ## 📈 CONTEXTO ESTRATÉGICO (Mar 2026)
 - **Propuesta de valor**: "Ve bien. Véte bien." — Experto local, experiencia superior, garantía 60 días, calidad frontera
 - **Segmento target**: C/C+ (28% población, ticket $1,500-$3,500)
@@ -342,6 +354,8 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 9. **Google Sign-In**: ✅ configurado
 10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
+12. **Lottie animations**: 179 URLs públicas recolectadas (rocket, fire, sleeping, running, energy, celebration, star) de `assets-v2.lottiefiles.com`. Pendiente: agregar CDN dotlottie-player + reemplazar emojis CSS del widget motivacional por animaciones Lottie reales. URLs guardadas en sesión Claude Code (no en código aún).
+13. **Metas mensuales**: al hacer deploy, insertar en Supabase `app_config` id=`metas_mensuales` con `{"crecimiento_pct":5,"overrides":{"2026-03":{"americas":420000,"pinocelli":320000,"magnolia":160000}}}` si Angel quiere override manual para marzo
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
