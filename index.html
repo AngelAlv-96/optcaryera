@@ -1231,6 +1231,10 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           Contabilidad
           <span class="nav-badge" id="badge-facturas" style="display:none">0</span>
         </div>
+        <div class="nav-item" id="nav-report-estrategia" style="display:none" onclick="go('estrategia')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          Estrategia
+        </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
@@ -2789,6 +2793,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="asistencia" checked> Recursos Humanos</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="landings" checked> Landing Pages</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="contabilidad" checked> Contabilidad</label>
+                  <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="estrategia" checked> Estrategia</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="configuracion" checked> Configuraci&oacute;n</label>
                   <label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--surface2);padding:5px 10px;border-radius:6px;cursor:pointer"><input type="checkbox" value="clari" checked> Clari WhatsApp</label>
                 </div>
@@ -4249,6 +4254,42 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
       </div>
 
+      <!-- ESTRATEGIA -->
+      <div class="view" id="view-estrategia">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Estrategia</h2><p>Metas · Histórico · Márgenes · Plan 90 días</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="initEstrategia()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="est-tabs">
+            <button class="lc-tab active" onclick="estSwitchTab('meta')" id="est-tab-meta">📊 Meta del Mes</button>
+            <button class="lc-tab" onclick="estSwitchTab('dashboard')" id="est-tab-dashboard">🎯 KPIs</button>
+            <button class="lc-tab" onclick="estSwitchTab('historico')" id="est-tab-historico">📈 Histórico</button>
+            <button class="lc-tab" onclick="estSwitchTab('margenes')" id="est-tab-margenes">💰 Márgenes</button>
+            <button class="lc-tab" onclick="estSwitchTab('plan90')" id="est-tab-plan90">📋 Plan 90d</button>
+          </div>
+          <div id="est-content-meta"></div>
+          <div id="est-content-dashboard" style="display:none"></div>
+          <div id="est-content-historico" style="display:none"></div>
+          <div id="est-content-margenes" style="display:none"></div>
+          <div id="est-content-plan90" style="display:none"></div>
+        </div>
+        <style>
+          .est-grid-2{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+          .est-grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+          .est-card{background:var(--surface2);border-radius:10px;padding:14px 16px}
+          .est-table{width:100%;border-collapse:collapse;font-size:12px}
+          .est-table th{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.1);color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
+          .est-table td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.04)}
+          .est-alert-red{background:rgba(239,83,80,0.12);border:1px solid rgba(239,83,80,0.3)}
+          .est-alert-yellow{background:rgba(255,167,38,0.12);border:1px solid rgba(255,167,38,0.3)}
+          .est-alert-green{background:rgba(102,187,106,0.12);border:1px solid rgba(102,187,106,0.3)}
+          @media(max-width:700px){.est-grid-3{grid-template-columns:1fr}.est-grid-2{grid-template-columns:1fr}}
+        </style>
+      </div>
+
     </main>
   </div>
 </div>
@@ -4965,6 +5006,7 @@ function setupApp(u) {
       document.getElementById('nav-report-comisiones').style.display = '';
       document.getElementById('nav-report-asistencia').style.display = '';
       document.getElementById('nav-report-contabilidad').style.display = '';
+      document.getElementById('nav-report-estrategia').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4974,6 +5016,7 @@ function setupApp(u) {
       document.getElementById('nav-report-comisiones').style.display = 'none';
       document.getElementById('nav-report-asistencia').style.display = 'none';
       document.getElementById('nav-report-contabilidad').style.display = 'none';
+      document.getElementById('nav-report-estrategia').style.display = 'none';
       document.getElementById('nav-ventas-section').style.display = 'none';
     } else {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -4983,6 +5026,7 @@ function setupApp(u) {
       document.getElementById('nav-report-comisiones').style.display = 'none';
       document.getElementById('nav-report-asistencia').style.display = 'none';
       document.getElementById('nav-report-contabilidad').style.display = 'none';
+      document.getElementById('nav-report-estrategia').style.display = 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
@@ -5188,7 +5232,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, estrategia:27, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5218,6 +5262,7 @@ function go(id) {
   if (id === 'comisiones')          { initComisiones(); }
   if (id === 'asistencia')          { initAsistencia(); }
   if (id === 'contabilidad')        { initContabilidad(); }
+  if (id === 'estrategia')          { initEstrategia(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
@@ -6170,6 +6215,9 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   h += _miniStat('Pendientes cobro', '<span class="spinner-sm"></span>', '#e8a84a', '💰');
   h += '</div>';
 
+  // Meta del mes widget (motivacional, sin montos) — PRIMERO
+  h += '<div id="dash-meta-widget" style="margin-bottom:16px"></div>';
+
   // TC dólar
   h += '<div id="dash-tipo-cambio" style="padding:12px 16px;background:rgba(114,196,126,0.04);border:1px solid rgba(114,196,126,0.12);border-radius:10px;margin-bottom:16px"></div>';
 
@@ -6192,8 +6240,9 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
     h += '<div id="dash-suc-pendientes-cobro-wrap"></div>';
   }
 
-  // Deferred: cargar pendientes de cobro
+  // Deferred: cargar pendientes de cobro + meta del mes
   setTimeout(function(){ _loadDashSucPendientes(suc, porRevisar > 0 || listos > 0); }, 50);
+  setTimeout(function(){ _loadDashMetaWidget(suc); }, 100);
 
   // Urgentes
   if (urgentes.length > 0) {
@@ -19478,6 +19527,7 @@ async function calcularComisiones() {
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=169"></script>
 <script src="js/mod-contabilidad.js?v=174"></script>
+<script src="js/mod-estrategia.js?v=181"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->

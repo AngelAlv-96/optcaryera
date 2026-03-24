@@ -45,6 +45,7 @@ Si algo se rompe gravemente:
 │   ├── mod-produccion.js — Producción y surtido lab
 │   ├── mod-asistencia.js  — Módulo RH: asistencia, expedientes, permisos, firmas, reportes LFT
 │   ├── mod-contabilidad.js — Módulo Contabilidad: estado de resultados, gastos OCR, flujo efectivo, facturación CFDI
+│   ├── mod-estrategia.js  — Módulo Estrategia: KPIs 90 días, histórico SICAR, monitor márgenes, plan 90 días
 │   ├── mod-scanner.js    — Barcode scanner con remap teclado
 │   └── mod-tickets.js    — Tickets térmicos (ventas, cortes, abonos)
 └── netlify/functions/  — Serverless functions (backend)
@@ -130,7 +131,7 @@ Si algo se rompe gravemente:
 - **laboratorio**: producción/surtido/bitácora, sin ventas/caja
 
 ## 📋 MÓDULOS ACTIVOS
-Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`), **Contabilidad** (estado de resultados + gastos con OCR + flujo de efectivo + facturación CFDI — `js/mod-contabilidad.js`).
+Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`), **Contabilidad** (estado de resultados + gastos con OCR + flujo de efectivo + facturación CFDI — `js/mod-contabilidad.js`), **Estrategia** (KPIs 90 días + histórico SICAR + monitor márgenes/descuentos + plan 90 días por rol — `js/mod-estrategia.js`).
 
 ## 🏗️ CÓMO FUNCIONA INDEX.HTML
 - Es una SPA: todas las vistas son `<div class="view" id="view-nombre">` que se muestran/ocultan
@@ -268,7 +269,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v180
+## 📊 VERSIÓN ACTIVA: v181
+Cambios v181: Módulo Estrategia — metas, histórico SICAR, monitor de márgenes, plan 90 días. **Nuevo `js/mod-estrategia.js`** (~500 líneas): vista `view-estrategia` en sidebar (sección Reportes, después de Contabilidad), 4 tabs. **Tab Dashboard**: semáforo de KPIs con barras de progreso (reseñas Google, leads, citas, ROAS, followers IG, retención), valores actuales editables con click (guardados en `app_config` id=`kpis_estrategia`), métricas en tiempo real del sistema (ventas/mes, ingreso, ticket promedio, por sucursal), indicador de fase actual (sem 1-4/5-8/9-12), alerta de márgenes (rojo >45%, amarillo >40%, verde). **Tab Histórico**: ventas SICAR 2021-2026 hardcodeadas en JS (datos fijos), gráficas de barras CSS del mes actual vs mismos meses años anteriores por sucursal, tabla anual con YoY growth, contexto estacional por mes, "Magnolia Watch" con evolución trimestral post-mudanza (Mar 2024) y tendencia ↑↓→. **Tab Márgenes**: % ventas con descuento y tasa promedio en tiempo real, desglose por promoción, por sucursal, top 5 ventas con mayor descuento, tendencia diaria últimos 14 días. **Tab Plan 90 Días**: 3 columnas (Ángel/Ivon/Karen) con checkboxes por fase, notas editables, progreso visual, guardado en `app_config` id=`estrategia_plan90`. **Permisos**: controlable por checkbox "Estrategia" en Config → Equipo (admin y gerencia ven por default). **Datos cruzados**: se comparó el documento estratégico contra la DB real — Magnolia subestimada por ~$13K, ticket promedio real $3,482 (no $3,399), tasa descuento real 45% (no 48.2%). Sin cambios a DB.
 Cambios v180: Tienda LC — redes sociales + nueva cuenta Conekta. **Redes sociales en footer**: agregados iconos SVG de Facebook, Instagram y WhatsApp al footer de `tienda.html` con links a las páginas oficiales (facebook.com/opticascar.y.era, instagram.com/opticascar.yera, wa.me/5216563110094). Estilo: círculos semitransparentes con hover accent. **Nueva cuenta Conekta**: cuenta anterior tenía datos personales incorrectos, se configuró nueva cuenta "Ópticas Car & Era" con datos fiscales del negocio. Llave privada `key_99bTGsDTN3233JHHzMHJHnK` configurada en Netlify env var `CONEKTA_PRIVATE_KEY`. Llave de firma de producción generada. Webhook "Tienda LC Pagos" creado y activo apuntando a `optcaryera.netlify.app/.netlify/functions/conekta-webhook` con todos los eventos suscritos. **Pendiente Conekta**: subir Constancia de Situación Fiscal actualizada (menos de 2 meses) para completar validación de cuenta.
 Cambios v179: Fix reloj checador — fecha de corte + envío acta. **Fecha de corte `2026-03-23`**: el sistema de asistencia se activó el 23 de marzo, pero al registrar entrada revisaba los últimos 7 días buscando faltas — generaba actas falsas por días previos al inicio del sistema. Agregada constante `ASISTENCIA_START_DATE = '2026-03-23'` en `wa-webhook.js` (skip dates antes del 23 en loop de faltas) y `asistencia-cron.js` (clamp periodoInicio al 23 en envío de firmas). **Fix envío acta al empleado**: el mensaje de acta al empleado estaba dentro de `setTimeout(async function(){...}, 2000)` — en Netlify Functions, el handler retorna antes de que el timeout se ejecute, así que el mensaje **nunca se enviaba** (la notificación al admin sí llegaba porque estaba fuera del setTimeout). Cambiado a `await new Promise(setTimeout, 2000)` + `await sendWhatsAppReply()` síncrono, garantizando que el acta se envía antes del return. Sin cambios a DB.
 Cambios v178: Fix ticket impreso Reporte de Materiales — LC ahora aparecen en ticket + columnas corregidas. **Bug**: en `imprimirReporteMateriales()`, el check `child.textContent?.includes('TOTAL LC')` interceptaba el wrapper div de LC (que contiene tanto "Lentes de Contacto" como "TOTAL LC") antes que el check de `'Lentes de Contacto'`, haciendo `continue` y saltando todo el detalle de LC. **Fix**: mover el check de `'Lentes de Contacto'` antes del de `'TOTAL LC'`, y generar el TOTAL LC row dentro del handler de LC. **Columnas LC cambiadas** (pantalla + ticket): de Ojo/Poder/BC/DIA/CIL/Cajas (6 cols, BC y DIA innecesarios para surtido) a **Ojo/Poder/CIL/Eje/Cajas** (5 cols, datos útiles para el laboratorio). Agregado parseo de AXIS desde `notas_laboratorio` con fallback a `od_eje`/`oi_eje` de la orden. CSS de tabla LC en ticket ajustado para 5 columnas. Sin cambios a DB.
@@ -312,6 +314,21 @@ Cambios v141: Foto Colors requiere selector de color (Gris/Rosa/Cafe/Azul/Morado
 Cambios v140: Cancelar ventas con autorización WA (motivo, devolución dinero, retiro caja), estimado compra con selector proveedor por fila (aprende preferencias), VS medios, TIPO badges, comparativo estimado vs compras reales, total nota editable en Compras Lab, terminología laboratorio→proveedor, Hi Index · Foto AR · VS (S1: $2,199, S2: $2,499), botón "+ Agregar material" en Catálogo (admin only) con modal para insertar en reglas_materiales.
 Cambios v139: validación precios SALES en Lab Assistant (WA) y Compras Lab (web), OCR extrae serie, modal mapeo con selector de serie, agregar nuevas listas de precios por foto/manual, estimado de compra en Reporte Materiales usa listas oficiales con serie por CIL.
 Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_phones separado de admin_phones, lista precios SALES en Compras Lab.
+
+## 📈 CONTEXTO ESTRATÉGICO (Mar 2026)
+- **Propuesta de valor**: "Ve bien. Véte bien." — Experto local, experiencia superior, garantía 60 días, calidad frontera
+- **Segmento target**: C/C+ (28% población, ticket $1,500-$3,500)
+- **Ticket promedio real**: $3,482 MXN (confirma posicionamiento C/C+)
+- **Fortalezas**: Velocidad (8/10), Calidad percibida (7/10)
+- **Debilidades**: Digital (2/10), Marca (3/10)
+- **Competencia**: Ben & Frank (47/60), Devlyn (41/60), +Visión (38/60), Salud Digna (36/60), Car & Era (33/60)
+- **Oportunidad**: Ninguna óptica local tiene estrategia digital sostenida. Quien entre primero domina 12-18 meses
+- **Alerta descuentos**: 67.5% de ventas con descuento, tasa 45% — 3x1 permanente comprime márgenes
+- **Magnolia**: -$1.2M/año vs pre-mudanza. Prueba: Meta Ads zona + driver tráfico digital. Si en 3 meses no mejora → revisar viabilidad
+- **Plan 90 días**: Ángel (ads/promos), Ivon (contenido), Karen (operación). Fases de 4 semanas c/u
+- **KPIs meta**: 120 reseñas Google, 150 leads/mes, 100 citas digital, 4.5x ROAS, +1000 followers IG, +15% retención
+- **Datos históricos SICAR**: hardcodeados en `js/mod-estrategia.js` (ventas mensuales 2021-2026 por sucursal)
+- **Estacionalidad**: Nov=pico (Buen Fin), Ene=más flojo, Jun-Jul=caída verano, Sep-Oct=recuperación
 
 ## ⚠️ PENDIENTES
 1. Migrar WA#1 Clari a Twilio
