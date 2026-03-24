@@ -618,11 +618,13 @@ async function cmdAsistencia(phone, action, profileName) {
       // ── Check for recent unjustified absences (send acta if found) ──
       try {
         var faltasDias = [];
+        var ASISTENCIA_START_DATE = '2026-03-23'; // ignore absences before this date (system started)
         // Check last 7 days for days with no entry where employee was scheduled
         for (var dBack = 1; dBack <= 7; dBack++) {
           var checkDate = new Date(nowChihuahua);
           checkDate.setDate(checkDate.getDate() - dBack);
           var checkFecha = checkDate.toLocaleDateString('en-CA');
+          if (checkFecha < ASISTENCIA_START_DATE) continue; // skip dates before system was activated
           var checkDayKey = dayNames[checkDate.getDay()];
           // Check schedule for that day
           var checkSched = horarios.default ? horarios.default[checkDayKey] : null;
@@ -669,14 +671,13 @@ async function cmdAsistencia(phone, action, profileName) {
           var SITE = process.env.URL || 'https://optcaryera.netlify.app';
           var actaLink = SITE + '/firma-asistencia?token=' + actaToken + '&acta=1&faltas=' + faltasDias.join(',');
 
-          // Send acta link to employee (after a small delay so entry msg arrives first)
-          setTimeout(async function() {
-            try {
-              var faltasListStr = faltasDias.map(function(f) { return f; }).join(', ');
-              await sendWhatsAppReply(phone, '📋 *Acta de falta injustificada*\n\nSe registraron ' + faltasDias.length + ' falta(s) sin justificar:\n📅 ' + faltasListStr + '\n\nRevisa y firma el acta aqui:\n👉 ' + actaLink + '\n\nEl link expira en 72 horas.\n\n_Art. 47 Frac. X — Ley Federal del Trabajo_');
-              console.log('[Asistencia] Sent acta link to ' + empName + ' for ' + faltasDias.length + ' falta(s)');
-            } catch(e2) { console.warn('[Asistencia] Acta send error:', e2.message); }
-          }, 2000);
+          // Send acta link to employee (small delay so entry msg arrives first)
+          await new Promise(function(r) { setTimeout(r, 2000); });
+          try {
+            var faltasListStr = faltasDias.map(function(f) { return f; }).join(', ');
+            await sendWhatsAppReply(phone, '📋 *Acta de falta injustificada*\n\nSe registraron ' + faltasDias.length + ' falta(s) sin justificar:\n📅 ' + faltasListStr + '\n\nRevisa y firma el acta aqui:\n👉 ' + actaLink + '\n\nEl link expira en 72 horas.\n\n_Art. 47 Frac. X — Ley Federal del Trabajo_');
+            console.log('[Asistencia] Sent acta link to ' + empName + ' for ' + faltasDias.length + ' falta(s)');
+          } catch(e2) { console.warn('[Asistencia] Acta send error:', e2.message); }
 
           // Notify admin
           var cfgWA2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');

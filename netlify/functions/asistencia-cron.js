@@ -234,6 +234,7 @@ async function checkSignatureRequests(employees, fechaLocal) {
       }
 
       // Calculate period: from day after last period end to yesterday
+      var ASISTENCIA_START_DATE = '2026-03-23'; // ignore absences before this date (system started)
       var periodoInicio;
       if (lastEntry && lastEntry.periodo_fin) {
         var d = new Date(lastEntry.periodo_fin + 'T12:00:00');
@@ -245,6 +246,8 @@ async function checkSignatureRequests(employees, fechaLocal) {
         d2.setDate(d2.getDate() - 7);
         periodoInicio = d2.toLocaleDateString('en-CA');
       }
+      // Never go before system activation date
+      if (periodoInicio < ASISTENCIA_START_DATE) periodoInicio = ASISTENCIA_START_DATE;
       var yesterday = new Date(fechaLocal + 'T12:00:00');
       yesterday.setDate(yesterday.getDate() - 1);
       var periodoFin = yesterday.toLocaleDateString('en-CA');
