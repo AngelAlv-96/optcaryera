@@ -5061,6 +5061,7 @@ function setupApp(u) {
     initVersionFooter();
     setTimeout(checkChangelog, 500);
     startDashRefresh();
+    initRealtimeSubscriptions();
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';
@@ -5226,8 +5227,10 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('open');
 }
 
+let currentView = 'dashboard';
 function go(id) {
   if (id === 'lc-crm') id = 'lentes-contacto';
+  currentView = id;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   const viewEl = document.getElementById('view-' + id);
@@ -5266,6 +5269,75 @@ function go(id) {
   if (id === 'estrategia')          { initEstrategia(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
+
+// ── Realtime Subscriptions ────────────────────────────────────
+// Suscripciones a tablas clave para actualización automática sin refresh
+let _rtSubs = null;
+let _rtToastTimer = null;
+
+function _rtToast(msg) {
+  var el = document.getElementById('rt-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'rt-toast';
+    el.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#1a7f37;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-family:Outfit,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;transition:opacity .3s;pointer-events:none;max-width:320px';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  if (_rtToastTimer) clearTimeout(_rtToastTimer);
+  _rtToastTimer = setTimeout(function() { el.style.opacity = '0'; }, 3000);
+}
+
+// Mapa: tabla → qué vistas refrescar y con qué función
+var _rtRefreshMap = {
+  ventas:                 { views: ['dashboard','historial-ventas','caja','creditos'], fn: { dashboard: 'loadDash', 'historial-ventas': 'cargarHistorialVentas', caja: 'initCaja', creditos: 'loadCreditos' } },
+  venta_pagos:            { views: ['dashboard','caja','historial-ventas','creditos'], fn: { dashboard: 'loadDash', caja: 'initCaja', 'historial-ventas': 'cargarHistorialVentas', creditos: 'loadCreditos' } },
+  ordenes_laboratorio:    { views: ['dashboard','laboratorio','lab-proceso','surtido-station','reporte-materiales'], fn: { dashboard: 'loadDash', laboratorio: 'loadLab', 'lab-proceso': 'loadLabTablero', 'surtido-station': 'surtStInit', 'reporte-materiales': 'initReporteMateriales' } },
+  historias_clinicas:     { views: ['dashboard','pacientes'], fn: { dashboard: 'loadDash', pacientes: 'loadPac' } },
+  pacientes:              { views: ['pacientes'], fn: { pacientes: 'loadPac' } },
+  compras_lab:            { views: ['compras-lab','contabilidad'], fn: { 'compras-lab': 'clbInit', contabilidad: 'initContabilidad' } },
+  gastos:                 { views: ['contabilidad'], fn: { contabilidad: 'initContabilidad' } }
+};
+
+// Debounce para no refrescar 10 veces seguidas
+var _rtDebounce = {};
+function _rtHandleChange(table) {
+  var cfg = _rtRefreshMap[table];
+  if (!cfg) return;
+  // ¿La vista activa necesita refrescarse?
+  var idx = cfg.views.indexOf(currentView);
+  if (idx === -1) return; // Vista no afectada, ignorar
+  var fnName = cfg.fn[currentView];
+  if (!fnName || typeof window[fnName] !== 'function') return;
+  // Debounce 1.5s por tabla (evita ráfaga de cambios)
+  var key = table + '_' + currentView;
+  if (_rtDebounce[key]) clearTimeout(_rtDebounce[key]);
+  _rtDebounce[key] = setTimeout(function() {
+    delete _rtDebounce[key];
+    try {
+      window[fnName]();
+      _rtToast('Datos actualizados');
+    } catch(e) { console.warn('[RT] Error refreshing', currentView, e); }
+  }, 1500);
+}
+
+function initRealtimeSubscriptions() {
+  if (_rtSubs) return; // Ya inicializado
+  var tables = Object.keys(_rtRefreshMap);
+  _rtSubs = db.channel('app-realtime');
+  tables.forEach(function(t) {
+    _rtSubs = _rtSubs.on('postgres_changes', { event: '*', schema: 'public', table: t }, function() {
+      _rtHandleChange(t);
+    });
+  });
+  _rtSubs.subscribe(function(status) {
+    if (status === 'SUBSCRIBED') {
+      console.log('[RT] Realtime conectado — ' + tables.length + ' tablas');
+    }
+  });
+}
+// ── Fin Realtime ─────────────────────────────────────────────
 
 const LAB_ESTADOS = {
   'Enviado al lab':        { cls: 'enviado',   dot: '#8ab0e8' },
