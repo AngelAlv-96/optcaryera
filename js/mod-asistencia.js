@@ -785,171 +785,196 @@ function _asistGetSucursalUsers() {
   return list;
 }
 
+function _asistToggleSection(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  var arrow = document.getElementById(id + '-arrow');
+  if (el.style.display === 'none') {
+    el.style.display = '';
+    if (arrow) arrow.textContent = '▾';
+  } else {
+    el.style.display = 'none';
+    if (arrow) arrow.textContent = '▸';
+  }
+}
+
 function asistRenderConfig() {
   var cont = document.getElementById('asist-content-config');
   if (!cont) return;
 
-  var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+  var inputS = 'background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none';
+  var monoInputS = 'background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:monospace;font-size:11px;outline:none';
+  var sectionHeaderS = 'display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:pointer;border-radius:6px;user-select:none;transition:background .15s';
 
-  // ── LEFT: Phone mapping (asesores) ──
-  html += '<div style="background:var(--surface2);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px">';
-  html += '<h3 style="font-size:13px;margin:0 0 4px;color:var(--white)">📱 Teléfonos de asesores</h3>';
-  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:12px">Asigna teléfono a cada asesor para que registre asistencia por WhatsApp</div>';
+  var dayLabels = { lun:'L', mar:'M', mie:'Mi', jue:'J', vie:'V', sab:'S', dom:'D' };
+  var dayOrder = ['lun','mar','mie','jue','vie','sab','dom'];
+  var defSched = (_asistHorarios && _asistHorarios.default) || {};
+  var overrides = (_asistHorarios && _asistHorarios.override) || {};
+  var sucColors = { 'Américas': '#8ab0e8', 'Pinocelli': '#d4b84a', 'Magnolia': '#b48ad4', 'Laboratorio': 'var(--muted)' };
 
-  // Get asesores (by sucursal only, no globals)
+  var html = '<style>.asist-sec-hdr:hover{background:rgba(255,255,255,0.03)}.asist-emp-row:hover{background:rgba(255,255,255,0.02)}</style>';
+
+  // Single unified card
+  html += '<div style="background:var(--surface2);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px">';
+
+  // Header with tolerancia inline
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  html += '<div><h3 style="font-size:13px;margin:0;color:var(--white)">📱 Empleados y Horarios</h3>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Click en un empleado para ver/editar su horario individual</div></div>';
+  html += '<div style="display:flex;gap:6px;align-items:center">';
+  html += '<label style="font-size:10px;color:var(--muted)">Tolerancia:</label>';
+  html += '<input type="number" id="asist-tolerancia" value="' + ((_asistHorarios && _asistHorarios.tolerancia_min) || 10) + '" min="0" max="60" style="width:45px;' + inputS + '">';
+  html += '<span style="font-size:9px;color:var(--muted)">min</span>';
+  html += '</div></div>';
+
+  // Build all employees list
   var asesores = _asistGetAllAsesores();
-
-  // Build reverse map: uid → phone
   var uidToPhone = {};
   for (var ph in _asistPhoneMap) { uidToPhone[_asistPhoneMap[ph]] = ph; }
 
-  if (asesores.length > 0) {
-    html += '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px">';
-    html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)"><th style="text-align:left;padding:6px;color:var(--muted);font-size:9px;text-transform:uppercase">Nombre</th><th style="text-align:left;padding:6px;color:var(--muted);font-size:9px;text-transform:uppercase">Sucursal</th><th style="text-align:left;padding:6px;color:var(--muted);font-size:9px;text-transform:uppercase">Teléfono</th><th style="padding:6px"></th></tr></thead><tbody>';
+  var allEmps = [];
+  asesores.forEach(function(a) {
+    allEmps.push({ uid: 'asesor_' + a.nombre.toLowerCase().replace(/\s+/g, '_'), nombre: a.nombre, suc: a.sucursal, isExtra: false });
+  });
+  var extras = (_asistHorarios && _asistHorarios.empleados_extra) || {};
+  Object.keys(extras).forEach(function(euid) {
+    var ex = extras[euid];
+    allEmps.push({ uid: euid, nombre: ex.nombre, suc: ex.sucursal || 'Laboratorio', isExtra: true });
+  });
 
-    asesores.forEach(function(a) {
-        var uid = 'asesor_' + a.nombre.toLowerCase().replace(/\s+/g, '_');
-        var phone = uidToPhone[uid] || '';
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-        html += '<td style="padding:6px;font-weight:500">' + a.nombre + '</td>';
-        html += '<td style="padding:6px;color:' + a.color + '">' + a.sucursal + '</td>';
-        html += '<td style="padding:6px">';
-        if (phone) {
-          html += '<span style="font-family:monospace;font-size:11px">' + phone + '</span>';
+  // Group by sucursal
+  var bySuc = {};
+  allEmps.forEach(function(e) {
+    if (!bySuc[e.suc]) bySuc[e.suc] = [];
+    bySuc[e.suc].push(e);
+  });
+
+  // Compact day header row
+  var dayHeaderCells = dayOrder.map(function(dk) {
+    return '<th style="text-align:center;padding:2px 3px;color:var(--muted);font-size:8px;font-weight:600;width:' + (dk === 'dom' ? '55px' : '60px') + '">' + dayLabels[dk] + '</th>';
+  }).join('');
+
+  // Render each sucursal group
+  var sucOrder = ['Américas', 'Pinocelli', 'Magnolia', 'Laboratorio'];
+  sucOrder.forEach(function(suc) {
+    var emps = bySuc[suc] || [];
+    if (emps.length === 0) return;
+    var clr = sucColors[suc] || 'var(--white)';
+
+    // Sucursal header
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 0;margin-top:6px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+    html += '<span style="font-size:11px;font-weight:600;color:' + clr + '">' + suc + '</span>';
+    html += '<span style="font-size:9px;color:var(--muted)">' + emps.length + '</span>';
+    html += '</div>';
+
+    // Employee rows
+    emps.forEach(function(emp) {
+      var phone = uidToPhone[emp.uid] || '';
+      var empOv = overrides[emp.uid] || {};
+      var hasCustom = Object.keys(empOv).length > 0;
+      var secId = 'asist-emp-' + emp.uid.replace(/[^a-z0-9_]/g, '');
+
+      // Main row
+      html += '<div class="asist-emp-row" style="border-bottom:1px solid rgba(255,255,255,0.03)">';
+      html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer" onclick="_asistToggleSection(\'' + secId + '\')">';
+      html += '<span id="' + secId + '-arrow" style="font-size:8px;color:var(--muted)">▸</span>';
+      html += '<span style="font-weight:500;font-size:11px;flex:1">' + emp.nombre + '</span>';
+      if (hasCustom) html += '<span style="font-size:8px;color:var(--beige);background:var(--beige-dim);padding:1px 5px;border-radius:3px">Custom</span>';
+      html += '<span style="font-family:monospace;font-size:10px;color:var(--muted);width:110px;text-align:right">';
+      if (phone) {
+        html += phone;
+      } else {
+        html += '<input type="text" placeholder="Teléfono" maxlength="15" id="asist-ph-' + emp.uid + '" onclick="event.stopPropagation()" style="width:100px;' + monoInputS + '">';
+      }
+      html += '</span>';
+      html += '<span style="white-space:nowrap;width:50px;text-align:right">';
+      if (phone) {
+        html += '<button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#e74c3c" onclick="event.stopPropagation();asistDarDeBaja(\'' + phone + '\',\'' + emp.nombre.replace(/'/g,"\\'") + '\')">Baja</button>';
+      } else {
+        html += '<button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#4af0c8" onclick="event.stopPropagation();asistGuardarPhoneAsesor(\'' + emp.uid + '\')">✓</button>';
+      }
+      if (emp.isExtra) {
+        html += ' <button class="btn btn-g" style="padding:1px 4px;font-size:9px;color:#e74c3c" onclick="event.stopPropagation();asistEliminarExtra(\'' + emp.uid + '\')" title="Eliminar">✕</button>';
+      }
+      html += '</span>';
+      html += '</div>';
+
+      // Expandable schedule (hidden by default)
+      html += '<div id="' + secId + '" style="display:none;padding:4px 6px 8px 20px">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:10px;max-width:500px">';
+      html += '<thead><tr>' + dayHeaderCells + '</tr></thead>';
+      html += '<tr>';
+      dayOrder.forEach(function(dk) {
+        var sched = _asistResolveSchedule(emp.uid, dk);
+        var isDayOff = empOv[dk] === null;
+        var entVal = sched ? sched.entrada : '';
+        var salVal = sched ? sched.salida : '';
+        html += '<td style="padding:2px 1px;text-align:center;vertical-align:top">';
+        if (isDayOff) {
+          html += '<div style="font-size:9px;color:var(--muted);padding:4px 0">Descanso</div>';
         } else {
-          html += '<input type="text" placeholder="10 dígitos" maxlength="15" id="asist-ph-' + uid + '" style="width:120px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:monospace;font-size:11px;outline:none">';
+          html += '<input type="time" value="' + (entVal || '') + '" style="width:100%;' + inputS + ';font-size:9px;padding:2px 3px;margin-bottom:2px" data-sched="' + emp.uid + '-' + dk + '-ent">';
+          html += '<input type="time" value="' + (salVal || '') + '" style="width:100%;' + inputS + ';font-size:9px;padding:2px 3px" data-sched="' + emp.uid + '-' + dk + '-sal">';
         }
         html += '</td>';
-        html += '<td style="padding:6px;text-align:right">';
-        if (phone) {
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#e74c3c" onclick="asistDarDeBaja(\'' + phone + '\',\'' + a.nombre.replace(/'/g,"\\'") + '\')">Baja</button>';
-        } else {
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#4af0c8" onclick="asistGuardarPhoneAsesor(\'' + uid + '\')">✓</button>';
-        }
-        html += '</td></tr>';
-    });
+      });
+      html += '</tr></table>';
 
-    html += '</tbody></table>';
-  } else {
-    html += '<div style="color:var(--muted);font-size:11px;margin-bottom:12px">No hay asesores configurados. Agrégalos en Configuración → Ventas → Asesores.</div>';
+      // Quick actions for this employee
+      html += '<div style="display:flex;gap:4px;align-items:center;margin-top:4px">';
+      html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px" onclick="asistSetDayOff(\'' + emp.uid + '\')">+ Día de descanso</button>';
+      if (hasCustom) html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px;color:#e74c3c" onclick="asistResetSchedule(\'' + emp.uid + '\')">Restablecer horario base</button>';
+      html += '</div>';
+      html += '</div>'; // close expandable
+
+      html += '</div>'; // close emp row
+    });
+  });
+
+  if (allEmps.length === 0) {
+    html += '<div style="color:var(--muted);font-size:11px;padding:8px 0">No hay empleados configurados. Agrégalos en Configuración → Ventas → Asesores.</div>';
   }
 
-  // ── Manual employees (lab workers, etc.) ──
-  var extras = (_asistHorarios && _asistHorarios.empleados_extra) || {};
-  var extraUids = Object.keys(extras);
-  if (extraUids.length > 0) {
-    html += '<div style="margin-top:8px"><div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Otros empleados</div>';
-    html += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
-    extraUids.forEach(function(euid) {
-      var ex = extras[euid];
-      var phone = uidToPhone[euid] || '';
-      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-      html += '<td style="padding:6px;font-weight:500">' + ex.nombre + '</td>';
-      html += '<td style="padding:6px;color:var(--muted)">' + (ex.sucursal || '') + '</td>';
-      html += '<td style="padding:6px">';
-      if (phone) {
-        html += '<span style="font-family:monospace;font-size:11px">' + phone + '</span>';
-      } else {
-        html += '<input type="text" placeholder="10 dígitos" maxlength="15" id="asist-ph-' + euid + '" style="width:120px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:monospace;font-size:11px;outline:none">';
-      }
-      html += '</td>';
-      html += '<td style="padding:6px;text-align:right;white-space:nowrap">';
-      if (phone) {
-        html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#e74c3c" onclick="asistDarDeBaja(\'' + phone + '\',\'' + ex.nombre.replace(/'/g,"\\'") + '\')">Baja</button>';
-      } else {
-        html += '<button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#4af0c8" onclick="asistGuardarPhoneAsesor(\'' + euid + '\')">✓</button>';
-      }
-      html += ' <button class="btn btn-g" style="padding:2px 6px;font-size:10px;color:#e74c3c" onclick="asistEliminarExtra(\'' + euid + '\')" title="Eliminar empleado">🗑</button>';
-      html += '</td></tr>';
-    });
-    html += '</table></div>';
-  }
-
-  // Add manual employee form
-  html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">';
-  html += '<div style="font-size:10px;font-weight:600;color:var(--beige);margin-bottom:6px">+ Agregar empleado (laboratorio, etc.)</div>';
-  html += '<div style="display:flex;gap:6px;align-items:end">';
-  html += '<div class="fg" style="flex:1;margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Nombre</label>';
-  html += '<input type="text" id="asist-extra-nombre" placeholder="Nombre completo" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none;width:100%"></div>';
-  html += '<div class="fg" style="margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Área</label>';
-  html += '<select id="asist-extra-suc" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none">';
+  // Add employee form
+  html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
+  html += '<div style="display:flex;gap:5px;align-items:center">';
+  html += '<input type="text" id="asist-extra-nombre" placeholder="Nombre completo" style="flex:1;' + inputS + '">';
+  html += '<select id="asist-extra-suc" style="' + inputS + '">';
   html += '<option value="Laboratorio">Laboratorio</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option>';
-  html += '</select></div>';
-  html += '<div class="fg" style="margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Teléfono</label>';
-  html += '<input type="text" id="asist-extra-phone" placeholder="10 dígitos" maxlength="15" style="width:110px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:5px 8px;color:var(--white);font-family:monospace;font-size:11px;outline:none"></div>';
-  html += '<button class="btn btn-p btn-sm" onclick="asistAgregarExtra()">+ Agregar</button>';
+  html += '</select>';
+  html += '<input type="text" id="asist-extra-phone" placeholder="Teléfono" maxlength="15" style="width:100px;' + monoInputS + '">';
+  html += '<button class="btn btn-p btn-sm" style="padding:4px 8px;font-size:10px" onclick="asistAgregarExtra()">+ Agregar</button>';
   html += '</div></div>';
 
+  // Horario base (collapsible at the bottom)
+  html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
+  html += '<div class="asist-sec-hdr" style="' + sectionHeaderS + '" onclick="_asistToggleSection(\'asist-sec-horbase\')">';
+  html += '<span id="asist-sec-horbase-arrow" style="font-size:9px;color:var(--muted)">▸</span>';
+  html += '<span style="font-size:11px;font-weight:600;color:var(--beige)">Horario base (aplica a todos por defecto)</span>';
   html += '</div>';
-
-  // ── RIGHT: Schedule config ──
-  html += '<div style="background:var(--surface2);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:16px">';
-  html += '<h3 style="font-size:13px;margin:0 0 12px;color:var(--white)">🕐 Horarios</h3>';
-
-  var dayLabels = { lun:'Lunes', mar:'Martes', mie:'Miércoles', jue:'Jueves', vie:'Viernes', sab:'Sábado', dom:'Domingo' };
-  var dayOrder = ['lun','mar','mie','jue','vie','sab','dom'];
-  var defSched = (_asistHorarios && _asistHorarios.default) || {};
-
-  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:8px">';
-  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)"><th style="text-align:left;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Día</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Entrada</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Salida</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Labora</th></tr></thead><tbody>';
+  html += '<div id="asist-sec-horbase" style="display:none;padding:6px 0">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:11px;max-width:500px">';
+  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.06)"><th style="text-align:left;padding:3px 4px;color:var(--muted);font-size:9px">DÍA</th><th style="text-align:center;padding:3px 4px;color:var(--muted);font-size:9px">ENTRADA</th><th style="text-align:center;padding:3px 4px;color:var(--muted);font-size:9px">SALIDA</th><th style="text-align:center;padding:3px 4px;color:var(--muted);font-size:9px;width:30px">✓</th></tr></thead><tbody>';
+  var dayFull = { lun:'Lunes', mar:'Martes', mie:'Miércoles', jue:'Jueves', vie:'Viernes', sab:'Sábado', dom:'Domingo' };
   dayOrder.forEach(function(dk) {
     var s = defSched[dk] || { entrada: '', salida: '' };
     var labora = s && s.entrada;
-    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-    html += '<td style="padding:4px;font-weight:500">' + dayLabels[dk] + '</td>';
-    html += '<td style="padding:4px;text-align:center"><input type="time" id="asist-sched-' + dk + '-ent" value="' + (s.entrada || '') + '" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none"></td>';
-    html += '<td style="padding:4px;text-align:center"><input type="time" id="asist-sched-' + dk + '-sal" value="' + (s.salida || '') + '" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 6px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none"></td>';
-    html += '<td style="padding:4px;text-align:center"><input type="checkbox" id="asist-sched-' + dk + '-on" ' + (labora ? 'checked' : '') + ' style="accent-color:var(--accent)"></td>';
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">';
+    html += '<td style="padding:3px 4px;font-weight:500">' + dayFull[dk] + '</td>';
+    html += '<td style="padding:3px 4px;text-align:center"><input type="time" id="asist-sched-' + dk + '-ent" value="' + (s.entrada || '') + '" style="' + inputS + '"></td>';
+    html += '<td style="padding:3px 4px;text-align:center"><input type="time" id="asist-sched-' + dk + '-sal" value="' + (s.salida || '') + '" style="' + inputS + '"></td>';
+    html += '<td style="padding:3px 4px;text-align:center"><input type="checkbox" id="asist-sched-' + dk + '-on" ' + (labora ? 'checked' : '') + ' style="accent-color:var(--accent)"></td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
+  html += '</div></div>';
 
-  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">';
-  html += '<label style="font-size:10px;color:var(--muted)">Tolerancia retardo (min):</label>';
-  html += '<input type="number" id="asist-tolerancia" value="' + ((_asistHorarios && _asistHorarios.tolerancia_min) || 10) + '" min="0" max="60" style="width:60px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none">';
+  // Save button
+  html += '<div style="margin-top:10px;text-align:right">';
+  html += '<button class="btn btn-p btn-sm" onclick="asistGuardarHorario()">💾 Guardar</button>';
   html += '</div>';
 
-  // Override per employee
-  html += '<h4 style="font-size:11px;margin:12px 0 8px;color:var(--muted)">Horarios especiales por empleado</h4>';
-  html += '<div id="asist-overrides-list">';
-  var overrides = (_asistHorarios && _asistHorarios.override) || {};
-  for (var ovUid in overrides) {
-    var ovName = _asistResolveNombre(ovUid);
-    var ovDays = overrides[ovUid];
-    var ovDesc = Object.keys(ovDays).map(function(k) { return ovDays[k] === null ? k + ':libre' : k + ':' + (ovDays[k].entrada||'') + '-' + (ovDays[k].salida||''); }).join(', ');
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:10px">';
-    html += '<span>' + ovName + ': <span style="color:var(--muted)">' + ovDesc + '</span></span>';
-    html += '<button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#e74c3c" onclick="asistEliminarOverride(\'' + ovUid + '\')">✕</button>';
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // Build combined list of all people for override dropdown
-  var allPeople = _asistGetAllPeople();
-  html += '<div style="display:flex;gap:6px;align-items:end;margin-top:8px">';
-  html += '<div class="fg" style="flex:1;margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Empleado</label>';
-  html += '<select id="asist-ov-uid" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none;width:100%">';
-  allPeople.forEach(function(p) {
-    html += '<option value="' + p.uid + '">' + p.nombre + ' (' + p.sucursal + ')</option>';
-  });
-  html += '</select></div>';
-  html += '<div class="fg" style="flex:1;margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Día</label>';
-  html += '<select id="asist-ov-day" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none;width:100%">';
-  dayOrder.forEach(function(dk) { html += '<option value="' + dk + '">' + dayLabels[dk] + '</option>'; });
-  html += '</select></div>';
-  html += '<div class="fg" style="margin-bottom:0"><label style="font-size:9px;color:var(--muted)">Tipo</label>';
-  html += '<select id="asist-ov-tipo" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:4px 8px;color:var(--white);font-family:Outfit,sans-serif;font-size:11px;outline:none">';
-  html += '<option value="libre">Día libre</option><option value="custom">Horario custom</option>';
-  html += '</select></div>';
-  html += '<button class="btn btn-g btn-sm" onclick="asistAgregarOverride()">+</button>';
-  html += '</div>';
-
-  html += '<div style="margin-top:16px;text-align:right">';
-  html += '<button class="btn btn-p btn-sm" onclick="asistGuardarHorario()">💾 Guardar horarios</button>';
-  html += '</div>';
-  html += '</div>';
-
-  html += '</div>'; // grid close
+  html += '</div>'; // single card close
 
   cont.innerHTML = html;
 }
@@ -1127,6 +1152,26 @@ function asistEliminarOverride(uid) {
   delete _asistHorarios.override[uid];
   asistRenderConfig();
   if (typeof toast === 'function') toast('Override eliminado (guarda para persistir)');
+}
+
+function asistSetDayOff(uid) {
+  var dayFull = { lun:'Lunes', mar:'Martes', mie:'Miércoles', jue:'Jueves', vie:'Viernes', sab:'Sábado', dom:'Domingo' };
+  var dayOrder = ['lun','mar','mie','jue','vie','sab','dom'];
+  var opts = dayOrder.map(function(dk) { return '<option value="' + dk + '">' + dayFull[dk] + '</option>'; }).join('');
+  var sel = prompt('¿Día de descanso? (lun/mar/mie/jue/vie/sab/dom)');
+  if (!sel || dayOrder.indexOf(sel) === -1) { if (typeof toast === 'function') toast('Día inválido'); return; }
+  if (!_asistHorarios.override) _asistHorarios.override = {};
+  if (!_asistHorarios.override[uid]) _asistHorarios.override[uid] = {};
+  _asistHorarios.override[uid][sel] = null;
+  asistRenderConfig();
+  if (typeof toast === 'function') toast('Día de descanso agregado (guarda para persistir)');
+}
+
+function asistResetSchedule(uid) {
+  if (!_asistHorarios.override) return;
+  delete _asistHorarios.override[uid];
+  asistRenderConfig();
+  if (typeof toast === 'function') toast('Horario restablecido al base (guarda para persistir)');
 }
 
 // ═══════════════════════════════════════════════════════════
