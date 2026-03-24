@@ -12758,8 +12758,8 @@ function renderClariConversations() {
       var chatImg = null;
       var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
       if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
-      html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-start' : 'flex-end') + ';margin-bottom:6px">';
-      html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+      html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
+      html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
       if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
       html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
       html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
@@ -13306,8 +13306,8 @@ function abrirWaCrmDetalle(phone) {
     var chatImg2 = null;
     var imgMatch2 = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
     if (imgMatch2) { chatImg2 = imgMatch2[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
-    mhtml += '<div style="display:flex;justify-content:' + (isBot ? 'flex-start' : 'flex-end') + ';margin-bottom:6px">';
-    mhtml += '<div style="max-width:85%;padding:8px 12px;border-radius:' + (isBot ? '4px 12px 12px 12px' : '12px 4px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+    mhtml += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
+    mhtml += '<div style="max-width:85%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
     if (chatImg2) mhtml += '<img src="' + chatImg2 + '" style="max-width:100%;max-height:250px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
     mhtml += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
     mhtml += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
