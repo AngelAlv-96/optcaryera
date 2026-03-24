@@ -1,6 +1,6 @@
 /* ============================================================
    mod-estrategia.js — Módulo Estrategia: Metas, Histórico, Márgenes
-   v181 · Ópticas Car & Era
+   v182 · Ópticas Car & Era
    ============================================================ */
 
 // ── State ──
@@ -11,6 +11,19 @@ var _estVentasCache = null;
 var _estPlan90Dirty = false;
 var _estMetas = null;      // from app_config: metas_mensuales
 var _estHistDB = null;     // ventas mensuales del sistema nuevo (2026+) por sucursal
+var _estLottieInstance = null; // current lottie animation instance for widget
+
+// ── Lottie Animations por stage — URLs .lottie de assets-v2.lottiefiles.com ──
+// 7 stages progresivos: sleep → rocket → running → fire → star → celebrate → trophy
+var LOTTIE_ANIMS = {
+  sleep:     'https://assets-v2.lottiefiles.com/a/816fda52-94c6-11ee-a7d9-1fca7526274d/taEPd2UrOp.lottie',
+  rocket:    'https://assets-v2.lottiefiles.com/a/5de84460-a34a-11ee-b470-83e52242919a/SfozhTvKjU.lottie',
+  running:   'https://assets-v2.lottiefiles.com/a/0d12473c-e5d7-11ee-8bea-4f67ee283f3d/Z3PQrWrivU.lottie',
+  fire:      'https://assets-v2.lottiefiles.com/a/1df4b596-1182-11ee-9fc3-6f8d7094dc00/0xTsgAIerY.lottie',
+  star:      'https://assets-v2.lottiefiles.com/a/d304494e-ceef-11ee-913d-8338acb69ea1/TwQtQVx1SA.lottie',
+  celebrate: 'https://assets-v2.lottiefiles.com/a/745fc364-117b-11ee-b7ec-9f18a8a356e0/ctpFpJP75f.lottie',
+  trophy:    'https://assets-v2.lottiefiles.com/a/e7df6e94-1170-11ee-9640-1b85e6ca1c88/useeXXBWNy.lottie'
+};
 
 // ── Ventas históricas SICAR (datos fijos 2021-2026, mensuales) ──
 // Formato: { sucursal: { año: [ene,feb,...,dic] } }
@@ -1128,6 +1141,50 @@ function _estFmt(n) {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
+// ── Lottie helper: renderiza animación dotlottie-wc en un contenedor ──
+// Usa <dotlottie-wc> web component (soporta .lottie y .json)
+// Si el web component no está registrado o la URL falla, mantiene emoji fallback
+function _estRenderLottie(containerId, stageKey, fallbackEmoji) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var url = LOTTIE_ANIMS[stageKey];
+  if (!url) return;
+  // Verificar que el web component dotlottie-wc esté registrado
+  if (!customElements.get('dotlottie-wc')) return; // CDN no cargó, emoji fallback se queda
+  // Guardar emoji fallback original
+  var originalHTML = container.innerHTML;
+  try {
+    // Crear el web component
+    var player = document.createElement('dotlottie-wc');
+    player.setAttribute('src', url);
+    player.setAttribute('autoplay', '');
+    player.setAttribute('loop', '');
+    player.setAttribute('speed', '1');
+    player.style.cssText = 'width:100%;height:100%;display:block';
+    // Limpiar container y agregar player
+    container.innerHTML = '';
+    container.style.overflow = 'hidden';
+    container.appendChild(player);
+    // Timeout fallback: si en 8s no renderiza, restaurar emoji
+    // NOTA: dotlottie-wc renderiza el canvas dentro de su shadowRoot, no como hijo directo
+    var timeout = setTimeout(function() {
+      if (!player.parentNode) return; // ya fue removido
+      var canvas = player.shadowRoot?.querySelector('canvas');
+      if (!canvas) {
+        container.innerHTML = originalHTML;
+      }
+    }, 8000);
+    // Si carga bien, limpiar timeout
+    player.addEventListener('load', function() { clearTimeout(timeout); });
+    player.addEventListener('ready', function() { clearTimeout(timeout); });
+    player.addEventListener('complete', function() { clearTimeout(timeout); });
+    // Guardar referencia para destruir en próximo refresh
+    _estLottieInstance = { destroy: function() { try { player.remove(); } catch(e){} } };
+  } catch(e) {
+    container.innerHTML = originalHTML;
+  }
+}
+
 // ═══════════════════════════════════════════════
 // WIDGET MOTIVACIONAL — Dashboard empleados (sin montos, solo %)
 // ═══════════════════════════════════════════════
@@ -1382,12 +1439,15 @@ async function _loadDashMetaWidget(sucursal) {
     var mascotEmoji = theme.stages[stageIdx].e;
     var mascotText = theme.stages[stageIdx].t;
 
-    // CSS animation class based on stage
+    // CSS animation class + Lottie key based on stage (7 niveles progresivos)
     var mascotAnim = 'est-anim-idle';
-    if (stageIdx === 0) mascotAnim = 'est-anim-sleep';
-    else if (stageIdx <= 2) mascotAnim = 'est-anim-bounce';
-    else if (stageIdx <= 4) mascotAnim = 'est-anim-fire';
-    else mascotAnim = 'est-anim-celebrate';
+    var lottieKey = 'sleep';
+    if (stageIdx === 0) { mascotAnim = 'est-anim-sleep'; lottieKey = 'sleep'; }
+    else if (stageIdx === 1) { mascotAnim = 'est-anim-bounce'; lottieKey = 'rocket'; }
+    else if (stageIdx === 2) { mascotAnim = 'est-anim-bounce'; lottieKey = 'running'; }
+    else if (stageIdx === 3) { mascotAnim = 'est-anim-fire'; lottieKey = 'fire'; }
+    else if (stageIdx === 4) { mascotAnim = 'est-anim-fire'; lottieKey = 'star'; }
+    else { mascotAnim = 'est-anim-celebrate'; lottieKey = 'celebrate'; }
 
     // Inject CSS animations once
     if (!document.getElementById('est-mascot-css')) {
@@ -1421,7 +1481,7 @@ async function _loadDashMetaWidget(sucursal) {
     if (pct >= 100) {
       // META LOGRADA
       h += '<div style="text-align:center;padding:14px 0">';
-      h += '<div style="font-size:44px;margin-bottom:6px">🏆</div>';
+      h += '<div id="est-lottie-trophy" style="width:64px;height:64px;margin:0 auto 6px"><span class="est-anim-celebrate" style="font-size:44px;line-height:64px;display:block">🏆</span></div>';
       h += '<div style="font-size:22px;font-weight:800;color:#66bb6a;letter-spacing:-0.5px">META DEL MES LOGRADA</div>';
       h += '<div style="font-size:13px;color:var(--muted);margin-top:6px">' + numVentas + ' ventas — superaron la meta</div>';
       if (streak >= 2) h += '<div style="margin-top:8px;font-size:12px;color:#ffa726;font-weight:600">🔥 ' + streak + ' días en racha</div>';
@@ -1464,9 +1524,11 @@ async function _loadDashMetaWidget(sucursal) {
       // RIGHT COLUMN: mascot + motivation + stats
       h += '<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:6px">';
 
-      // Animated mascot
+      // Animated mascot — Lottie container with emoji fallback
       h += '<div style="display:flex;align-items:center;gap:8px">';
-      h += '<div class="' + mascotAnim + '" style="font-size:36px;line-height:1;flex-shrink:0">' + mascotEmoji + '</div>';
+      h += '<div id="est-lottie-mascot" style="width:48px;height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center">';
+      h += '<span class="' + mascotAnim + '" style="font-size:36px;line-height:1" id="est-emoji-fallback">' + mascotEmoji + '</span>';
+      h += '</div>';
       h += '<div style="font-size:13px;font-weight:700;color:' + barColor + '">' + mascotText + '</div>';
       h += '</div>';
 
@@ -1502,6 +1564,22 @@ async function _loadDashMetaWidget(sucursal) {
 
     h += '</div>';
     el.innerHTML = h;
+
+    // ── Render Lottie animations after DOM is ready ──
+    // dotlottie-wc puede tardar en registrarse (type=module), reintentar si no está listo
+    var _lottieRender = function() {
+      if (pct >= 100) {
+        _estRenderLottie('est-lottie-trophy', 'trophy', '🏆');
+      } else {
+        _estRenderLottie('est-lottie-mascot', lottieKey, mascotEmoji);
+      }
+    };
+    if (customElements.get('dotlottie-wc')) {
+      _lottieRender();
+    } else {
+      // Esperar a que el web component se registre (max 3s)
+      customElements.whenDefined('dotlottie-wc').then(_lottieRender).catch(function(){});
+    }
 
     // Auto-refresh every 3 minutes
     if (!window._metaWidgetInterval) {
