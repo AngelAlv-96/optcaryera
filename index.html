@@ -11919,9 +11919,10 @@ async function loadReporteMateriales() {
         var lcOdPwr = (lcOdStr.match(/PWR:(\S+)/) || [])[1] || o.od_esfera || '';
         var lcOdBC = (lcOdStr.match(/BC:(\S+)/) || [])[1] || '';
         var lcOdDia = (lcOdStr.match(/DIA:(\S+)/) || [])[1] || '';
-        var lcOdCil = (lcOdStr.match(/CIL:(\S+)/) || [])[1] || '';
+        var lcOdCil = (lcOdStr.match(/CIL:(\S+)/) || [])[1] || o.od_cilindro || '';
+        var lcOdAxis = (lcOdStr.match(/AXIS:(\S+)/) || [])[1] || o.od_eje || '';
         var lcOdCajas = parseInt((lcOdStr.match(/Cajas:(\d+)/) || [])[1]) || 1;
-        lcItems.push({ marca: lcMarca, programa: lcProg, ojo: 'OD', poder: lcOdPwr, bc: lcOdBC, dia: lcOdDia, cil: lcOdCil, cajas: lcOdCajas });
+        lcItems.push({ marca: lcMarca, programa: lcProg, ojo: 'OD', poder: lcOdPwr, bc: lcOdBC, dia: lcOdDia, cil: lcOdCil, axis: lcOdAxis, cajas: lcOdCajas });
       }
       // Parse OI
       var lcOiMatch = lcNotas.match(/LC_OI:\s*([^|]+)/);
@@ -11931,9 +11932,10 @@ async function loadReporteMateriales() {
         var lcOiPwr = (lcOiStr.match(/PWR:(\S+)/) || [])[1] || o.oi_esfera || '';
         var lcOiBC = (lcOiStr.match(/BC:(\S+)/) || [])[1] || '';
         var lcOiDia = (lcOiStr.match(/DIA:(\S+)/) || [])[1] || '';
-        var lcOiCil = (lcOiStr.match(/CIL:(\S+)/) || [])[1] || '';
+        var lcOiCil = (lcOiStr.match(/CIL:(\S+)/) || [])[1] || o.oi_cilindro || '';
+        var lcOiAxis = (lcOiStr.match(/AXIS:(\S+)/) || [])[1] || o.oi_eje || '';
         var lcOiCajas = parseInt((lcOiStr.match(/Cajas:(\d+)/) || [])[1]) || 1;
-        lcItems.push({ marca: lcMarca, programa: lcProg, ojo: 'OI', poder: lcOiPwr, bc: lcOiBC, dia: lcOiDia, cil: lcOiCil, cajas: lcOiCajas });
+        lcItems.push({ marca: lcMarca, programa: lcProg, ojo: 'OI', poder: lcOiPwr, bc: lcOiBC, dia: lcOiDia, cil: lcOiCil, axis: lcOiAxis, cajas: lcOiCajas });
       } else if (lcMisma && lcOdMatch) {
         // Misma Rx = same data for OI, 1 caja total (already counted in OD)
         // No duplicate — misma Rx means 1 box for both eyes
@@ -12124,9 +12126,8 @@ async function loadReporteMateriales() {
           <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
             <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">Ojo</th>
             <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">Poder</th>
-            <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">BC</th>
-            <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">DIA</th>
             <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">CIL</th>
+            <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">Eje</th>
             <th style="text-align:center;padding:4px 6px;color:var(--muted);font-weight:500;font-size:11px">Cajas</th>
           </tr></thead>
           <tbody>`;
@@ -12134,9 +12135,8 @@ async function loadReporteMateriales() {
         html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);${i % 2 === 1 ? 'background:rgba(255,255,255,0.02)' : ''}">
           <td style="padding:5px 6px;text-align:center;font-weight:600;color:${lc.ojo === 'OD' ? '#8ab0e8' : '#d4b84a'}">${lc.ojo}</td>
           <td style="padding:5px 6px;text-align:center">${lc.poder || '—'}</td>
-          <td style="padding:5px 6px;text-align:center">${lc.bc || '—'}</td>
-          <td style="padding:5px 6px;text-align:center">${lc.dia || '—'}</td>
           <td style="padding:5px 6px;text-align:center">${lc.cil || '—'}</td>
+          <td style="padding:5px 6px;text-align:center">${lc.axis || '—'}</td>
           <td style="padding:5px 6px;text-align:center;font-weight:700;color:var(--beige);font-size:14px">${lc.cajas}</td>
         </tr>`;
       });
@@ -12185,10 +12185,10 @@ function imprimirReporteMateriales() {
     .mat-total { font-size: 12px; font-weight: 900; flex-shrink: 0; padding-left: 4px; color: #fff !important; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; font-weight: 900; table-layout: fixed; }
     table.lc-tbl th:nth-child(1), table.lc-tbl td:nth-child(1) { width: 14%; }
-    table.lc-tbl th:nth-child(2), table.lc-tbl td:nth-child(2) { width: 22%; }
-    table.lc-tbl th:nth-child(3), table.lc-tbl td:nth-child(3) { width: 20%; }
-    table.lc-tbl th:nth-child(4), table.lc-tbl td:nth-child(4) { width: 20%; }
-    table.lc-tbl th:nth-child(5), table.lc-tbl td:nth-child(5) { width: 24%; }
+    table.lc-tbl th:nth-child(2), table.lc-tbl td:nth-child(2) { width: 24%; }
+    table.lc-tbl th:nth-child(3), table.lc-tbl td:nth-child(3) { width: 22%; }
+    table.lc-tbl th:nth-child(4), table.lc-tbl td:nth-child(4) { width: 18%; }
+    table.lc-tbl th:nth-child(5), table.lc-tbl td:nth-child(5) { width: 22%; }
     th:nth-child(1), td:nth-child(1) { width: 24%; }
     th:nth-child(2), td:nth-child(2) { width: 24%; }
     th:nth-child(3), td:nth-child(3) { width: 28%; }
@@ -12217,12 +12217,7 @@ function imprimirReporteMateriales() {
       printBody += `<div class="total-row"><span>TOTAL OFTAL</span><span>${totalVal.replace('pares','p').replace('par','p')}</span></div>`;
       continue;
     }
-    if (child.textContent?.includes('TOTAL LC')) {
-      const totalVal = child.querySelector('span[style*="8ab0e8"]')?.textContent || '';
-      printBody += `<div class="total-row"><span>TOTAL LC</span><span>${totalVal}</span></div>`;
-      continue;
-    }
-    // LC section
+    // LC section — must check BEFORE 'TOTAL LC' because the wrapper div contains both texts
     if (child.textContent?.includes('Lentes de Contacto')) {
       var lcHeader = child.querySelector('[style*="8ab0e8"]');
       if (lcHeader) {
@@ -12239,17 +12234,27 @@ function imprimirReporteMateriales() {
         }
         var lcTbl = g.querySelector('table');
         if (lcTbl) {
-          printBody += `<table><thead><tr><th>Ojo</th><th>PWR</th><th>BC</th><th>DIA</th><th style="text-align:center">CJ</th></tr></thead><tbody>`;
+          printBody += `<table class="lc-tbl"><thead><tr><th>Ojo</th><th>PWR</th><th>CIL</th><th>Eje</th><th style="text-align:center">CJ</th></tr></thead><tbody>`;
           lcTbl.querySelectorAll('tbody tr').forEach(function(r) {
             var cells = r.querySelectorAll('td');
-            if (cells.length >= 6) {
-              printBody += `<tr><td class="c">${cells[0].textContent}</td><td class="c">${cells[1].textContent}</td><td class="c">${cells[2].textContent}</td><td class="c">${cells[3].textContent}</td><td class="b">${cells[5].textContent}</td></tr>`;
+            if (cells.length >= 5) {
+              printBody += `<tr><td class="c">${cells[0].textContent}</td><td class="c">${cells[1].textContent}</td><td class="c">${cells[2].textContent}</td><td class="c">${cells[3].textContent}</td><td class="b">${cells[4].textContent}</td></tr>`;
             }
           });
           printBody += `</tbody></table>`;
         }
       });
+      // TOTAL LC row
+      var lcTotalEl = child.querySelector('span[style*="8ab0e8"]');
+      var lcTotalAll = child.querySelectorAll('span[style*="8ab0e8"]');
+      var lcTotalVal = lcTotalAll.length > 1 ? lcTotalAll[lcTotalAll.length - 1].textContent : '';
+      if (lcTotalVal) printBody += `<div class="total-row"><span>TOTAL LC</span><span>${lcTotalVal}</span></div>`;
       printBody += `<div class="tipo-end"></div>`;
+      continue;
+    }
+    if (child.textContent?.includes('TOTAL LC')) {
+      const totalVal = child.querySelector('span[style*="8ab0e8"]')?.textContent || '';
+      printBody += `<div class="total-row"><span>TOTAL LC</span><span>${totalVal}</span></div>`;
       continue;
     }
     const tipoHeader = child.querySelector('[style*="letter-spacing"]');
