@@ -374,17 +374,21 @@ async function _estLoadHistDB() {
   }
 }
 
-// Get monthly value for a branch: SICAR first, then DB fallback
+// Get monthly value for a branch: best of SICAR vs DB
+// SICAR = historical (2021-2025 complete, 2026 Jan-Feb full + Mar partial)
+// DB = sistema nuevo (2026-Mar+ onwards, grows over time)
+// Returns the higher of the two so partial SICAR never masks real DB data
 function _estGetMonthVal(sucKey, year, mesIdx) {
-  // Try SICAR data first (2021-2025, and partial 2026)
-  var sicar = SICAR_DATA[sucKey] && SICAR_DATA[sucKey][year];
-  if (sicar && sicar[mesIdx] > 0) return sicar[mesIdx];
+  var valSicar = 0, valDB = 0;
 
-  // Fallback to sistema nuevo DB data (2026+)
+  var sicar = SICAR_DATA[sucKey] && SICAR_DATA[sucKey][year];
+  if (sicar && sicar[mesIdx] > 0) valSicar = sicar[mesIdx];
+
   if (_estHistDB && _estHistDB[sucKey] && _estHistDB[sucKey][year]) {
-    return Math.round(_estHistDB[sucKey][year][mesIdx]) || 0;
+    valDB = Math.round(_estHistDB[sucKey][year][mesIdx]) || 0;
   }
-  return 0;
+
+  return Math.max(valSicar, valDB);
 }
 
 // Auto-calculate meta for a branch/month using weighted avg of last 3 years + growth %
