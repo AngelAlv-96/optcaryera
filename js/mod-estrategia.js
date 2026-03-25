@@ -221,9 +221,13 @@ async function _estFetchVentas() {
 
   if (error) console.error('[Estrategia] ventas error:', error);
 
-  // Normalize: add fecha field from created_at for display
+  // Normalize: add fecha field from created_at using local Chihuahua timezone
   (ventas || []).forEach(function(v) {
-    v.fecha = (v.created_at || '').slice(0, 10);
+    if (v.created_at) {
+      v.fecha = new Date(v.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+    } else {
+      v.fecha = '';
+    }
   });
 
   // Load promo names for margin analysis
@@ -1383,10 +1387,17 @@ async function _loadDashMetaWidget(sucursal) {
     var faltante = Math.max(0, meta - actual);
     var ventasRestantes = Math.ceil(faltante / ticketProm);
 
-    // Days with sales count
+    // Helper: convert UTC timestamp to local Chihuahua date string (YYYY-MM-DD)
+    function _toLocalDate(ts) {
+      if (!ts) return '';
+      var d = new Date(ts);
+      return d.toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+    }
+
+    // Days with sales count (using local dates, not UTC)
     var diasConVenta = {};
     (ventas || []).forEach(function(v) {
-      var d = (v.created_at || '').slice(0, 10);
+      var d = _toLocalDate(v.created_at);
       if (d) diasConVenta[d] = (diasConVenta[d] || 0) + 1;
     });
     var numDiasConVenta = Object.keys(diasConVenta).length || 1;
@@ -1395,9 +1406,9 @@ async function _loadDashMetaWidget(sucursal) {
     // Daily sales target
     var ventasDiarias = Math.ceil(ventasRestantes / diasVentaRestantes);
 
-    // Today's sales
-    var hoyStr = anio + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(diaHoy).padStart(2, '0');
-    var ventasHoy = (ventas || []).filter(function(v) { return (v.created_at || '').slice(0, 10) === hoyStr; }).length;
+    // Today's sales (local Chihuahua date)
+    var hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+    var ventasHoy = (ventas || []).filter(function(v) { return _toLocalDate(v.created_at) === hoyStr; }).length;
 
     // Streak: consecutive days meeting daily average
     var promVentasDia = numVentas / numDiasConVenta;
@@ -1414,8 +1425,10 @@ async function _loadDashMetaWidget(sucursal) {
       if (diasConVenta[d] > bestDayCount) { bestDayCount = diasConVenta[d]; bestDay = d; }
     });
 
-    // Yesterday's sales for comparison
-    var ayerStr = new Date(anio, mesIdx, diaHoy - 1).toISOString().slice(0, 10);
+    // Yesterday's sales for comparison (local Chihuahua)
+    var ayerDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+    ayerDate.setDate(ayerDate.getDate() - 1);
+    var ayerStr = ayerDate.toISOString().slice(0, 10);
     var ventasAyer = diasConVenta[ayerStr] || 0;
     var beatingYesterday = ventasHoy > ventasAyer && ventasAyer > 0;
 
