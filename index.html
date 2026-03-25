@@ -12844,6 +12844,12 @@ function renderClariConversations() {
     if (m.via_phone_id) grouped[m.phone].via_phone_id = m.via_phone_id;
   });
   var convos = Object.values(grouped).sort(function(a, b) { return b.last > a.last ? 1 : -1; });
+  // Ocultar conversaciones de campañas masivas (magnolia-reactivate, etc.) donde el cliente NO ha respondido
+  convos = convos.filter(function(c) {
+    var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
+    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron'; });
+    return !isCampaignOnly;
+  });
   if (search) convos = convos.filter(function(c) { return c.name.toLowerCase().includes(search) || c.phone.includes(search); });
   if (lineFilter) convos = convos.filter(function(c) { return getLineLbl(c.via_phone_id).key === lineFilter; });
   if (!convos.length) { list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px">Sin resultados.</div>'; return; }
