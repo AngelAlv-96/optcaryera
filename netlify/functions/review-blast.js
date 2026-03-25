@@ -15,7 +15,7 @@ const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
 const TEMPLATE_SID = 'HX80c7577a56dea4c6a675a9a7ea5c5cea';
-const MAX_PER_RUN = 80;
+const MAX_PER_RUN = 120;
 
 async function supaREST(method, path, body) {
   const opts = {
@@ -218,10 +218,10 @@ exports.handler = async function(event) {
       };
     }
 
-    // Envío real — procesar en lotes de 5 con 1s entre cada mensaje
+    // Envío real — procesar en lotes con 1s entre cada mensaje
     // Netlify functions tienen ~26s timeout, suficiente para ~20 mensajes
-    // Si hay más de 20, procesa los primeros 20 y responde cuántos faltan
-    const BATCH_LIMIT = 20;
+    // Si hay más, procesa el primer lote y responde cuántos faltan (ejecutar de nuevo)
+    const BATCH_LIMIT = 25;
     const batch = toSend.slice(0, BATCH_LIMIT);
     const remaining = toSend.length - batch.length;
 

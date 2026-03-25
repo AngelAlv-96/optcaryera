@@ -12,11 +12,11 @@ const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const TEMPLATE_SID = 'HX80c7577a56dea4c6a675a9a7ea5c5cea';
 
 // Days after purchase to send review request
-const DIAS_MIN = 3;
-const DIAS_MAX = 7;
+const DIAS_MIN = 1;
+const DIAS_MAX = 4;
 
 // Max reviews per run (rate limiting)
-const MAX_PER_RUN = 20;
+const MAX_PER_RUN = 40;
 
 async function supaREST(method, path, body) {
   const opts = {

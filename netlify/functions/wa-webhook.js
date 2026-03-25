@@ -1687,9 +1687,9 @@ exports.handler = async function(event) {
             var mapsLink = mapsLinks[reviewSuc] || mapsLinks['Américas'];
             var reviewReply;
             if (lowerText === 'todo excelente') {
-              reviewReply = '¡Muchas gracias! 🎉 Nos da mucho gusto saber que te fue excelente.\n\n¿Nos ayudarías con una reseña en Google? Tu opinión nos ayuda muchísimo a seguir creciendo 🙏\n\n👉 ' + mapsLink + '\n\n¡Gracias por ser parte de Car & Era! 👓✨';
+              reviewReply = '¡Qué gusto! 🎉 Gracias por confiar en nosotros.\n\n*¿Nos regalas 30 segundos?* Una reseña tuya en Google ayuda a que más familias de Juárez nos encuentren 🙏\n\n👉 ' + mapsLink + '\n\nSolo da click, pon tus estrellitas ⭐ y cuéntales tu experiencia. ¡Mil gracias! 👓✨';
             } else if (lowerText === 'buenas promos') {
-              reviewReply = '¡Qué bueno que te gustan nuestras promociones! 🎁 Siempre buscamos darte el mejor precio.\n\n¿Nos regalarías una reseña en Google? Nos ayuda mucho a que más personas nos conozcan 🙏\n\n👉 ' + mapsLink + '\n\n¡Gracias! 👓✨';
+              reviewReply = '¡Nos encanta que aproveches las promos! 🎁\n\n*¿Nos ayudas con una reseña rápida?* Solo toma 30 segundos y nos ayuda muchísimo a seguir trayendo buenos precios 🙏\n\n👉 ' + mapsLink + '\n\nDa click, pon tus ⭐ y listo. ¡Gracias! 👓✨';
             } else {
               // "Podría mejorar" — enter care mode
               reviewReply = 'Lamentamos que tu experiencia no haya sido la mejor 😔\n\nQueremos mejorar. ¿Podrías contarnos qué te gustaría que hiciéramos diferente? Tu opinión es muy valiosa para nosotros.\n\nSi prefieres, también puedes visitarnos en cualquier sucursal y con gusto te atendemos personalmente 🤝';
