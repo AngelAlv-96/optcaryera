@@ -281,18 +281,22 @@ function _estDefaultPlan90() {
         { text: 'Optimizar Google My Business + 50 reseñas en 30 días', done: false },
         { text: 'Lanzar Meta Ads lead generation $2,500/sem', done: false },
         { text: 'Definir y lanzar Descuento Maquiladero', done: false },
-        { text: 'Google Search con keywords de intención alta', done: false }
+        { text: 'Google Search con keywords de intención alta', done: false },
+        { text: '📍 Crear 3 landing pages Magnolia (promo/lentes/examen)', done: false },
+        { text: '📍 Configurar template WA magnolia_reactivacion en Twilio', done: false }
       ],
       fase2: [
         { text: 'Escalar ads ganadores x2', done: false },
         { text: 'Lanzar retargeting', done: false },
         { text: 'Google Ads $2,000-$4,000/mes', done: false },
-        { text: 'Campaña Magnolia específica para su zona', done: false }
+        { text: '📍 Meta Ads geo-targeting zona Magnolia — 3x1 lentes', done: false },
+        { text: '📍 Activar reactivación WA clientes dormidos Magnolia', done: false }
       ],
       fase3: [
         { text: 'Lanzar Club de Visión Car & Era ($99-$149/mes)', done: false },
         { text: 'Campaña reactivación clientes históricos WA', done: false },
-        { text: 'Medir ROI y ajustar', done: false }
+        { text: 'Medir ROI y ajustar', done: false },
+        { text: '📍 Medir conversión Magnolia: reactivados vs nuevos digitales', done: false }
       ],
       notas: ''
     },
@@ -971,6 +975,63 @@ function _estRenderHistorico() {
 
   h += '<div style="font-size:11px;color:var(--muted);margin-top:8px">Pérdida anual estimada vs pre-mudanza: <strong style="color:#ef5350">~$1.2M</strong></div>';
   h += '</div>';
+
+  // ── Magnolia Rescue — Recovery Milestones ──
+  h += '<h3 style="font-size:15px;margin:24px 0 12px">🚀 Magnolia Rescue — Plan de Recuperación Digital</h3>';
+  h += '<div style="padding:16px;background:var(--surface2);border-radius:10px;margin-bottom:12px">';
+
+  // Current month Magnolia revenue
+  var nowD = new Date();
+  var curYear = nowD.getFullYear();
+  var curMonth = nowD.getMonth();
+  var magCurMonth = 0;
+  if (_estVentasCache && _estVentasCache.ventas) {
+    _estVentasCache.ventas.forEach(function(v) {
+      if (v.sucursal && v.sucursal.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().indexOf('magnolia') !== -1) {
+        magCurMonth += (v.total || 0);
+      }
+    });
+  }
+  // Also check SICAR for current month if available
+  if (!magCurMonth && SICAR_DATA.magnolia[curYear] && SICAR_DATA.magnolia[curYear][curMonth]) {
+    magCurMonth = SICAR_DATA.magnolia[curYear][curMonth];
+  }
+
+  var milestones = [
+    { label: 'Fase 1 — Estabilizar', target: 160000, color: '#ffa726' },
+    { label: 'Fase 2 — Recuperación parcial', target: 200000, color: '#42a5f5' },
+    { label: 'Fase 3 — Recuperación total', target: 260000, color: '#66bb6a' }
+  ];
+
+  h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Venta Magnolia este mes: <strong style="color:var(--text);font-size:14px">$' + _estFmt(magCurMonth) + '</strong></div>';
+
+  milestones.forEach(function(ms) {
+    var pct = Math.min(100, Math.round(magCurMonth / ms.target * 100));
+    var reached = magCurMonth >= ms.target;
+    h += '<div style="margin-bottom:10px">';
+    h += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">';
+    h += '<span>' + (reached ? '✅ ' : '⬜ ') + ms.label + '</span>';
+    h += '<span style="color:' + ms.color + '">$' + _estFmt(ms.target) + '/mes (' + pct + '%)</span>';
+    h += '</div>';
+    h += '<div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">';
+    h += '<div style="height:100%;width:' + pct + '%;background:' + ms.color + ';border-radius:3px;transition:width .5s"></div>';
+    h += '</div></div>';
+  });
+
+  // Strategy actions
+  h += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">';
+  h += '<div style="font-size:12px;font-weight:600;margin-bottom:8px">📱 Estrategia Digital (solo presencia digital)</div>';
+  var actions = [
+    '🎯 Meta Ads geo-targeting zona Magnolia — promo 3x1',
+    '📲 Reactivación WA clientes dormidos (automática, lunes)',
+    '🌐 Landing pages: /l/magnolia-promo, /l/magnolia-lentes, /l/magnolia-examen',
+    '⭐ Reseñas Google Maps priorizadas para Magnolia',
+    '🤖 Clari reconoce clientes reactivados y ofrece promo'
+  ];
+  actions.forEach(function(a) {
+    h += '<div style="font-size:11px;padding:3px 0;color:var(--muted)">' + a + '</div>';
+  });
+  h += '</div></div>';
 
   el.innerHTML = h;
 }

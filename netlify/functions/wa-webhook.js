@@ -368,6 +368,28 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
 
   // Get conversation history
   var history = await getConversationHistory(phone);
+
+  // Check for Magnolia Reactivation context in recent history
+  var hasMagReactivation = false;
+  for (var mr = 0; mr < Math.min(history.length, 10); mr++) {
+    if (history[mr].content && history[mr].content.indexOf('[Magnolia-Reactivation]') !== -1) {
+      hasMagReactivation = true;
+      break;
+    }
+  }
+  if (hasMagReactivation) {
+    systemPrompt += '\n\nCONTEXTO REACTIVACIÓN MAGNOLIA:\n' +
+      'Este cliente fue contactado como parte de la campaña de reactivación de clientes de Magnolia. ' +
+      'Es un cliente anterior que no ha visitado en un tiempo. Trátalo con especial calidez.\n' +
+      '- Sucursal Magnolia: Plaza Magnolia, Av. Clouthier (Jilotepec), frente a Tostadas El Primo\n' +
+      '- Promo vigente: 3x1 en Lentes Completos\n' +
+      '- Examen de vista GRATUITO al comprar lentes\n' +
+      '- Lentes listos en 35 minutos (laboratorio propio)\n' +
+      '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
+      '- Si quiere agendar, toma nota de su nombre y horario preferido y confirma que le avisamos\n' +
+      '- Menciona que estamos más cerca de lo que piensa y que nos encantaría verlo de vuelta';
+  }
+
   var messages = [];
   for (var i = 0; i < history.length; i++) {
     messages.push({ role: history[i].role, content: history[i].content });

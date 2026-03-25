@@ -122,8 +122,11 @@ exports.handler = async function(event) {
       const phone = normalizePhone(v.pacientes.telefono);
       if (!byPhone[phone]) byPhone[phone] = v;
     }
-    const candidates = Object.values(byPhone);
-    console.log(`[REVIEW-CRON] ${candidates.length} clientes únicos`);
+    // Prioritize Magnolia customers (local SEO recovery)
+    const candidates = Object.values(byPhone).sort((a, b) =>
+      (b.sucursal === 'Magnolia' ? 1 : 0) - (a.sucursal === 'Magnolia' ? 1 : 0)
+    );
+    console.log(`[REVIEW-CRON] ${candidates.length} clientes únicos (Magnolia priorizados)`);
 
     // Check which phones already got a review request (in last 30 days)
     const phones = Object.keys(byPhone);

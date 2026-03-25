@@ -13,6 +13,14 @@
 [functions."review-cron"]
   schedule = "0 18 * * *"
 
+# Magnolia Reactivation — sends WA to dormant Magnolia customers, Mondays 11am CST (17:00 UTC)
+[functions."magnolia-reactivate"]
+  schedule = "0 17 * * 1"
+
+# Review Follow-up — second touch to positive reviewers, Wednesdays 11am CST
+[functions."review-followup"]
+  schedule = "0 17 * * 3"
+
 # Asistencia — checks missing check-ins every 30 min (10am-12pm CST = 16-18 UTC)
 [functions."asistencia-cron"]
   schedule = "*/30 16-18 * * *"
