@@ -226,8 +226,9 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📍 RESCATE MAGNOLIA (Estrategia Digital)
 - **magnolia-reactivate.js**: cron semanal (lunes 11am CST) que envía WA a clientes dormidos de Magnolia (60-365 días sin compra)
-- Template Twilio: `magnolia_reactivacion` con variable `{{1}}` nombre — env var `MAGNOLIA_TEMPLATE_SID`
+- Template Twilio: `magnolia_reactivacion` SID `HX06ad99f2b5c7b1ff5ff3bcc758052c5c` — **APROBADO por WhatsApp** (2026-03-25) — env var `MAGNOLIA_TEMPLATE_SID`
 - Fallback: si no hay template configurado, envía freeform (puede fallar fuera de ventana 24h)
+- **PENDIENTE**: la función busca en tabla `ventas` de Supabase, pero el historial de Magnolia está en SICAR. Angel va a exportar reporte CSV de clientes Magnolia para cargar como lista estática
 - Dedup: tag `[Magnolia-Reactivation]` en `clari_conversations` (30 días)
 - Rate limit: 1.5s entre mensajes, máx 30 por ejecución
 - Auth: `BLAST_KEY` env var, dry run con `?dry=1`
@@ -391,6 +392,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 2. SICAR migración completa
 3. Landing pages bug
 4. Plantillas Twilio: lc_recompra + venta_clari_pendiente
+14. **Rescate Magnolia**: ⬜ Angel pasa reporte SICAR clientes Magnolia (CSV) → adaptar magnolia-reactivate.js para leer de lista estática en vez de tabla ventas, ⬜ agregar `MAGNOLIA_TEMPLATE_SID=HX06ad99f2b5c7b1ff5ff3bcc758052c5c` en Netlify env vars, ⬜ crear 3 landing pages (magnolia-promo/magnolia-lentes/magnolia-examen), ⬜ Meta Ads geo-targeting zona Magnolia
 5. Precios Marina pendientes de confirmar
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
