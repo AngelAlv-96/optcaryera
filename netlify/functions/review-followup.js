@@ -17,9 +17,9 @@ const FOLLOWUP_MIN_DAYS = 2;
 const FOLLOWUP_MAX_DAYS = 5;
 
 const MAPS_LINKS = {
-  'Américas': 'https://maps.app.goo.gl/HdEKPf2R8bL6tbvA9',
-  'Pinocelli': 'https://maps.app.goo.gl/HPZYupPVjy9aZ4j38',
-  'Magnolia': 'https://maps.app.goo.gl/HBomFDEfJJNPna697'
+  'Américas': 'https://g.page/r/CV9ZD9ZPVjvbEBM/review',
+  'Pinocelli': 'https://g.page/r/Cdzzax18yI15EBM/review',
+  'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review'
 };
 
 async function supaREST(method, path, body) {

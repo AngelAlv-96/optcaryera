@@ -17,9 +17,9 @@
 # [functions."magnolia-reactivate"]
 #   schedule = "0 17 * * 1"
 
-# Review Follow-up — second touch to positive reviewers, Wednesdays 11am CST
-[functions."review-followup"]
-  schedule = "0 17 * * 3"
+# Review Follow-up — DESACTIVADO (muy insistente, con links directos g.page ya no es necesario)
+# [functions."review-followup"]
+#   schedule = "0 17 * * 3"
 
 # Asistencia — checks missing check-ins every 30 min (10am-12pm CST = 16-18 UTC)
 [functions."asistencia-cron"]
