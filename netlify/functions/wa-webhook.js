@@ -380,14 +380,15 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   if (hasMagReactivation) {
     systemPrompt += '\n\nCONTEXTO REACTIVACIÓN MAGNOLIA:\n' +
       'Este cliente fue contactado como parte de la campaña de reactivación de clientes de Magnolia. ' +
-      'Es un cliente anterior que no ha visitado en un tiempo. Trátalo con especial calidez.\n' +
-      '- Sucursal Magnolia: Plaza Magnolia, Av. Clouthier (Jilotepec), frente a Tostadas El Primo\n' +
+      'Es un cliente anterior que nos conocía en la ubicación vieja (Plaza La Nueva Esperanza, Montes Urales). Trátalo con especial calidez.\n' +
+      '- ANTES estábamos en Plaza La Nueva Esperanza (Montes Urales) — YA NO\n' +
+      '- AHORA estamos en Plaza Magnolia, sobre Av. Jilotepec, frente a Tostadas El Primo\n' +
       '- Promo vigente: 3x1 en Lentes Completos\n' +
       '- Examen de vista GRATUITO al comprar lentes\n' +
       '- Lentes listos en 35 minutos (laboratorio propio)\n' +
       '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
       '- Si quiere agendar, toma nota de su nombre y horario preferido y confirma que le avisamos\n' +
-      '- Menciona que estamos más cerca de lo que piensa y que nos encantaría verlo de vuelta';
+      '- Menciona que nos mudamos para tener más espacio y atenderlos mejor';
   }
 
   var messages = [];

@@ -233,13 +233,15 @@ exports.handler = async function(event) {
         ok = await sendTemplate(tel, TEMPLATE_SID, { '1': nombre });
       } else {
         // Fallback: freeform message (may fail outside 24h window)
-        const msg = `¡Hola ${nombre}! 👋 Somos Ópticas Car & Era Magnolia.\n\n` +
-          `¿Sabías que tenemos una súper promo? 🔥\n\n` +
+        const msg = `¡Hola ${nombre}! 👋 Te escribimos de Ópticas Car & Era.\n\n` +
+          `Tú fuiste de nuestros primeros clientes en la sucursal de montes urales y eso nunca se nos olvida 💛\n\n` +
+          `Queremos contarte que nos mudamos — ya no estamos en Plaza La Nueva Esperanza (Montes Urales).\n\n` +
+          `📍 Ahora nos encuentras en Plaza Magnolia, sobre Av. Jilotepec, frente a Tostadas El Primo.\n\n` +
+          `Y tenemos algo para ti:\n` +
           `✅ 3x1 en Lentes Completos\n` +
           `✅ Examen de vista GRATIS\n` +
-          `✅ Listos en 35 minutos\n\n` +
-          `📍 Estamos en Plaza Magnolia, Av. Clouthier (Jilotepec), frente a Tostadas El Primo.\n\n` +
-          `¿Te gustaría agendar tu visita? Responde a este mensaje y te atendemos 😊`;
+          `✅ Listos el mismo dia.\n\n` +
+          `Pásate cuando gustes, no necesitas cita. Nos da mucho gusto saber de ti 😊`;
         ok = await sendWA(tel, msg);
       }
 
