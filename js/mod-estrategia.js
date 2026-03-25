@@ -73,6 +73,81 @@ var ESTACIONALIDAD = {
   11: 'Diciembre cierra fuerte con compras navideñas. Segundo mejor mes típicamente.'
 };
 
+// ── Ayuda contextual (?) ──
+var _EST_HELP = {
+  kpi:              { t: 'KPI', d: 'Dato clave que medimos para saber si el negocio va bien. Ejemplo: ventas del mes, ticket promedio, reseñas de Google.' },
+  roas:             { t: 'ROAS', d: 'Por cada peso que gastamos en anuncios de Facebook/Instagram, cuántos pesos nos regresan en ventas. Si es 3x, por cada $1 de publicidad entran $3.' },
+  leads:            { t: 'Leads digitales', d: 'Personas que nos contactaron por redes sociales o internet interesadas en comprar. Más leads = más oportunidades de venta.' },
+  retencion:        { t: 'Tasa de retención', d: 'De cada 100 clientes, cuántos regresan a comprar otra vez. Si es 15%, de cada 100 clientes 15 vuelven.' },
+  fase:             { t: 'Fase del plan', d: 'El plan de 90 días se divide en 3 fases de 4 semanas. Fase 1: arrancar. Fase 2: ajustar. Fase 3: cerrar fuerte.' },
+  ticket:           { t: 'Ticket promedio', d: 'Cuánto gasta en promedio cada cliente por compra. Se calcula: ingreso total ÷ número de ventas.' },
+  margen_alerta:    { t: 'Alerta de descuentos', d: 'Si damos muchos descuentos (más del 40% de las ventas), ganamos menos dinero. Verde = bien, amarillo = cuidado, rojo = demasiado descuento.' },
+  yoy:              { t: 'YoY (Año vs Año)', d: 'Comparación contra el mismo mes del año pasado. Si marzo 2026 vs marzo 2025 es +10%, quiere decir que vendimos 10% más este año.' },
+  trimestre:        { t: 'Trimestres (Q1-Q4)', d: 'El año dividido en 4 bloques de 3 meses: Q1 = Ene-Mar, Q2 = Abr-Jun, Q3 = Jul-Sep, Q4 = Oct-Dic.' },
+  estacionalidad:   { t: 'Estacionalidad', d: 'Cada mes tiene su patrón natural. Noviembre siempre es el mejor (Buen Fin), enero el más flojo. Sirve para no asustarnos ni confiarnos.' },
+  magnolia_watch:   { t: 'Magnolia Watch', d: 'Seguimiento especial de Magnolia desde que se mudó en marzo 2024. Compara cuánto vende ahora vs lo que vendía antes ($259K/mes promedio en 2023).' },
+  magnolia_pct:     { t: 'Porcentaje vs antes', d: 'Cuánto vende Magnolia comparado con antes de mudarse. Ejemplo: -44% significa que vende menos de la mitad de lo que vendía en 2023.' },
+  meta_auto:        { t: 'Meta automática', d: 'Se calcula con el promedio de los últimos 3 años dándole más peso a los años recientes, más un 5% de crecimiento. Para Magnolia solo usa 2 años (desde que se mudó).' },
+  prom_ponderado:   { t: 'Promedio ponderado', d: 'Promedio que le da más importancia a lo reciente. El año pasado vale 3 veces, el anterior 2 veces, y hace 3 años vale 1 vez. Así la meta se basa más en lo que pasó recientemente.' },
+  proyeccion:       { t: 'Proyección', d: 'Si sigues vendiendo al mismo ritmo que llevas, cuánto vas a cerrar el mes. Es un estimado, no es seguro.' },
+  ritmo:            { t: 'Ritmo necesario', d: 'Cuánto necesitas vender cada día que queda del mes para llegar a la meta. Cambia todos los días según lo que falta.' },
+  tasa_desc:        { t: 'Tasa de descuento', d: 'De cada $100 que se deberían cobrar, cuántos pesos se descuentan. Si es 40%, de cada $100 solo cobras $60.' },
+  ventas_con_desc:  { t: 'Ventas con descuento', d: 'De cada 100 ventas, cuántas tuvieron algún descuento. Si es 70%, casi todas las ventas llevan descuento.' },
+  crecimiento:      { t: 'Crecimiento %', d: 'Porcentaje extra que le sumamos a la meta para crecer. Por defecto es 5%: si el año pasado vendiste $100K, la meta sería $105K.' }
+};
+
+function _estHelp(key) {
+  if (!_EST_HELP[key]) return '';
+  return ' <span class="est-help-btn" data-esthelp="' + key + '" title="' + _EST_HELP[key].t + '">?</span>';
+}
+
+// Popover + CSS (se inyecta una vez)
+(function() {
+  var style = document.createElement('style');
+  style.textContent = [
+    '.est-help-btn { display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,0.08);color:var(--muted);font-size:10px;font-weight:700;cursor:pointer;vertical-align:middle;margin-left:4px;border:1px solid rgba(255,255,255,0.12);transition:background 0.2s;user-select:none }',
+    '.est-help-btn:hover { background:rgba(255,255,255,0.15);color:var(--accent) }',
+    '#est-help-popover { position:fixed;z-index:9999;max-width:280px;background:var(--surface);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;box-shadow:0 8px 32px rgba(0,0,0,0.5);font-size:13px;line-height:1.45;display:none;pointer-events:auto }',
+    '#est-help-popover .est-hp-title { font-weight:700;font-size:14px;margin-bottom:4px;color:var(--accent) }',
+    '#est-help-popover .est-hp-text { color:#ccc }',
+    '#est-help-popover::before { content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:12px;height:12px;background:var(--surface);border-left:1px solid rgba(255,255,255,0.15);border-top:1px solid rgba(255,255,255,0.15);transform:translateX(-50%) rotate(45deg) }'
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // Popover element
+  var pop = document.createElement('div');
+  pop.id = 'est-help-popover';
+  pop.innerHTML = '<div class="est-hp-title"></div><div class="est-hp-text"></div>';
+  document.body.appendChild(pop);
+
+  // Delegate click
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.est-help-btn');
+    if (btn) {
+      e.stopPropagation();
+      var key = btn.getAttribute('data-esthelp');
+      var info = _EST_HELP[key];
+      if (!info) return;
+      pop.querySelector('.est-hp-title').textContent = info.t;
+      pop.querySelector('.est-hp-text').textContent = info.d;
+      var rect = btn.getBoundingClientRect();
+      pop.style.display = 'block';
+      // Position below the button
+      var popW = pop.offsetWidth;
+      var left = rect.left + rect.width / 2 - popW / 2;
+      if (left < 8) left = 8;
+      if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+      var top = rect.bottom + 8;
+      if (top + pop.offsetHeight > window.innerHeight - 8) top = rect.top - pop.offsetHeight - 8;
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+      return;
+    }
+    // Click outside closes
+    if (pop.style.display === 'block') pop.style.display = 'none';
+  });
+})();
+
 // ── INIT ──
 async function initEstrategia() {
   var c1 = document.getElementById('est-content-dashboard');
@@ -403,7 +478,7 @@ function _estRenderMeta() {
   h += '<div style="display:flex;align-items:center;gap:12px">';
   h += '<span style="font-size:28px">🎯</span>';
   h += '<div><div style="font-size:18px;font-weight:700">Meta ' + mesNombre + ' ' + anio + '</div>';
-  h += '<div style="font-size:12px;color:var(--muted)">Día ' + diaHoy + ' de ' + diasEnMes + ' · ' + diasRestantes + ' días restantes · Crecimiento +' + grow + '%' + (hasOverride ? ' · <span style="color:var(--accent)">Meta manual</span>' : ' · Meta automática') + '</div></div>';
+  h += '<div style="font-size:12px;color:var(--muted)">Día ' + diaHoy + ' de ' + diasEnMes + ' · ' + diasRestantes + ' días restantes · Crecimiento +' + grow + '%' + _estHelp('crecimiento') + (hasOverride ? ' · <span style="color:var(--accent)">Meta manual</span>' : ' · Meta automática' + _estHelp('meta_auto')) + '</div></div>';
   h += '</div>';
   if (isAdmin) {
     h += '<button class="btn btn-g btn-sm" onclick="estEditMetas()" title="Editar metas">✏️ Editar</button>';
@@ -437,7 +512,7 @@ function _estRenderMeta() {
 
   // Projection + pace
   h += '<div class="est-grid-3" style="margin-bottom:20px">';
-  h += '<div class="est-card"><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Proyección cierre</div>';
+  h += '<div class="est-card"><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Proyección cierre' + _estHelp('proyeccion') + '</div>';
   var proyColor = proyTotal >= metaTotal ? '#66bb6a' : '#ef5350';
   h += '<div style="font-size:22px;font-weight:700;color:' + proyColor + ';margin:4px 0">$' + _estFmt(Math.round(proyTotal)) + '</div>';
   var proyDiff = metaTotal > 0 ? Math.round((proyTotal - metaTotal) / metaTotal * 100) : 0;
@@ -448,7 +523,7 @@ function _estRenderMeta() {
   h += '<div style="font-size:11px;color:var(--muted)">' + numDiasConVenta + ' días con ventas</div></div>';
 
   var ritmoNecesario = diasVentaRestantes > 0 && faltaTotal > 0 ? faltaTotal / diasVentaRestantes : 0;
-  h += '<div class="est-card"><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Ritmo para llegar a meta</div>';
+  h += '<div class="est-card"><div style="font-size:11px;color:var(--muted);text-transform:uppercase">Ritmo para llegar a meta' + _estHelp('ritmo') + '</div>';
   if (faltaTotal <= 0) {
     h += '<div style="font-size:22px;font-weight:700;color:#66bb6a;margin:4px 0">META LOGRADA</div>';
   } else {
@@ -540,7 +615,7 @@ function _estRenderMeta() {
 
   // Formula explanation
   h += '<div style="margin-top:16px;padding:12px 16px;background:var(--surface2);border-radius:8px;font-size:11px;color:var(--muted)">';
-  h += '<strong>Cómo se calcula la meta automática:</strong> Promedio ponderado del mismo mes en los últimos 3 años ';
+  h += '<strong>Cómo se calcula la meta automática' + _estHelp('prom_ponderado') + ':</strong> Promedio ponderado del mismo mes en los últimos 3 años ';
   h += '(año más reciente pesa 3x, intermedio 2x, anterior 1x) + ' + grow + '% de crecimiento. ';
   h += 'Magnolia usa solo datos post-mudanza (2024+). Admin puede hacer override manual.';
   h += '</div>';
@@ -676,7 +751,7 @@ function _estRenderDashboard() {
   // Phase indicator
   h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;background:var(--surface2);border-radius:10px">';
   h += '<span style="font-size:20px">🎯</span>';
-  h += '<div><strong>' + faseLabel + '</strong> · Semana ' + semana + ' · Día ' + diasTranscurridos + ' de 90';
+  h += '<div><strong>' + faseLabel + '</strong>' + _estHelp('fase') + ' · Semana ' + semana + ' · Día ' + diasTranscurridos + ' de 90';
   h += '<div style="margin-top:4px;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;width:200px">';
   h += '<div style="height:100%;background:var(--accent);border-radius:3px;width:' + Math.min(100, Math.round(diasTranscurridos / 90 * 100)) + '%"></div></div>';
   h += '</div></div>';
@@ -684,14 +759,14 @@ function _estRenderDashboard() {
   // Margin alert banner
   h += '<div class="' + alertClass + '" style="padding:10px 16px;border-radius:8px;margin-bottom:16px;display:flex;align-items:center;gap:8px">';
   h += '<span style="font-size:18px">' + (tasaDesc > 45 ? '🔴' : tasaDesc > 40 ? '🟡' : '🟢') + '</span>';
-  h += '<span>' + alertText + ' — <strong>' + tasaDesc + '% descuento promedio</strong> (' + pctDesc + '% de ventas con descuento)</span>';
+  h += '<span>' + alertText + ' — <strong>' + tasaDesc + '% descuento promedio</strong> (' + pctDesc + '% de ventas con descuento)' + _estHelp('margen_alerta') + '</span>';
   h += '</div>';
 
   // Real-time metrics cards
   h += '<div class="est-grid-3">';
   h += _estMetricCard('Ventas del mes', totalVentas, '', '#4fc3f7');
   h += _estMetricCard('Ingreso del mes', '$' + _estFmt(totalIngreso), '', '#66bb6a');
-  h += _estMetricCard('Ticket promedio', '$' + _estFmt(ticketProm), '', '#ffa726');
+  h += _estMetricCard('Ticket promedio' + _estHelp('ticket'), '$' + _estFmt(ticketProm), '', '#ffa726');
   h += '</div>';
 
   // By sucursal
@@ -706,15 +781,15 @@ function _estRenderDashboard() {
   h += '</div>';
 
   // KPIs with progress
-  h += '<h3 style="margin:24px 0 12px;font-size:15px;color:var(--text)">KPIs — Metas 90 días</h3>';
+  h += '<h3 style="margin:24px 0 12px;font-size:15px;color:var(--text)">KPIs — Metas 90 días' + _estHelp('kpi') + '</h3>';
   h += '<div class="est-grid-2">';
   var kpiDefs = [
     { key: 'resenas_google', label: 'Reseñas Google', icon: '⭐', suffix: '' },
-    { key: 'leads_digitales', label: 'Leads digitales/mes', icon: '📱', suffix: '' },
+    { key: 'leads_digitales', label: 'Leads digitales/mes' + _estHelp('leads'), icon: '📱', suffix: '' },
     { key: 'citas_digital', label: 'Citas agendadas digital', icon: '📅', suffix: '' },
-    { key: 'roas_meta', label: 'ROAS Meta Ads', icon: '📈', suffix: 'x' },
+    { key: 'roas_meta', label: 'ROAS Meta Ads' + _estHelp('roas'), icon: '📈', suffix: 'x' },
     { key: 'followers_ig', label: 'Followers Instagram', icon: '📸', suffix: '' },
-    { key: 'tasa_retencion', label: 'Tasa de retención', icon: '🔄', suffix: '%' }
+    { key: 'tasa_retencion', label: 'Tasa de retención' + _estHelp('retencion'), icon: '🔄', suffix: '%' }
   ];
 
   kpiDefs.forEach(function(kd) {
@@ -782,7 +857,7 @@ function _estRenderHistorico() {
 
   // Estacionalidad
   h += '<div style="padding:12px 16px;background:var(--surface2);border-radius:10px;margin-bottom:16px;border-left:3px solid var(--accent)">';
-  h += '<div style="font-size:13px;font-weight:600;margin-bottom:4px">📅 ' + MESES_NOMBRES[mesActual] + ' ' + anioActual + ' — Contexto estacional</div>';
+  h += '<div style="font-size:13px;font-weight:600;margin-bottom:4px">📅 ' + MESES_NOMBRES[mesActual] + ' ' + anioActual + ' — Contexto estacional' + _estHelp('estacionalidad') + '</div>';
   h += '<div style="font-size:12px;color:var(--muted)">' + ESTACIONALIDAD[mesActual] + '</div>';
   h += '</div>';
 
@@ -835,7 +910,7 @@ function _estRenderHistorico() {
   });
 
   // Yearly totals table
-  h += '<h3 style="font-size:15px;margin:24px 0 12px">Ventas anuales por sucursal (SICAR)</h3>';
+  h += '<h3 style="font-size:15px;margin:24px 0 12px">Ventas anuales por sucursal (SICAR)' + _estHelp('yoy') + '</h3>';
   h += '<div style="overflow-x:auto"><table class="est-table"><thead><tr>';
   h += '<th>Año</th><th>Américas</th><th>Pinocelli</th><th>Magnolia</th><th>Total</th><th>vs anterior</th>';
   h += '</tr></thead><tbody>';
@@ -862,7 +937,7 @@ function _estRenderHistorico() {
   h += '</tbody></table></div>';
 
   // Magnolia watch
-  h += '<h3 style="font-size:15px;margin:24px 0 12px">🔍 Magnolia Watch — Post-mudanza (Mar 2024)</h3>';
+  h += '<h3 style="font-size:15px;margin:24px 0 12px">🔍 Magnolia Watch — Post-mudanza (Mar 2024)' + _estHelp('magnolia_watch') + '</h3>';
   h += '<div style="padding:12px 16px;background:var(--surface2);border-radius:10px;margin-bottom:12px">';
   h += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Promedio mensual pre-mudanza 2023: <strong style="color:var(--text)">$259,141</strong></div>';
 
@@ -890,7 +965,7 @@ function _estRenderHistorico() {
     h += '<span style="font-size:12px">' + q.label + '</span>';
     h += '<div style="display:flex;align-items:center;gap:8px">';
     h += '<span style="font-size:12px">$' + _estFmt(avg) + '/mes</span>';
-    h += '<span style="font-size:12px;color:' + color + ';font-weight:600">' + trend + ' ' + diff + '%</span>';
+    h += '<span style="font-size:12px;color:' + color + ';font-weight:600">' + trend + ' ' + diff + '%' + (q === magQuarters[0] ? _estHelp('magnolia_pct') : '') + '</span>';
     h += '</div></div>';
   });
 
@@ -923,8 +998,8 @@ function _estRenderMargenes() {
   // Summary cards
   h += '<div class="est-grid-3">';
   var dColor = tasaDesc > 45 ? '#ef5350' : tasaDesc > 40 ? '#ffa726' : '#66bb6a';
-  h += _estMetricCard('Tasa descuento promedio', tasaDesc + '%', '', dColor);
-  h += _estMetricCard('Ventas con descuento', pctConDesc + '%', ventasConDesc.length + ' de ' + totalVentas, '#ffa726');
+  h += _estMetricCard('Tasa descuento promedio' + _estHelp('tasa_desc'), tasaDesc + '%', '', dColor);
+  h += _estMetricCard('Ventas con descuento' + _estHelp('ventas_con_desc'), pctConDesc + '%', ventasConDesc.length + ' de ' + totalVentas, '#ffa726');
   h += _estMetricCard('Total descontado', '$' + _estFmt(Math.round(totalDescuento)), 'sobre $' + _estFmt(Math.round(totalSubtotal)) + ' subtotal', '#ef5350');
   h += '</div>';
 
