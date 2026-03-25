@@ -5295,14 +5295,16 @@ var _rtRefreshMap = null;
 // Debounce para no refrescar 10 veces seguidas
 var _rtDebounce = {};
 function _rtHandleChange(table) {
+  if (!_rtRefreshMap) return; // Aún no inicializado
   var cfg = _rtRefreshMap[table];
   if (!cfg) return;
   // ¿La vista activa necesita refrescarse?
+  if (typeof currentView === 'undefined') return;
   var idx = cfg.views.indexOf(currentView);
   if (idx === -1) return; // Vista no afectada, ignorar
   var fnName = cfg.fn[currentView];
   if (!fnName || typeof window[fnName] !== 'function') return;
-  // Debounce 1.5s por tabla (evita ráfaga de cambios)
+  // Debounce 3s por tabla (evita ráfaga de cambios)
   var key = table + '_' + currentView;
   if (_rtDebounce[key]) clearTimeout(_rtDebounce[key]);
   _rtDebounce[key] = setTimeout(function() {
@@ -5311,7 +5313,7 @@ function _rtHandleChange(table) {
       window[fnName]();
       _rtToast('Datos actualizados');
     } catch(e) { console.warn('[RT] Error refreshing', currentView, e); }
-  }, 1500);
+  }, 3000);
 }
 
 function initRealtimeSubscriptions() {
