@@ -1179,6 +1179,7 @@ function asistResetSchedule(uid) {
 // ═══════════════════════════════════════════════════════════
 
 var _asistFirmasCache = {}; // uid → [{...firma records}]
+var _asistFaltasCache = {}; // uid → [{fecha, ...}] — records with es_falta=true
 
 async function asistRenderExpedientes() {
   var cont = document.getElementById('asist-content-expediente');
@@ -1187,7 +1188,7 @@ async function asistRenderExpedientes() {
 
   var emps = _asistGetActiveEmployees();
 
-  // Load all firmas for all employees
+  // Load all firmas + faltas for all employees
   if (emps.length > 0) {
     var uids = emps.map(function(e) { return e.uid; });
     var firmasRes = await db.from('asistencia_firmas').select('*').in('uid', uids).order('periodo_inicio', { ascending: false });
@@ -1195,6 +1196,13 @@ async function asistRenderExpedientes() {
     (firmasRes.data || []).forEach(function(f) {
       if (!_asistFirmasCache[f.uid]) _asistFirmasCache[f.uid] = [];
       _asistFirmasCache[f.uid].push(f);
+    });
+    // Load all falta records to cross-reference with actas
+    var faltasRes = await db.from('asistencia').select('uid,fecha,es_falta').in('uid', uids).eq('es_falta', true).order('fecha', { ascending: false });
+    _asistFaltasCache = {};
+    (faltasRes.data || []).forEach(function(f) {
+      if (!_asistFaltasCache[f.uid]) _asistFaltasCache[f.uid] = [];
+      _asistFaltasCache[f.uid].push(f);
     });
   }
 
@@ -1299,35 +1307,66 @@ async function asistRenderExpedientes() {
 
     // ── Documents section: actas + reportes firmados ──
     var firmas = _asistFirmasCache[emp.uid] || [];
+    var empFaltas = _asistFaltasCache[emp.uid] || [];
+    var actaCount = 0;
+    // Detect actas by checking if there are faltas within the firma period
+    firmas.forEach(function(f) {
+      var faltasInPeriod = empFaltas.filter(function(fl) { return fl.fecha >= f.periodo_inicio && fl.fecha <= f.periodo_fin; });
+      f._isActa = faltasInPeriod.length > 0;
+      f._faltasDates = faltasInPeriod.map(function(fl) { return fl.fecha; }).sort();
+      if (f._isActa) actaCount++;
+    });
     html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06)">';
-    html += '<div style="font-size:10px;font-weight:600;color:var(--beige);margin-bottom:8px">Documentos firmados (' + firmas.length + ')</div>';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-size:10px;font-weight:600;color:var(--beige)">Documentos (' + firmas.length + ')';
+    if (actaCount > 0) html += ' <span style="color:#e74c3c;font-size:9px">(' + actaCount + ' acta' + (actaCount > 1 ? 's' : '') + ')</span>';
+    html += '</div></div>';
     if (firmas.length === 0) {
       html += '<div style="font-size:10px;color:var(--muted)">Sin documentos aun. Se generan automaticamente al firmar por WhatsApp.</div>';
     } else {
-      html += '<table style="width:100%;border-collapse:collapse;font-size:10px">';
-      html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)"><th style="text-align:left;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Periodo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Tipo</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Firma</th><th style="text-align:center;padding:4px;color:var(--muted);font-size:9px;text-transform:uppercase">Fecha firma</th><th style="padding:4px"></th></tr></thead><tbody>';
       firmas.forEach(function(f) {
         var isSigned = !!f.firmado_at;
-        var isActa = f.periodo_inicio === f.periodo_fin;
         var signBadge = isSigned
           ? '<span style="background:rgba(74,240,200,0.15);color:#4af0c8;padding:1px 6px;border-radius:8px;font-size:9px">Firmado</span>'
           : '<span style="background:rgba(245,166,35,0.15);color:#f5a623;padding:1px 6px;border-radius:8px;font-size:9px">Pendiente</span>';
         var fechaFirma = isSigned ? new Date(f.firmado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        var fechaEnviado = f.enviado_at ? new Date(f.enviado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        var cardBg = f._isActa ? 'rgba(231,76,60,0.08)' : 'rgba(255,255,255,0.03)';
+        var cardBorder = f._isActa ? 'rgba(231,76,60,0.2)' : 'rgba(255,255,255,0.05)';
 
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">';
-        html += '<td style="padding:4px">' + f.periodo_inicio + ' al ' + f.periodo_fin + '</td>';
-        html += '<td style="padding:4px;text-align:center"><span style="font-size:9px;' + (isActa ? 'color:#e74c3c;font-weight:600' : '') + '">' + (isActa ? 'Acta falta' : 'Asistencia') + '</span></td>';
-        html += '<td style="padding:4px;text-align:center">' + signBadge + '</td>';
-        html += '<td style="padding:4px;text-align:center;font-size:9px">' + fechaFirma + '</td>';
-        html += '<td style="padding:4px;text-align:right">';
-        if (isSigned) {
-          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px" onclick="asistVerDocumento(\'' + emp.uid + '\',' + f.id + ')">📄 Ver / Imprimir</button>';
+        html += '<div style="background:' + cardBg + ';border:1px solid ' + cardBorder + ';border-radius:8px;padding:10px;margin-bottom:6px">';
+        // Header row
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+        html += '<div style="display:flex;align-items:center;gap:6px">';
+        if (f._isActa) {
+          html += '<span style="font-size:10px;font-weight:600;color:#e74c3c">Acta de falta</span>';
         } else {
-          html += '<span style="font-size:9px;color:var(--muted)">Esperando firma</span>';
+          html += '<span style="font-size:10px;font-weight:600;color:var(--white)">Reporte asistencia</span>';
         }
-        html += '</td></tr>';
+        html += signBadge;
+        html += '</div>';
+        html += '<div style="display:flex;gap:4px;align-items:center">';
+        if (isSigned) {
+          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px" onclick="asistVerDocumento(\'' + emp.uid + '\',' + f.id + ')">📄 Ver</button>';
+        }
+        if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'admin') {
+          html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px;color:#e74c3c" onclick="asistBorrarActa(' + f.id + ',\'' + emp.uid + '\',\'' + f.periodo_inicio + '\',\'' + f.periodo_fin + '\')" title="Eliminar documento">🗑️</button>';
+        }
+        html += '</div></div>';
+        // Detail row
+        html += '<div style="font-size:9px;color:var(--muted)">';
+        html += 'Periodo: ' + f.periodo_inicio + ' al ' + f.periodo_fin;
+        if (fechaFirma !== '—') html += ' · Firmado: ' + fechaFirma;
+        html += ' · Enviado: ' + fechaEnviado;
+        html += '</div>';
+        // Falta dates for actas
+        if (f._isActa && f._faltasDates.length > 0) {
+          html += '<div style="margin-top:4px;font-size:9px;color:#e74c3c">';
+          html += 'Faltas registradas: ' + f._faltasDates.join(', ');
+          html += '</div>';
+        }
+        html += '</div>';
       });
-      html += '</tbody></table>';
     }
     html += '</div>';
 
@@ -1345,6 +1384,28 @@ function asistToggleExp(uid) {
   var isOpen = form.style.display !== 'none';
   form.style.display = isOpen ? 'none' : '';
   if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+}
+
+async function asistBorrarActa(firmaId, uid, periodoInicio, periodoFin) {
+  if (!confirm('¿Eliminar este documento y los registros de falta asociados?\n\nPeriodo: ' + periodoInicio + ' al ' + periodoFin + '\n\nEsta accion no se puede deshacer.')) return;
+  try {
+    // 1. Delete the firma/acta record via secure proxy
+    var r1 = await db.from('asistencia_firmas').delete().eq('id', firmaId);
+    if (r1.error) throw new Error(r1.error.message);
+    // 2. Delete associated falta records in asistencia for this uid+period
+    // Find faltas first, then delete each
+    var faltasRes = await db.from('asistencia').select('id').eq('uid', uid).eq('es_falta', true).gte('fecha', periodoInicio).lte('fecha', periodoFin);
+    var faltaIds = (faltasRes.data || []).map(function(f) { return f.id; });
+    for (var i = 0; i < faltaIds.length; i++) {
+      await db.from('asistencia').delete().eq('id', faltaIds[i]);
+    }
+    if (typeof toast === 'function') toast('Documento y ' + faltaIds.length + ' falta(s) eliminados', 'ok');
+    // Refresh expedientes
+    asistRenderExpedientes();
+  } catch(e) {
+    console.error('[Asistencia] Delete acta error:', e);
+    if (typeof toast === 'function') toast('Error al eliminar: ' + e.message, 'error');
+  }
 }
 
 async function asistVerDocumento(uid, firmaId) {

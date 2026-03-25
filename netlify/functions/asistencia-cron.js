@@ -234,7 +234,7 @@ async function checkSignatureRequests(employees, fechaLocal) {
       }
 
       // Calculate period: from day after last period end to yesterday
-      var ASISTENCIA_START_DATE = '2026-03-23'; // ignore absences before this date (system started)
+      var ASISTENCIA_START_DATE = '2026-03-25'; // ignore absences before this date (employees started using system)
       var periodoInicio;
       if (lastEntry && lastEntry.periodo_fin) {
         var d = new Date(lastEntry.periodo_fin + 'T12:00:00');

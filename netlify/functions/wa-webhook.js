@@ -650,7 +650,7 @@ async function cmdAsistencia(phone, action, profileName) {
       // ── Check for recent unjustified absences (send acta if found) ──
       try {
         var faltasDias = [];
-        var ASISTENCIA_START_DATE = '2026-03-23'; // ignore absences before this date (system started)
+        var ASISTENCIA_START_DATE = '2026-03-25'; // ignore absences before this date (employees started using system)
         // Check last 7 days for days with no entry where employee was scheduled
         for (var dBack = 1; dBack <= 7; dBack++) {
           var checkDate = new Date(nowChihuahua);
