@@ -90,6 +90,14 @@ exports.handler = async function(event) {
   console.log('[REVIEW-CRON] Iniciando envío de encuestas de opinión...');
 
   try {
+    // ⏰ Guard de horario: solo enviar entre 10am-8pm hora Chihuahua
+    const nowCH = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+    const hora = nowCH.getHours();
+    if (hora < 10 || hora >= 20) {
+      console.log(`[REVIEW-CRON] ⏰ Fuera de horario (${hora}:${String(nowCH.getMinutes()).padStart(2,'0')} Chihuahua). No se envían encuestas.`);
+      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Fuera de horario permitido (10am-8pm CST)' }) };
+    }
+
     // Calculate date range: ventas from DIAS_MIN to DIAS_MAX days ago
     const now = new Date();
     const dateMax = new Date(now);

@@ -138,6 +138,14 @@ exports.handler = async function(event) {
   const dryRun = qs.dry === '1';
   console.log(`[MAGNOLIA-REACTIVATE] Inicio${dryRun ? ' (DRY RUN)' : ''}`);
 
+  // ⏰ Guard de horario: solo enviar entre 10am-8pm hora Chihuahua
+  const nowCH = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+  const horaLocal = nowCH.getHours();
+  if (horaLocal < 10 || horaLocal >= 20) {
+    console.log(`[MAGNOLIA-REACTIVATE] ⏰ Fuera de horario (${horaLocal}:${String(nowCH.getMinutes()).padStart(2,'0')} Chihuahua). No se envían mensajes.`);
+    return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Fuera de horario permitido (10am-8pm CST)' }) };
+  }
+
   if (!TEMPLATE_SID && !dryRun) {
     console.warn('[MAGNOLIA-REACTIVATE] ⚠ MAGNOLIA_TEMPLATE_SID no configurado — usando freeform como fallback');
   }
