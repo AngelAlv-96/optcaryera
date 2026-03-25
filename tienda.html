@@ -25,9 +25,9 @@
 <!-- Google Analytics 4 — Replace G-XXXXXXXXXX with your Measurement ID -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
-<!-- Meta Pixel — Replace XXXXXXXXXXXXXXXX with your Pixel ID -->
-<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','XXXXXXXXXXXXXXXX');fbq('track','PageView');</script>
-<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=XXXXXXXXXXXXXXXX&ev=PageView&noscript=1"/></noscript>
+<!-- Meta Pixel — Replace 26143384325317414 with your Pixel ID -->
+<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1340,6 +1340,8 @@ document.getElementById('sov').classList.add('open');cart=[];saveCart();uB();tC(
 document.addEventListener('change',function(e){if(e.target.id==='cpay'){var ti=document.getElementById('transfer-info');if(ti)ti.style.display=e.target.value==='transfer'?'':'none'}});
 function waQ(n){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, me interesa: '+decodeURIComponent(n)),'_blank')}
 function showDetail(k){var p=P.find(function(x){return x.key===k});if(!p)return;
+if(typeof fbq==='function')fbq('track','ViewContent',{content_name:p.nombre,content_ids:[k],content_type:'product',value:p.precio,currency:'MXN'});
+if(typeof gtag==='function')gtag('event','view_item',{currency:'MXN',value:p.precio,items:[{item_id:k,item_name:p.nombre,price:p.precio}]});
 var t=TECH[p.marca]||{o2:30,hid:'Standard',hrs:10};
 var o2pct=Math.min(Math.round(t.o2/170*100),100);
 var hi=!!I[p.key];
