@@ -5227,7 +5227,7 @@ function closeSidebar() {
   document.getElementById('overlay').classList.remove('open');
 }
 
-let currentView = 'dashboard';
+var currentView = 'dashboard';
 function go(id) {
   if (id === 'lc-crm') id = 'lentes-contacto';
   currentView = id;
@@ -5272,8 +5272,8 @@ function go(id) {
 
 // ── Realtime Subscriptions ────────────────────────────────────
 // Suscripciones a tablas clave para actualización automática sin refresh
-let _rtSubs = null;
-let _rtToastTimer = null;
+var _rtSubs = null;
+var _rtToastTimer = null;
 
 function _rtToast(msg) {
   var el = document.getElementById('rt-toast');
