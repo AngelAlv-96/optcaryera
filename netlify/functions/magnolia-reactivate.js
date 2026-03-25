@@ -1,5 +1,5 @@
-// Magnolia Reactivation — Envía WA a clientes dormidos de Magnolia
-// Busca ventas Liquidadas en Magnolia de hace 60-365 días y envía mensaje de reactivación
+// Magnolia Reactivation — Envía WA a clientes SICAR de Magnolia (lista estática en app_config)
+// Lee lista de contactos de app_config id='magnolia_contacts' (exportada de SICAR pre-mudanza)
 // Manual: GET /.netlify/functions/magnolia-reactivate?key=SECRET
 // Dry run: GET /.netlify/functions/magnolia-reactivate?key=SECRET&dry=1
 // Netlify Scheduled Function: lunes 11am CST (17:00 UTC)
@@ -12,8 +12,6 @@ const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
 const MAX_PER_RUN = 30;
-const DORMANT_MIN_DAYS = 60;
-const DORMANT_MAX_DAYS = 365;
 const DEDUP_DAYS = 30;
 
 // Template SID — crear en Twilio Console: magnolia_reactivacion
@@ -152,36 +150,33 @@ exports.handler = async function(event) {
 
   try {
     const now = new Date();
-    const dateFrom = new Date(now);
-    dateFrom.setDate(dateFrom.getDate() - DORMANT_MAX_DAYS);
-    const dateTo = new Date(now);
-    dateTo.setDate(dateTo.getDate() - DORMANT_MIN_DAYS);
 
-    // Fetch Magnolia ventas in dormancy window
-    const ventas = await supaREST('GET',
-      `ventas?sucursal=eq.Magnolia&estado=eq.Liquidada&created_at=gte.${dateFrom.toISOString()}&created_at=lte.${dateTo.toISOString()}&select=id,folio,sucursal,total,paciente_id,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=500`
-    );
-
-    if (!ventas || !ventas.length) {
-      console.log('[MAGNOLIA-REACTIVATE] No hay ventas Magnolia en ventana de dormancia');
-      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Sin candidatos' }) };
+    // ── Lista estática de clientes SICAR Magnolia (pre-mudanza ene-mar 2024) ──
+    // Cargada desde app_config id='magnolia_contacts'
+    let contactList = [];
+    try {
+      const cfgResp = await supaREST('GET', "app_config?id=eq.magnolia_contacts&select=value");
+      if (cfgResp && cfgResp[0]) {
+        contactList = JSON.parse(cfgResp[0].value);
+      }
+    } catch (e) {
+      console.error('[MAGNOLIA-REACTIVATE] Error cargando lista de contactos:', e.message);
     }
 
-    console.log(`[MAGNOLIA-REACTIVATE] ${ventas.length} ventas Magnolia en ventana ${DORMANT_MIN_DAYS}-${DORMANT_MAX_DAYS} días`);
-
-    // Filter: must have phone
-    const withPhone = ventas.filter(v => v.pacientes?.telefono);
-    console.log(`[MAGNOLIA-REACTIVATE] ${withPhone.length} con teléfono`);
-
-    // Deduplicate by phone — keep most recent venta per customer
-    const byPhone = {};
-    for (const v of withPhone) {
-      const phone = normalizePhone(v.pacientes.telefono);
-      if (!byPhone[phone]) byPhone[phone] = v;
+    if (!contactList.length) {
+      console.log('[MAGNOLIA-REACTIVATE] Lista de contactos vacía (app_config magnolia_contacts)');
+      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Lista de contactos vacía' }) };
     }
-    const candidates = Object.values(byPhone);
-    const phones = Object.keys(byPhone);
-    console.log(`[MAGNOLIA-REACTIVATE] ${candidates.length} clientes únicos`);
+
+    console.log(`[MAGNOLIA-REACTIVATE] ${contactList.length} contactos en lista estática SICAR`);
+
+    // Build candidates from static list
+    const candidates = contactList.map(c => ({
+      name: c.name,
+      phone: normalizePhone(c.phone)
+    }));
+    const phones = candidates.map(c => c.phone);
+    console.log(`[MAGNOLIA-REACTIVATE] ${candidates.length} clientes con teléfono`);
 
     // Dedup: check who already got a reactivation message in last DEDUP_DAYS days
     const alreadySent = new Set();
@@ -204,10 +199,7 @@ exports.handler = async function(event) {
     console.log(`[MAGNOLIA-REACTIVATE] ${alreadySent.size} ya contactados en últimos ${DEDUP_DAYS} días`);
 
     // Filter and limit
-    const toSend = candidates.filter(v => {
-      const phone = normalizePhone(v.pacientes.telefono);
-      return !alreadySent.has(phone);
-    }).slice(0, MAX_PER_RUN);
+    const toSend = candidates.filter(c => !alreadySent.has(c.phone)).slice(0, MAX_PER_RUN);
 
     console.log(`[MAGNOLIA-REACTIVATE] ${toSend.length} por enviar (máx ${MAX_PER_RUN})`);
 
@@ -216,63 +208,53 @@ exports.handler = async function(event) {
         statusCode: 200,
         body: JSON.stringify({
           ok: true, dryRun: true,
-          ventasEnVentana: ventas.length,
-          clientesUnicos: candidates.length,
+          contactosEnLista: contactList.length,
           yaContactados: alreadySent.size,
           porEnviar: toSend.length,
-          clientes: toSend.map(v => ({
-            nombre: (v.pacientes.nombre || '') + ' ' + (v.pacientes.apellidos || ''),
-            telefono: v.pacientes.telefono,
-            folio: v.folio,
-            total: v.total
-          }))
+          clientes: toSend.map(c => ({ nombre: c.name, telefono: c.phone }))
         }, null, 2)
       };
     }
 
     let enviados = 0;
-    for (const v of toSend) {
-      const tel = v.pacientes.telefono;
-      const nombre = (v.pacientes.nombre || 'Cliente').split(' ')[0];
+    for (const c of toSend) {
+      const nombre = (c.name || 'Cliente').split(' ')[0];
       let ok = false;
 
       if (TEMPLATE_SID) {
-        // Preferred: use pre-approved Twilio template
-        ok = await sendTemplate(tel, TEMPLATE_SID, { '1': nombre });
+        ok = await sendTemplate(c.phone, TEMPLATE_SID, { '1': nombre });
       } else {
-        // Fallback: freeform message (may fail outside 24h window)
         const msg = `¡Hola ${nombre}! 👋 Te escribimos de Ópticas Car & Era.\n\n` +
           `Tú fuiste de nuestros primeros clientes en la sucursal de montes urales y eso nunca se nos olvida 💛\n\n` +
           `Queremos contarte que nos mudamos — ya no estamos en Plaza La Nueva Esperanza (Montes Urales).\n\n` +
-          `📍 Ahora nos encuentras en Plaza Magnolia, sobre Av. Jilotepec, frente a Tostadas El Primo.\n\n` +
+          `📍 Ahora nos encuentras en Plaza Magnolia, sobre Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly.\n\n` +
+          `📌 Aquí te dejo la ubicación: https://maps.app.goo.gl/HBomFDEfJJNPna697\n\n` +
           `Y tenemos algo para ti:\n` +
           `✅ 3x1 en Lentes Completos\n` +
-          `✅ Examen de vista GRATIS\n` +
-          `✅ Listos el mismo dia.\n\n` +
+          `✅ Examen de vista incluido\n` +
+          `✅ Listos el mismo día\n\n` +
           `Pásate cuando gustes, no necesitas cita. Nos da mucho gusto saber de ti 😊`;
-        ok = await sendWA(tel, msg);
+        ok = await sendWA(c.phone, msg);
       }
 
       if (ok) {
-        await saveToHistory(tel, 'assistant',
-          `[Magnolia-Reactivation] Mensaje de reactivación enviado — Folio anterior: ${v.folio}, Total: $${Number(v.total || 0).toFixed(0)}`
+        await saveToHistory(c.phone, 'assistant',
+          `[Magnolia-Reactivation] Mensaje de reactivación enviado a ${c.name} (lista SICAR)`
         );
         enviados++;
-        console.log(`[MAGNOLIA-REACTIVATE] ✓ ${nombre} (${v.folio})`);
+        console.log(`[MAGNOLIA-REACTIVATE] ✓ ${nombre} (${c.phone})`);
       }
 
-      // Rate limit
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     console.log(`[MAGNOLIA-REACTIVATE] Completado: ${enviados}/${toSend.length}`);
 
-    // Notify admin
     if (enviados > 0) {
       const adminPhones = await getAdminPhones();
       const summary = `📍 *Magnolia Reactivation*\n\n` +
         `✅ ${enviados} mensajes enviados de ${toSend.length} candidatos\n` +
-        `📊 ${candidates.length} clientes dormidos identificados\n` +
+        `📊 ${contactList.length} contactos en lista SICAR\n` +
         `🔄 ${alreadySent.size} ya contactados previamente`;
       for (const ap of adminPhones) {
         await sendWA(ap, summary);
@@ -282,7 +264,7 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, enviados, total: toSend.length, candidatos: candidates.length })
+      body: JSON.stringify({ ok: true, enviados, total: toSend.length, contactosLista: contactList.length })
     };
 
   } catch (e) {

@@ -53,7 +53,7 @@ REGLAS DE ESTILO:
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
-📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), entre Casa de Cambio y Trevly, frente a Tostadas El Primo. Tel: (656) 174-8866
+📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
@@ -382,13 +382,22 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'Este cliente fue contactado como parte de la campaña de reactivación de clientes de Magnolia. ' +
       'Es un cliente anterior que nos conocía en la ubicación vieja (Plaza La Nueva Esperanza, Montes Urales). Trátalo con especial calidez.\n' +
       '- ANTES estábamos en Plaza La Nueva Esperanza (Montes Urales) — YA NO\n' +
-      '- AHORA estamos en Plaza Magnolia, sobre Av. Jilotepec, frente a Tostadas El Primo\n' +
+      '- AHORA estamos en Plaza Magnolia, sobre Av. Manuel J. Clouthier (Jilotepec)\n' +
+      '- REFERENCIA PARA LLEGAR: está casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
+      '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
       '- Promo vigente: 3x1 en Lentes Completos\n' +
-      '- Examen de vista GRATUITO al comprar lentes\n' +
+      '- Examen de vista incluido al comprar lentes\n' +
       '- Lentes listos en 35 minutos (laboratorio propio)\n' +
       '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
       '- Si quiere agendar, toma nota de su nombre y horario preferido y confirma que le avisamos\n' +
-      '- Menciona que nos mudamos para tener más espacio y atenderlos mejor';
+      '- Menciona que nos mudamos para tener más espacio y atenderlos mejor\n\n' +
+      'REGLAS DE TRATO REACTIVACIÓN:\n' +
+      '- Si el cliente responde positivamente o con interés, dale toda la info (ubicación, promo, Maps link) con entusiasmo\n' +
+      '- Si el cliente pregunta cómo llegar, SIEMPRE manda el link de Google Maps Y las referencias (Plaza El Reloj, Tostadas El Primo, Helados Trevly)\n' +
+      '- Si el cliente se muestra DESINTERESADO, frío, o dice que no necesita nada: agradece amablemente, dile que aquí estamos cuando lo necesite, y NO INSISTAS más\n' +
+      '- Si el cliente se muestra MOLESTO por el mensaje o pide que no le escriban: discúlpate brevemente, dile que no volveremos a molestar, y DEJA DE RESPONDER\n' +
+      '- NUNCA envíes más de 2 mensajes seguidos sin respuesta del cliente — si no contesta, no insistas\n' +
+      '- El objetivo es reconectar con calidez, NO presionar la venta';
   }
 
   var messages = [];

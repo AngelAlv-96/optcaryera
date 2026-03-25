@@ -51,7 +51,7 @@ REGLAS DE ESTILO:
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500
-📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), entre Casa de Cambio y Trevly, frente a Tostadas El Primo. Tel: (656) 174-8866
+📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
@@ -211,6 +211,18 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
     }
     systemPrompt += orderContext;
   }
+
+  // Magnolia location context — for people arriving from Facebook Ads
+  systemPrompt += '\n\nUBICACIÓN MAGNOLIA (para quienes pregunten cómo llegar):\n' +
+    'Si alguien pregunta por Magnolia, cómo llegar, dónde queda, o menciona que vio un anuncio de Magnolia:\n' +
+    '- Está en Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj\n' +
+    '- Frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
+    '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
+    '- SIEMPRE envía el link de Google Maps cuando pregunten ubicación de Magnolia\n' +
+    '- Promo: 3x1 en Lentes Completos + Examen de vista incluido\n' +
+    '- Lentes listos en 35 minutos\n' +
+    '- Tel: (656) 174-8866\n' +
+    '- Si el cliente se muestra desinteresado o molesto, agradece amablemente y no insistas';
 
   var history = await getConversationHistory(senderId);
   var messages = [];
@@ -378,8 +390,8 @@ REGLAS ESTRICTAS:
 
 DATOS BÁSICOS:
 Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
-Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec) — Ciudad Juárez
-Examen de vista gratuito al comprar lentes
+Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly) — Ciudad Juárez
+Examen de vista incluido al comprar lentes
 Lentes listos desde 35 min
 No se necesita cita`,
         messages: [{ role: 'user', content: 'Comentario: "' + commentText + '"' }]
