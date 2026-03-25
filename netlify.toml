@@ -13,9 +13,9 @@
 [functions."review-cron"]
   schedule = "0 18 * * *"
 
-# Magnolia Reactivation — sends WA to dormant Magnolia customers, Mondays 11am CST (17:00 UTC)
-[functions."magnolia-reactivate"]
-  schedule = "0 17 * * 1"
+# Magnolia Reactivation — DESACTIVADO (lista SICAR se envía manualmente una sola vez)
+# [functions."magnolia-reactivate"]
+#   schedule = "0 17 * * 1"
 
 # Review Follow-up — second touch to positive reviewers, Wednesdays 11am CST
 [functions."review-followup"]
