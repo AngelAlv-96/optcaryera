@@ -5289,16 +5289,8 @@ function _rtToast(msg) {
   _rtToastTimer = setTimeout(function() { el.style.opacity = '0'; }, 3000);
 }
 
-// Mapa: tabla → qué vistas refrescar y con qué función
-var _rtRefreshMap = {
-  ventas:                 { views: ['dashboard','historial-ventas','caja','creditos'], fn: { dashboard: 'loadDash', 'historial-ventas': 'cargarHistorialVentas', caja: 'initCaja', creditos: 'loadCreditos' } },
-  venta_pagos:            { views: ['dashboard','caja','historial-ventas','creditos'], fn: { dashboard: 'loadDash', caja: 'initCaja', 'historial-ventas': 'cargarHistorialVentas', creditos: 'loadCreditos' } },
-  ordenes_laboratorio:    { views: ['dashboard','laboratorio','lab-proceso','surtido-station','reporte-materiales'], fn: { dashboard: 'loadDash', laboratorio: 'loadLab', 'lab-proceso': 'loadLabTablero', 'surtido-station': 'surtStInit', 'reporte-materiales': 'initReporteMateriales' } },
-  historias_clinicas:     { views: ['dashboard','pacientes'], fn: { dashboard: 'loadDash', pacientes: 'loadPac' } },
-  pacientes:              { views: ['pacientes'], fn: { pacientes: 'loadPac' } },
-  compras_lab:            { views: ['compras-lab','contabilidad'], fn: { 'compras-lab': 'clbInit', contabilidad: 'initContabilidad' } },
-  gastos:                 { views: ['contabilidad'], fn: { contabilidad: 'initContabilidad' } }
-};
+// Mapa se inicializa dentro de initRealtimeSubscriptions()
+var _rtRefreshMap = null;
 
 // Debounce para no refrescar 10 veces seguidas
 var _rtDebounce = {};
@@ -5324,6 +5316,16 @@ function _rtHandleChange(table) {
 
 function initRealtimeSubscriptions() {
   if (_rtSubs) return; // Ya inicializado
+  // Definir mapa aquí dentro para evitar hoisting issues
+  _rtRefreshMap = {
+    ventas:                 { views: ['dashboard','historial-ventas','caja','creditos'], fn: { dashboard: 'loadDash', 'historial-ventas': 'cargarHistorialVentas', caja: 'initCaja', creditos: 'loadCreditos' } },
+    venta_pagos:            { views: ['dashboard','caja','historial-ventas','creditos'], fn: { dashboard: 'loadDash', caja: 'initCaja', 'historial-ventas': 'cargarHistorialVentas', creditos: 'loadCreditos' } },
+    ordenes_laboratorio:    { views: ['dashboard','laboratorio','lab-proceso','surtido-station','reporte-materiales'], fn: { dashboard: 'loadDash', laboratorio: 'loadLab', 'lab-proceso': 'loadLabTablero', 'surtido-station': 'surtStInit', 'reporte-materiales': 'initReporteMateriales' } },
+    historias_clinicas:     { views: ['dashboard','pacientes'], fn: { dashboard: 'loadDash', pacientes: 'loadPac' } },
+    pacientes:              { views: ['pacientes'], fn: { pacientes: 'loadPac' } },
+    compras_lab:            { views: ['compras-lab','contabilidad'], fn: { 'compras-lab': 'clbInit', contabilidad: 'initContabilidad' } },
+    gastos:                 { views: ['contabilidad'], fn: { contabilidad: 'initContabilidad' } }
+  };
   var tables = Object.keys(_rtRefreshMap);
   _rtSubs = db.channel('app-realtime');
   tables.forEach(function(t) {
