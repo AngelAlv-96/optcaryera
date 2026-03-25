@@ -53,6 +53,8 @@ body{font-family:'Outfit',sans-serif;${bgStyle}color:#f5f2ee;min-height:100vh;di
 .spinner{width:20px;height:20px;border:2px solid #333;border-top-color:#25D366;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}
 .footer{font-size:10px;color:#555;margin-top:24px;letter-spacing:.5px}
 </style>
+<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');fbq('track','Lead');</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
 </head>
 <body>
 ${overlayHtml}
