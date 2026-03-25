@@ -240,6 +240,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - **Milestones**: Fase 1 $160K (estabilizar), Fase 2 $200K (parcial), Fase 3 $260K (recuperación total)
 - **Promo principal**: 3x1 en Lentes Completos + Examen incluido + Listos en 35 min
 - **Env vars necesarias**: `MAGNOLIA_TEMPLATE_SID` (Twilio), `BLAST_KEY` (auth)
+- **⚠️ LECCIÓN APRENDIDA (v188)**: la lista SICAR de 116 no se cruzó contra ventas del sistema nuevo — algunos clientes (ej: Anabel Corona, compra reciente folio 10538) recibieron mensaje de "te extrañamos" cuando ya habían vuelto a comprar. **Para futuras campañas masivas**: SIEMPRE cruzar lista estática contra tabla `ventas` de Supabase y excluir clientes con compras recientes (ej: últimos 60 días)
 
 ## ⭐ ENCUESTA DE OPINIÓN / GOOGLE MAPS REVIEWS
 - `review-cron.js`: cron diario 12pm CST, envía template `opinion_servicio` a clientes que compraron hace 3-7 días
