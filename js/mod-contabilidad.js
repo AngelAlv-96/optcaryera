@@ -275,7 +275,7 @@ async function contCargarGastos() {
     // Merge
     var items = [];
     gastos.forEach(function(g) {
-      items.push({ tipo: 'gasto', id: g.id, fecha: g.fecha, concepto: g.concepto, monto: parseFloat(g.monto || 0), categoria: g.categoria, subcategoria: g.subcategoria, sucursal: g.sucursal, comprobante_url: g.comprobante_url, nota: g.nota, registrado_por: g.registrado_por });
+      items.push({ tipo: 'gasto', id: g.id, fecha: g.fecha, concepto: g.concepto, monto: parseFloat(g.monto || 0), categoria: g.categoria, subcategoria: g.subcategoria, sucursal: g.sucursal, metodo_pago: g.metodo_pago, comprobante_url: g.comprobante_url, nota: g.nota, registrado_por: g.registrado_por });
     });
     compras.forEach(function(c) {
       items.push({ tipo: 'compra', id: c.id, fecha: c.fecha, concepto: (c.proveedor || 'Compra Lab') + (c.folio ? ' #' + c.folio : ''), monto: parseFloat(c.total || 0), categoria: 'Proveedores/materiales', subcategoria: 'Materiales ópticos', sucursal: c.sucursal || '—', nota: null, registrado_por: null });
@@ -318,6 +318,7 @@ async function contCargarGastos() {
       html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">CONCEPTO</th>';
       html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">CATEGORÍA</th>';
       html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">SUCURSAL</th>';
+      html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">MÉTODO</th>';
       html += '<th style="padding:8px;text-align:right;color:var(--muted);font-size:10px">MONTO</th>';
       html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">ACCIONES</th>';
       html += '</tr></thead><tbody>';
@@ -328,6 +329,7 @@ async function contCargarGastos() {
         html += '<td style="padding:8px">' + i.concepto + (isCompra ? ' <span style="font-size:9px;background:#3b82f6;color:white;padding:1px 5px;border-radius:4px">Compra Lab</span>' : '') + '</td>';
         html += '<td style="padding:8px;color:var(--muted)">' + i.categoria + (i.subcategoria ? ' · ' + i.subcategoria : '') + '</td>';
         html += '<td style="padding:8px;color:var(--muted)">' + i.sucursal + '</td>';
+        html += '<td style="padding:8px;color:var(--muted);font-size:11px">' + (i.metodo_pago || '') + '</td>';
         html += '<td style="padding:8px;text-align:right;font-weight:600;color:#f87171">' + _contMoney(i.monto) + '</td>';
         html += '<td style="padding:8px;text-align:center">';
         if (!isCompra) {
@@ -353,7 +355,7 @@ function contMostrarFormGasto(editData) {
   _contEditId = editData ? editData.id : null;
   var f = document.getElementById('cont-form-gasto');
   if (!f) return;
-  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: currentUser?.sucursal || 'Américas', nota: '' };
+  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: currentUser?.sucursal || 'Américas', nota: '', metodo_pago: '' };
   var html = '<div style="background:var(--surface);border-radius:12px;padding:16px">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   html += '<h4 style="font-size:13px;color:var(--text)">' + (editData ? '✏️ Editar gasto' : '+ Nuevo gasto') + '</h4>';
@@ -371,12 +373,17 @@ function contMostrarFormGasto(editData) {
   html += '<div id="cont-preview" style="display:none;margin-top:8px"><img id="cont-img" style="max-width:200px;border-radius:6px"></div>';
   html += '</div>';
 
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Fecha</label><input type="date" id="cont-fecha" value="' + d.fecha + '" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Monto</label><input type="number" id="cont-monto" value="' + (d.monto || '') + '" step="0.01" placeholder="0.00" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Sucursal</label><select id="cont-suc" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">';
   ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
     html += '<option' + (d.sucursal === s ? ' selected' : '') + '>' + s + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Método pago</label><select id="cont-metodo" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">';
+  ['Efectivo','Tarjeta','Transferencia','Cheque','Otro'].forEach(function(m) {
+    html += '<option' + (d.metodo_pago === m ? ' selected' : '') + '>' + m + '</option>';
   });
   html += '</select></div>';
   html += '</div>';
@@ -477,10 +484,11 @@ async function contProcesarFoto(input) {
       body: JSON.stringify({
         max_tokens: 1024,
         system: 'Eres un asistente que extrae datos de comprobantes de gastos (tickets, facturas, recibos, PDFs, XMLs de CFDI). ' +
-          'Extrae: concepto (qué se pagó), monto (total en MXN), fecha (YYYY-MM-DD), establecimiento/proveedor. ' +
+          'Extrae: concepto (qué se pagó), monto (total en MXN), fecha (YYYY-MM-DD), establecimiento/proveedor, método de pago. ' +
           'Si es un ticket de CFE/TELMEX/agua → categoría "Renta y servicios". Si es nómina → "Nómina y personal". ' +
           'Si es compra de materiales → "Proveedores/materiales". Si es otro → "Otros operativos". ' +
-          'RESPONDE ÚNICAMENTE con JSON object sin markdown: {"concepto":"...","monto":123.45,"fecha":"2026-03-23","categoria":"...","subcategoria":"..."}',
+          'metodo_pago debe ser uno de: "Efectivo", "Tarjeta", "Transferencia", "Cheque", "Otro". Si no se puede determinar, usa "Otro". ' +
+          'RESPONDE ÚNICAMENTE con JSON object sin markdown: {"concepto":"...","monto":123.45,"fecha":"2026-03-23","categoria":"...","subcategoria":"...","metodo_pago":"..."}',
         messages: [{
           role: 'user',
           content: [
@@ -504,6 +512,7 @@ async function contProcesarFoto(input) {
       contUpdateSubcats();
       if (parsed.subcategoria) setTimeout(function() { document.getElementById('cont-subcat').value = parsed.subcategoria; }, 50);
     }
+    if (parsed.metodo_pago) document.getElementById('cont-metodo').value = parsed.metodo_pago;
     st.innerHTML = '<span style="color:#4ade80">✓ Datos extraídos' + (isPDF ? ' (PDF)' : '') + '</span>';
 
     // Upload solo imágenes a Supabase Storage (documentos no se guardan)
@@ -546,6 +555,7 @@ async function contGuardarGasto() {
     var categoria = document.getElementById('cont-cat').value;
     var subcategoria = document.getElementById('cont-subcat').value;
     var sucursal = document.getElementById('cont-suc').value;
+    var metodo_pago = document.getElementById('cont-metodo').value;
     var nota = document.getElementById('cont-nota').value.trim();
 
     if (!concepto || !monto || !fecha || !categoria) {
@@ -560,6 +570,7 @@ async function contGuardarGasto() {
       categoria: categoria,
       subcategoria: subcategoria || null,
       sucursal: sucursal,
+      metodo_pago: metodo_pago || null,
       nota: nota || null,
       comprobante_url: window._contComprobanteUrl || null,
       registrado_por: currentUser?.nombre || currentUser?.uid || 'admin'
