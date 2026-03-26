@@ -7127,7 +7127,7 @@ function abrirConteoFisico() {
       '<div id="conteo-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px"></div>' +
       '<div id="conteo-results" style="display:none"></div>' +
       '<div style="display:flex;gap:8px">' +
-        '<button class="btn btn-p" onclick="_conteoFinalizar()" style="flex:1;padding:12px" id="conteo-btn-finalizar">Terminé de escanear — Ver resultados</button>' +
+        '<button class="btn btn-p" onclick="_conteoFinalizar()" style="flex:1;padding:12px" id="conteo-btn-finalizar">✅ Terminé de escanear — Enviar conteo</button>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -7173,13 +7173,15 @@ function _conteoRenderList() {
   if (!el) return;
   if (!_conteoFolios.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Escanea o ingresa folios de órdenes</div>'; return; }
   var h = '';
-  _conteoFolios.forEach(function(f, i) {
+  // Render in reverse order — last scanned appears on top
+  for (var i = _conteoFolios.length - 1; i >= 0; i--) {
+    var f = _conteoFolios[i];
     h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04)">';
     h += '<span style="color:#72c47e">✅</span>';
     h += '<span style="flex:1;font-size:13px;color:var(--white)">' + f.folio + '</span>';
     h += '<button onclick="_conteoFolios.splice('+i+',1);_conteoRenderList()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:14px;padding:2px 6px">✕</button>';
     h += '</div>';
-  });
+  }
   el.innerHTML = h;
 }
 
@@ -7303,108 +7305,183 @@ async function _conteoFinalizar() {
       });
     }
 
-    // Render results
+    // Cross-check orphan folios against ventas (SICAR old orders)
+    var orphanObjs = orphans.map(function(f) { return { folio: f, folioBase: f.replace(/-\d+$/, ''), saldo: null }; });
+    var orphanBases = [];
+    orphanObjs.forEach(function(o) { if (orphanBases.indexOf(o.folioBase) === -1) orphanBases.push(o.folioBase); });
+    if (orphanBases.length) {
+      var oVentaMap = {};
+      for (var oi = 0; oi < orphanBases.length; oi += 20) {
+        var ob = orphanBases.slice(oi, oi + 20);
+        var {data: oVentas} = await db.from('ventas').select('folio,saldo,total,paciente_id,pacientes(nombre,apellidos)').in('folio', ob);
+        if (oVentas) oVentas.forEach(function(v) { oVentaMap[String(v.folio)] = v; });
+      }
+      orphanObjs.forEach(function(o) {
+        var v = oVentaMap[o.folioBase];
+        if (v) { o.saldo = v.saldo || 0; o.paciente = ((v.pacientes?.nombre||'') + ' ' + (v.pacientes?.apellidos||'')).trim(); o.total = v.total; }
+      });
+    }
+    var orphConSaldo = orphanObjs.filter(function(o) { return o.saldo > 0; });
+    var orphSinSaldo = orphanObjs.filter(function(o) { return o.saldo === 0; });
+    var orphSinVenta = orphanObjs.filter(function(o) { return o.saldo === null; });
+
+    // Build results object
+    var _missingConSaldo = missing.filter(function(m) { return m.saldo > 0; });
+    var _missingSinSaldo = missing.filter(function(m) { return m.saldo === 0 || m.saldo === null; });
+    window._conteoResultados = {
+      sucursal: suc,
+      escaneados: _conteoFolios.map(function(f){return f.folio}),
+      coincidencias: matched,
+      en_sistema_no_escaneados: missing,
+      entregados_sin_cobrar: _missingConSaldo,
+      pedidos_viejos_con_saldo: orphConSaldo,
+      pedidos_viejos_liquidados: orphSinSaldo,
+      pedidos_sin_registro: orphSinVenta,
+      escaneados_no_en_sistema: orphans,
+      match_count: matched.length,
+      mismatch_count: missing.length,
+      orphan_count: orphans.length,
+      sin_cobrar_count: _missingConSaldo.length,
+      viejos_con_saldo_count: orphConSaldo.length
+    };
+
+    // AUTO-SAVE to DB immediately
+    try {
+      await db.from('inventario_auditorias').insert({
+        sucursal: suc,
+        tipo: 'conteo_fisico',
+        realizado_por: currentUser?.nombre || currentUser?.usuario || 'Desconocido',
+        datos: window._conteoResultados
+      });
+      var ultimoConteo = {};
+      try {
+        var {data:cfg} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
+        if (cfg) ultimoConteo = JSON.parse(cfg.value);
+      } catch(e) {}
+      ultimoConteo[suc] = new Date().toISOString().slice(0,10);
+      await db.from('app_config').upsert({ id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) }, { onConflict: 'id' });
+    } catch(e) { console.error('Error guardando conteo:', e); }
+
+    // SEND WA notification to admin with summary
+    var totalConSaldo = _missingConSaldo.length + orphConSaldo.length;
+    var waMsg = '📦 *CONTEO FÍSICO — ' + suc + '*\n';
+    waMsg += 'Realizado por: ' + (currentUser?.nombre || currentUser?.usuario || '?') + '\n\n';
+    waMsg += '✅ Coinciden: ' + matched.length + '\n';
+    waMsg += '❌ En sistema no escaneados: ' + missing.length + '\n';
+    waMsg += '⚠️ Escaneados no en sistema: ' + orphans.length + '\n';
+    if (totalConSaldo) {
+      waMsg += '\n🚨 *' + totalConSaldo + ' PEDIDO' + (totalConSaldo > 1 ? 'S' : '') + ' CON SALDO PENDIENTE:*\n';
+      _missingConSaldo.forEach(function(m) { waMsg += '• Folio ' + m.folio + ' — ' + m.paciente + ' — Saldo: $' + m.saldo.toLocaleString() + '\n'; });
+      orphConSaldo.forEach(function(o) { waMsg += '• Folio ' + o.folio + ' (SICAR) — ' + (o.paciente||'?') + ' — Saldo: $' + o.saldo.toLocaleString() + '\n'; });
+    }
+    if (_missingSinSaldo.length) {
+      waMsg += '\n📋 En sistema no encontrados (sin saldo): ' + _missingSinSaldo.length + '\n';
+      _missingSinSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + '\n'; });
+    }
+    if (orphSinSaldo.length) waMsg += '\n📦 Pedidos viejos liquidados: ' + orphSinSaldo.length + '\n';
+    if (orphSinVenta.length) waMsg += '❓ Folios sin registro: ' + orphSinVenta.length + '\n';
+    waMsg += '\nTotal escaneados: ' + _conteoFolios.length;
+
+    try {
+      await fetch('/.netlify/functions/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'send_admin', message: waMsg, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+      });
+    } catch(e) { console.error('Error enviando WA conteo:', e); }
+
+    // Mark task completed
+    _conteoMarcarIniciado();
+    _loadDashAuditoria();
+
+    // Render results — ROLE-BASED
     var resEl = document.getElementById('conteo-results');
     if (!resEl) return;
     resEl.style.display = '';
-    // Hide the "Finalizar" button — now only "Guardar" is visible
     if (btn) btn.style.display = 'none';
 
+    var isAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
+
+    if (!isAdmin) {
+      // SUCURSAL: solo ve confirmación, sin detalles
+      resEl.innerHTML = '<div style="text-align:center;padding:32px 16px">' +
+        '<div style="font-size:48px;margin-bottom:12px">✅</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#72c47e;margin-bottom:8px">Conteo enviado a administración</div>' +
+        '<div style="font-size:13px;color:var(--muted);margin-bottom:4px">' + _conteoFolios.length + ' folios escaneados en ' + suc + '</div>' +
+        '<div style="font-size:12px;color:var(--muted)">Gracias por completar tu conteo 👍</div>' +
+        '<button class="btn btn-g" onclick="document.getElementById(\'conteo-modal\').remove()" style="margin-top:20px;padding:12px 32px">Cerrar</button>' +
+        '</div>';
+      return;
+    }
+
+    // ADMIN/GERENCIA: resultados completos
     var h = '<div style="margin-bottom:16px">';
     h += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">Resultados del conteo — ' + suc + '</div>';
 
-    // Summary grid (alert banner added after orphan analysis below)
     h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">';
     h += '<div style="background:rgba(114,196,126,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#72c47e">'+matched.length+'</div><div style="font-size:10px;color:var(--muted)">Coinciden ✅</div></div>';
     h += '<div style="background:rgba(224,128,128,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#e08080">'+missing.length+'</div><div style="font-size:10px;color:var(--muted)">No encontrados</div></div>';
     h += '<div style="background:rgba(212,184,74,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d4b84a">'+orphans.length+'</div><div style="font-size:10px;color:var(--muted)">No en sistema</div></div>';
     h += '</div>';
-    // placeholder for alert — will be injected after all analysis
-    h += '<div id="conteo-alert-placeholder"></div>';
 
-    if (missing.length) {
-      // Split into critical (con saldo) and normal (sin saldo)
-      var missingConSaldo = missing.filter(function(m) { return m.saldo > 0; });
-      var missingSinSaldo = missing.filter(function(m) { return m.saldo === 0 || m.saldo === null; });
-
-      if (missingConSaldo.length) {
-        h += '<details open style="margin-bottom:12px;border:1px solid rgba(224,80,80,0.3);border-radius:8px;padding:8px;background:rgba(224,80,80,0.06)">';
-        h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:6px">🚨 ENTREGADOS SIN COBRAR — '+missingConSaldo.length+' pedido'+(missingConSaldo.length>1?'s':'')+'</summary>';
-        missingConSaldo.forEach(function(m) {
-          h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
-          h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+m.folio+'</span>';
-          h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
-          h += '<span style="font-size:11px;font-weight:700;color:#ff6b6b">Saldo: $'+m.saldo.toLocaleString()+'</span>';
-          h += '</div>';
-        });
-        h += '</details>';
-      }
-
-      if (missingSinSaldo.length) {
-        h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ No encontrados — sin saldo pendiente ('+missingSinSaldo.length+')</summary>';
-        h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Probablemente entregados sin marcar en sistema</div>';
-        missingSinSaldo.forEach(function(m) {
-          h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
-          h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+m.folio+'</span>';
-          h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
-          h += '<span style="font-size:10px;color:var(--muted)">'+m.dias+'d</span>';
-          h += '</div>';
-        });
-        h += '</details>';
-      }
+    if (totalConSaldo) {
+      h += '<div style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:8px;padding:10px;margin-bottom:16px;text-align:center">';
+      h += '<div style="font-size:16px;font-weight:800;color:#ff6b6b">🚨 '+totalConSaldo+' pedido'+(totalConSaldo>1?'s':'')+' con saldo pendiente</div>';
+      h += '<div style="font-size:11px;color:#e08080;margin-top:4px">Revisar urgente — posibles entregas sin cobro</div>';
+      h += '</div>';
     }
 
-    if (orphans.length) {
-      // Cross-check orphan folios against ventas too (SICAR old orders)
-      var orphanObjs = orphans.map(function(f) { return { folio: f, folioBase: f.replace(/-\d+$/, ''), saldo: null }; });
-      var orphanBases = [];
-      orphanObjs.forEach(function(o) { if (orphanBases.indexOf(o.folioBase) === -1) orphanBases.push(o.folioBase); });
-      if (orphanBases.length) {
-        var oVentaMap = {};
-        for (var oi = 0; oi < orphanBases.length; oi += 20) {
-          var ob = orphanBases.slice(oi, oi + 20);
-          var {data: oVentas} = await db.from('ventas').select('folio,saldo,total,paciente_nombre').in('folio', ob);
-          if (oVentas) oVentas.forEach(function(v) { oVentaMap[String(v.folio)] = v; });
-        }
-        orphanObjs.forEach(function(o) {
-          var v = oVentaMap[o.folioBase];
-          if (v) { o.saldo = v.saldo || 0; o.paciente = v.paciente_nombre || ''; o.total = v.total; }
-        });
-      }
-      var orphConSaldo = orphanObjs.filter(function(o) { return o.saldo > 0; });
-      var orphSinSaldo = orphanObjs.filter(function(o) { return o.saldo === 0; });
-      var orphSinVenta = orphanObjs.filter(function(o) { return o.saldo === null; });
-
-      if (orphConSaldo.length) {
-        h += '<details open style="margin-bottom:12px;border:1px solid rgba(255,160,0,0.3);border-radius:8px;padding:8px;background:rgba(255,160,0,0.06)">';
-        h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ffa500;margin-bottom:6px">⚠️ Pedidos viejos CON SALDO pendiente ('+orphConSaldo.length+')</summary>';
-        h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">No están en cola de lab pero tienen saldo — verificar si se entregaron</div>';
-        orphConSaldo.forEach(function(o) {
-          h += '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
-          h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+o.folio+'</span>';
-          h += '<span style="flex:1;color:var(--muted)">'+(o.paciente||'')+'</span>';
-          h += '<span style="font-size:11px;font-weight:700;color:#ffa500">Saldo: $'+o.saldo.toLocaleString()+'</span>';
-          h += '</div>';
-        });
-        h += '</details>';
-      }
-      if (orphSinSaldo.length) {
-        h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#d4b84a;margin-bottom:6px">📦 Pedidos viejos liquidados ('+orphSinSaldo.length+')</summary>';
-        h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Ya cobrados — se olvidaron en el cajón</div>';
-        orphSinSaldo.forEach(function(o) {
-          h += '<div style="padding:3px 8px;font-size:12px;color:var(--muted)">'+o.folio+(o.paciente?' — '+o.paciente:'')+'</div>';
-        });
-        h += '</details>';
-      }
-      if (orphSinVenta.length) {
-        h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">❓ Folios sin registro en sistema ('+orphSinVenta.length+')</summary>';
-        orphSinVenta.forEach(function(o) {
-          h += '<div style="padding:3px 8px;font-size:12px;color:var(--muted)">'+o.folio+'</div>';
-        });
-        h += '</details>';
-      }
+    if (_missingConSaldo.length) {
+      h += '<details open style="margin-bottom:12px;border:1px solid rgba(224,80,80,0.3);border-radius:8px;padding:8px;background:rgba(224,80,80,0.06)">';
+      h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:6px">🚨 ENTREGADOS SIN COBRAR — '+_missingConSaldo.length+' pedido'+(_missingConSaldo.length>1?'s':'')+'</summary>';
+      _missingConSaldo.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+        h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '<span style="font-size:11px;font-weight:700;color:#ff6b6b">Saldo: $'+m.saldo.toLocaleString()+'</span>';
+        h += '</div>';
+      });
+      h += '</details>';
     }
-
+    if (_missingSinSaldo.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ No encontrados — sin saldo pendiente ('+_missingSinSaldo.length+')</summary>';
+      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Probablemente entregados sin marcar en sistema</div>';
+      _missingSinSaldo.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+        h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '<span style="font-size:10px;color:var(--muted)">'+m.dias+'d</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+    if (orphConSaldo.length) {
+      h += '<details open style="margin-bottom:12px;border:1px solid rgba(255,160,0,0.3);border-radius:8px;padding:8px;background:rgba(255,160,0,0.06)">';
+      h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ffa500;margin-bottom:6px">⚠️ Pedidos viejos CON SALDO pendiente ('+orphConSaldo.length+')</summary>';
+      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">No están en cola de lab pero tienen saldo — verificar si se entregaron</div>';
+      orphConSaldo.forEach(function(o) {
+        h += '<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+        h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+o.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+(o.paciente||'')+'</span>';
+        h += '<span style="font-size:11px;font-weight:700;color:#ffa500">Saldo: $'+o.saldo.toLocaleString()+'</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+    if (orphSinSaldo.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#d4b84a;margin-bottom:6px">📦 Pedidos viejos liquidados ('+orphSinSaldo.length+')</summary>';
+      orphSinSaldo.forEach(function(o) {
+        h += '<div style="padding:3px 8px;font-size:12px;color:var(--muted)">'+o.folio+(o.paciente?' — '+o.paciente:'')+'</div>';
+      });
+      h += '</details>';
+    }
+    if (orphSinVenta.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">❓ Folios sin registro en sistema ('+orphSinVenta.length+')</summary>';
+      orphSinVenta.forEach(function(o) {
+        h += '<div style="padding:3px 8px;font-size:12px;color:var(--muted)">'+o.folio+'</div>';
+      });
+      h += '</details>';
+    }
     if (matched.length) {
       h += '<details><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#72c47e;margin-bottom:6px">✅ Coinciden ('+matched.length+')</summary>';
       matched.forEach(function(m) {
@@ -7416,85 +7493,24 @@ async function _conteoFinalizar() {
       h += '</details>';
     }
 
-    h += '<button class="btn btn-p" onclick="_conteoGuardar()" style="width:100%;padding:14px;margin-top:12px;font-size:14px;font-weight:700" id="conteo-btn-guardar">💾 Guardar y enviar conteo</button>';
+    h += '<button class="btn btn-g" onclick="document.getElementById(\'conteo-modal\').remove()" style="width:100%;padding:14px;margin-top:12px;font-size:14px">Cerrar</button>';
     h += '</div>';
     resEl.innerHTML = h;
 
-    // Store results for saving
-    var _missingConSaldo = missing.filter(function(m) { return m.saldo > 0; });
-    var _orphConSaldo = (typeof orphConSaldo !== 'undefined') ? orphConSaldo : [];
-    window._conteoResultados = {
-      sucursal: suc,
-      escaneados: _conteoFolios.map(function(f){return f.folio}),
-      coincidencias: matched,
-      en_sistema_no_escaneados: missing,
-      entregados_sin_cobrar: _missingConSaldo,
-      pedidos_viejos_con_saldo: _orphConSaldo,
-      escaneados_no_en_sistema: orphans,
-      match_count: matched.length,
-      mismatch_count: missing.length,
-      orphan_count: orphans.length,
-      sin_cobrar_count: _missingConSaldo.length,
-      viejos_con_saldo_count: _orphConSaldo.length
-    };
-
-    // Inject alert banner now that all analysis is done
-    var totalConSaldo = _missingConSaldo.length + _orphConSaldo.length;
-    var alertEl = document.getElementById('conteo-alert-placeholder');
-    if (alertEl && totalConSaldo) {
-      var ah = '<div style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:8px;padding:10px;margin-bottom:16px;text-align:center">';
-      ah += '<div style="font-size:16px;font-weight:800;color:#ff6b6b">🚨 '+totalConSaldo+' pedido'+(totalConSaldo>1?'s':'')+' con saldo pendiente</div>';
-      ah += '<div style="font-size:11px;color:#e08080;margin-top:4px">Revisar urgente — posibles entregas sin cobro</div>';
-      ah += '</div>';
-      alertEl.innerHTML = ah;
-    }
-
   } catch(e) {
     toast('Error al comparar: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Terminé de escanear — Ver resultados'; }
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Terminé de escanear — Enviar conteo'; }
   }
 }
 
-async function _conteoGuardar() {
-  if (!window._conteoResultados) return;
-  var btn = document.getElementById('conteo-btn-guardar');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
-
-  try {
-    var res = window._conteoResultados;
-    await db.from('inventario_auditorias').insert({
-      sucursal: res.sucursal,
-      tipo: 'conteo_fisico',
-      realizado_por: currentUser?.nombre || currentUser?.usuario || 'Desconocido',
-      datos: res
-    });
-
-    // Update last conteo date
-    var ultimoConteo = {};
-    try {
-      var {data:cfg} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
-      if (cfg) ultimoConteo = JSON.parse(cfg.value);
-    } catch(e) {}
-    ultimoConteo[res.sucursal] = new Date().toISOString().slice(0,10);
-    await db.from('app_config').upsert({ id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) }, { onConflict: 'id' });
-
-    toast('Conteo guardado correctamente', 'ok');
-    document.getElementById('conteo-modal')?.remove();
-    _conteoMarcarIniciado(); // Mark task as completed for today
-
-    // Refresh dashboard audit card if visible
-    _loadDashAuditoria();
-  } catch(e) {
-    toast('Error guardando conteo: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Conteo'; }
-  }
-}
+// _conteoGuardar removed — saving is now automatic in _conteoFinalizar()
 
 // ── Burbuja flotante: Tarea de Conteo Físico ─────────────────────────
 
 function _conteoCheckTarea() {
   // Solo para rol sucursal (admin y gerencia no necesitan la burbuja)
-  if (!currentUser || currentUser.rol !== 'sucursal') return;
+  if (!currentUser) return;
+  if (currentUser.rol === 'admin' || currentUser.rol === 'gerencia' || currentUser.rol === 'laboratorio') return;
   if (isTrainingMode()) return;
 
   var suc = currentUser.sucursal || '';
