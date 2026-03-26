@@ -1236,6 +1236,10 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
           Estrategia
         </div>
+        <div class="nav-item" id="nav-report-auditoria" style="display:none" onclick="go('auditoria-pedidos')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+          Auditoría Pedidos
+        </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
@@ -4291,6 +4295,27 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </style>
       </div>
 
+      <!-- AUDITORÍA PEDIDOS -->
+      <div class="view" id="view-auditoria-pedidos">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Auditoría Pedidos</h2><p>Inventario · Anomalías · Conteos físicos</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-p btn-sm" onclick="abrirConteoFisico()">📦 Conteo Físico</button>
+            <button class="btn btn-g btn-sm" onclick="loadAuditoriaPedidos()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="aud-tabs">
+            <button class="lc-tab active" onclick="_audTab('resumen')" id="aud-tab-resumen">📦 Resumen</button>
+            <button class="lc-tab" onclick="_audTab('anomalias')" id="aud-tab-anomalias">⚠️ Anomalías</button>
+            <button class="lc-tab" onclick="_audTab('conteos')" id="aud-tab-conteos">📋 Conteos</button>
+          </div>
+          <div id="aud-content-resumen"></div>
+          <div id="aud-content-anomalias" style="display:none"></div>
+          <div id="aud-content-conteos" style="display:none"></div>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -5008,6 +5033,7 @@ function setupApp(u) {
       document.getElementById('nav-report-asistencia').style.display = '';
       document.getElementById('nav-report-contabilidad').style.display = '';
       document.getElementById('nav-report-estrategia').style.display = '';
+      document.getElementById('nav-report-auditoria').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -5018,6 +5044,7 @@ function setupApp(u) {
       document.getElementById('nav-report-asistencia').style.display = 'none';
       document.getElementById('nav-report-contabilidad').style.display = 'none';
       document.getElementById('nav-report-estrategia').style.display = 'none';
+      document.getElementById('nav-report-auditoria').style.display = 'none';
       document.getElementById('nav-ventas-section').style.display = 'none';
     } else {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -5028,6 +5055,7 @@ function setupApp(u) {
       document.getElementById('nav-report-asistencia').style.display = 'none';
       document.getElementById('nav-report-contabilidad').style.display = 'none';
       document.getElementById('nav-report-estrategia').style.display = 'none';
+      document.getElementById('nav-report-auditoria').style.display = 'none';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {
@@ -5062,6 +5090,7 @@ function setupApp(u) {
     setTimeout(checkChangelog, 500);
     startDashRefresh();
     initRealtimeSubscriptions();
+    setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';
@@ -5175,7 +5204,7 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search'];
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search','conteo-input'];
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -5236,7 +5265,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, estrategia:27, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, estrategia:27, 'auditoria-pedidos':28, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5267,6 +5296,7 @@ function go(id) {
   if (id === 'asistencia')          { initAsistencia(); }
   if (id === 'contabilidad')        { initContabilidad(); }
   if (id === 'estrategia')          { initEstrategia(); }
+  if (id === 'auditoria-pedidos')   { loadAuditoriaPedidos(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
@@ -6707,6 +6737,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   h += '<button class="btn btn-g" onclick="go(\'historial-ventas\')" style="flex:1;min-width:140px;padding:14px;font-size:14px">📋 Historial</button>';
   h += '<button class="btn btn-g" onclick="go(\'caja\')" style="flex:1;min-width:140px;padding:14px;font-size:14px">💰 Caja</button>';
   h += '</div>';
+  h += '<div style="margin-bottom:16px"><button class="btn btn-g" onclick="abrirConteoFisico()" style="width:100%;padding:12px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px">📋 Conteo Físico de Inventario</button></div>';
   h += '<div style="margin-bottom:16px"><a href="https://www.canva.com/design/DAG9BCv557c/SHm5LE8dXneNOTOTHCSUAg/edit" target="_blank" rel="noopener" class="btn btn-g" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;font-size:13px;text-decoration:none">📄 Lista de Precios</a></div>';
 
   // Tareas pendientes — placeholder, se carga deferred
@@ -6859,12 +6890,17 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   Object.entries(ec).forEach(function(e){var c=eColors[e[0]]||'#888';h+='<div style="background:'+c+'11;border:1px solid '+c+'22;border-radius:8px;padding:6px;text-align:center"><div style="font-size:16px;font-weight:700;color:'+c+'">'+e[1]+'</div><div style="font-size:9px;color:var(--muted)">'+e[0].replace('En proceso ','')+'</div></div>';});
   h += '</div></div>';
 
+  // Auditoría pedidos — placeholder, se carga deferred
+  h += '<div id="dash-audit-section" class="card" style="margin-top:16px"><div class="card-head"><h3>📋 Auditoría Pedidos</h3><a onclick="go(\'auditoria-pedidos\')">Ver reporte →</a></div>';
+  h += '<div style="padding:12px 16px"><div style="text-align:center;padding:12px;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando auditoría...</div></div></div>';
+
   // Movimientos de caja hoy — placeholder, se carga async después del render
   h += '<div id="dash-caja-section" class="card" style="margin-top:16px"><div class="card-head"><h3>💰 Movimientos de caja hoy</h3><a onclick="go(\'caja\')">Ir a caja →</a></div>';
   h += '<div style="padding:12px 16px"><div style="text-align:center;padding:16px;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando movimientos...</div></div></div>';
 
   // Deferred load — fire after DOM render
   setTimeout(function(){ _loadDashCajaDeferred(utcStart, utcEnd); }, 50);
+  setTimeout(function(){ _loadDashAuditoria(); }, 100);
 
   return h;
 }
@@ -6931,6 +6967,729 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
 
 function _miniStat(lbl, val, color, icon) {
   return '<div class="stat"><div class="stat-val" style="color:'+color+'">'+val+'</div><div class="stat-lbl">'+icon+' '+lbl+'</div></div>';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ── AUDITORÍA PEDIDOS — Inventario, anomalías, conteo físico ────────
+// ══════════════════════════════════════════════════════════════════════
+
+async function _loadDashAuditoria() {
+  var section = document.getElementById('dash-audit-section');
+  if (!section) return;
+  try {
+    var [{data: esperando}, {data: auditorias}] = await Promise.all([
+      db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id').in('estado_lab',['Recibido en óptica','Listo para entrega']),
+      db.from('inventario_auditorias').select('datos,created_at').eq('tipo','auditoria_automatica').order('created_at',{ascending:false}).limit(1)
+    ]);
+    esperando = esperando || [];
+    var now = new Date();
+    var porSuc = {};
+    var esperandoMucho = 0;
+    esperando.forEach(function(o) {
+      var s = o.sucursal || 'Otra';
+      porSuc[s] = (porSuc[s]||0) + 1;
+      var dias = Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000);
+      if (dias > 3) esperandoMucho++;
+    });
+
+    var lastAudit = auditorias && auditorias[0] ? auditorias[0].datos : null;
+    var sinCobrar = lastAudit?.entregados_sin_cobrar?.length || 0;
+    var sinQC = lastAudit?.sin_revision_qc?.length || 0;
+
+    // Get last conteo dates
+    var ultimoConteo = {};
+    try {
+      var {data:cfgConteo} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
+      if (cfgConteo) ultimoConteo = JSON.parse(cfgConteo.value);
+    } catch(e) {}
+
+    var h = '<div class="card-head"><h3>📋 Auditoría Pedidos</h3><a onclick="go(\'auditoria-pedidos\')">Ver reporte →</a></div>';
+    h += '<div style="padding:12px 16px">';
+
+    // Stats row
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px;margin-bottom:12px">';
+    ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+      var n = porSuc[s] || 0;
+      h += '<div style="background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.12);border-radius:8px;padding:6px;text-align:center">';
+      h += '<div style="font-size:16px;font-weight:700;color:#72c47e">'+n+'</div>';
+      h += '<div style="font-size:9px;color:var(--muted)">'+s.substring(0,3)+' en suc.</div></div>';
+    });
+    if (esperandoMucho > 0) {
+      h += '<div style="background:rgba(224,128,128,0.08);border:1px solid rgba(224,128,128,0.2);border-radius:8px;padding:6px;text-align:center">';
+      h += '<div style="font-size:16px;font-weight:700;color:#e08080">'+esperandoMucho+'</div>';
+      h += '<div style="font-size:9px;color:var(--muted)">>3 días</div></div>';
+    }
+    h += '</div>';
+
+    // Anomalies badges
+    if (sinCobrar > 0 || sinQC > 0) {
+      h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+      if (sinCobrar > 0) h += '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(224,128,128,0.1);border:1px solid rgba(224,128,128,0.25);border-radius:6px;font-size:11px;color:#e08080;font-weight:600">⚠️ '+sinCobrar+' sin cobrar</span>';
+      if (sinQC > 0) h += '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:rgba(212,184,74,0.1);border:1px solid rgba(212,184,74,0.25);border-radius:6px;font-size:11px;color:#d4b84a;font-weight:600">🔍 '+sinQC+' sin QC</span>';
+      h += '</div>';
+    }
+
+    // Conteo status
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
+    ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+      var last = ultimoConteo[s];
+      var dias = last ? Math.floor((now.getTime() - new Date(last).getTime()) / 86400000) : 999;
+      var ok = dias <= 10;
+      var txt = dias >= 999 ? 'Nunca' : 'hace '+dias+'d';
+      h += '<span style="font-size:10px;padding:3px 8px;border-radius:4px;background:'+(ok?'rgba(114,196,126,0.08)':'rgba(224,128,128,0.08)')+';color:'+(ok?'#72c47e':'#e08080')+'">'+(ok?'✅':'⚠️')+' '+s.substring(0,3)+': '+txt+'</span>';
+    });
+    h += '</div>';
+
+    // Buttons
+    h += '<div style="display:flex;gap:8px">';
+    h += '<button class="btn btn-p btn-sm" onclick="abrirConteoFisico()" style="flex:1;padding:10px;font-size:12px">📦 Conteo Físico</button>';
+    h += '<button class="btn btn-g btn-sm" onclick="go(\'auditoria-pedidos\')" style="flex:1;padding:10px;font-size:12px">📋 Ver Reporte</button>';
+    h += '</div>';
+
+    h += '</div>';
+    section.innerHTML = h;
+  } catch(e) {
+    console.warn('Audit dash load:', e);
+    section.innerHTML = '<div class="card-head"><h3>📋 Auditoría Pedidos</h3></div><div style="padding:12px 16px;color:var(--muted);font-size:12px">Error cargando auditoría</div>';
+  }
+}
+
+// ── Conteo Físico Modal ──────────────────────────────────────────────
+
+var _conteoFolios = []; // [{folio, orden_id, paciente, estado_lab}]
+var _conteoSucursal = '';
+
+function abrirConteoFisico() {
+  _conteoFolios = [];
+  var suc = currentUser?.sucursal || '';
+  _conteoSucursal = suc;
+
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.id = 'conteo-modal';
+  ov.innerHTML = '<div class="m-box" style="max-width:600px;width:95%;max-height:90vh;overflow-y:auto">' +
+    '<div class="m-head"><h3>📦 Conteo Físico de Inventario</h3><span class="m-close" onclick="document.getElementById(\'conteo-modal\').remove()">✕</span></div>' +
+    '<div style="padding:16px" id="conteo-body">' +
+      (currentUser?.rol === 'sucursal' ?
+        '<div style="margin-bottom:12px"><div style="padding:10px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:14px;font-weight:600">' + suc + '</div><input type="hidden" id="conteo-suc" value="' + suc + '"></div>' :
+        '<div style="margin-bottom:12px">' +
+          '<label style="font-size:12px;color:var(--muted)">Sucursal</label>' +
+          '<select id="conteo-suc" style="width:100%;padding:10px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:14px" onchange="_conteoSucursal=this.value">' +
+            '<option value="Américas"'+(suc==='Américas'?' selected':'')+'>Américas</option>' +
+            '<option value="Pinocelli"'+(suc==='Pinocelli'?' selected':'')+'>Pinocelli</option>' +
+            '<option value="Magnolia"'+(suc==='Magnolia'?' selected':'')+'>Magnolia</option>' +
+          '</select>' +
+        '</div>') +
+      '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+        '<input id="conteo-input" placeholder="Folio manual (ej: 10538)" style="flex:1;padding:10px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--white);font-size:14px" onkeydown="if(event.key===\'Enter\'){_conteoAgregarManual()}">' +
+        '<button class="btn btn-g" onclick="_conteoAgregarManual()" style="padding:10px 14px">+</button>' +
+        '<button class="btn btn-p" onclick="_conteoScanQR()" style="padding:10px 14px">📷</button>' +
+      '</div>' +
+      '<div id="conteo-count" style="text-align:center;font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">0 escaneados</div>' +
+      '<div id="conteo-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px"></div>' +
+      '<div id="conteo-results" style="display:none"></div>' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-p" onclick="_conteoFinalizar()" style="flex:1;padding:12px" id="conteo-btn-finalizar">Finalizar Conteo</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+  document.body.appendChild(ov);
+  setTimeout(function() { document.getElementById('conteo-input')?.focus(); }, 200);
+}
+
+function _conteoAgregarManual() {
+  var inp = document.getElementById('conteo-input');
+  if (!inp || !inp.value.trim()) return;
+  _conteoAgregarFolio(inp.value.trim());
+  inp.value = '';
+  inp.focus();
+}
+
+function _conteoAgregarFolio(folio) {
+  // Clean folio — extract number from QR if it's a URL
+  if (folio.includes('?t=')) {
+    // Portal URL — extract token (not a folio)
+    toast('QR de portal detectado, usa el folio de la orden', 'warn');
+    return;
+  }
+  // Remove non-alphanumeric except dash
+  folio = folio.replace(/[^0-9a-zA-Z\-]/g, '').trim();
+  if (!folio) return;
+
+  // Dedup
+  if (_conteoFolios.some(function(f) { return f.folio === folio; })) {
+    toast('Folio ' + folio + ' ya escaneado', 'warn');
+    return;
+  }
+
+  _conteoFolios.push({ folio: folio });
+  // Haptic/vibrate
+  if (navigator.vibrate) navigator.vibrate(100);
+  _conteoRenderList();
+}
+
+function _conteoRenderList() {
+  var el = document.getElementById('conteo-list');
+  var cnt = document.getElementById('conteo-count');
+  if (cnt) cnt.textContent = _conteoFolios.length + ' escaneados';
+  if (!el) return;
+  if (!_conteoFolios.length) { el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:16px">Escanea o ingresa folios de órdenes</div>'; return; }
+  var h = '';
+  _conteoFolios.forEach(function(f, i) {
+    h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+    h += '<span style="color:#72c47e">✅</span>';
+    h += '<span style="flex:1;font-size:13px;color:var(--white)">' + f.folio + '</span>';
+    h += '<button onclick="_conteoFolios.splice('+i+',1);_conteoRenderList()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:14px;padding:2px 6px">✕</button>';
+    h += '</div>';
+  });
+  el.innerHTML = h;
+}
+
+function _conteoScanQR() {
+  if (!('BarcodeDetector' in window)) {
+    toast('Cámara no disponible en este dispositivo', 'error');
+    return;
+  }
+  var scanOv = document.createElement('div');
+  scanOv.id = 'conteo-scan-overlay';
+  scanOv.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  scanOv.innerHTML = '<div style="color:var(--beige);font-size:16px;font-weight:700;margin-bottom:8px">📷 Escanear QR de orden</div>' +
+    '<div style="color:#72c47e;font-size:14px;font-weight:700;margin-bottom:16px" id="conteo-scan-count">' + _conteoFolios.length + ' escaneados</div>' +
+    '<video id="conteo-scan-video" style="width:100%;max-width:400px;border-radius:12px;border:2px solid rgba(226,198,166,0.3)" autoplay playsinline></video>' +
+    '<div style="color:var(--muted);font-size:12px;margin-top:12px">Escanea cada sobre/bolsa de lentes. Toca "Listo" cuando termines.</div>' +
+    '<button onclick="_cerrarConteoScan()" style="margin-top:16px;padding:12px 32px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:Outfit,sans-serif;font-weight:700">Listo</button>';
+  document.body.appendChild(scanOv);
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+    var video = document.getElementById('conteo-scan-video');
+    if (!video) { stream.getTracks().forEach(function(t){t.stop()}); return; }
+    video.srcObject = stream;
+    window._conteoScanStream = stream;
+    var detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8'] });
+    var lastScan = '';
+    var lastTime = 0;
+    window._conteoScanInterval = setInterval(async function() {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      try {
+        var barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          var val = barcodes[0].rawValue;
+          var now = Date.now();
+          // Debounce same code for 2s
+          if (val === lastScan && now - lastTime < 2000) return;
+          lastScan = val;
+          lastTime = now;
+          _conteoAgregarFolio(val);
+          var scanCnt = document.getElementById('conteo-scan-count');
+          if (scanCnt) scanCnt.textContent = _conteoFolios.length + ' escaneados';
+        }
+      } catch(e) {}
+    }, 300);
+  }).catch(function() {
+    _cerrarConteoScan();
+    toast('No se pudo acceder a la cámara', 'error');
+  });
+}
+
+function _cerrarConteoScan() {
+  if (window._conteoScanInterval) { clearInterval(window._conteoScanInterval); window._conteoScanInterval = null; }
+  if (window._conteoScanStream) { window._conteoScanStream.getTracks().forEach(function(t){t.stop()}); window._conteoScanStream = null; }
+  var ov = document.getElementById('conteo-scan-overlay');
+  if (ov) ov.remove();
+  _conteoRenderList();
+}
+
+async function _conteoFinalizar() {
+  var suc = document.getElementById('conteo-suc')?.value || _conteoSucursal;
+  if (!suc) { toast('Selecciona una sucursal', 'error'); return; }
+  if (!_conteoFolios.length) { toast('No hay folios escaneados', 'error'); return; }
+
+  var btn = document.getElementById('conteo-btn-finalizar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Comparando...'; }
+
+  try {
+    // Get all orders waiting in this branch
+    var {data: esperando} = await db.from('ordenes_laboratorio')
+      .select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id,pacientes(nombre,apellidos)')
+      .eq('sucursal', suc)
+      .in('estado_lab', ['Recibido en óptica', 'Listo para entrega']);
+    esperando = esperando || [];
+
+    // Build map: folio → order
+    var dbMap = {};
+    esperando.forEach(function(o) {
+      var m = o.notas_laboratorio?.match(/Folio:\s*(\S+)/);
+      if (m) dbMap[m[1]] = o;
+    });
+
+    // Compare
+    var matched = [];
+    var orphans = []; // scanned but not in DB
+    var scannedFolios = new Set();
+
+    _conteoFolios.forEach(function(f) {
+      scannedFolios.add(f.folio);
+      if (dbMap[f.folio]) {
+        var o = dbMap[f.folio];
+        matched.push({ folio: f.folio, paciente: (o.pacientes?.nombre||'')+' '+(o.pacientes?.apellidos||''), estado: o.estado_lab });
+      } else {
+        orphans.push(f.folio);
+      }
+    });
+
+    var missing = []; // in DB but not scanned
+    Object.entries(dbMap).forEach(function(e) {
+      if (!scannedFolios.has(e[0])) {
+        var o = e[1];
+        var dias = Math.floor((Date.now() - new Date(o.updated_at).getTime()) / 86400000);
+        missing.push({ folio: e[0], paciente: (o.pacientes?.nombre||'')+' '+(o.pacientes?.apellidos||''), estado: o.estado_lab, dias: dias });
+      }
+    });
+
+    // Render results
+    var resEl = document.getElementById('conteo-results');
+    if (!resEl) return;
+    resEl.style.display = '';
+
+    var h = '<div style="margin-bottom:16px">';
+    h += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">Resultados del conteo — ' + suc + '</div>';
+
+    // Summary
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">';
+    h += '<div style="background:rgba(114,196,126,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#72c47e">'+matched.length+'</div><div style="font-size:10px;color:var(--muted)">Coinciden</div></div>';
+    h += '<div style="background:rgba(224,128,128,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#e08080">'+missing.length+'</div><div style="font-size:10px;color:var(--muted)">Faltan</div></div>';
+    h += '<div style="background:rgba(212,184,74,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d4b84a">'+orphans.length+'</div><div style="font-size:10px;color:var(--muted)">No en sistema</div></div>';
+    h += '</div>';
+
+    if (missing.length) {
+      h += '<details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ En sistema pero NO escaneados ('+missing.length+')</summary>';
+      missing.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+        h += '<span style="font-weight:600;color:var(--white);min-width:60px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '<span style="font-size:10px;color:#e08080">'+m.dias+'d</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+
+    if (orphans.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#d4b84a;margin-bottom:6px">⚠️ Escaneados pero NO en sistema ('+orphans.length+')</summary>';
+      orphans.forEach(function(f) {
+        h += '<div style="padding:4px 8px;font-size:12px;color:var(--muted)">'+f+'</div>';
+      });
+      h += '</details>';
+    }
+
+    if (matched.length) {
+      h += '<details><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#72c47e;margin-bottom:6px">✅ Coinciden ('+matched.length+')</summary>';
+      matched.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+        h += '<span style="font-weight:600;color:var(--white);min-width:60px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+
+    h += '<button class="btn btn-p" onclick="_conteoGuardar()" style="width:100%;padding:12px;margin-top:12px" id="conteo-btn-guardar">💾 Guardar Conteo</button>';
+    h += '</div>';
+    resEl.innerHTML = h;
+
+    // Store results for saving
+    window._conteoResultados = {
+      sucursal: suc,
+      escaneados: _conteoFolios.map(function(f){return f.folio}),
+      en_sistema_no_escaneados: missing,
+      escaneados_no_en_sistema: orphans,
+      match_count: matched.length,
+      mismatch_count: missing.length,
+      orphan_count: orphans.length
+    };
+
+  } catch(e) {
+    toast('Error al comparar: ' + e.message, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Finalizar Conteo'; }
+  }
+}
+
+async function _conteoGuardar() {
+  if (!window._conteoResultados) return;
+  var btn = document.getElementById('conteo-btn-guardar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+
+  try {
+    var res = window._conteoResultados;
+    await secureWrite('inventario_auditorias', 'insert', {
+      sucursal: res.sucursal,
+      tipo: 'conteo_fisico',
+      realizado_por: currentUser?.nombre || currentUser?.usuario || 'Desconocido',
+      datos: res
+    });
+
+    // Update last conteo date
+    var ultimoConteo = {};
+    try {
+      var {data:cfg} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
+      if (cfg) ultimoConteo = JSON.parse(cfg.value);
+    } catch(e) {}
+    ultimoConteo[res.sucursal] = new Date().toISOString().slice(0,10);
+    await secureWrite('app_config', 'upsert', { id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) });
+
+    toast('Conteo guardado correctamente', 'ok');
+    document.getElementById('conteo-modal')?.remove();
+    _conteoMarcarIniciado(); // Mark task as completed for today
+
+    // Refresh dashboard audit card if visible
+    _loadDashAuditoria();
+  } catch(e) {
+    toast('Error guardando conteo: ' + e.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar Conteo'; }
+  }
+}
+
+// ── Burbuja flotante: Tarea de Conteo Físico ─────────────────────────
+
+function _conteoCheckTarea() {
+  // Solo para sucursal, admin y gerencia
+  if (!currentUser || currentUser.rol === 'laboratorio') return;
+  if (isTrainingMode()) return;
+
+  var suc = currentUser.sucursal || '';
+  var hoy = new Date().toISOString().slice(0,10);
+  var hora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' })).getHours();
+
+  // Check localStorage for schedule and dismissals
+  var key = 'conteo_tarea_' + (suc || 'admin');
+  var estado = {};
+  try { estado = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+
+  // If already completed today, don't show
+  if (estado.completado === hoy) return;
+
+  // Determine if task is due today
+  var ultimoConteo = estado.ultimo_conteo || '';
+  var diasDesdeConteo = ultimoConteo ? Math.floor((Date.now() - new Date(ultimoConteo).getTime()) / 86400000) : 999;
+
+  // Show task if: it's past 11am AND (never done OR >10 days since last conteo OR manually scheduled for today)
+  var programado = estado.fecha_programada === hoy;
+  var vencido = diasDesdeConteo >= 10;
+  if (hora < 11 && !programado) return;
+  if (!vencido && !programado && diasDesdeConteo < 8) return;
+
+  // Check dismiss count (max 3 per day)
+  var dismisses = estado.dismisses || {};
+  var dismissHoy = dismisses[hoy] || 0;
+  if (dismissHoy >= 3) {
+    // Already dismissed 3 times — force show without dismiss option
+    _conteoMostrarBurbuja(true);
+    return;
+  }
+
+  _conteoMostrarBurbuja(false);
+}
+
+function _conteoMostrarBurbuja(sinDismiss) {
+  if (document.getElementById('conteo-burbuja')) return;
+
+  var bub = document.createElement('div');
+  bub.id = 'conteo-burbuja';
+  bub.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:99998;max-width:300px;background:linear-gradient(135deg,#2a2520,#1c1b19);border:2px solid rgba(226,198,166,0.3);border-radius:16px;padding:16px;box-shadow:0 8px 32px rgba(0,0,0,0.5);cursor:pointer;animation:conteo-pulse 2s infinite;font-family:Outfit,sans-serif';
+
+  var h = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">';
+  h += '<div style="width:40px;height:40px;background:linear-gradient(135deg,#e2c6a6,#d4b84a);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📋</div>';
+  h += '<div style="font-size:14px;font-weight:700;color:var(--beige);line-height:1.3">Tienes una tarea pendiente</div>';
+  h += '</div>';
+  h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.4">Es momento de hacer el conteo físico de inventario de tu sucursal.</div>';
+  h += '<div style="display:flex;gap:8px">';
+  h += '<button onclick="_conteoIniciarGuiado()" style="flex:1;padding:8px 12px;background:var(--accent);color:var(--bg);border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">Comenzar</button>';
+  if (!sinDismiss) {
+    h += '<button onclick="_conteoDismiss()" style="padding:8px 12px;background:var(--surface2);color:var(--muted);border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:12px;cursor:pointer;font-family:Outfit,sans-serif">Después</button>';
+  }
+  h += '</div>';
+  if (sinDismiss) {
+    h += '<div style="font-size:10px;color:#e08080;margin-top:8px;text-align:center">Ya pospusiste esta tarea 3 veces hoy</div>';
+  }
+  bub.innerHTML = h;
+  document.body.appendChild(bub);
+
+  // Add pulse animation if not exists
+  if (!document.getElementById('conteo-burbuja-css')) {
+    var style = document.createElement('style');
+    style.id = 'conteo-burbuja-css';
+    style.textContent = '@keyframes conteo-pulse{0%,100%{box-shadow:0 8px 32px rgba(0,0,0,0.5)}50%{box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 0 6px rgba(226,198,166,0.15)}}';
+    document.head.appendChild(style);
+  }
+}
+
+function _conteoDismiss() {
+  var suc = currentUser?.sucursal || 'admin';
+  var key = 'conteo_tarea_' + suc;
+  var hoy = new Date().toISOString().slice(0,10);
+  var estado = {};
+  try { estado = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+  if (!estado.dismisses) estado.dismisses = {};
+  estado.dismisses[hoy] = (estado.dismisses[hoy] || 0) + 1;
+  localStorage.setItem(key, JSON.stringify(estado));
+
+  var bub = document.getElementById('conteo-burbuja');
+  if (bub) bub.remove();
+
+  var restantes = 3 - estado.dismisses[hoy];
+  if (restantes > 0) {
+    toast('Puedes posponerla ' + restantes + ' vez' + (restantes > 1 ? 'es' : '') + ' más hoy', 'warn');
+  }
+}
+
+function _conteoIniciarGuiado() {
+  // Remove bubble
+  var bub = document.getElementById('conteo-burbuja');
+  if (bub) bub.remove();
+
+  // Open guided instructions overlay
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.id = 'conteo-guia-modal';
+  var suc = currentUser?.sucursal || 'tu sucursal';
+
+  ov.innerHTML = '<div class="m-box" style="max-width:500px;width:95%">' +
+    '<div class="m-head"><h3>📋 Conteo Físico de Inventario</h3><span class="m-close" onclick="document.getElementById(\'conteo-guia-modal\').remove()">✕</span></div>' +
+    '<div style="padding:20px" id="conteo-guia-body">' +
+      '<div style="text-align:center;margin-bottom:20px">' +
+        '<div style="font-size:48px;margin-bottom:8px">📦</div>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--beige);margin-bottom:4px">¡Hora del inventario!</div>' +
+        '<div style="font-size:13px;color:var(--muted)">Vamos a verificar que todos los lentes listos están en la sucursal</div>' +
+      '</div>' +
+      '<div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:20px">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:12px">¿Qué vas a hacer?</div>' +
+        '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">' +
+          '<div style="width:28px;height:28px;background:rgba(114,196,126,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#72c47e;flex-shrink:0">1</div>' +
+          '<div style="font-size:12px;color:var(--muted);line-height:1.5"><b style="color:var(--white)">Busca todos los sobres/bolsas de lentes</b> que están listos para que el cliente los recoja</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">' +
+          '<div style="width:28px;height:28px;background:rgba(114,196,126,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#72c47e;flex-shrink:0">2</div>' +
+          '<div style="font-size:12px;color:var(--muted);line-height:1.5"><b style="color:var(--white)">Escanea el QR de cada orden</b> con la cámara, o escribe el folio. La cámara no se cierra — solo apunta y pasa al siguiente</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">' +
+          '<div style="width:28px;height:28px;background:rgba(114,196,126,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#72c47e;flex-shrink:0">3</div>' +
+          '<div style="font-size:12px;color:var(--muted);line-height:1.5"><b style="color:var(--white)">Cuando termines, toca "Finalizar"</b> y el sistema compara lo que escaneaste contra lo que debería estar</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;align-items:flex-start">' +
+          '<div style="width:28px;height:28px;background:rgba(114,196,126,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#72c47e;flex-shrink:0">4</div>' +
+          '<div style="font-size:12px;color:var(--muted);line-height:1.5"><b style="color:var(--white)">Guarda el conteo</b> y listo. Si falta algún pedido, se notifica al administrador</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background:rgba(212,184,74,0.08);border:1px solid rgba(212,184,74,0.2);border-radius:8px;padding:10px 12px;margin-bottom:20px;font-size:11px;color:#d4b84a;display:flex;gap:8px;align-items:center">' +
+        '<span style="font-size:16px">💡</span>' +
+        '<span>Toma aproximadamente 2-5 minutos dependiendo de cuántos pedidos tengas</span>' +
+      '</div>' +
+      '<button onclick="document.getElementById(\'conteo-guia-modal\').remove();abrirConteoFisico();_conteoMarcarIniciado()" class="btn btn-p" style="width:100%;padding:14px;font-size:14px;font-weight:700">📷 Empezar a escanear</button>' +
+    '</div>' +
+  '</div>';
+  document.body.appendChild(ov);
+}
+
+function _conteoMarcarIniciado() {
+  var suc = currentUser?.sucursal || 'admin';
+  var key = 'conteo_tarea_' + suc;
+  var hoy = new Date().toISOString().slice(0,10);
+  var estado = {};
+  try { estado = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+  estado.completado = hoy;
+  estado.ultimo_conteo = hoy;
+  localStorage.setItem(key, JSON.stringify(estado));
+}
+
+// ── Vista Auditoría Pedidos (3 tabs) ─────────────────────────────────
+
+function _audTab(tab) {
+  ['resumen','anomalias','conteos'].forEach(function(t) {
+    var el = document.getElementById('aud-content-'+t);
+    var btn = document.getElementById('aud-tab-'+t);
+    if (el) el.style.display = t === tab ? '' : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
+async function loadAuditoriaPedidos() {
+  _audRenderResumen();
+  _audRenderAnomalias();
+  _audRenderConteos();
+}
+
+async function _audRenderResumen() {
+  var el = document.getElementById('aud-content-resumen');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><span class="spinner-sm"></span> Cargando...</div>';
+
+  try {
+    var {data: esperando} = await db.from('ordenes_laboratorio')
+      .select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id,pacientes(nombre,apellidos)')
+      .in('estado_lab', ['Recibido en óptica', 'Listo para entrega'])
+      .order('updated_at', {ascending: true});
+    esperando = esperando || [];
+
+    var now = new Date();
+    var h = '<div class="est-grid-3" style="margin-bottom:16px">';
+    ['Américas','Pinocelli','Magnolia'].forEach(function(suc) {
+      var items = esperando.filter(function(o) { return o.sucursal === suc; });
+      var porRevisar = items.filter(function(o) { return o.estado_lab === 'Recibido en óptica'; }).length;
+      var listos = items.filter(function(o) { return o.estado_lab === 'Listo para entrega'; }).length;
+      var mayores3 = items.filter(function(o) { return Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000) > 3; }).length;
+      var sucC = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4'};
+      h += '<div class="est-card">';
+      h += '<div style="font-size:14px;font-weight:700;color:'+(sucC[suc]||'#888')+';margin-bottom:8px">'+suc+'</div>';
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">👁 '+porRevisar+' por revisar · ✅ '+listos+' listos</div>';
+      if (mayores3) h += '<div style="font-size:11px;color:#e08080;font-weight:600">⚠️ '+mayores3+' esperando >3 días</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+
+    // List all waiting orders
+    if (esperando.length) {
+      h += '<div class="est-card">';
+      h += '<div style="font-size:13px;font-weight:700;color:var(--beige);margin-bottom:8px">Pedidos en sucursal ('+esperando.length+')</div>';
+      h += '<table class="est-table"><thead><tr><th>Folio</th><th>Paciente</th><th>Sucursal</th><th>Estado</th><th>Días</th></tr></thead><tbody>';
+      esperando.forEach(function(o) {
+        var folio = o.notas_laboratorio?.match(/Folio:\s*(\S+)/)?.[1] || '—';
+        var pac = ((o.pacientes?.nombre||'')+ ' '+(o.pacientes?.apellidos||'')).trim() || '—';
+        var dias = Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000);
+        var color = dias > 3 ? '#e08080' : dias > 1 ? '#d4b84a' : '#72c47e';
+        h += '<tr><td style="font-weight:600">'+folio+'</td><td>'+pac+'</td><td>'+o.sucursal+'</td>';
+        h += '<td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(o.estado_lab==='Listo para entrega'?'rgba(114,196,126,0.1)':'rgba(180,138,212,0.1)')+';color:'+(o.estado_lab==='Listo para entrega'?'#72c47e':'#b48ad4')+'">'+o.estado_lab+'</span></td>';
+        h += '<td style="color:'+color+';font-weight:600">'+dias+'d</td></tr>';
+      });
+      h += '</tbody></table></div>';
+    } else {
+      h += '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Sin pedidos pendientes en sucursales</div>';
+    }
+
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#e08080;padding:16px">Error: '+e.message+'</div>';
+  }
+}
+
+async function _audRenderAnomalias() {
+  var el = document.getElementById('aud-content-anomalias');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><span class="spinner-sm"></span> Cargando...</div>';
+
+  try {
+    var {data: auditorias} = await db.from('inventario_auditorias')
+      .select('datos,created_at,realizado_por')
+      .eq('tipo', 'auditoria_automatica')
+      .order('created_at', {ascending: false})
+      .limit(10);
+    auditorias = auditorias || [];
+
+    if (!auditorias.length) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Aún no hay auditorías automáticas registradas.<br>El sistema verificará automáticamente cada ~5 días.</div>';
+      return;
+    }
+
+    var h = '';
+    auditorias.forEach(function(aud) {
+      var d = aud.datos || {};
+      var fecha = new Date(aud.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric'});
+      var sinCobrar = d.entregados_sin_cobrar || [];
+      var sinQC = d.sin_revision_qc || [];
+      var espera = d.esperando_mucho || [];
+      var total = sinCobrar.length + sinQC.length;
+
+      h += '<details style="margin-bottom:12px;background:var(--surface2);border-radius:10px;overflow:hidden"'+(auditorias.indexOf(aud)===0?' open':'')+'>';
+      h += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--white);display:flex;align-items:center;gap:8px">';
+      h += '<span>📊 '+fecha+'</span>';
+      if (sinCobrar.length) h += '<span style="background:rgba(224,128,128,0.15);color:#e08080;padding:2px 8px;border-radius:10px;font-size:10px">'+sinCobrar.length+' sin cobrar</span>';
+      if (sinQC.length) h += '<span style="background:rgba(212,184,74,0.15);color:#d4b84a;padding:2px 8px;border-radius:10px;font-size:10px">'+sinQC.length+' sin QC</span>';
+      if (espera.length) h += '<span style="background:rgba(138,176,232,0.15);color:#8ab0e8;padding:2px 8px;border-radius:10px;font-size:10px">'+espera.length+' esperando</span>';
+      if (!total && !espera.length) h += '<span style="color:#72c47e">✅ Sin anomalías</span>';
+      h += '</summary>';
+      h += '<div style="padding:0 16px 12px">';
+
+      if (sinCobrar.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:8px 0 4px">⚠️ Entregados sin cobrar</div>';
+        sinCobrar.forEach(function(a) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — Saldo: $'+(a.saldo||0).toLocaleString('es-MX')+' ('+a.sucursal+')</div>';
+        });
+      }
+      if (sinQC.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#d4b84a;margin:8px 0 4px">🔍 Sin revisión de calidad</div>';
+        sinQC.forEach(function(a) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' ('+a.sucursal+')</div>';
+        });
+      }
+      if (espera.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#8ab0e8;margin:8px 0 4px">⏰ Esperando >3 días</div>';
+        espera.forEach(function(a) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — '+a.dias+'d en "'+a.estado_lab+'" ('+a.sucursal+')</div>';
+        });
+      }
+      h += '</div></details>';
+    });
+
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#e08080;padding:16px">Error: '+e.message+'</div>';
+  }
+}
+
+async function _audRenderConteos() {
+  var el = document.getElementById('aud-content-conteos');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><span class="spinner-sm"></span> Cargando...</div>';
+
+  try {
+    var {data: conteos} = await db.from('inventario_auditorias')
+      .select('id,sucursal,datos,created_at,realizado_por')
+      .eq('tipo', 'conteo_fisico')
+      .order('created_at', {ascending: false})
+      .limit(20);
+    conteos = conteos || [];
+
+    if (!conteos.length) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Aún no hay conteos físicos registrados.<br>Usa el botón "📦 Conteo Físico" para hacer el primer inventario.</div>';
+      return;
+    }
+
+    var h = '';
+    conteos.forEach(function(c) {
+      var d = c.datos || {};
+      var fecha = new Date(c.created_at).toLocaleDateString('es-MX', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      var ok = (d.match_count||0);
+      var falta = (d.mismatch_count||0);
+      var orph = (d.orphan_count||0);
+
+      h += '<details style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">';
+      h += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      h += '<span style="font-weight:600;color:var(--white)">'+fecha+'</span>';
+      h += '<span style="font-size:11px;color:var(--muted)">'+c.sucursal+' · '+c.realizado_por+'</span>';
+      h += '<span style="margin-left:auto;display:flex;gap:6px">';
+      h += '<span style="font-size:10px;color:#72c47e">✅'+ok+'</span>';
+      if (falta) h += '<span style="font-size:10px;color:#e08080">❌'+falta+'</span>';
+      if (orph) h += '<span style="font-size:10px;color:#d4b84a">⚠️'+orph+'</span>';
+      h += '</span></summary>';
+      h += '<div style="padding:0 16px 12px">';
+
+      if (d.en_sistema_no_escaneados?.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:6px 0 4px">❌ En sistema pero no encontrados ('+d.en_sistema_no_escaneados.length+')</div>';
+        d.en_sistema_no_escaneados.forEach(function(m) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+(m.folio||'?')+' — '+(m.paciente||'')+' ('+m.dias+'d)</div>';
+        });
+      }
+      if (d.escaneados_no_en_sistema?.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#d4b84a;margin:6px 0 4px">⚠️ Escaneados pero no en sistema ('+d.escaneados_no_en_sistema.length+')</div>';
+        d.escaneados_no_en_sistema.forEach(function(f) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+f+'</div>';
+        });
+      }
+      h += '</div></details>';
+    });
+
+    el.innerHTML = h;
+  } catch(e) {
+    el.innerHTML = '<div style="color:#e08080;padding:16px">Error: '+e.message+'</div>';
+  }
 }
 
 function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, today, orders, urgentes, demorados, rol) {

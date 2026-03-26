@@ -21,6 +21,10 @@
 # [functions."review-followup"]
 #   schedule = "0 17 * * 3"
 
+# Audit Cron — inventory audit every ~5 days at 11:00 AM CST (17:00 UTC)
+[functions."audit-cron"]
+  schedule = "0 17 1,6,11,16,21,26 * *"
+
 # Asistencia — checks missing check-ins every 30 min (10am-12pm CST = 16-18 UTC)
 [functions."asistencia-cron"]
   schedule = "*/30 16-18 * * *"
