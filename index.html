@@ -6256,6 +6256,13 @@ async function buscarParaEntrega(query) {
     var ordenes = [];
     var ventaData = null;
 
+    // Helper: buscar órdenes por paciente_id como fallback
+    var _entregaSelectOrd = 'id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)';
+    async function _fallbackByPaciente(pacId) {
+      var { data: ords2 } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).eq('paciente_id', pacId).order('created_at',{ascending:false}).limit(30);
+      return (ords2 || []).filter(function(o){ return o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
+    }
+
     // 1. Detectar QR de portal (URL con token)
     var tokenMatch = query.match(/[?&]t=([a-z0-9]+)/i);
     if (tokenMatch) {
@@ -6263,19 +6270,23 @@ async function buscarParaEntrega(query) {
       var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('token_portal', token).single();
       if (venta) {
         ventaData = venta;
-        var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos)').ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%');
+        var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%');
         ordenes = ords || [];
+        // Fallback: buscar por paciente_id si no hay match por texto en notas
+        if (!ordenes.length && venta.paciente_id) ordenes = await _fallbackByPaciente(venta.paciente_id);
       }
     }
 
     // 2. Buscar por folio numérico — trae órdenes del folio + folios promo (10538, 10538-2, 10538-3)
     if (!ordenes.length && /^\d+$/.test(query)) {
       // ilike '%Folio: 10538%' matchea "Folio: 10538", "Folio: 10538-2", "Folio: 10538-3"
-      var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)').ilike('notas_laboratorio', '%Folio: ' + query + '%');
+      var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + query + '%');
       ordenes = ords || [];
       // Buscar la venta asociada por folio
       var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', parseInt(query)).single();
       if (venta) ventaData = venta;
+      // Fallback: si encontramos la venta pero no órdenes por texto, buscar por paciente_id
+      if (!ordenes.length && ventaData && ventaData.paciente_id) ordenes = await _fallbackByPaciente(ventaData.paciente_id);
     }
 
     // 3. Buscar por texto (nombre)
@@ -6284,7 +6295,7 @@ async function buscarParaEntrega(query) {
       var { data: pacs } = await db.from('pacientes').select('id,nombre,apellidos,telefono').or(words.map(function(w){return 'nombre.ilike.%'+w+'%,apellidos.ilike.%'+w+'%'}).join(',')).limit(10);
       if (pacs && pacs.length) {
         var pacIds = pacs.map(function(p){return p.id});
-        var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)').in('paciente_id', pacIds).neq('estado_lab','Entregado').order('created_at',{ascending:false}).limit(20);
+        var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).in('paciente_id', pacIds).neq('estado_lab','Entregado').neq('estado_lab','Cancelado').order('created_at',{ascending:false}).limit(30);
         ordenes = ords || [];
         // Si hay órdenes, buscar ventas asociadas por folio
         if (ordenes.length) {
