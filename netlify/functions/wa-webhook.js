@@ -830,19 +830,14 @@ async function cmdAsistencia(phone, action, profileName) {
         var salH = new Date(record.salida).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: true });
         return { reply: '⚠️ Ya registraste tu salida hoy a las ' + salH, uid: uid };
       }
-      // Calculate hours worked (minus lunch if applicable)
+      // Calculate hours worked — always deduct 1h mandatory lunch break
       var totalMs = new Date(nowISO).getTime() - new Date(record.entrada).getTime();
-      var lunchMs = 0;
-      if (record.comida_inicio && record.comida_fin) {
-        lunchMs = new Date(record.comida_fin).getTime() - new Date(record.comida_inicio).getTime();
-      } else if (record.comida_inicio && !record.comida_fin) {
-        // Forgot to send "regreso" — count lunch as ongoing until now
-        lunchMs = new Date(nowISO).getTime() - new Date(record.comida_inicio).getTime();
-      }
+      var lunchMs = 3600000; // 1 hour mandatory break always deducted
       var netMs = totalMs - lunchMs;
+      if (netMs < 0) netMs = 0;
       var horas = Math.round(netMs / 36000) / 100; // 2 decimal places
       await supaFetch('asistencia?id=eq.' + record.id, { method: 'PATCH', body: JSON.stringify({ salida: nowISO, horas_trabajadas: horas }), prefer: 'return=minimal' });
-      return { reply: '✅ Salida registrada\n⏰ ' + horaLocal + '\n⏱️ Horas trabajadas: ' + horas.toFixed(2) + 'h', uid: uid };
+      return { reply: '✅ Salida registrada\n⏰ ' + horaLocal, uid: uid };
     }
 
     return { reply: '⚠️ Comando no reconocido.' };
