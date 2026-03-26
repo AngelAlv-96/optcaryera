@@ -7389,11 +7389,10 @@ function _conteoCheckTarea() {
   var ultimoConteo = estado.ultimo_conteo || '';
   var diasDesdeConteo = ultimoConteo ? Math.floor((Date.now() - new Date(ultimoConteo).getTime()) / 86400000) : 999;
 
-  // Show task if: it's past 11am AND (never done OR >10 days since last conteo OR manually scheduled for today)
-  var programado = estado.fecha_programada === hoy;
+  // Show task if: it's past 10am AND (never done OR >10 days since last conteo)
   var vencido = diasDesdeConteo >= 10;
-  if (hora < 11 && !programado) return;
-  if (!vencido && !programado && diasDesdeConteo < 8) return;
+  if (hora < 10) return;
+  if (!vencido) return;
 
   // Check dismiss count (max 3 per day)
   var dismisses = estado.dismisses || {};
