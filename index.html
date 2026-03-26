@@ -5516,7 +5516,12 @@ async function loadLab() {
   let filtered = data || [];
 
   if (q && /^\d[\d-]*$/.test(q) && filtered.length > 1) {
-    var strictFiltered = filtered.filter(function(o){ return getFolioFromOrder(o) === q; });
+    // Matchear folio exacto + folios de promo (-2, -3): buscar por folio base
+    var folioBase = q.replace(/-\d+$/, '');
+    var strictFiltered = filtered.filter(function(o){
+      var f = getFolioFromOrder(o);
+      return f === q || f === folioBase || f.replace(/-\d+$/, '') === folioBase;
+    });
     if (strictFiltered.length > 0) { filtered = strictFiltered; labTotalCount = strictFiltered.length; }
   }
 
@@ -5582,11 +5587,18 @@ function renderLabGrouped(data, esOptica) {
     const folioMap = {};
     const singles = [];
     const folioOrder = [];
+    // Primera pasada: detectar qué folios base tienen hermanos (-2, -3)
+    var folioBasesConHermanos = {};
     secOrders.forEach(o => {
-      const notas = o.notas_laboratorio || '';
-      const folio = notas.match(/Folio: ([^\s|]+)/)?.[1] || '';
-      const folioBase = folio.replace(/-\d+$/, '');
-      if (folio && folio !== folioBase) {
+      var folio = (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1] || '';
+      var folioBase = folio.replace(/-\d+$/, '');
+      if (folio && folio !== folioBase) folioBasesConHermanos[folioBase] = true;
+    });
+    // Segunda pasada: agrupar folio base + sus hermanos juntos
+    secOrders.forEach(o => {
+      var folio = (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1] || '';
+      var folioBase = folio.replace(/-\d+$/, '');
+      if (folio && folioBasesConHermanos[folioBase]) {
         if (!folioMap[folioBase]) { folioMap[folioBase] = []; folioOrder.push(folioBase); }
         folioMap[folioBase].push(o);
       } else {
@@ -5629,6 +5641,13 @@ function renderLabGrouped(data, esOptica) {
           return '<button onclick="event.stopPropagation();confirmarEnvioWA(\'' + waNum + '\',\'' + rawMsg.replace(/'/g,"\\\\'") + '\',\'' + nm.replace(/'/g,"\\\\'") + '\', null)" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.2);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">📱' + (phones.length>1?' '+ph.slice(-4):' Notificar') + '</button>';
         }).join('');
       }
+      // Botón "Entregar todos" si todos están listos para entrega
+      let entregarGrupoHtml = '';
+      if (allListos) {
+        const idsJson = JSON.stringify(group.map(o => o.id)).replace(/'/g, '&#39;');
+        const nmEsc = (names[0]||'').replace(/'/g, "\\'");
+        entregarGrupoHtml = `<button onclick="event.stopPropagation();_entregarGrupoLab(${idsJson},'${nmEsc}')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(114,196,126,0.15);color:#72c47e;border:1px solid rgba(114,196,126,0.25);border-radius:6px;cursor:pointer;font-size:10px;font-weight:700;font-family:Outfit,sans-serif">\ud83e\udd1d Entregar ${group.length}</button>`;
+      }
 
       html += `<div class="lab-folio-group" style="border:1px solid rgba(226,198,166,0.12);background:rgba(226,198,166,0.02);border-radius:10px;margin:6px 8px;overflow:hidden">
         <div class="lab-group-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;gap:6px;flex-wrap:wrap">
@@ -5638,7 +5657,7 @@ function renderLabGrouped(data, esOptica) {
             ${anyUrgent?'<span style="font-size:9px;padding:1px 5px;background:rgba(224,128,128,0.15);color:#e08080;border-radius:4px;font-weight:600">\u26a1</span>':''}
             ${allListos&&todosRevisados?'<span style="font-size:9px;padding:1px 5px;background:rgba(114,196,126,0.15);color:#72c47e;border-radius:4px;font-weight:600">\u2705 Listo</span>':''}
           </div>
-          <div style="display:flex;align-items:center;gap:4px">${waHtml}<svg class="lab-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg></div>
+          <div style="display:flex;align-items:center;gap:4px">${entregarGrupoHtml}${waHtml}<svg class="lab-chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg></div>
         </div>
         <div class="lab-group-body" style="border-top:1px solid rgba(255,255,255,0.03)">
           ${group.map(o => renderLabCard(o, esOptica)).join('')}
@@ -6450,6 +6469,13 @@ async function _cobrarYEntregar() {
     _actionBusy['entregarLentes'] = false;
     if (btn) { btn.disabled = false; btn.textContent = '💰 Cobrar y entregar'; }
   }
+}
+
+async function _entregarGrupoLab(ids, nombre) {
+  if (!ids || !ids.length) return;
+  if (!confirm('¿Marcar ' + ids.length + ' orden(es) de ' + nombre + ' como entregadas?')) return;
+  var asesor = currentUser?.nombre || '';
+  await _marcarEntregados(ids, asesor);
 }
 
 async function _marcarEntregados(ids, asesor) {
