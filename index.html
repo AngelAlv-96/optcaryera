@@ -7952,6 +7952,9 @@ async function _audRenderConteos() {
       var ok = (d.match_count||0);
       var falta = (d.mismatch_count||0);
       var orph = (d.orphan_count||0);
+      var allMissing = (d.entregados_sin_cobrar||[]).concat((d.en_sistema_no_escaneados||[]).filter(function(m){return !m.saldo || m.saldo<=0}));
+      var resoluciones = d.resoluciones || {};
+      var pendientes = allMissing.filter(function(m) { return !resoluciones[m.folio]; }).length;
 
       h += '<details style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">';
       h += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
@@ -7963,13 +7966,33 @@ async function _audRenderConteos() {
       if (falta) h += '<span style="font-size:10px;color:#e08080">❌'+falta+'</span>';
       if (sinCobrar) h += '<span style="font-size:10px;color:#ff6b6b;font-weight:700">🚨'+sinCobrar+'</span>';
       if (orph) h += '<span style="font-size:10px;color:#d4b84a">⚠️'+orph+'</span>';
+      if (pendientes > 0) h += '<span style="font-size:10px;background:#e08080;color:#fff;border-radius:4px;padding:1px 5px;font-weight:700">'+pendientes+' por aclarar</span>';
+      else if (allMissing.length > 0) h += '<span style="font-size:10px;background:#72c47e;color:#fff;border-radius:4px;padding:1px 5px;font-weight:700">Aclarado ✅</span>';
       h += '</span></summary>';
       h += '<div style="padding:0 16px 12px">';
+
+      // Cuadra summary if available
+      var esperados = d.match_count + d.mismatch_count;
+      var escaneados = (d.escaneados||[]).length || (ok + orph);
+      h += '<div style="display:flex;gap:16px;font-size:12px;color:var(--muted);margin:8px 0;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px">';
+      h += '<span>Esperados: <b style="color:var(--white)">'+esperados+'</b></span>';
+      h += '<span>Escaneados: <b style="color:var(--white)">'+escaneados+'</b></span>';
+      h += '</div>';
 
       if (d.entregados_sin_cobrar?.length) {
         h += '<div style="font-size:11px;font-weight:700;color:#ff6b6b;margin:6px 0 4px;padding:6px 8px;background:rgba(255,80,80,0.1);border-radius:6px">🚨 ENTREGADOS SIN COBRAR ('+d.entregados_sin_cobrar.length+')</div>';
         d.entregados_sin_cobrar.forEach(function(m) {
-          h += '<div style="font-size:12px;color:#ff6b6b;padding:2px 8px;font-weight:600">• '+(m.folio||'?')+' — '+(m.paciente||'')+' — Saldo: $'+(m.saldo||0).toLocaleString()+'</div>';
+          var res = resoluciones[m.folio];
+          var resColor = res === 'encontrado' ? '#72c47e' : res === 'no_encontrado' ? '#e08080' : '#888';
+          var resLabel = res === 'encontrado' ? '✅ Encontrado' : res === 'no_encontrado' ? '❌ No encontrado' : '🔴 Pendiente';
+          h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+          h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+(m.folio||'?')+'</span>';
+          h += '<span style="flex:1;color:var(--muted);font-size:11px">'+(m.paciente||'')+' · $'+(m.saldo||0).toLocaleString()+'</span>';
+          h += '<select onchange="_audResolverFolio(\''+c.id+'\',\''+m.folio+'\',this.value)" style="font-size:10px;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);color:'+resColor+';cursor:pointer">';
+          h += '<option value=""'+((!res)?' selected':'')+'>🔴 Pendiente</option>';
+          h += '<option value="encontrado"'+((res==='encontrado')?' selected':'')+'>✅ Encontrado</option>';
+          h += '<option value="no_encontrado"'+((res==='no_encontrado')?' selected':'')+'>❌ No encontrado</option>';
+          h += '</select></div>';
         });
       }
       if (d.en_sistema_no_escaneados?.length) {
@@ -7977,15 +8000,54 @@ async function _audRenderConteos() {
         if (sinSaldo.length) {
           h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:6px 0 4px">❌ No encontrados — sin saldo ('+sinSaldo.length+')</div>';
           sinSaldo.forEach(function(m) {
-            h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+(m.folio||'?')+' — '+(m.paciente||'')+' ('+m.dias+'d)</div>';
+            var res = resoluciones[m.folio];
+            var resColor = res === 'encontrado' ? '#72c47e' : res === 'no_encontrado' ? '#e08080' : '#888';
+            h += '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+            h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+(m.folio||'?')+'</span>';
+            h += '<span style="flex:1;color:var(--muted);font-size:11px">'+(m.paciente||'')+'</span>';
+            h += '<select onchange="_audResolverFolio(\''+c.id+'\',\''+m.folio+'\',this.value)" style="font-size:10px;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);color:'+resColor+';cursor:pointer">';
+            h += '<option value=""'+((!res)?' selected':'')+'>🔴 Pendiente</option>';
+            h += '<option value="encontrado"'+((res==='encontrado')?' selected':'')+'>✅ Encontrado</option>';
+            h += '<option value="no_encontrado"'+((res==='no_encontrado')?' selected':'')+'>❌ No encontrado</option>';
+            h += '</select></div>';
           });
         }
       }
-      if (d.escaneados_no_en_sistema?.length) {
-        h += '<div style="font-size:11px;font-weight:600;color:#d4b84a;margin:6px 0 4px">⚠️ Escaneados pero no en sistema ('+d.escaneados_no_en_sistema.length+')</div>';
-        d.escaneados_no_en_sistema.forEach(function(f) {
-          h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+f+'</div>';
+      // Pedidos viejos con saldo (orphans)
+      if (d.pedidos_viejos_con_saldo?.length) {
+        h += '<div style="font-size:11px;font-weight:600;color:#ffa500;margin:6px 0 4px">⚠️ Pedidos viejos CON SALDO ('+d.pedidos_viejos_con_saldo.length+')</div>';
+        d.pedidos_viejos_con_saldo.forEach(function(o) {
+          var res = resoluciones[o.folio];
+          var resColor = res === 'encontrado' ? '#72c47e' : res === 'no_encontrado' ? '#e08080' : '#888';
+          h += '<div style="display:flex;align-items:center;gap:6px;padding:3px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+          h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+(o.folio||'?')+'</span>';
+          h += '<span style="flex:1;color:var(--muted);font-size:11px">'+(o.paciente||'')+' · $'+(o.saldo||0).toLocaleString()+'</span>';
+          h += '<select onchange="_audResolverFolio(\''+c.id+'\',\''+o.folio+'\',this.value)" style="font-size:10px;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);background:var(--surface);color:'+resColor+';cursor:pointer">';
+          h += '<option value=""'+((!res)?' selected':'')+'>🔴 Pendiente</option>';
+          h += '<option value="encontrado"'+((res==='encontrado')?' selected':'')+'>✅ Encontrado</option>';
+          h += '<option value="no_encontrado"'+((res==='no_encontrado')?' selected':'')+'>❌ No encontrado</option>';
+          h += '</select></div>';
         });
+      }
+      if (d.escaneados_no_en_sistema?.length) {
+        var nonSaldoOrphs = (d.escaneados_no_en_sistema||[]).filter(function(f) {
+          return !(d.pedidos_viejos_con_saldo||[]).some(function(o){return o.folio===f});
+        });
+        if (nonSaldoOrphs.length) {
+          h += '<details style="margin:6px 0"><summary style="cursor:pointer;font-size:11px;font-weight:600;color:#d4b84a">⚠️ Escaneados no en sistema ('+nonSaldoOrphs.length+')</summary>';
+          nonSaldoOrphs.forEach(function(f) {
+            h += '<div style="font-size:12px;color:var(--muted);padding:2px 8px">• '+f+'</div>';
+          });
+          h += '</details>';
+        }
+      }
+      // Verificacion notes if available
+      if (d.verificacion?.length) {
+        h += '<details style="margin:6px 0"><summary style="cursor:pointer;font-size:11px;font-weight:600;color:var(--beige)">📝 Notas de verificación ('+d.verificacion.length+')</summary>';
+        d.verificacion.forEach(function(n) {
+          h += '<div style="font-size:12px;color:var(--muted);padding:2px 8px">• <b>'+n.folio+'</b>: '+n.nota+'</div>';
+        });
+        h += '</details>';
       }
       h += '</div></details>';
     });
@@ -7993,6 +8055,36 @@ async function _audRenderConteos() {
     el.innerHTML = h;
   } catch(e) {
     el.innerHTML = '<div style="color:#e08080;padding:16px">Error: '+e.message+'</div>';
+  }
+}
+
+async function _audResolverFolio(conteoId, folio, estado) {
+  try {
+    // Fetch current record
+    var {data: rec} = await db.from('inventario_auditorias').select('datos').eq('id', conteoId).single();
+    if (!rec) return;
+    var datos = rec.datos || {};
+    if (!datos.resoluciones) datos.resoluciones = {};
+    if (estado) {
+      datos.resoluciones[folio] = estado;
+    } else {
+      delete datos.resoluciones[folio];
+    }
+    // Update via dbwrite
+    await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update',
+        table: 'inventario_auditorias',
+        data: { datos: datos },
+        filters: [{ column: 'id', op: 'eq', value: conteoId }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+    toast(folio + ': ' + (estado === 'encontrado' ? '✅ Encontrado' : estado === 'no_encontrado' ? '❌ No encontrado' : '🔴 Pendiente'), 'ok');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
   }
 }
 
