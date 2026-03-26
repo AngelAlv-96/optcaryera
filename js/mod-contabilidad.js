@@ -362,9 +362,10 @@ function contMostrarFormGasto(editData) {
 
   // Photo OCR
   html += '<div style="margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px;border:1px dashed rgba(255,255,255,0.1)">';
-  html += '<div style="display:flex;gap:8px;align-items:center">';
-  html += '<label style="cursor:pointer;font-size:11px;color:var(--accent)" for="cont-file">📷 Subir comprobante (OCR automático)</label>';
-  html += '<input type="file" id="cont-file" accept="image/*" capture="environment" style="display:none" onchange="contProcesarFoto(this)">';
+  html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+  html += '<label style="cursor:pointer;font-size:11px;color:var(--accent)" for="cont-file">📎 Subir comprobante (OCR automático)</label>';
+  html += '<input type="file" id="cont-file" accept="image/*,application/pdf,.pdf" capture="environment" style="display:none" onchange="contProcesarFoto(this)">';
+  html += '<span style="font-size:9px;color:var(--muted)">Fotos, PDF</span>';
   html += '<span id="cont-ocr-status" style="font-size:10px;color:var(--muted)"></span>';
   html += '</div>';
   html += '<div id="cont-preview" style="display:none;margin-top:8px"><img id="cont-img" style="max-width:200px;border-radius:6px"></div>';
@@ -433,13 +434,26 @@ async function contProcesarFoto(input) {
   var st = document.getElementById('cont-ocr-status');
   st.innerHTML = '<span style="color:var(--accent)">⏳ Analizando comprobante... 10-20s</span>';
 
-  // Preview
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    document.getElementById('cont-img').src = e.target.result;
-    document.getElementById('cont-preview').style.display = '';
-  };
-  reader.readAsDataURL(file);
+  var mediaType = file.type || 'image/jpeg';
+  var isImage = mediaType.startsWith('image/');
+  var isPDF = mediaType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+  if (!isImage && !isPDF) {
+    st.innerHTML = '<span style="color:#f87171">Formato no soportado. Usa foto o PDF.</span>';
+    return;
+  }
+
+  // Preview (solo imágenes)
+  if (isImage) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('cont-img').src = e.target.result;
+      document.getElementById('cont-preview').style.display = '';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    document.getElementById('cont-preview').style.display = 'none';
+  }
 
   var base64 = await new Promise(function(res, rej) {
     var r = new FileReader();
@@ -448,7 +462,13 @@ async function contProcesarFoto(input) {
     r.readAsDataURL(file);
   });
 
-  var mediaType = file.type || 'image/jpeg';
+  // Construir content block según tipo de archivo
+  var fileBlock;
+  if (isPDF) {
+    fileBlock = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } };
+  } else {
+    fileBlock = { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };
+  }
 
   try {
     var resp = await fetch('/.netlify/functions/ia-chat', {
@@ -456,7 +476,7 @@ async function contProcesarFoto(input) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         max_tokens: 1024,
-        system: 'Eres un asistente que extrae datos de comprobantes de gastos (tickets, facturas, recibos). ' +
+        system: 'Eres un asistente que extrae datos de comprobantes de gastos (tickets, facturas, recibos, PDFs, XMLs de CFDI). ' +
           'Extrae: concepto (qué se pagó), monto (total en MXN), fecha (YYYY-MM-DD), establecimiento/proveedor. ' +
           'Si es un ticket de CFE/TELMEX/agua → categoría "Renta y servicios". Si es nómina → "Nómina y personal". ' +
           'Si es compra de materiales → "Proveedores/materiales". Si es otro → "Otros operativos". ' +
@@ -464,7 +484,7 @@ async function contProcesarFoto(input) {
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            fileBlock,
             { type: 'text', text: 'Extrae los datos de este comprobante de gasto. Responde SOLO JSON.' }
           ]
         }],
@@ -484,27 +504,29 @@ async function contProcesarFoto(input) {
       contUpdateSubcats();
       if (parsed.subcategoria) setTimeout(function() { document.getElementById('cont-subcat').value = parsed.subcategoria; }, 50);
     }
-    st.innerHTML = '<span style="color:#4ade80">✓ Datos extraídos</span>';
+    st.innerHTML = '<span style="color:#4ade80">✓ Datos extraídos' + (isPDF ? ' (PDF)' : '') + '</span>';
 
-    // Upload image to Supabase Storage
-    try {
-      var uploadResp = await fetch('/.netlify/functions/img-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket: 'chat-media',
-          path: 'gastos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_'),
-          base64: base64,
-          contentType: mediaType,
-          auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
-        })
-      });
-      var uploadData = await uploadResp.json();
-      if (uploadData.url) {
-        window._contComprobanteUrl = uploadData.url;
-        st.innerHTML += ' <span style="color:#60a5fa">📷 Imagen guardada</span>';
-      }
-    } catch(ue) { console.warn('Upload comprobante error:', ue); }
+    // Upload solo imágenes a Supabase Storage (documentos no se guardan)
+    if (isImage) {
+      try {
+        var uploadResp = await fetch('/.netlify/functions/img-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket: 'chat-media',
+            path: 'gastos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_'),
+            base64: base64,
+            contentType: mediaType,
+            auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
+          })
+        });
+        var uploadData = await uploadResp.json();
+        if (uploadData.url) {
+          window._contComprobanteUrl = uploadData.url;
+          st.innerHTML += ' <span style="color:#60a5fa">📷 Imagen guardada</span>';
+        }
+      } catch(ue) { console.warn('Upload comprobante error:', ue); }
+    }
   } catch(err) {
     st.innerHTML = '<span style="color:#f87171">Error OCR: ' + err.message + '</span>';
   }
