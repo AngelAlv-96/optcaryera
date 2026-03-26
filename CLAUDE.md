@@ -80,7 +80,7 @@ Si algo se rompe gravemente:
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
-- **Pagos**: Conekta (suscripciones recurrentes tienda) + Clip API (checkout links portal pacientes + pagos únicos tienda)
+- **Pagos**: Conekta (suscripciones recurrentes tienda, pendiente validación) + Clip API (checkout links portal pacientes + pagos únicos tienda + pagos recurrentes vía dashboard como plan B)
 - **Facturación**: Facturapi (CFDI 4.0, IVA 8% zona fronteriza) — sk_test_ configurada, pendiente activar producción
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
@@ -133,7 +133,7 @@ Si algo se rompe gravemente:
 - **laboratorio**: producción/surtido/bitácora, sin ventas/caja
 
 ## 📋 MÓDULOS ACTIVOS
-Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`), **Contabilidad** (estado de resultados + gastos con OCR + flujo de efectivo + facturación CFDI — `js/mod-contabilidad.js`), **Estrategia** (KPIs 90 días + histórico SICAR + monitor márgenes/descuentos + plan 90 días por rol — `js/mod-estrategia.js`).
+Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, USD, ARO PX), Lab, Producción, Bitácora, Promociones (NxM por categoría), Caja (auto-open, ticket corte), Comisiones (quincenal), Clari (chatbot WA + CRM Kanban + Realtime), Config (5 pestañas: Equipo/Ventas/Respaldos/Importar/Herramientas), Historial Ventas (incluye SICAR con abonos), Créditos, Garantías, Ventas Online (ONL folios), **Lentes de Contacto** (catálogo cards + CRM recompra + estadísticas — `js/mod-lc.js`), Compras Lab (con lista precios SALES), **Recursos Humanos** (asistencia WA + expedientes LFT + firmas digitales + permisos/vacaciones + reportes + actas — `js/mod-asistencia.js`), **Contabilidad** (estado de resultados + gastos con OCR + flujo de efectivo + facturación CFDI — `js/mod-contabilidad.js`), **Estrategia** (KPIs 90 días + histórico SICAR + monitor márgenes/descuentos + plan 90 días por rol — `js/mod-estrategia.js`), **Entrega de Lentes** (acceso rápido dashboard: escaneo QR/folio/nombre → ver órdenes + saldo → cobrar + marcar entregado — inline en `index.html`).
 
 ## 🏗️ CÓMO FUNCIONA INDEX.HTML
 - Es una SPA: todas las vistas son `<div class="view" id="view-nombre">` que se muestran/ocultan
@@ -256,21 +256,24 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Tracking: `[Review]` tag en `clari_conversations` (evita re-envío en 30 días)
 - Máx 20 encuestas por ejecución, rate limit 1.5s entre mensajes
 
-## 💳 SUSCRIPCIONES STRIPE (Tienda Online)
-- **Stripe account**: acct_1TD8PDF8cTOBxfic
-- **Flujo**: cliente elige suscripción → Google Sign-In → Stripe Checkout (hosted) → pago automático recurrente
-- **Google Sign-In**: Google Identity Services (GIS), ID token verificado server-side vía `oauth2.googleapis.com/tokeninfo`
-- **Zero npm dependencies**: Stripe REST API directo con fetch, webhook signature con crypto HMAC-SHA256 nativo
-- **stripe-subscribe.js**: verifica Google token, busca/crea Stripe customer por email, crea Checkout Session en modo subscription con `price_data` dinámico + `recurring`, soporta mix de items recurrentes + one-time
-- **stripe-webhook.js**: `invoice.payment_succeeded` → crea venta (folio ONL-SUB-xxx) + registra pago + notifica admin y cliente por WA; `invoice.payment_failed` → alerta; `customer.subscription.deleted` → notifica cancelación. Duplicate detection por referencia `stripe_{invoiceId}`
-- **stripe-portal.js**: devuelve status de suscripciones activas o crea sesión de Stripe Customer Portal (autogestión: cambiar tarjeta, cancelar, pausar)
-- **Frontend**: nav con Google auth state (avatar + menú dropdown), checkout bifurcado (sub→Stripe, one-time→dbwrite), modal "Mi cuenta" con lista de suscripciones + botón portal, post-payment handler para ?pago=ok
-- **Env vars Netlify**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`
-- **Webhook URL**: `https://optcaryera.netlify.app/.netlify/functions/stripe-webhook`
-- **Eventos webhook**: `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.subscription.deleted`
-- **Google Client ID**: configurar en tienda.html variable `GOOGLE_CID` (línea en el JS)
-- **Frecuencias**: 30d→mensual, 60d→bimestral, 90d→trimestral (mapeo a Stripe `interval: 'month'`)
-- **Descuento suscripción**: 10% automático (aplicado en frontend antes de enviar a Stripe)
+## 💳 SUSCRIPCIONES RECURRENTES (Tienda Online)
+- **Estado actual**: Conekta en proceso de validación de cuenta (esperando respuesta a solicitud de info, mar 2026)
+- **Stripe**: ⛔ ABANDONADO — Stripe bloqueó la cuenta por "dispositivos médicos" (lentes de contacto). stripe-subscribe.js, stripe-webhook.js, stripe-portal.js marcados DEPRECATED
+- **Conekta** (código listo, cuenta pendiente):
+  - `conekta-subscribe.js`: Google auth + planes dinámicos + HostedPayment checkout
+  - `conekta-webhook.js`: `order.paid` → crea venta (ONL-SUB-xxx) + registra pago + notifica WA + lc_seguimiento
+  - Frontend en `tienda.html`: Google Sign-In + toggle suscripción + frecuencias (30/60/90 días) + descuento 10%
+  - Env vars: `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`, `GOOGLE_CLIENT_ID`
+  - Webhook URL: `https://optcaryera.netlify.app/.netlify/functions/conekta-webhook`
+- **Plan B — Clip pagos recurrentes** (si Conekta no procede):
+  - Clip tiene pagos recurrentes en dashboard (`dashboard.clip.mx/payments/recurring/plans`)
+  - Soporta semanal/quincenal/mensual, tarjeta + efectivo en tiendas
+  - ⚠️ Solo se crean planes desde dashboard (NO hay API de recurrentes), clientes se suscriben vía link compartido
+  - Clip NO tiene restricción con lentes de contacto (a diferencia de Stripe) — incluso se promocionan para ópticas
+  - Ya tenemos cuenta Clip verificada y activa (pagos únicos funcionando)
+- **Google Sign-In**: ✅ configurado, `GOOGLE_CID` en tienda.html
+- **Frecuencias**: 30d→mensual, 60d→bimestral, 90d→trimestral
+- **Descuento suscripción**: 10% automático
 
 ## 📊 CONTABILIDAD (mod-contabilidad.js)
 - 4 pestañas: Estado de Resultados, Gastos, Flujo de Efectivo, Facturación CFDI
@@ -299,7 +302,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v190
+## 📊 VERSIÓN ACTIVA: v191
+Cambios v191: Acceso rápido "Entregar Lentes" en dashboard. **Nuevo botón "📦 Entregar Lentes"** en quick actions del dashboard de sucursal y admin. **Modal de entrega**: input de búsqueda con detección inteligente — escaneo QR del ticket de venta (URL portal con token), QR de orden de lab (folio texto), escritura de folio numérico, o búsqueda por nombre de paciente. Soporta pistola barcode (agregado a `SCAN_IDS`) y cámara QR (BarcodeDetector API). **Folios de promo 3x1**: búsqueda por folio base (ej: 10538) trae automáticamente todos los folios hermanos (10538, 10538-2, 10538-3) gracias a `ilike '%Folio: 10538%'`. **Resultados consolidados**: muestra nombre paciente, estado de pago (saldo pendiente en amarillo o "Liquidada" en verde), lista de órdenes con checkboxes (pre-checkeadas si están en "Listo para entrega"), selector de asesor que entrega. **Cobro integrado**: si hay saldo pendiente, el asesor puede registrar abono directamente en el modal (método de pago + monto + referencia) antes de entregar — inserta en `venta_pagos`, actualiza `ventas.pagado/saldo/estado`. Botón alternativo "Entregar sin cobrar" disponible. **Registro en bitácora**: al confirmar, cada orden se marca como `estado_lab='Entregado'` y se agrega `Entregó: NombreAsesor (fecha)` en `notas_laboratorio`. Protección anti-doble-click con `_actionBusy`. **Tutorial integrado**: agregado al sistema de guías de entrenamiento (`GUIAS_ENTRENAMIENTO.entrega`) con 6 pasos. **Onboarding primer uso**: la primera vez que se abre el modal, muestra guía visual con las 5 funcionalidades clave + botón "Entendido, no mostrar de nuevo" (persiste en localStorage). Sin cambios a DB.
 Cambios v190: Fix actas falsas RH + ver/borrar actas en expedientes. **ASISTENCIA_START_DATE movido a 2026-03-25**: el 23 de marzo se activó el sistema pero los empleados no empezaron a fichar hasta el 25 — el lookback de 7 días al registrar "entrada" generaba actas de falta injustificadas por días donde nadie sabía que debía fichar. Corregido en `wa-webhook.js` y `asistencia-cron.js`. **Expedientes mejorados (mod-asistencia.js)**: sección de documentos rediseñada — cards visuales con fondo rojo para actas y blanco para reportes, detección inteligente de actas cruzando `asistencia_firmas` con registros de falta en `asistencia` (antes usaba heurística incorrecta `periodo_inicio === periodo_fin`), muestra fechas exactas de falta en rojo, fecha de envío, contador de actas en header. **Botón borrar actas (admin only)**: 🗑️ elimina el documento de `asistencia_firmas` + todos los registros de falta asociados en `asistencia` dentro del periodo, con confirmación. **No hay actas de retardo**: los retardos solo notifican por WA, no generan documentos. Sin cambios a DB.
 Cambios v189: Links directos de reseña Google + desactivar follow-up. **Links de reseña actualizados**: los 3 links de Google Maps para reseñas cambiados de `maps.app.goo.gl` (ficha del negocio) a `g.page/r/.../review` (formulario directo de reseña) en `wa-webhook.js` y `review-followup.js`. Américas: `g.page/r/CV9ZD9ZPVjvbEBM/review`, Pinocelli: `g.page/r/Cdzzax18yI15EBM/review`, Magnolia: `g.page/r/CTVxzblIsQ6IEBM/review`. **review-followup.js desactivado**: cron comentado en `netlify.toml` — el segundo toque era demasiado insistente y además enviaba freeform fuera de ventana 24h (probablemente rechazado por Twilio). Con links directos la fricción baja y no se necesita insistir. **Links de ubicación Magnolia sin cambio**: los `maps.app.goo.gl` en DEFAULT_KNOWLEDGE de wa-webhook.js y meta-webhook.js se mantienen (son para indicar ubicación, no para reseñas). Sin cambios a DB.
 Cambios v188: Reactivación Magnolia ejecutada + Clari entrenada + filtro chat. **Lista SICAR**: 116 clientes extraídos de Excel SICAR (ventas Magnolia ene-mar 2024 pre-mudanza), cruzados con directorio — 116 con teléfono, insertados en `app_config` id=`magnolia_contacts`. **magnolia-reactivate.js reescrito**: lee lista estática de `app_config` en vez de tabla `ventas` (datos SICAR no estaban en DB). Cron semanal desactivado en `netlify.toml` (envío único manual). **115 mensajes enviados** el 2026-03-25 en 3 rondas manuales. **Clari entrenada (wa-webhook.js)**: contexto Magnolia mejorado con referencias detalladas (Plaza El Reloj, Tostadas El Primo, Helados Trevly), link Google Maps siempre, reglas de trato (no insistir con desinteresados, disculparse con molestos, máx 2 msgs sin respuesta). **Clari entrenada (meta-webhook.js)**: misma ubicación Magnolia para FB Messenger/Instagram, contexto especial para gente de Facebook Ads preguntando cómo llegar. **Filtro chat Clari**: conversaciones de campañas masivas (magnolia-reactivate, review-cron, lc-cron) sin respuesta del cliente se ocultan de la lista — aparecen automáticamente cuando el cliente responde. **"Examen gratuito" → "Examen incluido"** en todos los canales (más ético). **Fix estrategia (mod-estrategia.js)**: `_estGetMonthVal` ahora usa `Math.max(sicar, db)` para meses donde ambas fuentes tienen datos — SICAR tenía dato parcial de marzo ($20K) que enmascaraba ventas reales del sistema nuevo ($110K+). **Fix widget metas diarias**: fecha de "hoy" ahora usa timezone Chihuahua correctamente (`toLocaleString` con timezone antes de `.slice(0,10)`), evita contar ventas del día anterior por diferencia UTC. **Badges de campaña en chat Clari**: conversaciones muestran etiqueta junto al nombre — 🏪 Magnolia (reactivación), 🔄 LC Recompra (recordatorios LC), ⭐ Encuesta (opinión). Detecta por tags en historial (`[Magnolia-Reactivation]`, `[LC-Recompra]`, `[Review]`). **DB**: nuevo registro `app_config` id=`magnolia_contacts` (JSON array, 116 contactos con name+phone).
@@ -404,7 +408,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 5. Precios Marina pendientes de confirmar
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify (nueva cuenta), ✅ webhook activo (Tienda LC Pagos), ✅ llave firma producción, ⬜ subir Constancia Situación Fiscal actualizada, ⬜ probar flujo completo
+8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify (nueva cuenta), ✅ webhook activo (Tienda LC Pagos), ✅ llave firma producción, ✅ código completo (conekta-subscribe.js + conekta-webhook.js + frontend), ⏳ validación de cuenta en proceso (Conekta pidió info sobre pasarela actual/historial/contracargos — se les respondió que es sistema nuevo sin historial previo, mar 2026), ⬜ subir Constancia Situación Fiscal actualizada, ⬜ probar flujo completo. **Plan B**: Clip pagos recurrentes desde dashboard (sin API, manual) — cuenta ya verificada, sin restricción con LC
 9. **Google Sign-In**: ✅ configurado
 10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js

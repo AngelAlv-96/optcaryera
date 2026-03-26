@@ -5175,7 +5175,7 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input'];
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search'];
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -6099,6 +6099,375 @@ async function editarTipoCambio() {
   toast('✓ Tipo de cambio actualizado: $' + _tipoCambio.toFixed(2));
 }
 
+// ═══════════════════════════════════════════════════════════
+// ENTREGA DE LENTES — Acceso rápido desde dashboard
+// ═══════════════════════════════════════════════════════════
+var _entregaOverlay = null;
+var _entregaVentaData = null;
+
+function abrirEntregaLentes() {
+  if (_entregaOverlay) _entregaOverlay.remove();
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.style.zIndex = '99999';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); _entregaOverlay = null; };
+  ov.innerHTML = '<div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">' +
+      '<h3 style="font-family:\'Cormorant Garamond\',serif;font-size:20px;color:var(--beige);margin:0">📦 Entrega de Lentes</h3>' +
+      '<button onclick="this.closest(\'.m-overlay\').remove();_entregaOverlay=null" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-bottom:16px">' +
+      '<input id="entrega-search" type="text" placeholder="Escanea QR, folio o nombre del paciente..." ' +
+        'onkeydown="if(event.key===\'Enter\'){event.preventDefault();buscarParaEntrega(this.value)}" ' +
+        'style="flex:1;background:var(--surface2);border:2px solid rgba(226,198,166,0.25);border-radius:10px;padding:12px 14px;color:var(--white);font-family:\'Outfit\',sans-serif;font-size:14px;outline:none;box-sizing:border-box" autofocus>' +
+      '<button onclick="_entregaScanQR()" title="Escanear QR con cámara" class="btn btn-g" style="padding:12px 14px;font-size:16px;flex-shrink:0">' +
+        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>' +
+      '</button>' +
+      '<button onclick="buscarParaEntrega(document.getElementById(\'entrega-search\').value)" class="btn btn-p" style="padding:12px 16px;font-size:13px;flex-shrink:0">Buscar</button>' +
+    '</div>' +
+    '<div id="entrega-results" style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Escanea el ticket, QR de orden o escribe el folio/nombre del paciente</div>' +
+  '</div>';
+  document.body.appendChild(ov);
+  _entregaOverlay = ov;
+  // Onboarding: mostrar guía rápida la primera vez
+  if (!localStorage.getItem('entrega_onboarding')) {
+    var results = document.getElementById('entrega-results');
+    if (results) {
+      results.innerHTML = '<div style="background:rgba(226,198,166,0.06);border:1px solid rgba(226,198,166,0.15);border-radius:10px;padding:14px;text-align:left">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--beige);margin-bottom:10px">Bienvenido a Entrega de Lentes</div>' +
+        '<div style="font-size:12px;color:var(--white);line-height:1.7">' +
+          '<div style="margin-bottom:6px">📷 <strong>Escanea</strong> el QR del ticket impreso, del portal o de la orden de lab</div>' +
+          '<div style="margin-bottom:6px">⌨ <strong>Escribe</strong> el n\u00famero de folio o el nombre del paciente</div>' +
+          '<div style="margin-bottom:6px">📋 Se muestran <strong>todos los folios</strong> de la venta (incluye 3x1: 10538, 10538-2, 10538-3)</div>' +
+          '<div style="margin-bottom:6px">💰 Si hay <strong>saldo pendiente</strong>, puedes cobrar aqu\u00ed mismo antes de entregar</div>' +
+          '<div>✅ Las \u00f3rdenes listas se <strong>marcan autom\u00e1ticamente</strong> — solo confirma la entrega</div>' +
+        '</div>' +
+        '<button onclick="localStorage.setItem(\'entrega_onboarding\',\'1\');this.closest(\'div\').parentElement.innerHTML=\'Escanea el ticket, QR de orden o escribe el folio/nombre del paciente\'" style="margin-top:10px;background:rgba(226,198,166,0.1);border:1px solid rgba(226,198,166,0.2);border-radius:6px;padding:6px 14px;color:var(--beige);font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">Entendido, no mostrar de nuevo</button>' +
+      '</div>';
+    }
+  }
+  setTimeout(function() { var inp = document.getElementById('entrega-search'); if (inp) inp.focus(); }, 100);
+}
+
+function _entregaScanQR() {
+  if (!('BarcodeDetector' in window)) {
+    var code = prompt('Ingresa el folio o escanea manualmente:');
+    if (code) buscarParaEntrega(code.trim());
+    return;
+  }
+  var scanOv = document.createElement('div');
+  scanOv.id = 'entrega-scan-overlay';
+  scanOv.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  scanOv.innerHTML = '<div style="color:var(--beige);font-size:16px;font-weight:700;margin-bottom:16px">📷 Escanear QR o código de barras</div>' +
+    '<video id="entrega-scan-video" style="width:100%;max-width:400px;border-radius:12px;border:2px solid rgba(226,198,166,0.3)" autoplay playsinline></video>' +
+    '<div style="color:var(--muted);font-size:12px;margin-top:12px">Apunta la cámara al QR del ticket, portal o etiqueta de orden</div>' +
+    '<button onclick="_cerrarEntregaScan()" style="margin-top:16px;padding:10px 24px;background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:13px;cursor:pointer;font-family:Outfit,sans-serif">Cancelar</button>';
+  document.body.appendChild(scanOv);
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream) {
+    var video = document.getElementById('entrega-scan-video');
+    if (!video) { stream.getTracks().forEach(function(t){t.stop()}); return; }
+    video.srcObject = stream;
+    window._entregaScanStream = stream;
+    var detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13', 'ean_8'] });
+    window._entregaScanInterval = setInterval(async function() {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      try {
+        var barcodes = await detector.detect(video);
+        if (barcodes.length > 0) {
+          var val = barcodes[0].rawValue;
+          _cerrarEntregaScan();
+          var inp = document.getElementById('entrega-search');
+          if (inp) inp.value = val;
+          buscarParaEntrega(val);
+        }
+      } catch(e) {}
+    }, 300);
+  }).catch(function() {
+    _cerrarEntregaScan();
+    var code = prompt('No se pudo acceder a la cámara.\nIngresa el folio manualmente:');
+    if (code) buscarParaEntrega(code.trim());
+  });
+}
+
+function _cerrarEntregaScan() {
+  if (window._entregaScanInterval) { clearInterval(window._entregaScanInterval); window._entregaScanInterval = null; }
+  if (window._entregaScanStream) { window._entregaScanStream.getTracks().forEach(function(t){t.stop()}); window._entregaScanStream = null; }
+  var ov = document.getElementById('entrega-scan-overlay');
+  if (ov) ov.remove();
+}
+
+async function buscarParaEntrega(query) {
+  if (!query || !query.trim()) return;
+  query = query.trim();
+  var results = document.getElementById('entrega-results');
+  if (!results) return;
+  results.innerHTML = '<span class="spinner-sm"></span> Buscando...';
+
+  try {
+    var ordenes = [];
+    var ventaData = null;
+
+    // 1. Detectar QR de portal (URL con token)
+    var tokenMatch = query.match(/[?&]t=([a-z0-9]+)/i);
+    if (tokenMatch) {
+      var token = tokenMatch[1];
+      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('token_portal', token).single();
+      if (venta) {
+        ventaData = venta;
+        var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos)').ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%');
+        ordenes = ords || [];
+      }
+    }
+
+    // 2. Buscar por folio numérico — trae órdenes del folio + folios promo (10538, 10538-2, 10538-3)
+    if (!ordenes.length && /^\d+$/.test(query)) {
+      // ilike '%Folio: 10538%' matchea "Folio: 10538", "Folio: 10538-2", "Folio: 10538-3"
+      var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)').ilike('notas_laboratorio', '%Folio: ' + query + '%');
+      ordenes = ords || [];
+      // Buscar la venta asociada por folio
+      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', parseInt(query)).single();
+      if (venta) ventaData = venta;
+    }
+
+    // 3. Buscar por texto (nombre)
+    if (!ordenes.length && !/^\d+$/.test(query) && !tokenMatch) {
+      var words = query.toLowerCase().split(/\s+/);
+      var { data: pacs } = await db.from('pacientes').select('id,nombre,apellidos,telefono').or(words.map(function(w){return 'nombre.ilike.%'+w+'%,apellidos.ilike.%'+w+'%'}).join(',')).limit(10);
+      if (pacs && pacs.length) {
+        var pacIds = pacs.map(function(p){return p.id});
+        var { data: ords } = await db.from('ordenes_laboratorio').select('id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)').in('paciente_id', pacIds).neq('estado_lab','Entregado').order('created_at',{ascending:false}).limit(20);
+        ordenes = ords || [];
+        // Si hay órdenes, buscar ventas asociadas por folio
+        if (ordenes.length) {
+          var folios = [];
+          ordenes.forEach(function(o) {
+            var m = (o.notas_laboratorio||'').match(/Folio: (\d+)/);
+            if (m) folios.push(parseInt(m[1]));
+          });
+          if (folios.length) {
+            var uniqueFolios = [...new Set(folios)];
+            var { data: ventas } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id').in('folio', uniqueFolios);
+            if (ventas && ventas.length === 1) ventaData = ventas[0];
+          }
+        }
+      }
+    }
+
+    // Filtrar por sucursal si es rol sucursal
+    if (currentUser?.rol === 'sucursal' && currentUser?.sucursal) {
+      ordenes = ordenes.filter(function(o) { return o.sucursal === currentUser.sucursal; });
+    }
+
+    if (!ordenes.length) {
+      results.innerHTML = '<div style="padding:20px;text-align:center"><div style="font-size:24px;margin-bottom:8px">🔍</div><div style="color:var(--muted);font-size:13px">No se encontraron órdenes para "<strong style="color:var(--white)">' + query.replace(/</g,'&lt;') + '</strong>"</div></div>';
+      return;
+    }
+
+    _entregaVentaData = ventaData;
+    _renderEntregaResultados(ordenes, ventaData);
+  } catch(e) {
+    results.innerHTML = '<div style="color:#e08080;font-size:13px">Error: ' + (e.message||e) + '</div>';
+  }
+}
+
+function _renderEntregaResultados(ordenes, ventaData) {
+  var results = document.getElementById('entrega-results');
+  if (!results) return;
+
+  // Extraer nombre del paciente
+  var pac = ordenes[0]?.pacientes;
+  var nombre = pac ? (pac.nombre||'') + ' ' + (pac.apellidos||'') : '';
+  nombre = nombre.trim() || 'Paciente';
+  var tel = pac?.telefono || '';
+
+  // Extraer folio
+  var folioMatch = (ordenes[0]?.notas_laboratorio||'').match(/Folio: (\S+)/);
+  var folio = folioMatch ? folioMatch[1] : '—';
+
+  var h = '';
+
+  // Header paciente
+  h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+  h += '<div style="width:44px;height:44px;border-radius:50%;background:rgba(226,198,166,0.1);border:1px solid rgba(226,198,166,0.2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">👤</div>';
+  h += '<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:var(--white);font-family:\'Cormorant Garamond\',serif">' + nombre + '</div>';
+  h += '<div style="font-size:11px;color:var(--muted)">Folio: ' + folio + (tel ? ' · Tel: ' + tel : '') + '</div></div></div>';
+
+  // Saldo de la venta
+  if (ventaData) {
+    var saldo = Number(ventaData.saldo) || 0;
+    var total = Number(ventaData.total) || 0;
+    var pagado = Number(ventaData.pagado) || 0;
+    if (saldo > 0) {
+      h += '<div style="background:rgba(212,184,74,0.08);border:1px solid rgba(212,184,74,0.25);border-radius:10px;padding:12px;margin-bottom:14px">';
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      h += '<span style="font-size:13px;color:#d4b84a;font-weight:600">⚠ Saldo pendiente</span>';
+      h += '<span style="font-size:18px;font-weight:800;color:#d4b84a">$' + saldo.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span>';
+      h += '</div>';
+      h += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:10px"><span>Total: $' + total.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span><span>Pagado: $' + pagado.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span></div>';
+      // Sección de cobro
+      h += '<div id="entrega-cobro-section">';
+      h += '<div style="display:flex;gap:8px;margin-bottom:8px">';
+      h += '<select id="entrega-metodo" style="flex:1;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px">';
+      h += '<option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Transferencia">Transferencia</option><option value="Dólar">Dólar</option>';
+      h += '</select>';
+      h += '<input id="entrega-monto" type="number" value="' + saldo.toFixed(2) + '" step="0.01" min="0" style="width:120px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;text-align:right">';
+      h += '</div>';
+      h += '<input id="entrega-ref" type="text" placeholder="Referencia (opcional)" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;box-sizing:border-box;margin-bottom:8px">';
+      h += '</div>';
+      h += '</div>';
+    } else {
+      h += '<div style="background:rgba(114,196,126,0.08);border:1px solid rgba(114,196,126,0.2);border-radius:10px;padding:10px 12px;margin-bottom:14px;display:flex;align-items:center;gap:8px">';
+      h += '<span style="font-size:14px">✅</span><span style="font-size:13px;color:#72c47e;font-weight:600">Venta liquidada</span>';
+      h += '<span style="margin-left:auto;font-size:12px;color:var(--muted)">$' + total.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span>';
+      h += '</div>';
+    }
+  }
+
+  // Lista de órdenes con checkboxes
+  var estadoColors = {'Enviado al lab':'#8ab0e8','Recibido en lab':'#6ecfcf','Surtido':'#72c47e','Faltante':'#e08080','En proceso Máquina 1':'#d4b84a','En proceso Máquina 2':'#d4b84a','Biselado completado':'#72b8c4','En camino a sucursal':'#72b8c4','Recibido en óptica':'#b48ad4','Listo para entrega':'#72c47e','Devuelto al lab':'#e08080','Demorado':'#e08080','Entregado':'#888'};
+  h += '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">ÓRDENES (' + ordenes.length + ')</div>';
+  ordenes.forEach(function(o, i) {
+    var st = o.estado_lab || 'Desconocido';
+    var c = estadoColors[st] || '#888';
+    var isListo = (st === 'Listo para entrega' || st === 'Recibido en óptica');
+    var isEntregado = (st === 'Entregado');
+    var notas = o.notas_laboratorio || '';
+    // Extraer descripción del lente
+    var tipoLente = o.tipo_lente || '';
+    var descParts = [];
+    if (tipoLente) descParts.push(tipoLente);
+    var matMatch = notas.match(/(?:^|\|)\s*([^|]*(?:CR-39|Policarbonato|Hi Index|Ultra-thin|Super Ultra|Blue Light|Foto|AR|Progresivo|Bifocal|Vision Sencilla)[^|]*)/i);
+    if (matMatch) descParts.push(matMatch[1].trim().substring(0,40));
+    var desc = descParts.join(' · ') || 'Orden #' + (i+1);
+
+    h += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + c + '08;border:1px solid ' + c + '22;border-radius:8px;margin-bottom:6px;cursor:' + (isEntregado ? 'default' : 'pointer') + '">';
+    h += '<input type="checkbox" class="entrega-check" value="' + o.id + '" ' + (isListo ? 'checked' : '') + ' ' + (isEntregado ? 'disabled' : '') + ' style="width:18px;height:18px;accent-color:var(--beige);flex-shrink:0">';
+    h += '<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc + '</div>';
+    h += '<div style="font-size:10px;color:var(--muted)">' + o.sucursal + ' · ' + new Date(o.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'}) + '</div></div>';
+    h += '<span style="font-size:10px;font-weight:700;color:' + c + ';background:' + c + '18;padding:3px 8px;border-radius:6px;white-space:nowrap">' + st + '</span>';
+    if (isEntregado) h += '<span style="font-size:12px">🏁</span>';
+    h += '</label>';
+  });
+  h += '</div>';
+
+  // Asesor que entrega
+  h += '<div style="margin-bottom:14px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Asesor que entrega</label>';
+  h += '<input id="entrega-asesor" type="text" value="' + (currentUser?.nombre || '') + '" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none;box-sizing:border-box"></div>';
+
+  // Botones de acción
+  var saldo = ventaData ? (Number(ventaData.saldo) || 0) : 0;
+  h += '<div style="display:flex;gap:8px">';
+  if (saldo > 0) {
+    h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar y entregar</button>';
+    h += '<button class="btn btn-g" onclick="_soloEntregar()" style="padding:14px;font-size:12px;white-space:nowrap">Entregar sin cobrar</button>';
+  } else {
+    h += '<button id="btn-solo-entregar" class="btn btn-p" onclick="_soloEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">✅ Marcar como entregados</button>';
+  }
+  h += '</div>';
+
+  results.innerHTML = h;
+}
+
+async function _soloEntregar() {
+  if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
+  var checks = document.querySelectorAll('.entrega-check:checked:not(:disabled)');
+  if (!checks.length) { toast('Selecciona al menos una orden para entregar', true); return; }
+
+  var asesor = (document.getElementById('entrega-asesor')?.value || '').trim();
+  if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
+
+  var ids = [];
+  checks.forEach(function(c) { ids.push(c.value); });
+
+  var btn = document.getElementById('btn-solo-entregar') || document.querySelector('.btn.btn-g[onclick*="_soloEntregar"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
+  _actionBusy['entregarLentes'] = true;
+
+  try {
+    await _marcarEntregados(ids, asesor);
+  } finally {
+    _actionBusy['entregarLentes'] = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Marcar como entregados'; }
+  }
+}
+
+async function _cobrarYEntregar() {
+  if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
+  var checks = document.querySelectorAll('.entrega-check:checked:not(:disabled)');
+  if (!checks.length) { toast('Selecciona al menos una orden para entregar', true); return; }
+
+  var asesor = (document.getElementById('entrega-asesor')?.value || '').trim();
+  if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
+
+  var monto = parseFloat(document.getElementById('entrega-monto')?.value);
+  if (!monto || monto <= 0) { toast('Ingresa un monto válido', true); return; }
+  var metodo = document.getElementById('entrega-metodo')?.value || 'Efectivo';
+  var ref = (document.getElementById('entrega-ref')?.value || '').trim();
+
+  var v = _entregaVentaData;
+  if (!v) { toast('No se encontró la venta asociada', true); return; }
+
+  var saldoActual = Number(v.saldo);
+  var montoReal = Math.min(monto, saldoActual);
+
+  var btn = document.getElementById('btn-cobrar-entregar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
+  _actionBusy['entregarLentes'] = true;
+
+  try {
+    // 1. Registrar abono
+    var abData = { venta_id: v.id, monto: montoReal, metodo_pago: metodo, referencia: ref || null, recibido_por: asesor };
+    if (metodo === 'Dólar' && typeof _tipoCambio !== 'undefined' && _tipoCambio > 0) {
+      abData.tipo_cambio = _tipoCambio;
+      abData.monto_usd = Math.round(montoReal / _tipoCambio * 100) / 100;
+    }
+    var { error: ep } = await db.from('venta_pagos').insert(abData);
+    if (ep) throw ep;
+
+    // 2. Actualizar venta
+    var np = Number(v.pagado) + montoReal;
+    var ns = Math.max(0, Number(v.total) - np);
+    var nuevoEstado = ns <= 0 ? 'Liquidada' : 'Apartado';
+    var { error: ev } = await db.from('ventas').update({ pagado: np, saldo: ns, estado: nuevoEstado, updated_at: new Date().toISOString() }).eq('id', v.id);
+    if (ev) throw ev;
+
+    toast('✅ Abono $' + montoReal.toLocaleString('es-MX',{minimumFractionDigits:2}) + (ns <= 0 ? ' — ¡LIQUIDADA!' : ' · Saldo: $' + ns.toLocaleString('es-MX',{minimumFractionDigits:2})));
+
+    // 3. Marcar como entregados
+    var ids = [];
+    checks.forEach(function(c) { ids.push(c.value); });
+    await _marcarEntregados(ids, asesor);
+  } catch(e) {
+    toast('Error: ' + (e.message||e), true);
+  } finally {
+    _actionBusy['entregarLentes'] = false;
+    if (btn) { btn.disabled = false; btn.textContent = '💰 Cobrar y entregar'; }
+  }
+}
+
+async function _marcarEntregados(ids, asesor) {
+  var ahora = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+  var errores = 0;
+
+  for (var i = 0; i < ids.length; i++) {
+    var id = ids[i];
+    // Leer notas actuales
+    var { data: ord } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', id).single();
+    var notas = (ord?.notas_laboratorio || '') + ' | Entregó: ' + asesor + ' (' + ahora + ')';
+    var { error } = await db.from('ordenes_laboratorio').update({ estado_lab: 'Entregado', notas_laboratorio: notas }).eq('id', id);
+    if (error) errores++;
+  }
+
+  if (errores) toast('⚠ ' + errores + ' orden(es) con error al actualizar', true);
+  else toast('✅ ' + ids.length + ' orden(es) entregadas');
+
+  // Cerrar modal y refrescar
+  if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; }
+  _entregaVentaData = null;
+  if (typeof loadDash === 'function') loadDash();
+  if (typeof loadLab === 'function') loadLab();
+}
+
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
   var suc = currentUser?.sucursal || 'Todas';
@@ -6301,6 +6670,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   // Quick actions
   h += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
   h += '<button class="btn btn-p" onclick="go(\'ventas\')" style="flex:1;min-width:140px;padding:14px;font-size:14px">🛒 Nueva Venta</button>';
+  h += '<button class="btn btn-g" onclick="abrirEntregaLentes()" style="flex:1;min-width:140px;padding:14px;font-size:14px">📦 Entregar Lentes</button>';
   h += '<button class="btn btn-g" onclick="go(\'historial-ventas\')" style="flex:1;min-width:140px;padding:14px;font-size:14px">📋 Historial</button>';
   h += '<button class="btn btn-g" onclick="go(\'caja\')" style="flex:1;min-width:140px;padding:14px;font-size:14px">💰 Caja</button>';
   h += '</div>';
@@ -6430,6 +6800,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     h += '<button class="btn btn-p" onclick="go(\'ventas\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">🛒 Nueva Venta</button>';
     h += '<button class="btn btn-g" onclick="go(\'caja\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">💰 Caja</button>';
   }
+  h += '<button class="btn btn-g" onclick="abrirEntregaLentes()" style="flex:1;min-width:120px;padding:12px;font-size:13px">📦 Entregar</button>';
   h += '<button class="btn btn-g" onclick="go(\'comisiones\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">📊 Comisiones</button>';
   h += '<button class="btn btn-g" onclick="go(\'laboratorio\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">🔧 Lab</button>';
   h += '<button class="btn btn-g" onclick="go(\'historial-ventas\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">📋 Historial</button>';
@@ -15437,7 +15808,8 @@ var GUIAS_ENTRENAMIENTO = {
       { key: 'laboratorio', icon: '🔧', label: 'Bitácora Pedidos', desc: 'Seguimiento de pedidos' },
       { key: 'caja', icon: '💰', label: 'Caja', desc: 'Retiros, cortes, arqueo' },
       { key: 'garantias', icon: '🔄', label: 'Garantías', desc: 'Procesar garantías' },
-      { key: 'creditos', icon: '💳', label: 'Créditos', desc: 'Abonos y créditos SICAR' }
+      { key: 'creditos', icon: '💳', label: 'Créditos', desc: 'Abonos y créditos SICAR' },
+      { key: 'entrega', icon: '📦', label: 'Entrega de Lentes', desc: 'Entregar pedidos al cliente' }
     ]
   },
   ventas: { titulo: '🛒 Ventas', pasos: [
@@ -15493,6 +15865,14 @@ var GUIAS_ENTRENAMIENTO = {
   creditos: { titulo: '💳 Créditos', pasos: [
     { texto: '📋 Créditos/monedero migrados de SICAR. Busca por nombre o teléfono.', accion: 'creditos', highlight: null },
     { texto: '💰 Clic en el cliente y "Registrar abono". Se refleja en caja.', highlight: null }
+  ]},
+  entrega: { titulo: '📦 Entrega de Lentes', pasos: [
+    { texto: '📦 Desde el Panel General, presiona el botón "Entregar Lentes" en los accesos rápidos.', accion: 'dashboard', highlight: null },
+    { texto: '📷 Escanea el QR del ticket impreso del cliente, el QR de la orden de lab, o el QR del portal de monedero. También puedes escribir el folio o el nombre del paciente.', highlight: null },
+    { texto: '📋 Aparecen todas las órdenes del folio, incluyendo folios de promo 3x1 (ej: 10538, 10538-2, 10538-3). Las que están en "Listo para entrega" se marcan automáticamente.', highlight: null },
+    { texto: '💰 Si el cliente tiene saldo pendiente, puedes cobrar ahí mismo: selecciona método de pago, ingresa monto y presiona "Cobrar y entregar". Si ya está liquidada, solo marca "Entregar".', highlight: null },
+    { texto: '👤 Verifica que tu nombre aparece como asesor que entrega. Esto queda registrado en la bitácora de cada orden.', highlight: null },
+    { texto: '✅ Presiona el botón para confirmar. Las órdenes se marcan como "Entregado" y el dashboard se actualiza.', highlight: null }
   ]}
 };
 
