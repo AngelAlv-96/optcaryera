@@ -204,6 +204,23 @@ exports.handler = async (event) => {
         return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, sent, total: phones.length, results }) };
       }
 
+      case 'send_admin': {
+        const { message: adminMsg } = body;
+        if (!adminMsg) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'message required' }) };
+        const adminConfig = await getWhatsAppConfig();
+        const adminPhones = adminConfig?.admin_phones || [];
+        if (!adminPhones.length) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'No admin_phones configured' }) };
+        const adminResults = [];
+        for (const phone of adminPhones) {
+          try {
+            const r = await sendTextMessage(phone, adminMsg);
+            adminResults.push({ phone, ok: true, id: r.sid });
+          } catch (err) { adminResults.push({ phone, ok: false, error: err.message }); }
+        }
+        const adminSent = adminResults.filter(r => r.ok).length;
+        return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, sent: adminSent, total: adminPhones.length }) };
+      }
+
       case 'send_corte': {
         const { message } = body;
         if (!message) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'message required' }) };
