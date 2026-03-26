@@ -69,8 +69,8 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 No se necesita cita previa.
 
 PROMOCIONES VIGENTES (MARZO):
-🎁 3x1 en lentes completos: Dos lentes con el material de tu elección + un solar graduado. Desde $600 en armazones seleccionados. Hasta 2 graduaciones diferentes. Válida hasta 31 de marzo.
-✨ Armazones con antirreflejante Blue o Hi AR por $1,200
+🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta 31 de marzo.
+✨ Armazón con antirreflejante Blue o Hi AR por $1,200: Incluye 1 armazón con antirreflejante incluido. NO es combinable con la promo 3x1, es una promoción aparte.
 💫 30% descuento en bifocales y progresivos | 20% en armazones
 ☀️ Lente solar graduado adicional por $249 (combinable con cualquier promo)
 🎁 Estuches y soluciones GRATIS
@@ -78,6 +78,13 @@ PROMOCIONES VIGENTES (MARZO):
 💰 5% de reembolso en Opti Coins
 🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio)
 Las promociones deben ser aprovechadas por la misma persona.
+
+CÓMO FUNCIONAN LOS PRECIOS:
+- El precio de los lentes depende de: armazón elegido + tipo de graduación (visión sencilla, bifocal, progresivo) + material/tratamiento de las micas (básico CR-39, antirreflejante, blue light, transitions, etc.)
+- Los tratamientos como antirreflejante, filtro azul, transitions, etc. tienen costo adicional sobre el precio base
+- La promo 3x1 desde $1,200 es con material básico (CR-39 visión sencilla). Si el cliente elige un tratamiento superior (AR, blue light, etc.), el precio sube según el tratamiento elegido
+- NUNCA digas que algo "cuesta de más" o que "le cobraron mal" — cada combinación de armazón + graduación + material tiene su precio correcto
+- Si un cliente pregunta por precio exacto, dile que depende de lo que elija y que en sucursal le dan su cotización personalizada con todas las opciones
 
 PRODUCTOS Y SERVICIOS:
 👓 Armazones (desde $300)
