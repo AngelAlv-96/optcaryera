@@ -6407,14 +6407,21 @@ async function _cobrarYEntregar() {
   var v = _entregaVentaData;
   if (!v) { toast('No se encontró la venta asociada', true); return; }
 
-  var saldoActual = Number(v.saldo);
-  var montoReal = Math.min(monto, saldoActual);
-
   var btn = document.getElementById('btn-cobrar-entregar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
   _actionBusy['entregarLentes'] = true;
 
   try {
+    // Re-validar saldo actual desde DB (previene abono duplicado si otro usuario pagó mientras)
+    var { data: ventaFresh } = await db.from('ventas').select('pagado,saldo,total,estado').eq('id', v.id).single();
+    if (!ventaFresh) throw new Error('Venta no encontrada');
+    var saldoActual = Number(ventaFresh.saldo);
+    if (saldoActual <= 0) { toast('Esta venta ya fue liquidada', true); if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; } _actionBusy['entregarLentes'] = false; if (btn) { btn.disabled = false; btn.textContent = '💰 Cobrar y entregar'; } return; }
+    v.pagado = Number(ventaFresh.pagado);
+    v.saldo = saldoActual;
+
+    var montoReal = Math.min(monto, saldoActual);
+
     // 1. Registrar abono
     var abData = { venta_id: v.id, monto: montoReal, metodo_pago: metodo, referencia: ref || null, recibido_por: asesor };
     if (metodo === 'Dólar' && typeof _tipoCambio !== 'undefined' && _tipoCambio > 0) {
