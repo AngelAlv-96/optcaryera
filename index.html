@@ -6904,7 +6904,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   h += _miniStat('Total vendido', '$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}), '#d4b84a', '💰');
   h += _miniStat('Cobrado', '$'+totalPagado.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
   h += _miniStat('Consultas', nHC||0, '#8ab0e8', '👁');
-  h += _miniStat('Pedidos lab', orders.length, '#d4b84a', '🔧');
+  h += _miniStat('Pedidos lab', ordenesLab||0, '#d4b84a', '🔧');
   h += '</div>';
 
   // TC
