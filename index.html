@@ -6568,6 +6568,45 @@ async function _marcarEntregados(ids, asesor) {
   if (typeof loadLab === 'function') loadLab();
 }
 
+async function _promptEntregaLentes(folio) {
+  // Check if all ordenes for this folio are "Listo para entrega" in current sucursal
+  try {
+    var folioBase = String(folio).replace(/-\d+$/, '');
+    var { data: ords } = await db.from('ordenes_laboratorio')
+      .select('id,estado_lab,sucursal,notas_laboratorio')
+      .ilike('notas_laboratorio', '%Folio: ' + folioBase + '%')
+      .neq('estado_lab', 'Entregado')
+      .neq('estado_lab', 'Cancelado');
+    if (!ords || !ords.length) return;
+    var miSuc = currentUser?.sucursal || '';
+    var listosAqui = ords.filter(function(o) { return o.estado_lab === 'Listo para entrega' && o.sucursal === miSuc; });
+    var otrosEstados = ords.filter(function(o) { return o.estado_lab !== 'Listo para entrega' || o.sucursal !== miSuc; });
+    // Only prompt if ALL are listo para entrega in this sucursal
+    if (listosAqui.length === 0 || otrosEstados.length > 0) return;
+    // Show prompt
+    var ov = document.createElement('div');
+    ov.className = 'm-overlay open';
+    ov.style.zIndex = '9999';
+    var ids = listosAqui.map(function(o) { return o.id; });
+    ov.innerHTML = '<div class="modal" style="max-width:400px;padding:24px;text-align:center">'
+      + '<div style="font-size:28px;margin-bottom:12px">📦</div>'
+      + '<div style="font-size:16px;font-weight:700;color:var(--beige);margin-bottom:8px">¿Ya entregaste los lentes?</div>'
+      + '<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Folio ' + folioBase + ' — ' + listosAqui.length + ' orden(es) listas en ' + miSuc + '</div>'
+      + '<div style="display:flex;gap:10px;justify-content:center">'
+      + '<button class="btn btn-g" id="_pe_no">No, aún no</button>'
+      + '<button class="btn btn-p" id="_pe_si" style="background:#72c47e;border-color:#72c47e">Sí, ya los entregué</button>'
+      + '</div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#_pe_no').onclick = function() { ov.remove(); };
+    ov.querySelector('#_pe_si').onclick = async function() {
+      ov.querySelector('#_pe_si').disabled = true;
+      ov.querySelector('#_pe_si').textContent = '⏳ Actualizando...';
+      await _marcarEntregados(ids, currentUser?.nombre || '');
+      ov.remove();
+    };
+  } catch(e) { /* silent — don't block payment flow */ }
+}
+
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
   var suc = currentUser?.sucursal || 'Todas';
@@ -11790,11 +11829,11 @@ function renderMaquina(num, orden) {
     const nombre = pac ? `${pac.nombre||''} ${pac.apellidos||''}`.trim() : '';
     const inicio = orden.lab_hora_inicio ? new Date(orden.lab_hora_inicio) : null;
     const tiempoStr = inicio ? formatElapsed(inicio) : '';
-    const entregoPor = (orden.notas_laboratorio||'').match(/Entregó:\s*([^|]+)/)?.[1]?.trim() || '';
+    const entregoPor = (orden.notas_laboratorio||'').match(/Surtió:\s*([^|]+)/)?.[1]?.trim() || (orden.notas_laboratorio||'').match(/Entregó:\s*([^|]+)/)?.[1]?.trim() || '';
     body.innerHTML = `
       <div style="font-weight:700;font-size:14px;color:var(--beige);margin-bottom:2px">${folio||'S/F'} — ${nombre}</div>
       <div style="font-size:11px;color:var(--muted)">${orden.tipo_lente||''} · ${orden.material||''}${orden.sucursal ? ' · '+orden.sucursal : ''}</div>
-      <div style="font-size:11px;color:${col};margin-top:3px">${orden.lab_tecnico||'—'}${entregoPor?' · Entregó: '+entregoPor:''}</div>
+      <div style="font-size:11px;color:${col};margin-top:3px">${orden.lab_tecnico||'—'}${entregoPor?' · Surtió: '+entregoPor:''}</div>
       <div style="font-size:18px;font-weight:700;color:${col};margin-top:6px;font-family:'Courier New',monospace" id="lp-timer-${num}">${tiempoStr}</div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-p btn-sm" onclick="terminarMaquina('${orden.id}')" style="flex:1;font-size:12px">✓ Terminado</button>
@@ -11973,8 +12012,8 @@ async function verResumenOrden(orderId) {
     }
   });
 
-  const entregoMatch = notasRaw.match(/Entregó:\s*([^|]+)/);
-  if (entregoMatch) events.push({ icon: '📦', label: 'Material entregado', detail: `Por: ${entregoMatch[1].trim()}`, time: '', color: '#72c47e' });
+  const surtioMatch = notasRaw.match(/Surtió:\s*([^|]+)/) || notasRaw.match(/Entregó:\s*([^|]+)/);
+  if (surtioMatch) events.push({ icon: '📦', label: 'Material surtido', detail: `Por: ${surtioMatch[1].trim()}`, time: '', color: '#72c47e' });
 
   if (o.lab_maquina) {
     events.push({ icon: '⚙️', label: `Asignado a ${o.lab_maquina}`, detail: `Técnico: ${o.lab_tecnico || '—'}`, time: o.lab_hora_inicio ? fmtDateTime(o.lab_hora_inicio) : '', color: '#d4b84a' });
@@ -11999,7 +12038,7 @@ async function verResumenOrden(orderId) {
   const esUrgente = urgencia !== 'Normal';
 
   const notasClean = notasRaw
-    .replace(/\|\s*(Folio|Urgencia|DIP|ALT|LC_TIPO|LC_MISMA_RX|LC_OD|LC_OI|LC_REEMPLAZO|LC_VIGENCIA|LC_ADAPTACION|LOG|Entregó|Biselado|Pausó|Comentario máq|Revisado por):[^|]*/g, '')
+    .replace(/\|\s*(Folio|Urgencia|DIP|ALT|LC_TIPO|LC_MISMA_RX|LC_OD|LC_OI|LC_REEMPLAZO|LC_VIGENCIA|LC_ADAPTACION|LOG|Entregó|Surtió|Biselado|Pausó|Comentario máq|Revisado por):[^|]*/g, '')
     .replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').replace(/\|\s*\|/g, '|').trim();
 
   let html = `<div style="max-height:85vh;overflow-y:auto;padding:20px">`;
@@ -12251,10 +12290,10 @@ function iniciarMaquina(orderId, maqNum) {
 async function asignarMaquinaConEntrego(orderId, maqNum, tecnico, entrego) {
   const estado = 'En proceso Máquina ' + maqNum;
   const { data: orden } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', orderId).single();
-  const notas = (orden?.notas_laboratorio || '') + ` | Entregó: ${entrego}`;
+  const notas = (orden?.notas_laboratorio || '') + ` | Surtió: ${entrego}`;
   const update = { estado_lab: estado, lab_tecnico: tecnico, lab_maquina: 'Máquina ' + maqNum, lab_hora_inicio: new Date().toISOString(), notas_laboratorio: notas };
   await updateLabOrder(orderId, update);
-  toast('✓ Asignado a Máquina ' + maqNum + ' — Entregó: ' + entrego);
+  toast('✓ Asignado a Máquina ' + maqNum + ' — Surtió: ' + entrego);
   loadLabTablero();
 }
 
@@ -19004,6 +19043,8 @@ async function registrarAbono() {
     compWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
     if (histVentasData.length) cargarHistorialVentas();
     cargarVtaPendientes();
+    // Prompt entrega si se liquidó
+    if (ns <= 0 && v.folio) _promptEntregaLentes(v.folio);
   } catch(e) { toast('Error: '+e.message,true); } finally {
     _actionBusy['registrarAbono'] = false;
     btn.disabled=false; btn.textContent='💰 Registrar abono';

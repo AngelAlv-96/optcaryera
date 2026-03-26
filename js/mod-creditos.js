@@ -185,6 +185,8 @@ async function registrarAbonoCredito(creditoId, overlay) {
     if (overlay) overlay.remove();
     mostrarOpcionesTicketAbono();
     loadCreditos();
+    // Prompt entrega si se liquidó y es venta (no SICAR)
+    if (newSaldo <= 0.01 && cred._is_venta && cred._folio && typeof _promptEntregaLentes === 'function') _promptEntregaLentes(cred._folio);
   } catch(e) {
     toast('Error: '+(e.message||e), true);
     if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Registrar'; }
