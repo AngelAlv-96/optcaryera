@@ -7014,11 +7014,12 @@ async function _loadDashAuditoria() {
   var section = document.getElementById('dash-audit-section');
   if (!section) return;
   try {
-    var [{data: esperando}, {data: auditorias}] = await Promise.all([
-      db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id').in('estado_lab',['Recibido en óptica','Listo para entrega']),
+    var [{data: _allAuditOrds}, {data: auditorias}] = await Promise.all([
+      db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id'),
       db.from('inventario_auditorias').select('datos,created_at').eq('tipo','auditoria_automatica').order('created_at',{ascending:false}).limit(1)
     ]);
-    esperando = esperando || [];
+    // Filter status in JS (Supabase v2.38.4 .in() fails with accented strings like "Recibido en óptica")
+    var esperando = (_allAuditOrds || []).filter(function(o) { return o.estado_lab === 'Recibido en óptica' || o.estado_lab === 'Listo para entrega'; });
     var now = new Date();
     var porSuc = {};
     var esperandoMucho = 0;
@@ -7244,12 +7245,13 @@ async function _conteoFinalizar() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Comparando...'; }
 
   try {
-    // Get all orders waiting in this branch
-    var {data: esperando} = await db.from('ordenes_laboratorio')
+    // Get all orders in this branch — filter status in JS (Supabase v2.38.4 .in() fails with accented strings)
+    var {data: _allOrds} = await db.from('ordenes_laboratorio')
       .select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id,pacientes(nombre,apellidos)')
-      .eq('sucursal', suc)
-      .in('estado_lab', ['Recibido en óptica', 'Listo para entrega']);
-    esperando = esperando || [];
+      .eq('sucursal', suc);
+    var esperando = (_allOrds || []).filter(function(o) {
+      return o.estado_lab === 'Recibido en óptica' || o.estado_lab === 'Listo para entrega';
+    });
 
     // Build map: folio → order
     var dbMap = {};
@@ -7389,8 +7391,8 @@ async function _conteoGuardar() {
 // ── Burbuja flotante: Tarea de Conteo Físico ─────────────────────────
 
 function _conteoCheckTarea() {
-  // Solo para sucursal, admin y gerencia
-  if (!currentUser || currentUser.rol === 'laboratorio') return;
+  // Solo para rol sucursal (admin y gerencia no necesitan la burbuja)
+  if (!currentUser || currentUser.rol !== 'sucursal') return;
   if (isTrainingMode()) return;
 
   var suc = currentUser.sucursal || '';
@@ -7560,11 +7562,11 @@ async function _audRenderResumen() {
   el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)"><span class="spinner-sm"></span> Cargando...</div>';
 
   try {
-    var {data: esperando} = await db.from('ordenes_laboratorio')
+    var {data: _allAuditOrds2} = await db.from('ordenes_laboratorio')
       .select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id,pacientes(nombre,apellidos)')
-      .in('estado_lab', ['Recibido en óptica', 'Listo para entrega'])
       .order('created_at', {ascending: true});
-    esperando = esperando || [];
+    // Filter in JS (Supabase v2.38.4 .in() fails with accented "Recibido en óptica")
+    var esperando = (_allAuditOrds2 || []).filter(function(o) { return o.estado_lab === 'Recibido en óptica' || o.estado_lab === 'Listo para entrega'; });
 
     var now = new Date();
     var h = '<div class="est-grid-3" style="margin-bottom:16px">';
