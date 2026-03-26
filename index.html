@@ -7353,6 +7353,11 @@ async function _conteoFinalizar() {
         realizado_por: currentUser?.nombre || currentUser?.usuario || 'Desconocido',
         datos: window._conteoResultados
       });
+      // Fetch the ID of the just-inserted record (for Phase 2 update)
+      var {data:lastRec} = await db.from('inventario_auditorias')
+        .select('id').eq('tipo','conteo_fisico').eq('sucursal',suc)
+        .order('created_at',{ascending:false}).limit(1).single();
+      window._conteoRegistroId = lastRec?.id || null;
       var ultimoConteo = {};
       try {
         var {data:cfg} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
@@ -7616,17 +7621,28 @@ async function _conteoEnviarVerificacion() {
 
   // Update the conteo record in DB with the verification notes
   try {
-    var res = window._conteoResultados;
-    if (res) {
-      res.verificacion = notas;
-      res.verificado_por = quien;
-      res.verificado_at = new Date().toISOString();
+    var conteoId = window._conteoRegistroId;
+    if (conteoId) {
+      // Fetch current datos and add verificacion
+      var {data: rec} = await db.from('inventario_auditorias').select('datos').eq('id', conteoId).single();
+      if (rec) {
+        var datos = rec.datos || {};
+        datos.verificacion = notas;
+        datos.verificado_por = quien;
+        datos.verificado_at = new Date().toISOString();
+        await fetch('/.netlify/functions/dbwrite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update',
+            table: 'inventario_auditorias',
+            data: { datos: datos },
+            filters: [{ column: 'id', op: 'eq', value: conteoId }],
+            auth: { id: currentUser?.id, pass: currentUser?.pass }
+          })
+        });
+      }
     }
-    // We can't easily update the existing record without its ID, so we save notes in app_config
-    await db.from('app_config').upsert({
-      id: 'conteo_verificacion_' + suc.toLowerCase().replace(/[^a-z]/g,''),
-      value: JSON.stringify({ fecha: new Date().toISOString().slice(0,10), por: quien, notas: notas })
-    }, { onConflict: 'id' });
   } catch(e) { console.error('Error guardando verificación:', e); }
 
   // Show confirmation
