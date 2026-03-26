@@ -6407,8 +6407,8 @@ function _renderEntregaResultados(ordenes, ventaData) {
   var saldo = ventaData ? (Number(ventaData.saldo) || 0) : 0;
   h += '<div style="display:flex;gap:8px">';
   if (saldo > 0) {
-    h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar y entregar</button>';
-    h += '<button class="btn btn-g" onclick="_soloEntregar()" style="padding:14px;font-size:12px;white-space:nowrap">Entregar sin cobrar</button>';
+    h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar $' + saldo.toLocaleString('es-MX') + ' y entregar</button>';
+    h += '<div style="text-align:center;font-size:11px;color:#e08080;margin-top:6px">⚠️ No se puede entregar sin cobrar el saldo pendiente</div>';
   } else {
     h += '<button id="btn-solo-entregar" class="btn btn-p" onclick="_soloEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">✅ Marcar como entregados</button>';
   }
@@ -6419,6 +6419,10 @@ function _renderEntregaResultados(ordenes, ventaData) {
 
 async function _soloEntregar() {
   if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
+  // Block if sale has pending balance
+  if (_entregaVentaData && Number(_entregaVentaData.saldo) > 0) {
+    toast('No se puede entregar con saldo pendiente. Cobra primero.', 'error'); return;
+  }
   var checks = document.querySelectorAll('.entrega-check:checked:not(:disabled)');
   if (!checks.length) { toast('Selecciona al menos una orden para entregar', true); return; }
 
@@ -6503,6 +6507,19 @@ async function _cobrarYEntregar() {
 
 async function _entregarGrupoLab(ids, nombre) {
   if (!ids || !ids.length) return;
+  // Check saldo before allowing delivery
+  try {
+    var {data:ord0} = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id',ids[0]).single();
+    var folioMatch = ord0?.notas_laboratorio?.match(/Folio:\s*(\S+)/);
+    if (folioMatch) {
+      var baseFolio = folioMatch[1].replace(/-\d+$/,'');
+      var {data:vta} = await db.from('ventas').select('saldo').eq('folio',baseFolio).single();
+      if (vta && Number(vta.saldo) > 0) {
+        toast('No se puede entregar con saldo pendiente ($' + Number(vta.saldo).toLocaleString('es-MX') + '). Usa "Entregar Lentes" para cobrar primero.', 'error');
+        return;
+      }
+    }
+  } catch(e) { /* continue if lookup fails */ }
   if (!confirm('¿Marcar ' + ids.length + ' orden(es) de ' + nombre + ' como entregadas?')) return;
   var asesor = currentUser?.nombre || '';
   await _marcarEntregados(ids, asesor);
