@@ -7362,25 +7362,52 @@ async function _conteoFinalizar() {
       await db.from('app_config').upsert({ id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) }, { onConflict: 'id' });
     } catch(e) { console.error('Error guardando conteo:', e); }
 
+    // Split missing by estado_lab
+    var missingListos = missing.filter(function(m) { return m.estado === 'Listo para entrega'; });
+    var missingRecibidos = missing.filter(function(m) { return m.estado === 'Recibido en óptica'; });
+    var missingListosConSaldo = missingListos.filter(function(m) { return m.saldo > 0; });
+    var missingListosSinSaldo = missingListos.filter(function(m) { return m.saldo === 0 || m.saldo === null; });
+    var missingRecibidosConSaldo = missingRecibidos.filter(function(m) { return m.saldo > 0; });
+    var missingRecibidosSinSaldo = missingRecibidos.filter(function(m) { return m.saldo === 0 || m.saldo === null; });
+
+    // All folios that need Phase 2 verification (missing ones the employee should explain)
+    var foliosVerificar = missing.map(function(m) { return m.folio; });
+
+    // Expected count (orders in system for this branch)
+    var esperados = Object.keys(dbMap).length;
+
     // SEND WA notification to admin with summary
     var totalConSaldo = _missingConSaldo.length + orphConSaldo.length;
     var waMsg = '📦 *CONTEO FÍSICO — ' + suc + '*\n';
     waMsg += 'Realizado por: ' + (currentUser?.nombre || currentUser?.usuario || '?') + '\n\n';
+    waMsg += '📊 *CUADRA:*\n';
+    waMsg += 'Esperados en sistema: ' + esperados + '\n';
+    waMsg += 'Escaneados: ' + _conteoFolios.length + '\n';
     waMsg += '✅ Coinciden: ' + matched.length + '\n';
-    waMsg += '❌ En sistema no escaneados: ' + missing.length + '\n';
-    waMsg += '⚠️ Escaneados no en sistema: ' + orphans.length + '\n';
+    waMsg += '❌ Faltan: ' + missing.length + '\n';
+    waMsg += '⚠️ Extras (no en sistema): ' + orphans.length + '\n';
     if (totalConSaldo) {
-      waMsg += '\n🚨 *' + totalConSaldo + ' PEDIDO' + (totalConSaldo > 1 ? 'S' : '') + ' CON SALDO PENDIENTE:*\n';
-      _missingConSaldo.forEach(function(m) { waMsg += '• Folio ' + m.folio + ' — ' + m.paciente + ' — Saldo: $' + m.saldo.toLocaleString() + '\n'; });
-      orphConSaldo.forEach(function(o) { waMsg += '• Folio ' + o.folio + ' (SICAR) — ' + (o.paciente||'?') + ' — Saldo: $' + o.saldo.toLocaleString() + '\n'; });
+      waMsg += '\n🚨 *' + totalConSaldo + ' CON SALDO PENDIENTE:*\n';
+      if (missingListosConSaldo.length) {
+        waMsg += '\n*LISTOS PARA ENTREGA — NO ENCONTRADOS:*\n';
+        missingListosConSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + ' — $' + m.saldo.toLocaleString() + '\n'; });
+      }
+      if (missingRecibidosConSaldo.length) {
+        waMsg += '\n*RECIBIDOS EN ÓPTICA — NO ENCONTRADOS:*\n';
+        missingRecibidosConSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + ' — $' + m.saldo.toLocaleString() + '\n'; });
+      }
+      orphConSaldo.forEach(function(o) { waMsg += '• ' + o.folio + ' (SICAR) — ' + (o.paciente||'?') + ' — $' + o.saldo.toLocaleString() + '\n'; });
     }
-    if (_missingSinSaldo.length) {
-      waMsg += '\n📋 En sistema no encontrados (sin saldo): ' + _missingSinSaldo.length + '\n';
-      _missingSinSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + '\n'; });
+    if (missingListosSinSaldo.length) {
+      waMsg += '\n📋 Listos no encontrados (sin saldo): ' + missingListosSinSaldo.length + '\n';
+      missingListosSinSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + '\n'; });
+    }
+    if (missingRecibidosSinSaldo.length) {
+      waMsg += '\n📋 Recibidos no encontrados (sin saldo): ' + missingRecibidosSinSaldo.length + '\n';
+      missingRecibidosSinSaldo.forEach(function(m) { waMsg += '• ' + m.folio + ' — ' + m.paciente + '\n'; });
     }
     if (orphSinSaldo.length) waMsg += '\n📦 Pedidos viejos liquidados: ' + orphSinSaldo.length + '\n';
     if (orphSinVenta.length) waMsg += '❓ Folios sin registro: ' + orphSinVenta.length + '\n';
-    waMsg += '\nTotal escaneados: ' + _conteoFolios.length;
 
     try {
       await fetch('/.netlify/functions/whatsapp', {
@@ -7403,20 +7430,47 @@ async function _conteoFinalizar() {
     var isAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
 
     if (!isAdmin) {
-      // SUCURSAL: solo ve confirmación, sin detalles
-      resEl.innerHTML = '<div style="text-align:center;padding:32px 16px">' +
-        '<div style="font-size:48px;margin-bottom:12px">✅</div>' +
-        '<div style="font-size:18px;font-weight:700;color:#72c47e;margin-bottom:8px">Conteo enviado a administración</div>' +
-        '<div style="font-size:13px;color:var(--muted);margin-bottom:4px">' + _conteoFolios.length + ' folios escaneados en ' + suc + '</div>' +
-        '<div style="font-size:12px;color:var(--muted)">Gracias por completar tu conteo 👍</div>' +
-        '<button class="btn btn-g" onclick="document.getElementById(\'conteo-modal\').remove()" style="margin-top:20px;padding:12px 32px">Cerrar</button>' +
-        '</div>';
+      // SUCURSAL: confirmación + Fase 2 si hay folios faltantes
+      var sh = '<div style="text-align:center;padding:24px 16px">';
+      sh += '<div style="font-size:48px;margin-bottom:12px">✅</div>';
+      sh += '<div style="font-size:18px;font-weight:700;color:#72c47e;margin-bottom:8px">Conteo enviado a administración</div>';
+      sh += '<div style="font-size:13px;color:var(--muted);margin-bottom:4px">' + _conteoFolios.length + ' folios escaneados en ' + suc + '</div>';
+      sh += '</div>';
+
+      if (foliosVerificar.length) {
+        // Phase 2: ask about missing folios without revealing details
+        sh += '<div style="border-top:1px solid rgba(255,255,255,0.08);padding:16px;margin-top:8px">';
+        sh += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:4px">📋 Verificación de pedidos</div>';
+        sh += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">El sistema detectó que estos folios no fueron escaneados. Por favor indica dónde se encuentran.</div>';
+        sh += '<div id="conteo-verificacion" style="max-height:300px;overflow-y:auto">';
+        foliosVerificar.forEach(function(folio, idx) {
+          sh += '<div style="display:flex;align-items:center;gap:8px;padding:8px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+          sh += '<span style="font-weight:700;color:var(--white);min-width:65px;font-size:13px">' + folio + '</span>';
+          sh += '<input id="conteo-nota-' + idx + '" data-folio="' + folio + '" placeholder="Ej: En revisión, No lo encontré, Ya se entregó..." style="flex:1;padding:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--white);font-size:12px">';
+          sh += '</div>';
+        });
+        sh += '</div>';
+        sh += '<button class="btn btn-p" onclick="_conteoEnviarVerificacion()" style="width:100%;padding:12px;margin-top:12px;font-size:13px;font-weight:700" id="conteo-btn-verificar">📤 Enviar verificación</button>';
+        sh += '</div>';
+      } else {
+        sh += '<div style="text-align:center;padding:0 16px 16px"><div style="font-size:12px;color:var(--muted)">Todo cuadra 👍</div>';
+        sh += '<button class="btn btn-g" onclick="document.getElementById(\'conteo-modal\').remove()" style="margin-top:16px;padding:12px 32px">Cerrar</button></div>';
+      }
+      resEl.innerHTML = sh;
       return;
     }
 
     // ADMIN/GERENCIA: resultados completos
     var h = '<div style="margin-bottom:16px">';
     h += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">Resultados del conteo — ' + suc + '</div>';
+
+    // Cuadra summary
+    h += '<div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06)">';
+    h += '<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px">📊 Cuadra</div>';
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:13px">';
+    h += '<div style="color:var(--muted)">Esperados en sistema:</div><div style="color:var(--white);font-weight:700;text-align:right">' + esperados + '</div>';
+    h += '<div style="color:var(--muted)">Escaneados:</div><div style="color:var(--white);font-weight:700;text-align:right">' + _conteoFolios.length + '</div>';
+    h += '</div></div>';
 
     h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">';
     h += '<div style="background:rgba(114,196,126,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#72c47e">'+matched.length+'</div><div style="font-size:10px;color:var(--muted)">Coinciden ✅</div></div>';
@@ -7431,22 +7485,48 @@ async function _conteoFinalizar() {
       h += '</div>';
     }
 
-    if (_missingConSaldo.length) {
+    // MISSING: separated by estado_lab
+    if (missingListosConSaldo.length) {
       h += '<details open style="margin-bottom:12px;border:1px solid rgba(224,80,80,0.3);border-radius:8px;padding:8px;background:rgba(224,80,80,0.06)">';
-      h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:6px">🚨 ENTREGADOS SIN COBRAR — '+_missingConSaldo.length+' pedido'+(_missingConSaldo.length>1?'s':'')+'</summary>';
-      _missingConSaldo.forEach(function(m) {
+      h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:6px">🚨 LISTOS PARA ENTREGA — NO ENCONTRADOS (CON SALDO) — '+missingListosConSaldo.length+'</summary>';
+      missingListosConSaldo.forEach(function(m) {
         h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
         h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+m.folio+'</span>';
         h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
-        h += '<span style="font-size:11px;font-weight:700;color:#ff6b6b">Saldo: $'+m.saldo.toLocaleString()+'</span>';
+        h += '<span style="font-size:11px;font-weight:700;color:#ff6b6b">$'+m.saldo.toLocaleString()+'</span>';
         h += '</div>';
       });
       h += '</details>';
     }
-    if (_missingSinSaldo.length) {
-      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ No encontrados — sin saldo pendiente ('+_missingSinSaldo.length+')</summary>';
-      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Probablemente entregados sin marcar en sistema</div>';
-      _missingSinSaldo.forEach(function(m) {
+    if (missingRecibidosConSaldo.length) {
+      h += '<details open style="margin-bottom:12px;border:1px solid rgba(255,160,0,0.3);border-radius:8px;padding:8px;background:rgba(255,160,0,0.06)">';
+      h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ffa500;margin-bottom:6px">⚠️ RECIBIDOS EN ÓPTICA — NO ENCONTRADOS (CON SALDO) — '+missingRecibidosConSaldo.length+'</summary>';
+      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Pueden estar en área de revisión/QC</div>';
+      missingRecibidosConSaldo.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+        h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '<span style="font-size:11px;font-weight:700;color:#ffa500">$'+m.saldo.toLocaleString()+'</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+    if (missingListosSinSaldo.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ Listos no encontrados — sin saldo ('+missingListosSinSaldo.length+')</summary>';
+      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Entregados sin marcar en sistema</div>';
+      missingListosSinSaldo.forEach(function(m) {
+        h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+        h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+m.folio+'</span>';
+        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+        h += '<span style="font-size:10px;color:var(--muted)">'+m.dias+'d</span>';
+        h += '</div>';
+      });
+      h += '</details>';
+    }
+    if (missingRecibidosSinSaldo.length) {
+      h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">📦 Recibidos no encontrados — sin saldo ('+missingRecibidosSinSaldo.length+')</summary>';
+      h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Pueden estar en revisión o ya entregados</div>';
+      missingRecibidosSinSaldo.forEach(function(m) {
         h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
         h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+m.folio+'</span>';
         h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
@@ -7504,6 +7584,62 @@ async function _conteoFinalizar() {
 }
 
 // _conteoGuardar removed — saving is now automatic in _conteoFinalizar()
+
+async function _conteoEnviarVerificacion() {
+  var btn = document.getElementById('conteo-btn-verificar');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+
+  // Collect notes from inputs
+  var notas = [];
+  var inputs = document.querySelectorAll('[id^="conteo-nota-"]');
+  inputs.forEach(function(inp) {
+    notas.push({ folio: inp.dataset.folio, nota: inp.value.trim() || 'Sin comentario' });
+  });
+
+  // Build WA message
+  var suc = window._conteoResultados?.sucursal || _conteoSucursal;
+  var quien = currentUser?.nombre || currentUser?.usuario || '?';
+  var waMsg = '📋 *VERIFICACIÓN CONTEO — ' + suc + '*\n';
+  waMsg += 'Reportado por: ' + quien + '\n\n';
+  notas.forEach(function(n) {
+    waMsg += '• *' + n.folio + '*: ' + n.nota + '\n';
+  });
+
+  // Send WA to admin
+  try {
+    await fetch('/.netlify/functions/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send_admin', message: waMsg, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+  } catch(e) { console.error('Error enviando verificación:', e); }
+
+  // Update the conteo record in DB with the verification notes
+  try {
+    var res = window._conteoResultados;
+    if (res) {
+      res.verificacion = notas;
+      res.verificado_por = quien;
+      res.verificado_at = new Date().toISOString();
+    }
+    // We can't easily update the existing record without its ID, so we save notes in app_config
+    await db.from('app_config').upsert({
+      id: 'conteo_verificacion_' + suc.toLowerCase().replace(/[^a-z]/g,''),
+      value: JSON.stringify({ fecha: new Date().toISOString().slice(0,10), por: quien, notas: notas })
+    }, { onConflict: 'id' });
+  } catch(e) { console.error('Error guardando verificación:', e); }
+
+  // Show confirmation
+  var resEl = document.getElementById('conteo-results');
+  if (resEl) {
+    resEl.innerHTML = '<div style="text-align:center;padding:32px 16px">' +
+      '<div style="font-size:48px;margin-bottom:12px">✅</div>' +
+      '<div style="font-size:18px;font-weight:700;color:#72c47e;margin-bottom:8px">Verificación enviada</div>' +
+      '<div style="font-size:12px;color:var(--muted)">Administración revisará los detalles. ¡Gracias!</div>' +
+      '<button class="btn btn-g" onclick="document.getElementById(\'conteo-modal\').remove()" style="margin-top:20px;padding:12px 32px">Cerrar</button>' +
+      '</div>';
+  }
+}
 
 // ── Burbuja flotante: Tarea de Conteo Físico ─────────────────────────
 
