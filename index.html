@@ -7106,7 +7106,7 @@ function abrirConteoFisico() {
       '<div id="conteo-list" style="max-height:200px;overflow-y:auto;margin-bottom:16px"></div>' +
       '<div id="conteo-results" style="display:none"></div>' +
       '<div style="display:flex;gap:8px">' +
-        '<button class="btn btn-p" onclick="_conteoFinalizar()" style="flex:1;padding:12px" id="conteo-btn-finalizar">Finalizar Conteo</button>' +
+        '<button class="btn btn-p" onclick="_conteoFinalizar()" style="flex:1;padding:12px" id="conteo-btn-finalizar">Terminé de escanear — Ver resultados</button>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -7266,6 +7266,8 @@ async function _conteoFinalizar() {
     var resEl = document.getElementById('conteo-results');
     if (!resEl) return;
     resEl.style.display = '';
+    // Hide the "Finalizar" button — now only "Guardar" is visible
+    if (btn) btn.style.display = 'none';
 
     var h = '<div style="margin-bottom:16px">';
     h += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">Resultados del conteo — ' + suc + '</div>';
@@ -7308,7 +7310,7 @@ async function _conteoFinalizar() {
       h += '</details>';
     }
 
-    h += '<button class="btn btn-p" onclick="_conteoGuardar()" style="width:100%;padding:12px;margin-top:12px" id="conteo-btn-guardar">💾 Guardar Conteo</button>';
+    h += '<button class="btn btn-p" onclick="_conteoGuardar()" style="width:100%;padding:14px;margin-top:12px;font-size:14px;font-weight:700" id="conteo-btn-guardar">💾 Guardar y enviar conteo</button>';
     h += '</div>';
     resEl.innerHTML = h;
 
@@ -7325,8 +7327,7 @@ async function _conteoFinalizar() {
 
   } catch(e) {
     toast('Error al comparar: ' + e.message, 'error');
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = 'Finalizar Conteo'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Terminé de escanear — Ver resultados'; }
   }
 }
 
@@ -7337,7 +7338,7 @@ async function _conteoGuardar() {
 
   try {
     var res = window._conteoResultados;
-    await secureWrite('inventario_auditorias', 'insert', {
+    await db.from('inventario_auditorias').insert({
       sucursal: res.sucursal,
       tipo: 'conteo_fisico',
       realizado_por: currentUser?.nombre || currentUser?.usuario || 'Desconocido',
@@ -7351,7 +7352,7 @@ async function _conteoGuardar() {
       if (cfg) ultimoConteo = JSON.parse(cfg.value);
     } catch(e) {}
     ultimoConteo[res.sucursal] = new Date().toISOString().slice(0,10);
-    await secureWrite('app_config', 'upsert', { id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) });
+    await db.from('app_config').upsert({ id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) }, { onConflict: 'id' });
 
     toast('Conteo guardado correctamente', 'ok');
     document.getElementById('conteo-modal')?.remove();
