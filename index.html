@@ -7422,8 +7422,10 @@ async function _conteoFinalizar() {
       });
     } catch(e) { console.error('Error enviando WA conteo:', e); }
 
-    // Mark task completed
+    // Mark task completed + remove floating bubble if visible
     _conteoMarcarIniciado();
+    var _bub = document.getElementById('conteo-burbuja');
+    if (_bub) _bub.remove();
     _loadDashAuditoria();
 
     // Render results — ROLE-BASED
