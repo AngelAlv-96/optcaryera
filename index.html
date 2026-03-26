@@ -6324,13 +6324,13 @@ async function buscarParaEntrega(query) {
     }
 
     _entregaVentaData = ventaData;
-    _renderEntregaResultados(ordenes, ventaData);
+    await _renderEntregaResultados(ordenes, ventaData);
   } catch(e) {
     results.innerHTML = '<div style="color:#e08080;font-size:13px">Error: ' + (e.message||e) + '</div>';
   }
 }
 
-function _renderEntregaResultados(ordenes, ventaData) {
+async function _renderEntregaResultados(ordenes, ventaData) {
   var results = document.getElementById('entrega-results');
   if (!results) return;
 
@@ -6410,9 +6410,18 @@ function _renderEntregaResultados(ordenes, ventaData) {
   });
   h += '</div>';
 
-  // Asesor que entrega
+  // Asesor que entrega (select con empleados de la sucursal)
+  await cargarAsesoresConfig();
+  var sucEntrega = ventaData?.sucursal || ordenes[0]?.sucursal || currentUser?.sucursal || 'Todas';
+  var asesoresLista = getAsesoresPorSucursal(sucEntrega);
+  var currentNombre = currentUser?.nombre || '';
   h += '<div style="margin-bottom:14px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Asesor que entrega</label>';
-  h += '<input id="entrega-asesor" type="text" value="' + (currentUser?.nombre || '') + '" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none;box-sizing:border-box"></div>';
+  h += '<select id="entrega-asesor" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none;box-sizing:border-box;-webkit-appearance:none;appearance:none;cursor:pointer">';
+  asesoresLista.forEach(function(a) {
+    var sel = (a === currentNombre) ? ' selected' : '';
+    h += '<option value="' + a.replace(/"/g,'&quot;') + '"' + sel + '>' + a + '</option>';
+  });
+  h += '</select></div>';
 
   // Botones de acción
   var saldo = ventaData ? (Number(ventaData.saldo) || 0) : 0;
