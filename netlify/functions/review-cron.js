@@ -109,8 +109,10 @@ exports.handler = async function(event) {
     const toDate = dateMax.toISOString();
 
     // Find completed ventas in the date range with patient phone
+    // Use updated_at (set when liquidada) instead of created_at to catch ventas
+    // that were created as Apartado and liquidated days later
     const ventas = await supaREST('GET',
-      `ventas?estado=eq.Liquidada&created_at=gte.${fromDate}&created_at=lte.${toDate}&select=id,folio,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=100`
+      `ventas?estado=eq.Liquidada&updated_at=gte.${fromDate}&updated_at=lte.${toDate}&select=id,folio,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)&order=updated_at.desc&limit=100`
     );
 
     if (!ventas || !ventas.length) {

@@ -9,9 +9,9 @@
 [functions."lc-cron"]
   schedule = "0 16 * * *"
 
-# Review/NPS — sends opinion survey daily at 12:00 PM CST (18:00 UTC)
+# Review/NPS — sends opinion survey daily at 4:00 PM CST (22:00 UTC)
 [functions."review-cron"]
-  schedule = "0 18 * * *"
+  schedule = "0 22 * * *"
 
 # Magnolia Reactivation — DESACTIVADO (lista SICAR se envía manualmente una sola vez)
 # [functions."magnolia-reactivate"]
