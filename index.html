@@ -7276,13 +7276,32 @@ async function _conteoFinalizar() {
     });
 
     var missing = []; // in DB but not scanned
+    var missingFolios = [];
     Object.entries(dbMap).forEach(function(e) {
       if (!scannedFolios.has(e[0])) {
         var o = e[1];
         var dias = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000);
-        missing.push({ folio: e[0], paciente: (o.pacientes?.nombre||'')+' '+(o.pacientes?.apellidos||''), estado: o.estado_lab, dias: dias });
+        // Extract base folio (15695-2 → 15695) for venta lookup
+        var folioBase = e[0].replace(/-\d+$/, '');
+        missing.push({ folio: e[0], folioBase: folioBase, paciente: (o.pacientes?.nombre||'')+' '+(o.pacientes?.apellidos||''), estado: o.estado_lab, dias: dias, saldo: null });
+        if (missingFolios.indexOf(folioBase) === -1) missingFolios.push(folioBase);
       }
     });
+
+    // Cross-check missing folios against ventas to detect unpaid deliveries
+    if (missingFolios.length) {
+      var ventaMap = {};
+      // Fetch ventas for the missing base folios
+      for (var i = 0; i < missingFolios.length; i += 20) {
+        var batch = missingFolios.slice(i, i + 20);
+        var {data: ventas} = await db.from('ventas').select('folio,saldo,pagado,total').in('folio', batch);
+        if (ventas) ventas.forEach(function(v) { ventaMap[String(v.folio)] = v; });
+      }
+      missing.forEach(function(m) {
+        var v = ventaMap[m.folioBase];
+        if (v) { m.saldo = v.saldo || 0; m.totalVenta = v.total; m.pagado = v.pagado; }
+      });
+    }
 
     // Render results
     var resEl = document.getElementById('conteo-results');
@@ -7295,22 +7314,49 @@ async function _conteoFinalizar() {
     h += '<div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:12px">Resultados del conteo — ' + suc + '</div>';
 
     // Summary
+    var _conSaldo = missing.filter(function(m) { return m.saldo > 0; }).length;
     h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">';
-    h += '<div style="background:rgba(114,196,126,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#72c47e">'+matched.length+'</div><div style="font-size:10px;color:var(--muted)">Coinciden</div></div>';
-    h += '<div style="background:rgba(224,128,128,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#e08080">'+missing.length+'</div><div style="font-size:10px;color:var(--muted)">Faltan</div></div>';
+    h += '<div style="background:rgba(114,196,126,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#72c47e">'+matched.length+'</div><div style="font-size:10px;color:var(--muted)">Coinciden ✅</div></div>';
+    h += '<div style="background:rgba(224,128,128,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#e08080">'+missing.length+'</div><div style="font-size:10px;color:var(--muted)">No encontrados</div></div>';
     h += '<div style="background:rgba(212,184,74,0.08);border-radius:8px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:700;color:#d4b84a">'+orphans.length+'</div><div style="font-size:10px;color:var(--muted)">No en sistema</div></div>';
     h += '</div>';
+    if (_conSaldo) {
+      h += '<div style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:8px;padding:10px;margin-bottom:16px;text-align:center">';
+      h += '<div style="font-size:16px;font-weight:800;color:#ff6b6b">🚨 '+_conSaldo+' pedido'+(_conSaldo>1?'s':'')+' con saldo pendiente</div>';
+      h += '<div style="font-size:11px;color:#e08080;margin-top:4px">Se entregaron sin cobrar — revisar urgente</div>';
+      h += '</div>';
+    }
 
     if (missing.length) {
-      h += '<details open style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ En sistema pero NO escaneados ('+missing.length+')</summary>';
-      missing.forEach(function(m) {
-        h += '<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
-        h += '<span style="font-weight:600;color:var(--white);min-width:60px">'+m.folio+'</span>';
-        h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
-        h += '<span style="font-size:10px;color:#e08080">'+m.dias+'d</span>';
-        h += '</div>';
-      });
-      h += '</details>';
+      // Split into critical (con saldo) and normal (sin saldo)
+      var missingConSaldo = missing.filter(function(m) { return m.saldo > 0; });
+      var missingSinSaldo = missing.filter(function(m) { return m.saldo === 0 || m.saldo === null; });
+
+      if (missingConSaldo.length) {
+        h += '<details open style="margin-bottom:12px;border:1px solid rgba(224,80,80,0.3);border-radius:8px;padding:8px;background:rgba(224,80,80,0.06)">';
+        h += '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:#ff6b6b;margin-bottom:6px">🚨 ENTREGADOS SIN COBRAR — '+missingConSaldo.length+' pedido'+(missingConSaldo.length>1?'s':'')+'</summary>';
+        missingConSaldo.forEach(function(m) {
+          h += '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06)">';
+          h += '<span style="font-weight:700;color:var(--white);min-width:55px">'+m.folio+'</span>';
+          h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+          h += '<span style="font-size:11px;font-weight:700;color:#ff6b6b">Saldo: $'+m.saldo.toLocaleString()+'</span>';
+          h += '</div>';
+        });
+        h += '</details>';
+      }
+
+      if (missingSinSaldo.length) {
+        h += '<details style="margin-bottom:12px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#e08080;margin-bottom:6px">❌ No encontrados — sin saldo pendiente ('+missingSinSaldo.length+')</summary>';
+        h += '<div style="font-size:10px;color:var(--muted);margin-bottom:6px;padding:0 8px">Probablemente entregados sin marcar en sistema</div>';
+        missingSinSaldo.forEach(function(m) {
+          h += '<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+          h += '<span style="font-weight:600;color:var(--white);min-width:55px">'+m.folio+'</span>';
+          h += '<span style="flex:1;color:var(--muted)">'+m.paciente+'</span>';
+          h += '<span style="font-size:10px;color:var(--muted)">'+m.dias+'d</span>';
+          h += '</div>';
+        });
+        h += '</details>';
+      }
     }
 
     if (orphans.length) {
@@ -7337,14 +7383,18 @@ async function _conteoFinalizar() {
     resEl.innerHTML = h;
 
     // Store results for saving
+    var _missingConSaldo = missing.filter(function(m) { return m.saldo > 0; });
     window._conteoResultados = {
       sucursal: suc,
       escaneados: _conteoFolios.map(function(f){return f.folio}),
+      coincidencias: matched,
       en_sistema_no_escaneados: missing,
+      entregados_sin_cobrar: _missingConSaldo,
       escaneados_no_en_sistema: orphans,
       match_count: matched.length,
       mismatch_count: missing.length,
-      orphan_count: orphans.length
+      orphan_count: orphans.length,
+      sin_cobrar_count: _missingConSaldo.length
     };
 
   } catch(e) {
@@ -7703,18 +7753,29 @@ async function _audRenderConteos() {
       h += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       h += '<span style="font-weight:600;color:var(--white)">'+fecha+'</span>';
       h += '<span style="font-size:11px;color:var(--muted)">'+c.sucursal+' · '+c.realizado_por+'</span>';
+      var sinCobrar = d.entregados_sin_cobrar?.length || d.sin_cobrar_count || 0;
       h += '<span style="margin-left:auto;display:flex;gap:6px">';
       h += '<span style="font-size:10px;color:#72c47e">✅'+ok+'</span>';
       if (falta) h += '<span style="font-size:10px;color:#e08080">❌'+falta+'</span>';
+      if (sinCobrar) h += '<span style="font-size:10px;color:#ff6b6b;font-weight:700">🚨'+sinCobrar+'</span>';
       if (orph) h += '<span style="font-size:10px;color:#d4b84a">⚠️'+orph+'</span>';
       h += '</span></summary>';
       h += '<div style="padding:0 16px 12px">';
 
-      if (d.en_sistema_no_escaneados?.length) {
-        h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:6px 0 4px">❌ En sistema pero no encontrados ('+d.en_sistema_no_escaneados.length+')</div>';
-        d.en_sistema_no_escaneados.forEach(function(m) {
-          h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+(m.folio||'?')+' — '+(m.paciente||'')+' ('+m.dias+'d)</div>';
+      if (d.entregados_sin_cobrar?.length) {
+        h += '<div style="font-size:11px;font-weight:700;color:#ff6b6b;margin:6px 0 4px;padding:6px 8px;background:rgba(255,80,80,0.1);border-radius:6px">🚨 ENTREGADOS SIN COBRAR ('+d.entregados_sin_cobrar.length+')</div>';
+        d.entregados_sin_cobrar.forEach(function(m) {
+          h += '<div style="font-size:12px;color:#ff6b6b;padding:2px 8px;font-weight:600">• '+(m.folio||'?')+' — '+(m.paciente||'')+' — Saldo: $'+(m.saldo||0).toLocaleString()+'</div>';
         });
+      }
+      if (d.en_sistema_no_escaneados?.length) {
+        var sinSaldo = d.en_sistema_no_escaneados.filter(function(m) { return !m.saldo || m.saldo <= 0; });
+        if (sinSaldo.length) {
+          h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:6px 0 4px">❌ No encontrados — sin saldo ('+sinSaldo.length+')</div>';
+          sinSaldo.forEach(function(m) {
+            h += '<div style="font-size:12px;color:var(--muted);padding:2px 0">• '+(m.folio||'?')+' — '+(m.paciente||'')+' ('+m.dias+'d)</div>';
+          });
+        }
       }
       if (d.escaneados_no_en_sistema?.length) {
         h += '<div style="font-size:11px;font-weight:600;color:#d4b84a;margin:6px 0 4px">⚠️ Escaneados pero no en sistema ('+d.escaneados_no_en_sistema.length+')</div>';
