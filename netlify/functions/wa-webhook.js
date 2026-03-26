@@ -170,16 +170,17 @@ async function getClariConfig() {
 async function lookupOrders(phone, text) {
   if (!SERVICE_KEY) return null;
   var results = [];
+  var cleanPhone = phone.replace(/^\+?52/, '').replace(/^1/, '');
+  console.log('[OrderLookup] phone=' + phone + ' cleanPhone=' + cleanPhone + ' text=' + text.substring(0, 50));
 
   // 1. Try by phone number (the sender's WhatsApp number)
-  var cleanPhone = phone.replace(/^\+?52/, '').replace(/^1/, '');
   if (cleanPhone.length === 10) {
-    // Find patient by phone
     var patients = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id,nombre,apellidos,telefono&limit=5');
+    console.log('[OrderLookup] phone search: ' + (patients ? patients.length : 'null') + ' patients');
     if (patients && patients.length > 0) {
       var patIds = patients.map(function(p) { return p.id; });
-      // Get active orders for these patients
       var orders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + patIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=10');
+      console.log('[OrderLookup] orders by phone: ' + (orders ? orders.length : 'null'));
       if (orders && orders.length > 0) results = results.concat(orders);
     }
   }
@@ -189,8 +190,8 @@ async function lookupOrders(phone, text) {
   if (folioMatch) {
     var folio = folioMatch[1];
     var byFolio = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + folio + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
+    console.log('[OrderLookup] folio "' + folio + '": ' + (byFolio ? byFolio.length : 'null'));
     if (byFolio && byFolio.length > 0) {
-      // Add only if not already found by phone
       byFolio.forEach(function(o) {
         if (!results.find(function(r) { return r.id === o.id; })) results.push(o);
       });
@@ -200,13 +201,16 @@ async function lookupOrders(phone, text) {
   // 3. Try by name if message has a name-like text (only if no results yet)
   if (results.length === 0) {
     var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) { return w.length >= 3; });
+    console.log('[OrderLookup] trying name search, words: ' + nameWords.join(', '));
     if (nameWords.length >= 1) {
       for (var i = 0; i < Math.min(nameWords.length, 2); i++) {
         var word = nameWords[i];
         var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=5');
+        console.log('[OrderLookup] name "' + word + '": ' + (byName ? byName.length : 'null') + ' patients');
         if (byName && byName.length > 0 && byName.length <= 3) {
           var nameIds = byName.map(function(p) { return p.id; });
           var nameOrders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + nameIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
+          console.log('[OrderLookup] orders by name: ' + (nameOrders ? nameOrders.length : 'null'));
           if (nameOrders && nameOrders.length > 0) results = results.concat(nameOrders);
           break;
         }
@@ -214,7 +218,7 @@ async function lookupOrders(phone, text) {
     }
   }
 
-  if (results.length === 0) return null;
+  if (results.length === 0) { console.log('[OrderLookup] no results found'); return null; }
 
   // Deduplicate
   var seen = {};
@@ -223,6 +227,24 @@ async function lookupOrders(phone, text) {
     seen[o.id] = true;
     return true;
   });
+
+  // Enrich with sale data (total, saldo, estado pago)
+  var folios = results.map(function(o) {
+    return (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/);
+  }).filter(Boolean).map(function(m) { return m[1]; });
+  // Extract base folios (15698 from 15698-2, 15698-3, etc.)
+  var baseFolios = {};
+  folios.forEach(function(f) { baseFolios[f.replace(/-\d+$/, '')] = true; });
+  var ventasMap = {};
+  var baseKeys = Object.keys(baseFolios);
+  if (baseKeys.length > 0) {
+    for (var vi = 0; vi < baseKeys.length; vi++) {
+      var vf = baseKeys[vi];
+      var ventas = await supaFetch('ventas?folio=eq.' + vf + '&select=folio,total,pagado,saldo,estado&limit=1');
+      if (ventas && ventas.length > 0) ventasMap[vf] = ventas[0];
+    }
+  }
+  console.log('[OrderLookup] enriched with ' + Object.keys(ventasMap).length + ' ventas');
 
   // Format for AI context
   return results.map(function(o) {
@@ -233,7 +255,9 @@ async function lookupOrders(phone, text) {
     var statusInfo = STATUS_MAP[estado] || { emoji: '📋', msg: 'Tu pedido está siendo procesado.' };
     var sucursal = o.sucursal || '';
     var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
-    return {
+    var baseFolio = folio.replace(/-\d+$/, '');
+    var venta = ventasMap[baseFolio] || null;
+    var result = {
       nombre: nombre,
       folio: folio,
       estado: estado,
@@ -242,6 +266,13 @@ async function lookupOrders(phone, text) {
       sucursal: sucursal,
       fecha: fecha
     };
+    if (venta) {
+      result.total_venta = venta.total;
+      result.pagado = venta.pagado;
+      result.saldo = venta.saldo;
+      result.estado_pago = venta.estado;
+    }
+    return result;
   });
 }
 
@@ -249,6 +280,22 @@ function isAskingAboutOrder(text) {
   var lower = text.toLowerCase();
   var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo'];
   return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
+}
+
+// Detect if user is providing name/folio as follow-up to a previous order inquiry
+function isOrderFollowUp(history) {
+  if (!history || history.length < 2) return false;
+  // Check last 4 messages for Clari asking for name/folio
+  var recent = history.slice(-4);
+  for (var i = 0; i < recent.length; i++) {
+    if (recent[i].role === 'assistant') {
+      var c = (recent[i].content || '').toLowerCase();
+      if ((c.includes('nombre') || c.includes('folio')) && (c.includes('pedido') || c.includes('ubicarte') || c.includes('buscar') || c.includes('revisar'))) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // ── CONVERSATION HISTORY ──
@@ -332,18 +379,47 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
 
+  // Get conversation history early (needed for order follow-up detection)
+  var history = await getConversationHistory(phone);
+
   // Check if asking about order and lookup
   var orderContext = '';
-  if (isAskingAboutOrder(userMessage)) {
+  var shouldLookupOrder = isAskingAboutOrder(userMessage);
+  // Also trigger lookup if conversation shows Clari asked for name/folio (follow-up)
+  if (!shouldLookupOrder && isOrderFollowUp(history)) {
+    shouldLookupOrder = true;
+    console.log('[OrderLookup] triggered by follow-up detection');
+  }
+  if (shouldLookupOrder) {
     var orders = await lookupOrders(phone, userMessage);
     if (orders && orders.length > 0) {
       orderContext = '\n\nPEDIDOS ENCONTRADOS PARA ESTE CLIENTE:\n';
+      // Group by base folio to show sale info once
+      var shownSale = {};
       orders.forEach(function(o, i) {
         orderContext += (i + 1) + '. ' + o.nombre + ' — Folio: ' + o.folio + '\n';
-        orderContext += '   Estado: ' + o.emoji + ' ' + o.mensaje_cliente + '\n';
-        orderContext += '   Sucursal: ' + o.sucursal + ' | Fecha: ' + o.fecha + '\n';
+        orderContext += '   Estado: ' + o.emoji + ' ' + o.estado + ' — ' + o.mensaje_cliente + '\n';
+        orderContext += '   Sucursal: ' + o.sucursal + ' | Fecha orden: ' + o.fecha + '\n';
+        // Show sale data once per base folio
+        var baseFolio = o.folio.replace(/-\d+$/, '');
+        if (o.total_venta && !shownSale[baseFolio]) {
+          shownSale[baseFolio] = true;
+          orderContext += '   Venta folio ' + baseFolio + ': Total $' + Number(o.total_venta).toLocaleString('es-MX') + ' | Pagado $' + Number(o.pagado).toLocaleString('es-MX') + ' | Saldo $' + Number(o.saldo).toLocaleString('es-MX') + ' | ' + o.estado_pago + '\n';
+        }
       });
-      orderContext += '\nINSTRUCCIONES IMPORTANTES SOBRE PEDIDOS:\n- Usa el mensaje_cliente como base para responder. NO inventes información adicional.\n- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n- NUNCA menciones el número 657-299-1038 ni envíes al cliente a otro número. Tú tienes la información.\n- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n- Sé honesta sobre el tiempo: si están en proceso, di que están en proceso. No generes falsas expectativas.\n- Incluye el folio para referencia del cliente.';
+      orderContext += '\nINSTRUCCIONES IMPORTANTES SOBRE PEDIDOS:\n' +
+        '- TÚ TIENES TODA LA INFORMACIÓN. Responde directamente con los datos que ves arriba.\n' +
+        '- PROHIBIDO decir "contacta a la sucursal", "llama a la sucursal", "te recomiendo visitar" o cualquier variante. Tú eres quien da la información.\n' +
+        '- PROHIBIDO pedir nombre o folio si ya encontraste pedidos arriba.\n' +
+        '- Usa el mensaje_cliente como base para responder. NO inventes información adicional.\n' +
+        '- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
+        '- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n' +
+        '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
+        '- Si la venta está Liquidada y los lentes están listos, dile que pase a recogerlos.\n' +
+        '- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n' +
+        '- Sé honesta sobre el tiempo: si están en proceso, di que están en proceso. No generes falsas expectativas.\n' +
+        '- Incluye el folio para referencia del cliente.\n' +
+        '- Si hay múltiples folios del mismo paciente (ej: 15698, 15698-2, 15698-3), son parte de la misma compra (promo 3x1). Resume el estado general en vez de repetir cada uno.';
     } else {
       orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos activos para este número de teléfono ni con la información proporcionada. Pide amablemente al cliente su número de folio (aparece en su ticket de compra) o su nombre completo para buscarlo. Si ya proporcionó datos y no hay resultados, dile que no encontraste pedidos activos y que visite la sucursal más cercana para más información. NUNCA menciones el número 657-299-1038.';
     }
@@ -365,9 +441,6 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       systemPrompt += lcContext;
     }
   }
-
-  // Get conversation history
-  var history = await getConversationHistory(phone);
 
   // Check for Magnolia Reactivation context in recent history
   var hasMagReactivation = false;
