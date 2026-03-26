@@ -926,6 +926,11 @@ async function vtaLcToggle() {
     if (rxBanner) rxBanner.style.display = 'none';
     return;
   }
+  // Auto-trigger guía de entrenamiento la primera vez
+  if (!localStorage.getItem('lc_guia_completada') && typeof iniciarGuiaEntrenamiento === 'function') {
+    localStorage.setItem('lc_guia_completada', '1');
+    setTimeout(function() { iniciarGuiaEntrenamiento('ventaLC'); }, 400);
+  }
   // If has Rx data not yet converted — show only banner, hide catalog
   if (_vtaLcRxData && !_vtaLcRxData.hasLcRx) {
     vtaLcShowRxPrompt();

@@ -3332,7 +3332,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
                   <div style="font-size:9px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em">🔍 Productos</div>
                   <div style="display:flex;gap:4px">
-                    <button class="chip" onclick="vtaLcToggle()" style="font-size:9px;padding:2px 6px;background:rgba(138,176,232,0.1);border-color:rgba(138,176,232,0.2);color:#8ab0e8">👁 Lentes de contacto</button>
+                    <button id="vta-lc-btn" class="chip" onclick="vtaLcToggle()" style="font-size:9px;padding:2px 6px;background:rgba(138,176,232,0.1);border-color:rgba(138,176,232,0.2);color:#8ab0e8">👁 Lentes de contacto</button>
                     <button class="chip" onclick="toggleManualProd()" style="font-size:9px;padding:2px 6px">✏ Manual</button>
                   </div>
                 </div>
@@ -16638,7 +16638,8 @@ var GUIAS_ENTRENAMIENTO = {
       { key: 'caja', icon: '💰', label: 'Caja', desc: 'Retiros, cortes, arqueo' },
       { key: 'garantias', icon: '🔄', label: 'Garantías', desc: 'Procesar garantías' },
       { key: 'creditos', icon: '💳', label: 'Créditos', desc: 'Abonos y créditos SICAR' },
-      { key: 'entrega', icon: '📦', label: 'Entrega de Lentes', desc: 'Entregar pedidos al cliente' }
+      { key: 'entrega', icon: '📦', label: 'Entrega de Lentes', desc: 'Entregar pedidos al cliente' },
+      { key: 'ventaLC', icon: '👁', label: 'Venta de LC', desc: 'Vender lentes de contacto paso a paso' }
     ]
   },
   ventas: { titulo: '🛒 Ventas', pasos: [
@@ -16694,6 +16695,14 @@ var GUIAS_ENTRENAMIENTO = {
   creditos: { titulo: '💳 Créditos', pasos: [
     { texto: '📋 Créditos/monedero migrados de SICAR. Busca por nombre o teléfono.', accion: 'creditos', highlight: null },
     { texto: '💰 Clic en el cliente y "Registrar abono". Se refleja en caja.', highlight: null }
+  ]},
+  ventaLC: { titulo: '👁 Venta de Lentes de Contacto', pasos: [
+    { texto: '👤 Primero busca y selecciona al paciente. Sin paciente no puedes vender lentes de contacto.', highlight: 'vta-pac-search', accion: 'ventas' },
+    { texto: '👁 Presiona el botón "Lentes de contacto" en la sección de productos para abrir el panel de LC.', highlight: 'vta-lc-btn' },
+    { texto: '🔄 Si el paciente tiene graduación (Rx Final) pero no tiene Rx para LC, aparecerá un banner preguntando si quieres convertirla. Presiona "Convertir" para guardar la graduación de LC automáticamente.', highlight: null },
+    { texto: '🔍 El catálogo se filtra según la graduación del paciente. Solo verás los lentes compatibles con su Rx. Selecciona el producto y elige las cajas para cada ojo.', highlight: 'vta-lc-panel' },
+    { texto: '💰 Con el producto en el carrito, ingresa el cobro, fecha y hora de entrega, y presiona "Cobrar". La orden de laboratorio se crea automáticamente.', highlight: 'vta-monto-cobro' },
+    { texto: '✅ ¡Listo! La orden aparecerá en Reporte de Materiales y Cola de Producción para surtirse. Así los lentes nunca se quedan sin pedir.', highlight: null }
   ]},
   entrega: { titulo: '📦 Entrega de Lentes', pasos: [
     { texto: '📦 Desde el Panel General, presiona el botón "Entregar Lentes" en los accesos rápidos.', accion: 'dashboard', highlight: null },
@@ -16966,6 +16975,7 @@ let vtaItems = [];
 let vtaMetodo = 'Efectivo';
 let vtaMSI = 3;
 let productosCache = [];
+const VTA_LIBRE = ['Accesorio','Solución','Solucion']; // categorías que NO requieren paciente
 let histVentasData = [];
 let hvPage = 0;
 const HV_PAGE_SIZE = 50;
@@ -17076,6 +17086,13 @@ function toggleVtaRapida() {
   var checked = document.getElementById('vta-rapida').checked;
   var search = document.getElementById('vta-pac-search');
   if (checked) {
+    // Bloquear si hay items que requieren paciente
+    var _itemsReqPac = vtaItems.filter(function(i) { return i.categoria && !VTA_LIBRE.includes(i.categoria); });
+    if (_itemsReqPac.length) {
+      document.getElementById('vta-rapida').checked = false;
+      toast('⚠️ Tienes productos que requieren paciente (' + _itemsReqPac[0].categoria + '). Quítalos primero para usar Venta Rápida.', true);
+      return;
+    }
     vtaPaciente = { id: null, nombre: 'Público General', telefono: '' };
     search.value = 'Público General';
     search.disabled = true;
@@ -17392,8 +17409,8 @@ async function buscarVtaProd() {
   var all = [...(r1.data||[]), ...(r2.data||[]), ...(r3.data||[]), ...(r4.data||[])].filter(p => {
     if (seen[p.id]) return false;
     seen[p.id] = true;
-    // Exclude materiales opticos (se configuran en la orden de lab, no se venden directo)
-    if (p.categoria === 'Material' || p.departamento === 'Materiales opticos') return false;
+    // Exclude materiales opticos, LC y servicios (se configuran en la orden de lab / panel LC, no se buscan aquí)
+    if (p.categoria === 'Material' || p.categoria === 'Servicio' || p.departamento === 'Materiales opticos' || p.categoria === 'Lente de contacto') return false;
     return true;
   }).slice(0, 15);
   if (!all.length) { dd.innerHTML='<div style="padding:10px;color:var(--muted);font-size:12px;text-align:center">Sin resultados para "'+q+'"</div>'; dd.style.display=''; return; }
@@ -17412,6 +17429,11 @@ async function buscarVtaProd() {
 async function agregarProductoVta(prodId) {
   const {data:p}=await db.from('productos').select('*').eq('id',prodId).single();
   if (!p) return;
+  // Validar paciente para categorías que lo requieren
+  if (!VTA_LIBRE.includes(p.categoria) && !vtaPaciente?.id) {
+    toast('⚠️ Selecciona un paciente para vender ' + (p.categoria || 'este producto'), true);
+    return;
+  }
   const existing=vtaItems.find(i=>i.producto_id===prodId);
   if (existing) { existing.cantidad++; existing.subtotal=existing.cantidad*existing.precio_unitario; }
   else { vtaItems.push({producto_id:p.id, descripcion:`${p.nombre}${p.marca?' · '+p.marca:''}`, cantidad:1, precio_unitario:Number(p.precio_venta), descuento_item:0, subtotal:Number(p.precio_venta), categoria:p.categoria||null}); }
@@ -17425,6 +17447,11 @@ function agregarItemManual() {
   const price=parseFloat(document.getElementById('vta-man-price').value)||0;
   const cat=document.getElementById('vta-man-cat').value||null;
   if (!desc||price<=0) { toast('Completa descripción y precio',true); return; }
+  // Validar paciente para categorías que lo requieren
+  if (cat && !VTA_LIBRE.includes(cat) && !vtaPaciente?.id) {
+    toast('⚠️ Selecciona un paciente para vender ' + cat, true);
+    return;
+  }
   vtaItems.push({producto_id:null,descripcion:desc,cantidad:qty,precio_unitario:price,descuento_item:0,subtotal:qty*price,categoria:cat});
   document.getElementById('vta-man-desc').value='';document.getElementById('vta-man-qty').value='1';document.getElementById('vta-man-price').value='';document.getElementById('vta-man-cat').value='';
   renderVtaItems();
@@ -17449,6 +17476,11 @@ function renderVtaItems() {
       <button onclick="vtaItems.splice(${i},1);renderVtaItems()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;padding:2px 4px;font-weight:700">✕</button>
     </div>`;
   }).join('');
+  // Banner si hay items que requieren paciente y no hay paciente
+  var _vtaReqPac = vtaItems.some(function(i) { return i.categoria && !VTA_LIBRE.includes(i.categoria); });
+  if (_vtaReqPac && !vtaPaciente?.id) {
+    list.innerHTML = '<div style="padding:8px 14px;background:rgba(224,128,128,0.1);border:1px solid rgba(224,128,128,0.3);border-radius:8px;margin:8px 10px;font-size:12px;color:#e08080;font-weight:600">⚠️ Selecciona un paciente — estos productos lo requieren</div>' + list.innerHTML;
+  }
   totEl.style.display=''; cobEl.style.display=''; recalcVtaTotales();
   const promoBtnWrap = document.getElementById('vta-promo-btn-wrap');
   if (promoBtnWrap) promoBtnWrap.style.display = vtaPromoAplicada ? 'none' : '';
@@ -17652,6 +17684,13 @@ async function procesarVenta() {
 }
 async function _procesarVentaInner() {
   if (!vtaItems.length) { toast('Agrega al menos un producto',true); return; }
+  // Safety net: bloquear si hay items que requieren paciente y no hay paciente
+  var _reqPacCats = vtaItems.filter(i => i.categoria && !VTA_LIBRE.includes(i.categoria)).map(i => i.categoria);
+  if (_reqPacCats.length && !vtaPaciente?.id) {
+    var _catsUnicas = [...new Set(_reqPacCats)].join(', ');
+    toast('⚠️ No puedes vender ' + _catsUnicas + ' sin paciente seleccionado', true);
+    return;
+  }
   if (!vtaPaciente?.id && !document.getElementById('vta-rapida')?.checked) {
     if (!confirm('⚠️ No hay paciente seleccionado.\n\nLa venta se registrará como "Público General".\n\n¿Continuar sin paciente?')) return;
   }
