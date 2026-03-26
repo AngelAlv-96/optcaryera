@@ -6257,7 +6257,7 @@ async function buscarParaEntrega(query) {
     var ventaData = null;
 
     // Helper: buscar órdenes por paciente_id como fallback
-    var _entregaSelectOrd = 'id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,updated_at,paciente_id,pacientes(nombre,apellidos,telefono)';
+    var _entregaSelectOrd = 'id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
     async function _fallbackByPaciente(pacId) {
       var { data: ords2 } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).eq('paciente_id', pacId).order('created_at',{ascending:false}).limit(30);
       return (ords2 || []).filter(function(o){ return o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
@@ -7006,7 +7006,7 @@ async function _loadDashAuditoria() {
   if (!section) return;
   try {
     var [{data: esperando}, {data: auditorias}] = await Promise.all([
-      db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id').in('estado_lab',['Recibido en óptica','Listo para entrega']),
+      db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id').in('estado_lab',['Recibido en óptica','Listo para entrega']),
       db.from('inventario_auditorias').select('datos,created_at').eq('tipo','auditoria_automatica').order('created_at',{ascending:false}).limit(1)
     ]);
     esperando = esperando || [];
@@ -7016,7 +7016,7 @@ async function _loadDashAuditoria() {
     esperando.forEach(function(o) {
       var s = o.sucursal || 'Otra';
       porSuc[s] = (porSuc[s]||0) + 1;
-      var dias = Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000);
+      var dias = Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000);
       if (dias > 3) esperandoMucho++;
     });
 
@@ -7237,7 +7237,7 @@ async function _conteoFinalizar() {
   try {
     // Get all orders waiting in this branch
     var {data: esperando} = await db.from('ordenes_laboratorio')
-      .select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id,pacientes(nombre,apellidos)')
+      .select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id,pacientes(nombre,apellidos)')
       .eq('sucursal', suc)
       .in('estado_lab', ['Recibido en óptica', 'Listo para entrega']);
     esperando = esperando || [];
@@ -7268,7 +7268,7 @@ async function _conteoFinalizar() {
     Object.entries(dbMap).forEach(function(e) {
       if (!scannedFolios.has(e[0])) {
         var o = e[1];
-        var dias = Math.floor((Date.now() - new Date(o.updated_at).getTime()) / 86400000);
+        var dias = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 86400000);
         missing.push({ folio: e[0], paciente: (o.pacientes?.nombre||'')+' '+(o.pacientes?.apellidos||''), estado: o.estado_lab, dias: dias });
       }
     });
@@ -7552,9 +7552,9 @@ async function _audRenderResumen() {
 
   try {
     var {data: esperando} = await db.from('ordenes_laboratorio')
-      .select('id,estado_lab,sucursal,notas_laboratorio,updated_at,paciente_id,pacientes(nombre,apellidos)')
+      .select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id,pacientes(nombre,apellidos)')
       .in('estado_lab', ['Recibido en óptica', 'Listo para entrega'])
-      .order('updated_at', {ascending: true});
+      .order('created_at', {ascending: true});
     esperando = esperando || [];
 
     var now = new Date();
@@ -7563,7 +7563,7 @@ async function _audRenderResumen() {
       var items = esperando.filter(function(o) { return o.sucursal === suc; });
       var porRevisar = items.filter(function(o) { return o.estado_lab === 'Recibido en óptica'; }).length;
       var listos = items.filter(function(o) { return o.estado_lab === 'Listo para entrega'; }).length;
-      var mayores3 = items.filter(function(o) { return Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000) > 3; }).length;
+      var mayores3 = items.filter(function(o) { return Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000) > 3; }).length;
       var sucC = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4'};
       h += '<div class="est-card">';
       h += '<div style="font-size:14px;font-weight:700;color:'+(sucC[suc]||'#888')+';margin-bottom:8px">'+suc+'</div>';
@@ -7581,7 +7581,7 @@ async function _audRenderResumen() {
       esperando.forEach(function(o) {
         var folio = o.notas_laboratorio?.match(/Folio:\s*(\S+)/)?.[1] || '—';
         var pac = ((o.pacientes?.nombre||'')+ ' '+(o.pacientes?.apellidos||'')).trim() || '—';
-        var dias = Math.floor((now.getTime() - new Date(o.updated_at).getTime()) / 86400000);
+        var dias = Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000);
         var color = dias > 3 ? '#e08080' : dias > 1 ? '#d4b84a' : '#72c47e';
         h += '<tr><td style="font-weight:600">'+folio+'</td><td>'+pac+'</td><td>'+o.sucursal+'</td>';
         h += '<td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(o.estado_lab==='Listo para entrega'?'rgba(114,196,126,0.1)':'rgba(180,138,212,0.1)')+';color:'+(o.estado_lab==='Listo para entrega'?'#72c47e':'#b48ad4')+'">'+o.estado_lab+'</span></td>';
@@ -11606,7 +11606,7 @@ async function verResumenOrden(orderId) {
   const revisadoMatch = notasRaw.match(/Revisado por:\s*([^|]+)/);
   if (revisadoMatch) events.push({ icon: '👁', label: 'Revisado en óptica', detail: `Por: ${revisadoMatch[1].trim()}`, time: '', color: '#b48ad4' });
 
-  events.push({ icon: '📍', label: `Estado actual: ${o.estado_lab}`, detail: '', time: fmtDateTime(o.updated_at || o.created_at), color: st.dot });
+  events.push({ icon: '📍', label: `Estado actual: ${o.estado_lab}`, detail: '', time: fmtDateTime(o.created_at || o.created_at), color: st.dot });
 
   const urgMatch = notasRaw.match(/Urgencia:\s*([^|]+)/);
   const urgencia = urgMatch ? urgMatch[1].trim() : 'Normal';

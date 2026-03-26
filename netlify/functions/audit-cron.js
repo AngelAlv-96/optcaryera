@@ -131,7 +131,7 @@ exports.handler = async function(event) {
 
     // ── 1. Entregados sin cobrar ──
     const entregados = await supaREST('GET',
-      `ordenes_laboratorio?estado_lab=eq.Entregado&updated_at=gte.${lookbackDate}&select=id,notas_laboratorio,sucursal,paciente_id,updated_at&limit=200`
+      `ordenes_laboratorio?estado_lab=eq.Entregado&created_at=gte.${lookbackDate}&select=id,notas_laboratorio,sucursal,paciente_id,created_at&limit=200`
     );
 
     const entregadosSinCobrar = [];
@@ -155,7 +155,7 @@ exports.handler = async function(event) {
             folio,
             sucursal: ord.sucursal,
             paciente_id: ord.paciente_id,
-            fecha_entrega: ord.updated_at?.slice(0, 10)
+            fecha_entrega: ord.created_at?.slice(0, 10)
           });
         }
       }
@@ -178,7 +178,7 @@ exports.handler = async function(event) {
                   paciente: `${v.pacientes?.nombre || ''} ${v.pacientes?.apellidos || ''}`.trim(),
                   saldo: Number(v.saldo),
                   sucursal: v.sucursal,
-                  fecha_entrega: folioMap[v.folio]?.updated_at?.slice(0, 10)
+                  fecha_entrega: folioMap[v.folio]?.created_at?.slice(0, 10)
                 });
               }
             }
@@ -207,14 +207,14 @@ exports.handler = async function(event) {
 
     // ── 3. Esperando mucho tiempo ──
     const esperando = await supaREST('GET',
-      `ordenes_laboratorio?estado_lab=in.(Recibido en óptica,Listo para entrega)&updated_at=lte.${alertDate}&select=id,notas_laboratorio,sucursal,paciente_id,estado_lab,updated_at&limit=100`
+      `ordenes_laboratorio?estado_lab=in.(Recibido en óptica,Listo para entrega)&created_at=lte.${alertDate}&select=id,notas_laboratorio,sucursal,paciente_id,estado_lab,created_at&limit=100`
     );
 
     const esperandoMucho = [];
     if (esperando && esperando.length) {
       for (const ord of esperando) {
         const folio = extractFolio(ord.notas_laboratorio);
-        const dias = Math.floor((now.getTime() - new Date(ord.updated_at).getTime()) / (24 * 60 * 60 * 1000));
+        const dias = Math.floor((now.getTime() - new Date(ord.created_at).getTime()) / (24 * 60 * 60 * 1000));
         esperandoMucho.push({
           folio: folio || '?',
           sucursal: ord.sucursal,
