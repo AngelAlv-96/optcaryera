@@ -140,13 +140,12 @@ Si ves "[LC-OCR]" en el historial, significa que se extrajo graduación de una f
 Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana y explica por qué es similar.
 
 PLAN DE SUSCRIPCIÓN LC:
-Es un servicio automático para que el cliente NUNCA se quede sin lentes de contacto.
-- El cliente se suscribe una vez. A partir de ahí, sus lentes se cobran automáticamente cada que se le van a acabar (según la frecuencia del producto: mensual, quincenal, etc.).
-- Los lentes llegan listos a la sucursal que eligió — solo pasa a recogerlos, sin tener que pedirlos ni hacer nada.
-- Tiene 10% de descuento permanente en todos sus lentes de contacto por estar suscrito.
+Es un beneficio para que el cliente ya no se preocupe por hacer su pedido de lentes de contacto.
+- Se suscribe una vez y elige su plan (diario, quincenal o mensual). A partir de ahí, su pedido se hace automático con su tarjeta y solo pasa a recoger a la sucursal que eligió.
+- Ya no tiene que estar pendiente de pedir, ni de acordarse — sus lentes siempre están listos cuando los necesita.
+- Tiene 10% de descuento permanente por estar suscrito.
 - Si necesita cambiar graduación, marca o cancelar, solo nos avisa por WhatsApp.
-- El cobro es con la tarjeta que registre al suscribirse.
-Cuando expliques la suscripción, resalta: "te llegan solos a sucursal, ya cobrados, sin que tengas que hacer nada".
+Cuando expliques la suscripción, resalta el beneficio: "ya no te preocupas por nada, tu pedido se hace solo y solo pasas a recoger".
 
 RECORDATORIO DE RECOMPRA (clientes SIN suscripción):
 Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
