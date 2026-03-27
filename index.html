@@ -8176,7 +8176,7 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
   var sucColors = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4','Online':'#38bdf8'};
   var PAY_ICONS = {'Efectivo':'💵','Tarjeta':'💳','MSI':'⏰','Transferencia':'🔄','Dólar':'💲','Aplazo':'📱','Link de pago':'🔗','Monedero':'🪙'};
   var PAY_CLR = {'Efectivo':'#4ade80','Tarjeta':'#60a5fa','MSI':'#fbbf24','Transferencia':'#a78bfa','Dólar':'#34d399','Aplazo':'#f472b6','Link de pago':'#38bdf8','Monedero':'#34d399'};
-  var totalGeneral = 0, totalVentasCount = 0, totalGarantias = garantiasHoy.length;
+  var totalGeneral = 0, totalVentasCount = 0, totalGarantias = garantiasHoy.length, totalAbonosGeneral = 0;
   var globalDesglose = {};
 
   var h = '<div style="text-align:center;padding:16px 0 8px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em">Resumen del día</div><div style="font-size:22px;font-weight:800;color:var(--beige)">' + today + '</div><div style="font-size:11px;color:#72c47e;margin-top:4px">✅ 3 sucursales cerradas</div></div>';
@@ -8198,14 +8198,15 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
     var c = sucColors[s];
     var cobrado = Object.values(desglose).reduce((a,v)=>a+Number(v),0);
 
-    totalGeneral += cobrado || totalVentas;
+    totalGeneral += totalVentas;
+    totalAbonosGeneral += totalAbonos;
     totalVentasCount += numVentas;
     Object.entries(desglose).forEach(function(e) { globalDesglose[e[0]] = (globalDesglose[e[0]]||0) + Number(e[1]); });
 
     h += '<div style="background:var(--surface);border:2px solid '+c+'33;border-radius:12px;padding:14px 12px">';
     h += '<div style="text-align:center;font-size:14px;font-weight:800;color:'+c+';margin-bottom:6px">'+s+'</div>';
-    h += '<div style="text-align:center;font-size:22px;font-weight:800;color:var(--white)">$'+(cobrado||totalVentas).toLocaleString('es-MX',{minimumFractionDigits:0})+'</div>';
-    h += '<div style="text-align:center;font-size:10px;color:var(--muted);margin-bottom:8px">'+numVentas+' ventas'+(numAbonos>0?' · '+numAbonos+' abonos':'')+(sg.length>0?' · '+sg.length+' gtas':'')+'</div>';
+    h += '<div style="text-align:center;font-size:22px;font-weight:800;color:var(--white)">$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0})+'</div>';
+    h += '<div style="text-align:center;font-size:10px;color:var(--muted);margin-bottom:8px">'+numVentas+' ventas'+(numAbonos>0?' · '+numAbonos+' abonos $'+totalAbonos.toLocaleString('es-MX',{minimumFractionDigits:0}):'')+(sg.length>0?' · '+sg.length+' gtas':'')+'</div>';
     // Full desglose
     h += '<div style="font-size:10px;color:var(--muted);padding:6px 0;border-top:1px solid rgba(255,255,255,0.05)">';
     Object.entries(desglose).sort((a,b)=>Number(b[1])-Number(a[1])).forEach(function(e) {
@@ -8234,8 +8235,13 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
   // Totales generales con desglose completo
   var grandTotal = Object.values(globalDesglose).reduce((a,v)=>a+v,0);
   h += '<div style="background:var(--surface);border:1px solid rgba(226,198,166,0.15);border-radius:12px;padding:16px;margin-bottom:16px">';
-  h += '<div style="text-align:center;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Total general cobrado</div>';
-  h += '<div style="text-align:center;font-size:28px;font-weight:800;color:var(--beige);margin-bottom:12px">$'+(grandTotal||totalGeneral).toLocaleString('es-MX',{minimumFractionDigits:2})+'</div>';
+  h += '<div style="text-align:center;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">Total ventas del día</div>';
+  h += '<div style="text-align:center;font-size:28px;font-weight:800;color:var(--beige);margin-bottom:4px">$'+totalGeneral.toLocaleString('es-MX',{minimumFractionDigits:2})+'</div>';
+  if (grandTotal > 0 && Math.abs(grandTotal - totalGeneral) > 1) {
+    h += '<div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:12px">Cobrado: $'+grandTotal.toLocaleString('es-MX',{minimumFractionDigits:2})+' <span style="font-size:9px">(ventas + abonos)</span></div>';
+  } else {
+    h += '<div style="margin-bottom:12px"></div>';
+  }
   // Stats row
   h += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:12px">';
   h += '<div style="background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.15);border-radius:8px;padding:8px"><div style="font-size:16px;font-weight:700;color:#72c47e">'+totalVentasCount+'</div><div style="font-size:9px;color:var(--muted)">🛒 Ventas</div></div>';
@@ -19502,11 +19508,12 @@ async function cargarDatosCaja() {
     const { data: ca } = await db.from('creditos_abonos').select('*, creditos_clientes(folio_sicar, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd).order('created_at');
     credAbonos = (suc !== 'Todas') ? (ca || []).filter(a => !a.sucursal || a.sucursal === suc) : (ca || []);
   } catch(e) { console.warn('Error cargando abonos crédito:', e.message); }
-  // Count ordenes lab del día para corte WA
+  // Count ordenes lab del día para corte WA (filtrado por sucursal)
   var _olCount = 0;
   try {
-    var { count: olc } = await db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
-    if (suc !== 'Todas') { /* filter by sucursal if needed - ordenes don't always have sucursal easily */ }
+    var olQuery = db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
+    if (suc !== 'Todas') olQuery = olQuery.eq('sucursal', suc);
+    var { count: olc } = await olQuery;
     _olCount = olc || 0;
   } catch(e) {}
   cajaDayData = { ventas: ventasActivas, pagos: pagosFiltered, canceladas, retiros: retiros || [], creditoAbonos: credAbonos, _ordenesLabCount: _olCount };
@@ -19919,13 +19926,13 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
   try { ordenesLabHoy = cajaDayData._ordenesLabCount || 0; } catch(e) {}
 
   // Template variables for HX7baea51b259a055403edfc70646d94d9
-  // {{1}} Sucursal, {{2}} Fecha, {{3}} Ventas registradas, {{4}} Total cobrado
+  // {{1}} Sucursal, {{2}} Fecha, {{3}} Ventas registradas, {{4}} Total ventas
   // {{5}} Efectivo, {{6}} Tarjeta, {{7}} Otros métodos, {{8}} Retiros, {{9}} Órdenes lab
   var tplVars = {
     '1': suc,
     '2': fecha,
     '3': String(cajaDayData.ventas.length),
-    '4': totalCobrado.toFixed(2),
+    '4': totalVentas.toFixed(2),
     '5': efvo.toFixed(2),
     '6': tarjeta.toFixed(2),
     '7': otros.toFixed(2),
@@ -19934,7 +19941,7 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
   };
 
   // Text fallback
-  const fb = '💰 ' + suc.toUpperCase() + ' - CORTE\n📍 ' + fecha + ' · ' + hora + (nombre ? ' · ' + nombre : '') + '\n📋 Ventas: ' + cajaDayData.ventas.length + ' por $' + totalVentas.toFixed(2) + ' (' + desgloseTxt + ')\n💵 Abonos: $' + totalAbonos.toFixed(2) + '\n💸 Retiros: $' + totalRet.toFixed(2) + '\n📊 ' + diffTxt + '\nCar & Era';
+  const fb = '💰 ' + suc.toUpperCase() + ' - CORTE\n📍 ' + fecha + ' · ' + hora + (nombre ? ' · ' + nombre : '') + '\n📋 Ventas: ' + cajaDayData.ventas.length + ' por $' + totalVentas.toFixed(2) + '\n💵 Cobrado: $' + totalCobrado.toFixed(2) + ' (' + desgloseTxt + ')' + (totalAbonos > 0 ? '\n📋 Abonos: $' + totalAbonos.toFixed(2) : '') + '\n💸 Retiros: $' + totalRet.toFixed(2) + '\n📊 ' + diffTxt + '\nCar & Era';
   sendCorteWA(fb, tplVars);
 }
 
@@ -19974,12 +19981,12 @@ async function verHistorialCortes() {
   var totalCortes = data.length;
   var conDiff = data.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01});
   var cuadran = totalCortes - conDiff.length;
-  var totalIngAll = data.reduce(function(s,c){ var des=c.desglose_metodos||{}; return s+Object.values(des).reduce(function(a,v){return a+Number(v)},0)},0);
+  var totalIngAll = data.reduce(function(s,c){ return s+Number(c.total_ventas||0)},0);
   var rh = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">';
   rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+totalCortes+'</div><div style="font-size:9px;color:var(--muted)">Cortes</div></div>';
   rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:#72c47e">'+cuadran+'</div><div style="font-size:9px;color:var(--muted)">Cuadran</div></div>';
   rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:'+(conDiff.length>0?'#e08080':'var(--white)')+'">'+conDiff.length+'</div><div style="font-size:9px;color:var(--muted)">Con diferencia</div></div>';
-  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:var(--accent)">$'+totalIngAll.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div style="font-size:9px;color:var(--muted)">Ingreso total</div></div>';
+  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:var(--accent)">$'+totalIngAll.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div style="font-size:9px;color:var(--muted)">Total ventas</div></div>';
   rh += '</div>';
   resumenEl.innerHTML = rh;
   // Agrupar por semana (lun-dom)
@@ -20007,13 +20014,13 @@ async function verHistorialCortes() {
   var h = '';
   weekKeys.forEach(function(wk, wi) {
     var wCortes = weeks[wk];
-    var wIng = wCortes.reduce(function(s,c){ var des=c.desglose_metodos||{}; return s+Object.values(des).reduce(function(a,v){return a+Number(v)},0)},0);
+    var wIng = wCortes.reduce(function(s,c){ return s+Number(c.total_ventas||0)},0);
     var wDiff = wCortes.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01}).length;
     var isOpen = wi === 0; // first week open by default
     h += '<details style="margin-bottom:8px;background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;overflow:hidden"'+(isOpen?' open':'')+'>';
     h += '<summary style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">';
     h += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px">📅</span><div><div style="font-size:12px;font-weight:700;color:var(--white)">'+formatWeekRange(wk)+'</div>';
-    h += '<div style="font-size:10px;color:var(--muted)">'+wCortes.length+' cortes · $'+wIng.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+' ingreso'+(wDiff>0?' · <span style="color:#e08080">'+wDiff+' con dif.</span>':'')+'</div>';
+    h += '<div style="font-size:10px;color:var(--muted)">'+wCortes.length+' cortes · $'+wIng.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+' en ventas'+(wDiff>0?' · <span style="color:#e08080">'+wDiff+' con dif.</span>':'')+'</div>';
     h += '</div></div>';
     h += '<span style="font-size:10px;color:var(--muted)">▾</span>';
     h += '</summary>';
@@ -20044,8 +20051,7 @@ function _renderCortesCards(cortes, showSucName, sucColors) {
     var d = Number(c.diferencia);
     var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
     var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
-    var desglose = c.desglose_metodos || {};
-    var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
+    var tvta = Number(c.total_ventas) || 0;
     var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
     var fechaDay = new Date(c.fecha+'T12:00:00');
     var dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
@@ -20056,7 +20062,7 @@ function _renderCortesCards(cortes, showSucName, sucColors) {
     h += '<div style="display:flex;align-items:center;gap:6px">';
     h += '<span style="font-size:12px">'+dIcon+'</span>';
     h += '<div><div style="font-size:12px;font-weight:600;color:var(--white)">'+diaNombre+' '+c.fecha.slice(5)+'</div>';
-    h += '<div style="font-size:10px;color:var(--muted)">'+(showSucName?'<span style="color:'+sucColor+'">'+c.sucursal+'</span> · ':'')+(c.cortado_por||'')+' · '+hc+' · '+c.num_ventas+' vtas · $'+totalIngreso.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>';
+    h += '<div style="font-size:10px;color:var(--muted)">'+(showSucName?'<span style="color:'+sucColor+'">'+c.sucursal+'</span> · ':'')+(c.cortado_por||'')+' · '+hc+' · '+c.num_ventas+' vtas · $'+tvta.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>';
     h += '</div>';
     h += '<div style="text-align:right">';
     h += '<div style="font-size:13px;font-weight:700;color:'+dColor+'">$'+Math.abs(d).toFixed(2)+'</div>';
@@ -20119,12 +20125,12 @@ function verDetalleCorte(corteId) {
     Object.entries(desglose).sort(function(a,b){return b[1]-a[1]}).forEach(function(e) {
       h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">'+e[0]+'</span><span style="color:var(--white);font-weight:600">$'+Number(e[1]).toFixed(2)+'</span></div>';
     });
-    h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px"><span style="color:var(--white)">Total ingreso</span><span style="color:var(--white)">$'+totalIngreso.toFixed(2)+'</span></div>';
+    h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px"><span style="color:var(--white)">Total cobrado</span><span style="color:var(--white)">$'+totalIngreso.toFixed(2)+'</span></div>';
     h += '</div>';
     // Resumen ventas/abonos
     h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
-    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+c.num_ventas+'</div><div style="font-size:10px;color:var(--muted)">Ventas · $'+Number(c.total_ventas).toFixed(2)+'</div></div>';
-    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+c.num_abonos+'</div><div style="font-size:10px;color:var(--muted)">Abonos · $'+Number(c.total_abonos).toFixed(2)+'</div></div>';
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--beige)">$'+Number(c.total_ventas).toLocaleString('es-MX',{minimumFractionDigits:0})+'</div><div style="font-size:10px;color:var(--muted)">'+c.num_ventas+' Ventas</div></div>';
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">$'+Number(c.total_abonos).toLocaleString('es-MX',{minimumFractionDigits:0})+'</div><div style="font-size:10px;color:var(--muted)">'+c.num_abonos+' Abonos</div></div>';
     h += '</div>';
     if (c.num_cancelaciones > 0 || totalRetiros > 0) {
       h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
@@ -20235,7 +20241,9 @@ async function reenviarCorte(corteId) {
   try {
     var utcStart = new Date(c.fecha + 'T00:00:00').toISOString();
     var utcEnd = new Date(c.fecha + 'T23:59:59.999').toISOString();
-    var { count } = await db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
+    var olQuery = db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
+    if (c.sucursal) olQuery = olQuery.eq('sucursal', c.sucursal);
+    var { count } = await olQuery;
     ordenesCount = count || 0;
   } catch(e) {}
 
@@ -20243,7 +20251,7 @@ async function reenviarCorte(corteId) {
     '1': c.sucursal || '',
     '2': c.fecha || '',
     '3': String(c.num_ventas || 0),
-    '4': totalCobrado.toFixed(2),
+    '4': Number(c.total_ventas).toFixed(2),
     '5': efvo.toFixed(2),
     '6': tarjeta.toFixed(2),
     '7': otros.toFixed(2),
