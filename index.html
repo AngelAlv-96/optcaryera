@@ -20106,8 +20106,11 @@ function verDetalleCorte(corteId) {
     var c = res.data;
     if (!c) { toast('Corte no encontrado', true); return; }
     var dNeta = _corteDiffNeta(c);
-    var dColor = Math.abs(dNeta) < 0.01 ? '#72c47e' : dNeta > 0 ? '#d4b84a' : '#e08080';
-    var diffTxt = Math.abs(dNeta) < 0.01 ? 'CUADRA $0.00' : dNeta > 0 ? 'SOBRANTE +$'+dNeta.toFixed(2) : 'FALTANTE -$'+Math.abs(dNeta).toFixed(2);
+    var dNetaColor = Math.abs(dNeta) < 0.01 ? '#72c47e' : dNeta > 0 ? '#d4b84a' : '#e08080';
+    var diffNetaTxt = Math.abs(dNeta) < 0.01 ? 'CUADRA $0.00' : dNeta > 0 ? 'SOBRANTE +$'+dNeta.toFixed(2) : 'FALTANTE -$'+Math.abs(dNeta).toFixed(2);
+    var d = Number(c.diferencia);
+    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
+    var diffTxt = Math.abs(d) < 0.01 ? 'CUADRA $0.00' : d > 0 ? 'SOBRANTE +$'+d.toFixed(2) : 'FALTANTE -$'+Math.abs(d).toFixed(2);
     var desglose = c.desglose_metodos || {};
     var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
     var fondo = Number(c.fondo_inicial) || 0;
@@ -20125,7 +20128,7 @@ function verDetalleCorte(corteId) {
     h += '<div><div style="font-size:16px;font-weight:700;color:var(--white)">Corte de Caja</div>';
     h += '<div style="font-size:11px;color:var(--muted)">' + c.sucursal + ' · ' + c.fecha + ' · ' + hc + '</div>';
     h += '<div style="font-size:11px;color:var(--muted)">Realizó: ' + (c.cortado_por||'') + '</div></div>';
-    h += '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:'+dColor+'">'+diffTxt+'</div></div>';
+    h += '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:'+dNetaColor+'">'+diffNetaTxt+'</div></div>';
     h += '</div>';
     // Métodos de pago
     h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
