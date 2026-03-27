@@ -14725,7 +14725,18 @@ async function cargarWaCrm() {
       if (m.via_phone_id) grouped[m.phone].via_phone_id = m.via_phone_id;
     });
 
+    // Step 2b: Filter out campaign-only conversations (no client reply) — huge performance boost
+    var campaignUserNames = { 'magnolia-reactivate':1, 'review-cron':1, 'lc-cron':1, 'lc-reactivacion':1, 'vip-reactivacion':1, 'ame-fase3':1, 'pin-lc-reactivacion':1, 'pin-vip-reactivacion':1, 'pin-fase3':1 };
+    Object.keys(grouped).forEach(function(phone) {
+      var conv = grouped[phone];
+      var hasUserReply = conv.messages.some(function(m) { return m.role === 'user'; });
+      if (!hasUserReply && conv.messages.every(function(m) { return campaignUserNames[m.user_name]; })) {
+        delete grouped[phone]; // Remove — will appear when client responds
+      }
+    });
+
     var phones = Object.keys(grouped);
+    console.log('[WCRM] ' + phones.length + ' contactos activos (campaña sin respuesta filtrada)');
 
     // Step 3: Batch-query pacientes using .in() (much faster than ilike)
     var phoneMap = {};
