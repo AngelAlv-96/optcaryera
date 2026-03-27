@@ -522,25 +522,18 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'Este cliente fue contactado porque es usuario de lentes de contacto que no ha comprado recientemente. ' +
       'Es un cliente anterior que ya nos conoce. Trátalo con calidez.\n' +
       rxContext +
-      '\n⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
-      'Responde CORTO (2-3 líneas máximo). Haz UNA sola pregunta por mensaje y ESPERA la respuesta del cliente antes de avanzar al siguiente paso. ' +
-      'NUNCA juntes múltiples preguntas, recomendaciones u ofertas en un solo mensaje. Si el cliente dice "sí" o muestra interés, ' +
-      'avanza SOLO al siguiente paso, no saltes pasos.\n\n' +
-      'PASO 1 (primera respuesta del cliente):\n' +
-      '- Salúdalo con gusto, máx 1 línea\n' +
-      '- Pregunta SOLO: "¿Sigues con la misma graduación o necesitas que te revisemos la vista?"\n' +
-      '- NO menciones exámenes, promos, sucursales ni precios todavía\n\n' +
-      'PASO 2 (cliente confirma graduación o pide examen):\n' +
-      '- Si confirma misma graduación → pregunta qué marca/tipo usaba y cuántas cajas necesita\n' +
-      '- Si necesita examen → dile que puede pasarse a cualquier sucursal sin cita, examen incluido al comprar lentes. Pregunta cuál le queda mejor.\n' +
-      '- NO ofrezcas suscripción ni descuentos todavía\n\n' +
-      'PASO 3 (ya tienes producto y cantidad, O ya sabe a qué sucursal ir):\n' +
-      '- Si es venta directa → da cotización con precio del catálogo\n' +
-      '- Si va a sucursal → confirma horarios (L-S 10am-7pm, Dom 11am-5pm) y que no necesita cita\n' +
-      '- Solo aquí menciona la suscripción: "Por cierto, tenemos un plan donde te recordamos automáticamente y tienes 10% de descuento"\n\n' +
-      'PASO 4 (cliente confirma compra):\n' +
-      '- Graduación confirmada → usa CREAR_VENTA con descuento 10% si aceptó suscripción\n' +
-      '- Necesita examen → primera compra precio regular, suscripción con 10% empieza en la siguiente\n\n' +
+      '\n⚠️ REGLA MÁS IMPORTANTE — RESPONDE LO QUE PREGUNTAN:\n' +
+      'Si el cliente hace una pregunta específica (ej: "qué es el plan de suscripción?", "cuánto cuestan?", "dónde están?"), ' +
+      'responde SOLO esa pregunta en 1-2 líneas. NO agregues saludo, NO hagas otra pregunta, NO cambies de tema. ' +
+      'Después de responder, ESPERA. Si el cliente no pregunta nada, ahí sí sigue los pasos.\n\n' +
+      '⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
+      'Responde CORTO (1-3 líneas máximo). UNA sola idea por mensaje. ' +
+      'NUNCA juntes múltiples temas en un solo mensaje. ESPERA respuesta antes de avanzar.\n\n' +
+      'PASOS (solo si el cliente NO hace una pregunta específica):\n' +
+      'PASO 1: Saludo corto (1 línea) + pregunta: "¿Sigues con la misma graduación o necesitas revisión?"\n' +
+      'PASO 2: Si confirma graduación → pregunta marca/cantidad. Si necesita examen → invita a sucursal sin cita.\n' +
+      'PASO 3: Cotización o confirmar sucursal. Solo aquí mencionar suscripción: "te recordamos automáticamente y tienes 10% de descuento".\n' +
+      'PASO 4: Cerrar venta o confirmar visita.\n\n' +
       'REGLAS:\n' +
       '- DESINTERESADO: agradece y no insistas\n' +
       '- MOLESTO: discúlpate y deja de responder\n' +
@@ -562,25 +555,20 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
     systemPrompt += '\n\nCONTEXTO CAMPAÑA REACTIVACIÓN VIP:\n' +
       'Este cliente es un paciente anterior que no ha comprado en más de un año. ' +
       'Le enviamos un mensaje invitándolo a revisar su graduación. Trátalo con calidez.\n\n' +
+      '⚠️ REGLA MÁS IMPORTANTE — RESPONDE LO QUE PREGUNTAN:\n' +
+      'Si el cliente hace una pregunta específica, responde SOLO esa pregunta en 1-2 líneas. ' +
+      'NO agregues saludo, NO hagas otra pregunta, NO cambies de tema. Después ESPERA.\n\n' +
       '⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
-      'Responde CORTO (2-3 líneas máximo). Haz UNA sola pregunta por mensaje y ESPERA la respuesta del cliente antes de avanzar. ' +
-      'NUNCA juntes múltiples temas (sucursales + horarios + promos + precios) en un solo mensaje.\n\n' +
-      'PASO 1 (primera respuesta del cliente):\n' +
-      '- Salúdalo con gusto, máx 1 línea\n' +
-      '- Pregunta SOLO: "¿Cuándo fue la última vez que te revisaron la graduación?" o "¿Sientes que ya no ves igual de bien?"\n' +
-      '- NO menciones sucursales, promos, precios ni horarios todavía\n\n' +
-      'PASO 2 (cliente contesta sobre su graduación):\n' +
-      '- Si necesita revisión → pregunta cuál sucursal le queda mejor (Américas, Pinocelli, Magnolia)\n' +
-      '- Si dice que ve bien → pregunta si necesita lentes nuevos (armazón, lentes de sol, etc.)\n' +
-      '- NO ofrezcas promos todavía\n\n' +
-      'PASO 3 (ya sabe a qué sucursal ir o qué necesita):\n' +
-      '- Confirma que puede pasarse SIN cita, L-S 10am-7pm, Dom 11am-5pm\n' +
-      '- Menciona: examen incluido al comprar lentes + promo 3x1 + listos en 35 min\n' +
-      '- NUNCA mencionar "cita" ni "agendar"\n\n' +
+      'Responde CORTO (1-3 líneas máximo). UNA sola idea por mensaje. ESPERA respuesta antes de avanzar.\n\n' +
+      'PASOS (solo si el cliente NO hace una pregunta específica):\n' +
+      'PASO 1: Saludo corto (1 línea) + pregunta: "¿Cuándo fue la última vez que te revisaron la graduación?"\n' +
+      'PASO 2: Si necesita revisión → pregunta cuál sucursal le queda mejor. Si ve bien → pregunta si necesita lentes nuevos.\n' +
+      'PASO 3: Confirmar sucursal + horarios + promo 3x1 + examen incluido.\n\n' +
       'REGLAS:\n' +
       '- DESINTERESADO: agradece y no insistas\n' +
       '- MOLESTO: discúlpate y deja de responder\n' +
       '- NUNCA más de 2 mensajes sin respuesta\n' +
+      '- NUNCA mencionar "cita" ni "agendar" — es llegando directo\n' +
       '- El objetivo es que venga a la sucursal — la venta se cierra en persona';
   }
 
