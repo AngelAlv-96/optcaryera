@@ -3912,8 +3912,9 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <div style="font-size:9px;color:var(--muted)">Según el sistema</div>
                 </div>
                 <div style="background:var(--surface2);border-radius:8px;padding:10px 12px">
-                  <div style="font-size:10px;color:var(--muted)">Terminal contado (real)</div>
+                  <div style="font-size:10px;color:var(--muted)">Terminal contado (real) <span style="color:#e08080">*</span></div>
                   <input type="number" id="caja-terminal-contado" min="0" step="0.01" placeholder="0.00" oninput="calcDiferencia()" style="width:100%;background:transparent;border:none;color:var(--white);font-size:20px;font-weight:700;outline:none;font-family:'Outfit',sans-serif;padding:0;margin-top:2px">
+                  <div style="font-size:8px;color:var(--accent);margin-top:3px">Ingresa el total que marca tu terminal bancaria</div>
                 </div>
               </div>
               <div id="caja-diferencia-terminal" style="display:none;text-align:center;padding:10px;border-radius:8px;margin-bottom:8px;font-weight:700"></div>
@@ -3940,15 +3941,23 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 
           <!-- Tab: Historial de cortes -->
           <div id="caja-content-historial" style="display:none">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-              <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Historial de cortes</div>
-              <select id="caja-hist-periodo" onchange="verHistorialCortes()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:var(--beige);font-family:'Outfit',sans-serif;font-size:11px;outline:none">
-                <option value="7">Últimos 7 días</option>
-                <option value="15">Últimos 15 días</option>
-                <option value="30" selected>Últimos 30 días</option>
-                <option value="90">Últimos 3 meses</option>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:4px">
+                <label style="font-size:10px;color:var(--muted)">Desde</label>
+                <input type="date" id="caja-hist-desde" onchange="verHistorialCortes()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:var(--beige);font-family:'Outfit',sans-serif;font-size:11px;outline:none">
+              </div>
+              <div style="display:flex;align-items:center;gap:4px">
+                <label style="font-size:10px;color:var(--muted)">Hasta</label>
+                <input type="date" id="caja-hist-hasta" onchange="verHistorialCortes()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:var(--beige);font-family:'Outfit',sans-serif;font-size:11px;outline:none">
+              </div>
+              <select id="caja-hist-suc" onchange="verHistorialCortes()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:var(--beige);font-family:'Outfit',sans-serif;font-size:11px;outline:none">
+                <option value="">Todas las sucursales</option>
+                <option value="Américas">Américas</option>
+                <option value="Pinocelli">Pinocelli</option>
+                <option value="Magnolia">Magnolia</option>
               </select>
             </div>
+            <div id="caja-hist-resumen" style="margin-bottom:12px"></div>
             <div id="caja-historial-list"></div>
           </div>
         </div>
@@ -5107,6 +5116,7 @@ function setupApp(u) {
     startDashRefresh();
     initRealtimeSubscriptions();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
+    setTimeout(_initAlertaEfectivoGlobal, 4000); // Check cash alert after 4s
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';
@@ -18116,6 +18126,12 @@ async function procesarVenta() {
 }
 async function _procesarVentaInner() {
   if (!vtaItems.length) { toast('Agrega al menos un producto',true); return; }
+  // Confirmación pagos grandes en efectivo (>$2,000)
+  var _efvoGrandes = vtaMetodos.filter(function(p){return p.metodo==='Efectivo' && p.monto > 2000});
+  if (_efvoGrandes.length) {
+    var _efvoTotal = _efvoGrandes.reduce(function(s,p){return s+p.monto},0);
+    if (!confirm('¿Confirmas que el pago de $'+_efvoTotal.toLocaleString('es-MX',{minimumFractionDigits:2})+' es en EFECTIVO?\n\nSi el cliente pagó con tarjeta, cancela y selecciona el método correcto.')) return;
+  }
   // Safety net: bloquear si hay items que requieren paciente y no hay paciente
   var _reqPacCats = vtaItems.filter(i => i.categoria && !VTA_LIBRE.includes(i.categoria)).map(i => i.categoria);
   if (_reqPacCats.length && !vtaPaciente?.id) {
@@ -18995,6 +19011,10 @@ async function registrarAbono() {
   if (_actionBusy['registrarAbono']) { toast('Ya se está procesando el abono...', true); return; }
   const monto=parseFloat(document.getElementById('mvta-abono-monto').value);
   if (!monto||monto<=0) { toast('Ingresa el monto del abono',true); return; }
+  // Confirmación pagos grandes en efectivo (>$2,000)
+  if (abonoMetodo==='Efectivo' && monto > 2000) {
+    if (!confirm('¿Confirmas que el abono de $'+monto.toLocaleString('es-MX',{minimumFractionDigits:2})+' es en EFECTIVO?\n\nSi el cliente pagó con tarjeta, cancela y selecciona el método correcto.')) return;
+  }
   const v=vtaDetalleData; const saldoActual=Number(v.saldo);
   if (monto>saldoActual&&!confirm(`Monto ($${monto.toFixed(2)}) mayor al saldo ($${saldoActual.toFixed(2)}).\n¿Registrar de todas formas?`)) return;
   const montoReal=Math.min(monto,saldoActual);
@@ -19366,6 +19386,10 @@ async function _ejecutarCancelarVenta(ventaId, motivo, devolucion) {
 
 let cajaData = null; // Current open caja for this sucursal
 let cajaDayData = { ventas:[], pagos:[], canceladas:[], retiros:[], creditoAbonos:[] };
+var _cajaEfectivoActual = 0; // Efectivo actual en caja (global, para alerta flotante)
+var _cajaAlertaDismisses = 0; // Veces que han cerrado la alerta hoy
+var _cajaAlertaSnoozedUntil = 0; // timestamp hasta cuando está en snooze
+var _cajaAlertaWaSent = false; // ya se notificó al admin por WA
 
 async function initCaja() {
   var sucSel = document.getElementById('caja-suc-selector');
@@ -19611,8 +19635,11 @@ function renderCajaResumen() {
   const esperado = fondo + efectivoTotal - totalRetiros;
 
   const efectivoEnCaja = fondo + efectivoTotal - totalRetiros;
+  _cajaEfectivoActual = efectivoEnCaja;
   const alerta5k = document.getElementById('caja-alerta-5k');
   if (alerta5k) alerta5k.style.display = efectivoEnCaja > 5000 ? '' : 'none';
+  // Alerta flotante global
+  _checkAlertaEfectivoFlotante();
 
   document.getElementById('caja-esperado').textContent = '$' + esperado.toFixed(2);
   document.getElementById('caja-esperado-detail').textContent = `Fondo $${fondo.toFixed(2)} + Efectivo $${efectivoTotal.toFixed(2)}${totalRetiros > 0 ? ' - Retiros $'+totalRetiros.toFixed(2) : ''}`;
@@ -19714,6 +19741,14 @@ async function realizarCorte() {
   if (!cajaData || cajaData.estado !== 'abierta') { toast('No hay caja abierta', true); return; }
   const contado = parseFloat(document.getElementById('caja-contado').value);
   if (isNaN(contado)) { toast('Captura el efectivo contado', true); return; }
+  // Terminal obligatorio si hubo tarjeta/MSI
+  var _tarjetaEsp = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0);
+  var _termContEl = document.getElementById('caja-terminal-contado');
+  if (_tarjetaEsp > 0 && (!_termContEl?.value || isNaN(parseFloat(_termContEl.value)))) {
+    toast('Ingresa el total que marca tu terminal bancaria', true);
+    _termContEl?.focus();
+    return;
+  }
   if (!confirm('¿Realizar el corte de caja? Esta acción no se puede deshacer.')) return;
   const fondo = Number(cajaData.fondo_inicial) || 0;
   const efvoVentas = cajaDayData.pagos.filter(p => p.metodo_pago === 'Efectivo').reduce((s, p) => s + Number(p.monto), 0);
@@ -19731,6 +19766,13 @@ async function realizarCorte() {
   const totalCredAbonos = (cajaDayData.creditoAbonos||[]).reduce((s, a) => s + Number(a.monto), 0);
   const totalAbonos = pagosAbonos.reduce((s, p) => s + Number(p.monto), 0) + totalCredAbonos;
   const totalCancel = cajaDayData.canceladas.reduce((s, v) => s + Number(v.total), 0);
+  // Terminal & dólar contado
+  const terminalContadoVal = parseFloat(document.getElementById('caja-terminal-contado')?.value) || null;
+  const terminalEsperadoVal = _tarjetaEsp > 0 ? _tarjetaEsp : null;
+  const diffTerminal = (terminalContadoVal !== null && terminalEsperadoVal !== null) ? Math.round((terminalContadoVal - terminalEsperadoVal) * 100) / 100 : null;
+  const dolarEspVal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0) || null;
+  const dolarContadoVal = parseFloat(document.getElementById('caja-dolar-contado')?.value) || null;
+  const diffDolar = (dolarContadoVal !== null && dolarEspVal !== null) ? Math.round((dolarContadoVal - dolarEspVal) * 100) / 100 : null;
   const { error } = await db.from('cortes_caja').update({
     total_ventas: totalVentas,
     total_abonos: totalAbonos,
@@ -19744,6 +19786,12 @@ async function realizarCorte() {
     efectivo_esperado: esperado,
     efectivo_contado: contado,
     diferencia: Math.round(diff * 100) / 100,
+    terminal_esperado: terminalEsperadoVal,
+    terminal_contado: terminalContadoVal,
+    diferencia_terminal: diffTerminal,
+    dolar_esperado: dolarEspVal,
+    dolar_contado: dolarContadoVal,
+    diferencia_dolar: diffDolar,
     cortado_por: currentUser?.nombre || '',
     hora_corte: new Date().toISOString(),
     observaciones: document.getElementById('caja-obs').value.trim() || null,
@@ -19891,74 +19939,134 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
 }
 
 async function verHistorialCortes() {
-  var suc = currentUser?.sucursal || 'Todas';
   var isAdmin = currentUser?.rol === 'admin';
   var isGerencia = currentUser?.rol === 'gerencia';
-  var dias = parseInt(document.getElementById('caja-hist-periodo')?.value || '30');
-  var desde = new Date(); desde.setDate(desde.getDate() - dias);
-  var desdeStr = desde.toISOString().slice(0,10);
-  var query = db.from('cortes_caja').select('*').eq('estado', 'cortada').gte('fecha', desdeStr);
-  if (suc !== 'Todas' && !isGerencia) query = query.eq('sucursal', suc);
+  var sucColors = {'Américas':'#72c47e','Pinocelli':'#8bb4f0','Magnolia':'#d4b84a'};
+  // Init date pickers on first load (default: last 7 days)
+  var elDesde = document.getElementById('caja-hist-desde');
+  var elHasta = document.getElementById('caja-hist-hasta');
+  var elSuc = document.getElementById('caja-hist-suc');
+  if (!elDesde.value) {
+    var d7 = new Date(); d7.setDate(d7.getDate() - 7);
+    elDesde.value = d7.toISOString().slice(0,10);
+    elHasta.value = new Date().toISOString().slice(0,10);
+  }
+  // Sucursal filter: non-admin/gerencia locked to their own
+  if (!isAdmin && !isGerencia) {
+    elSuc.value = currentUser?.sucursal || '';
+    elSuc.disabled = true;
+  }
+  var desdeStr = elDesde.value;
+  var hastaStr = elHasta.value;
+  var sucFilter = elSuc.value;
+  var query = db.from('cortes_caja').select('*').eq('estado', 'cortada').gte('fecha', desdeStr).lte('fecha', hastaStr);
+  if (sucFilter) query = query.eq('sucursal', sucFilter);
+  else if (!isAdmin && !isGerencia) query = query.eq('sucursal', currentUser?.sucursal || '');
   var { data } = await query.order('fecha', { ascending: false });
   var list = document.getElementById('caja-historial-list');
-  if (!data?.length) { list.innerHTML = '<div style="padding:30px;text-align:center;font-size:12px;color:var(--muted)">Sin cortes en este periodo</div>'; return; }
-  // Agrupar por sucursal
-  var porSuc = {};
-  var sucOrder = ['Américas','Pinocelli','Magnolia'];
-  var sucColors = {'Américas':'#72c47e','Pinocelli':'#8bb4f0','Magnolia':'#d4b84a'};
-  data.forEach(function(c) {
-    var s = c.sucursal || 'Otra';
-    if (!porSuc[s]) porSuc[s] = [];
-    porSuc[s].push(c);
-  });
-  // Resumen general
+  var resumenEl = document.getElementById('caja-hist-resumen');
+  if (!data?.length) {
+    resumenEl.innerHTML = '';
+    list.innerHTML = '<div style="padding:30px;text-align:center;font-size:12px;color:var(--muted)">Sin cortes en este periodo</div>';
+    return;
+  }
+  // Resumen cards
   var totalCortes = data.length;
   var conDiff = data.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01});
   var cuadran = totalCortes - conDiff.length;
-  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin-bottom:14px">';
-  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:var(--white)">'+totalCortes+'</div><div style="font-size:9px;color:var(--muted)">Cortes</div></div>';
-  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:#72c47e">'+cuadran+'</div><div style="font-size:9px;color:var(--muted)">Cuadran</div></div>';
-  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:'+(conDiff.length>0?'#e08080':'var(--white)')+'">'+conDiff.length+'</div><div style="font-size:9px;color:var(--muted)">Con diferencia</div></div>';
-  h += '</div>';
-  // Renderizar por sucursal
-  var sucKeys = sucOrder.filter(function(s){return porSuc[s]});
-  Object.keys(porSuc).forEach(function(s){if(sucKeys.indexOf(s)===-1) sucKeys.push(s)});
-  var showSucHeader = sucKeys.length > 1;
-  sucKeys.forEach(function(sucName) {
-    var cortes = porSuc[sucName];
-    var color = sucColors[sucName] || 'var(--beige)';
-    if (showSucHeader) {
-      var sucDiff = cortes.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01}).length;
-      h += '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px"><div style="width:4px;height:18px;border-radius:2px;background:'+color+'"></div><div style="font-size:13px;font-weight:700;color:'+color+'">'+sucName+'</div><div style="font-size:10px;color:var(--muted)">'+cortes.length+' cortes'+(sucDiff>0?' · <span style="color:#e08080">'+sucDiff+' con diferencia</span>':'')+'</div></div>';
+  var totalIngAll = data.reduce(function(s,c){ var des=c.desglose_metodos||{}; return s+Object.values(des).reduce(function(a,v){return a+Number(v)},0)},0);
+  var rh = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">';
+  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+totalCortes+'</div><div style="font-size:9px;color:var(--muted)">Cortes</div></div>';
+  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:#72c47e">'+cuadran+'</div><div style="font-size:9px;color:var(--muted)">Cuadran</div></div>';
+  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:'+(conDiff.length>0?'#e08080':'var(--white)')+'">'+conDiff.length+'</div><div style="font-size:9px;color:var(--muted)">Con diferencia</div></div>';
+  rh += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:var(--accent)">$'+totalIngAll.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div><div style="font-size:9px;color:var(--muted)">Ingreso total</div></div>';
+  rh += '</div>';
+  resumenEl.innerHTML = rh;
+  // Agrupar por semana (lun-dom)
+  function getWeekKey(dateStr) {
+    var d = new Date(dateStr+'T12:00:00');
+    var day = d.getDay(); // 0=dom
+    var diff = day === 0 ? 6 : day - 1; // days since monday
+    var mon = new Date(d); mon.setDate(mon.getDate() - diff);
+    return mon.toISOString().slice(0,10);
+  }
+  function formatWeekRange(monStr) {
+    var mon = new Date(monStr+'T12:00:00');
+    var sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    var meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return mon.getDate() + ' ' + meses[mon.getMonth()] + ' – ' + sun.getDate() + ' ' + meses[sun.getMonth()] + ' ' + sun.getFullYear();
+  }
+  var weeks = {};
+  data.forEach(function(c) {
+    var wk = getWeekKey(c.fecha);
+    if (!weeks[wk]) weeks[wk] = [];
+    weeks[wk].push(c);
+  });
+  var weekKeys = Object.keys(weeks).sort(function(a,b){return b.localeCompare(a)});
+  var showSuc = !sucFilter || (isAdmin || isGerencia);
+  var h = '';
+  weekKeys.forEach(function(wk, wi) {
+    var wCortes = weeks[wk];
+    var wIng = wCortes.reduce(function(s,c){ var des=c.desglose_metodos||{}; return s+Object.values(des).reduce(function(a,v){return a+Number(v)},0)},0);
+    var wDiff = wCortes.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01}).length;
+    var isOpen = wi === 0; // first week open by default
+    h += '<details style="margin-bottom:8px;background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;overflow:hidden"'+(isOpen?' open':'')+'>';
+    h += '<summary style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">';
+    h += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px">📅</span><div><div style="font-size:12px;font-weight:700;color:var(--white)">'+formatWeekRange(wk)+'</div>';
+    h += '<div style="font-size:10px;color:var(--muted)">'+wCortes.length+' cortes · $'+wIng.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+' ingreso'+(wDiff>0?' · <span style="color:#e08080">'+wDiff+' con dif.</span>':'')+'</div>';
+    h += '</div></div>';
+    h += '<span style="font-size:10px;color:var(--muted)">▾</span>';
+    h += '</summary>';
+    h += '<div style="padding:0 10px 10px">';
+    // Inside week: group by sucursal if showing multiple
+    if (showSuc && !sucFilter) {
+      var porSuc = {};
+      wCortes.forEach(function(c){ var s=c.sucursal||'Otra'; if(!porSuc[s])porSuc[s]=[]; porSuc[s].push(c); });
+      var sucOrder = ['Américas','Pinocelli','Magnolia'];
+      var sucKeys = sucOrder.filter(function(s){return porSuc[s]});
+      Object.keys(porSuc).forEach(function(s){if(sucKeys.indexOf(s)===-1) sucKeys.push(s)});
+      sucKeys.forEach(function(sucName) {
+        var cortes = porSuc[sucName];
+        var color = sucColors[sucName] || 'var(--beige)';
+        h += '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px"><div style="width:3px;height:14px;border-radius:2px;background:'+color+'"></div><span style="font-size:11px;font-weight:600;color:'+color+'">'+sucName+'</span><span style="font-size:9px;color:var(--muted)">'+cortes.length+'</span></div>';
+        h += _renderCortesCards(cortes, false, sucColors);
+      });
+    } else {
+      h += _renderCortesCards(wCortes, true, sucColors);
     }
-    h += '<div style="display:grid;gap:6px">';
-    cortes.forEach(function(c) {
-      var d = Number(c.diferencia);
-      var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
-      var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
-      var desglose = c.desglose_metodos || {};
-      var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
-      var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
-      h += '<div onclick="verDetalleCorte(\''+c.id+'\')" style="background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.04)\'">';
-      h += '<div style="display:flex;align-items:center;justify-content:space-between">';
-      h += '<div style="display:flex;align-items:center;gap:6px">';
-      h += '<span style="font-size:13px">'+dIcon+'</span>';
-      h += '<div><div style="font-size:12px;font-weight:700;color:var(--white)">'+c.fecha+'</div>';
-      h += '<div style="font-size:10px;color:var(--muted)">'+(showSucHeader?'':c.sucursal+' · ')+(c.cortado_por||'')+' · '+hc+'</div></div>';
-      h += '</div>';
-      h += '<div style="text-align:right">';
-      h += '<div style="font-size:13px;font-weight:700;color:'+dColor+'">$'+Math.abs(d).toFixed(2)+'</div>';
-      h += '<div style="font-size:9px;color:var(--muted)">'+(Math.abs(d)<0.01?'cuadra':d>0?'sobrante':'faltante')+'</div>';
-      h += '</div></div>';
-      h += '<div style="display:flex;gap:10px;font-size:10px;color:var(--muted);margin-top:4px">';
-      h += '<span>'+c.num_ventas+' ventas</span><span>$'+totalIngreso.toFixed(2)+' ingreso</span>';
-      if (c.observaciones) h += '<span style="font-style:italic">📝</span>';
-      h += '</div>';
-      h += '</div>';
-    });
-    h += '</div>';
+    h += '</div></details>';
   });
   list.innerHTML = h;
+}
+function _renderCortesCards(cortes, showSucName, sucColors) {
+  var h = '<div style="display:grid;gap:4px">';
+  cortes.forEach(function(c) {
+    var d = Number(c.diferencia);
+    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
+    var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
+    var desglose = c.desglose_metodos || {};
+    var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
+    var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+    var fechaDay = new Date(c.fecha+'T12:00:00');
+    var dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    var diaNombre = dias[fechaDay.getDay()];
+    var sucColor = sucColors[c.sucursal] || 'var(--beige)';
+    h += '<div onclick="verDetalleCorte(\''+c.id+'\')" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.03)\'">';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between">';
+    h += '<div style="display:flex;align-items:center;gap:6px">';
+    h += '<span style="font-size:12px">'+dIcon+'</span>';
+    h += '<div><div style="font-size:12px;font-weight:600;color:var(--white)">'+diaNombre+' '+c.fecha.slice(5)+'</div>';
+    h += '<div style="font-size:10px;color:var(--muted)">'+(showSucName?'<span style="color:'+sucColor+'">'+c.sucursal+'</span> · ':'')+(c.cortado_por||'')+' · '+hc+' · '+c.num_ventas+' vtas · $'+totalIngreso.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>';
+    h += '</div>';
+    h += '<div style="text-align:right">';
+    h += '<div style="font-size:13px;font-weight:700;color:'+dColor+'">$'+Math.abs(d).toFixed(2)+'</div>';
+    h += '<div style="font-size:9px;color:var(--muted)">'+(Math.abs(d)<0.01?'cuadra':d>0?'sobrante':'faltante')+'</div>';
+    h += '</div></div>';
+    if (c.observaciones) h += '<div style="font-size:9px;color:var(--muted);margin-top:3px;font-style:italic">📝 '+c.observaciones+'</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  return h;
 }
 
 function cajaTab(tab) {
@@ -20040,11 +20148,25 @@ function verDetalleCorte(corteId) {
     h += '</div>';
     // Tarjeta/MSI section
     if (tarjetaMSI > 0) {
+      var tEsp = Number(c.terminal_esperado) || tarjetaMSI;
+      var tCont = c.terminal_contado != null ? Number(c.terminal_contado) : null;
+      var tDiff = c.diferencia_terminal != null ? Number(c.diferencia_terminal) : null;
       h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
-      h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tarjeta / MSI</div>';
+      h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Cuadre de terminal</div>';
       if (desglose['Tarjeta']) h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">Tarjeta</span><span style="color:var(--white)">$'+Number(desglose['Tarjeta']).toFixed(2)+'</span></div>';
       if (desglose['MSI']) h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">MSI</span><span style="color:var(--white)">$'+Number(desglose['MSI']).toFixed(2)+'</span></div>';
-      h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:4px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px"><span style="color:var(--white)">Esperado terminal</span><span style="color:var(--white)">$'+tarjetaMSI.toFixed(2)+'</span></div>';
+      h += '<div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px">';
+      h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Esperado</span><span style="color:var(--white)">$'+tEsp.toFixed(2)+'</span></div>';
+      if (tCont !== null) {
+        h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Contado</span><span style="color:var(--white)">$'+tCont.toFixed(2)+'</span></div>';
+        h += '</div>';
+        var tDiffColor = tDiff !== null && Math.abs(tDiff) < 0.01 ? '#72c47e' : tDiff > 0 ? '#d4b84a' : '#e08080';
+        var tDiffTxt = tDiff !== null ? (Math.abs(tDiff) < 0.01 ? 'CUADRA $0.00' : tDiff > 0 ? 'SOBRANTE +$'+tDiff.toFixed(2) : 'FALTANTE -$'+Math.abs(tDiff).toFixed(2)) : '';
+        if (tDiffTxt) h += '<div style="margin-top:6px;text-align:center;padding:6px;border-radius:6px;font-weight:700;font-size:12px;color:'+tDiffColor+';background:rgba(255,255,255,0.04)">'+tDiffTxt+'</div>';
+      } else {
+        h += '</div>';
+        h += '<div style="margin-top:4px;font-size:10px;color:var(--muted);font-style:italic">Terminal contado no registrado</div>';
+      }
       h += '</div>';
     }
     // Dólar section
@@ -20053,6 +20175,25 @@ function verDetalleCorte(corteId) {
       h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Dólar</div>';
       h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">Equiv. MXN cobrado</span><span style="color:var(--white)">$'+dolar.toFixed(2)+'</span></div>';
       h += '</div>';
+    }
+    // Alerta cruzada: efectivo falta X y terminal sobra X (pago mal clasificado)
+    var tDiffVal = c.diferencia_terminal != null ? Number(c.diferencia_terminal) : null;
+    if (d < -5 && tDiffVal !== null && tDiffVal > 5) {
+      var diffCruzada = Math.abs(Math.abs(d) - tDiffVal);
+      if (diffCruzada < Math.abs(d) * 0.15) { // within 15% match
+        h += '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">';
+        h += '<div style="font-size:11px;font-weight:600;color:#f59e0b">⚠️ Posible pago mal clasificado</div>';
+        h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Efectivo faltante (-$'+Math.abs(d).toFixed(2)+') y terminal sobrante (+$'+tDiffVal.toFixed(2)+') sugieren que un pago de tarjeta se registró como efectivo.</div>';
+        h += '</div>';
+      }
+    } else if (d > 5 && tDiffVal !== null && tDiffVal < -5) {
+      var diffCruzada2 = Math.abs(d - Math.abs(tDiffVal));
+      if (diffCruzada2 < d * 0.15) {
+        h += '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:8px 12px;margin-bottom:10px">';
+        h += '<div style="font-size:11px;font-weight:600;color:#f59e0b">⚠️ Posible pago mal clasificado</div>';
+        h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Efectivo sobrante (+$'+d.toFixed(2)+') y terminal faltante (-$'+Math.abs(tDiffVal).toFixed(2)+') sugieren que un pago de efectivo se registró como tarjeta.</div>';
+        h += '</div>';
+      }
     }
     // Observaciones
     if (c.observaciones) {
@@ -20199,6 +20340,113 @@ async function registrarRetiro() {
     if (_retiroBtn) { _retiroBtn.disabled = false; _retiroBtn.textContent = '💸 Registrar retiro'; }
   }
 }
+
+// ═══ ALERTA FLOTANTE EFECTIVO >$5K ═══
+function _checkAlertaEfectivoFlotante() {
+  // Solo desktop (no mobile) y rol sucursal con caja abierta
+  if (window.innerWidth < 768) { _removeAlertaFlotante(); return; }
+  if (!cajaData || cajaData.estado !== 'abierta') { _removeAlertaFlotante(); return; }
+  if (currentUser?.rol === 'gerencia' || currentUser?.rol === 'laboratorio') { _removeAlertaFlotante(); return; }
+  var LIMITE = 5000;
+  if (_cajaEfectivoActual <= LIMITE) {
+    _removeAlertaFlotante();
+    _cajaAlertaDismisses = 0;
+    _cajaAlertaSnoozedUntil = 0;
+    _cajaAlertaWaSent = false;
+    return;
+  }
+  // Check snooze (solo si no han superado 3 dismisses)
+  if (_cajaAlertaDismisses < 3 && _cajaAlertaSnoozedUntil > Date.now()) return;
+  _showAlertaFlotante();
+  // Notificar admin por WA si llevan >1 hora
+  if (!_cajaAlertaWaSent && _cajaAlertaDismisses >= 3) {
+    _cajaAlertaWaSent = true;
+    _notificarAdminEfectivo();
+  }
+}
+function _showAlertaFlotante() {
+  var existing = document.getElementById('alerta-efectivo-flotante');
+  if (existing) { existing.style.display = ''; return; } // ya existe, solo mostrar
+  var canDismiss = _cajaAlertaDismisses < 3;
+  var div = document.createElement('div');
+  div.id = 'alerta-efectivo-flotante';
+  div.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,#b91c1c,#dc2626);border:2px solid #fca5a5;border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(185,28,28,0.4);max-width:380px;width:90%;animation:_alertaPulse 2s infinite';
+  var h = '<div style="display:flex;align-items:center;gap:10px">';
+  h += '<div style="font-size:24px;line-height:1">🚨</div>';
+  h += '<div style="flex:1">';
+  h += '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">Retiro de efectivo pendiente</div>';
+  h += '<div style="font-size:10px;color:#fecaca;margin-bottom:6px">Realiza un retiro por seguridad</div>';
+  h += '</div>';
+  h += '<div style="display:flex;gap:6px">';
+  h += '<button onclick="go(\'caja\');abrirRetiro()" style="padding:6px 14px;background:#fff;color:#b91c1c;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">💸 Retirar</button>';
+  if (canDismiss) {
+    h += '<button onclick="_snoozeAlertaEfectivo()" style="padding:6px 10px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:10px;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">Después ('+(_cajaAlertaDismisses+1)+'/3)</button>';
+  }
+  h += '</div></div>';
+  div.innerHTML = h;
+  document.body.appendChild(div);
+  // Add pulse animation if not exists
+  if (!document.getElementById('_alertaPulseStyle')) {
+    var style = document.createElement('style');
+    style.id = '_alertaPulseStyle';
+    style.textContent = '@keyframes _alertaPulse{0%,100%{box-shadow:0 8px 32px rgba(185,28,28,0.4)}50%{box-shadow:0 8px 40px rgba(185,28,28,0.7),0 0 60px rgba(220,38,38,0.3)}}';
+    document.head.appendChild(style);
+  }
+}
+function _removeAlertaFlotante() {
+  var el = document.getElementById('alerta-efectivo-flotante');
+  if (el) el.style.display = 'none';
+}
+function _snoozeAlertaEfectivo() {
+  _cajaAlertaDismisses++;
+  if (_cajaAlertaDismisses >= 3) {
+    // No more snooze, re-show immediately undismissable
+    var el = document.getElementById('alerta-efectivo-flotante');
+    if (el) el.remove();
+    _showAlertaFlotante();
+    return;
+  }
+  _cajaAlertaSnoozedUntil = Date.now() + (20 * 60 * 1000); // 20 min
+  _removeAlertaFlotante();
+}
+async function _notificarAdminEfectivo() {
+  try {
+    var suc = currentUser?.sucursal || cajaData?.sucursal || '';
+    var msg = '🚨 ALERTA EFECTIVO\n\n' + suc + ' tiene $' + _cajaEfectivoActual.toLocaleString('es-MX',{minimumFractionDigits:2}) + ' en caja sin retirar.\n\nEl empleado ha ignorado la alerta 3 veces. Verifica que se haga el retiro.';
+    await fetch('/.netlify/functions/whatsapp', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ action: 'send_admin', message: msg, user: currentUser?.id, pass: currentUser?._pass })
+    });
+  } catch(e) { console.warn('Error notificando admin efectivo:', e); }
+}
+// Init alerta efectivo al arrancar (sin necesidad de ir a vista Caja)
+async function _initAlertaEfectivoGlobal() {
+  if (currentUser?.rol === 'gerencia' || currentUser?.rol === 'laboratorio') return;
+  var suc = currentUser?.sucursal;
+  if (!suc || suc === 'Todas') return; // admin ve todas, no aplica alerta individual
+  var today = hoyLocal();
+  try {
+    // Check if caja is open
+    var { data: caja } = await db.from('cortes_caja').select('id,fondo_inicial,estado').eq('fecha', today).eq('sucursal', suc).eq('estado', 'abierta').limit(1);
+    if (!caja?.length) return;
+    cajaData = cajaData || caja[0]; // set global if not set yet
+    var fondo = Number(caja[0].fondo_inicial) || 0;
+    var utcStart = new Date(today + 'T00:00:00').toISOString();
+    var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+    var { data: pagos } = await db.from('venta_pagos').select('monto,metodo_pago').eq('metodo_pago','Efectivo').gte('created_at', utcStart).lte('created_at', utcEnd);
+    var efvo = (pagos||[]).reduce(function(s,p){return s+Number(p.monto)},0);
+    var { data: retiros } = await db.from('retiros_caja').select('monto').eq('fecha', today).eq('sucursal', suc);
+    var totalRet = (retiros||[]).reduce(function(s,r){return s+Number(r.monto)},0);
+    _cajaEfectivoActual = fondo + efvo - totalRet;
+    _checkAlertaEfectivoFlotante();
+  } catch(e) { console.warn('Error checking cash alert:', e); }
+}
+// Re-check cada 5 min
+setInterval(function() {
+  if (_cajaEfectivoActual > 5000) _checkAlertaEfectivoFlotante();
+  else if (cajaData && cajaData.estado === 'abierta') _initAlertaEfectivoGlobal(); // re-calc in background
+}, 5 * 60 * 1000);
 
 async function eliminarRetiro(retiroId, montoStr) {
   if (currentUser?.rol !== 'admin') { toast('Solo administradores pueden eliminar retiros', true); return; }
