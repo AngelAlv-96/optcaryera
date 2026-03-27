@@ -414,7 +414,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 - **Modal detalle corte**: usa `dNeta`/`diffNetaTxt` para el header general, y `d`/`diffTxt` para el cuadre individual de efectivo. NUNCA mezclar — la variable `d` (diferencia efectivo) debe existir siempre para la alerta cruzada y cuadre de efectivo
 - **Órdenes lab por sucursal**: las queries de `ordenes_laboratorio` para cortes SIEMPRE deben filtrar `.eq('sucursal', suc)`, no contar todas las del día
 - **`total_ventas` vs ingreso total**: `total_ventas` = suma de `ventas.total` (montos de venta). `desglose_metodos` = suma de pagos reales (puede incluir abonos). Son números distintos — mostrar ventas como principal, cobrado como secundario
-- **Template WA corte**: SID actual `HX7baea51b259a055403edfc70646d94d9` (dice "Total cobrado"), v2 `HX23d232e120ff04a785bb92734974fba0` (dice "Total ventas") pendiente aprobación. Variable {{4}} ya pasa `totalVentas`
+- **Template WA corte**: SID activo `HX23d232e120ff04a785bb92734974fba0` (v2, dice "Total ventas"). Variable {{4}} pasa `totalVentas`. Template anterior `HX7baea51b259a055403edfc70646d94d9` obsoleto
 - **⚠️ LECCIÓN v202**: al cambiar la diferencia general del corte, la variable `d` (diferencia de efectivo) se perdió y causó ReferenceError silenciado dentro de `.then()` — el modal dejó de abrir sin error visible. Siempre mantener variables separadas para diferencia neta vs individual, y agregar `.catch()` a promises de UI para detectar errores silenciosos
 
 ## 🔄 SUPABASE REALTIME
@@ -474,7 +474,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 12. **Lottie animations**: ✅ COMPLETADO (v182). CDN `dotlottie-wc@0.9.2`, 7 stages con URLs reales `.lottie` de `assets-v2.lottiefiles.com`, web component `<dotlottie-wc>` con canvas WebAssembly, fallback emoji CSS, auto-refresh compatible. URLs restantes del catálogo (179 total, 7 usadas) guardadas en sesión Claude Code para futuras variaciones.
 13. **Metas mensuales**: al hacer deploy, insertar en Supabase `app_config` id=`metas_mensuales` con `{"crecimiento_pct":5,"overrides":{"2026-03":{"americas":420000,"pinocelli":320000,"magnolia":160000}}}` si Angel quiere override manual para marzo
 16. **Auditoría Pedidos DB**: ✅ Tabla `inventario_auditorias` creada, ✅ RLS + policy anon SELECT, ✅ app_config `inventario_ultimo_conteo` + `inventario_config` insertadas
-17. **Template WA corte v2**: `HX23d232e120ff04a785bb92734974fba0` pendiente aprobación WhatsApp. Cuando se apruebe → cambiar SID en `sendCorteWA()` y `reenviarCorte()` de `HX7baea51b259a055403edfc70646d94d9` a `HX23d232e120ff04a785bb92734974fba0`
+17. **Template WA corte v2**: ✅ `HX23d232e120ff04a785bb92734974fba0` aprobado y activado (v202)
 
 ## 📝 AUTO-UPDATE (OBLIGATORIO)
 Al finalizar CADA sesión donde se hagan cambios al proyecto, Claude Code DEBE:
