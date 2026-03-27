@@ -19653,8 +19653,9 @@ function renderCajaResumen() {
   document.getElementById('caja-contado').value = '';
   document.getElementById('caja-diferencia').style.display = 'none';
   document.getElementById('caja-obs').value = '';
-  // Terminal row: show only if there are Tarjeta/MSI payments
-  var _tarjetaTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0);
+  // Terminal row: show only if there are Tarjeta/MSI payments (ventas + abonos créditos)
+  var _tarjetaTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0)
+    + (cajaDayData.creditoAbonos||[]).filter(a => { var m = (a.metodo_pago||'').toLowerCase(); return m === 'tarjeta' || m === 'msi'; }).reduce((s,a) => s + Number(a.monto), 0);
   var _termRow = document.getElementById('caja-terminal-row');
   if (_termRow) {
     if (_tarjetaTotal > 0) {
@@ -19666,8 +19667,9 @@ function renderCajaResumen() {
     if (document.getElementById('caja-terminal-contado')) document.getElementById('caja-terminal-contado').value = '';
     if (document.getElementById('caja-diferencia-terminal')) document.getElementById('caja-diferencia-terminal').style.display = 'none';
   }
-  // Dólar row: show only if there are Dólar payments
-  var _dolarTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0);
+  // Dólar row: show only if there are Dólar payments (ventas + abonos créditos)
+  var _dolarTotal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0)
+    + (cajaDayData.creditoAbonos||[]).filter(a => { var m = (a.metodo_pago||'').toLowerCase(); return m === 'dólar' || m === 'dolar'; }).reduce((s,a) => s + Number(a.monto), 0);
   var _dolarRow = document.getElementById('caja-dolar-row');
   if (_dolarRow) {
     if (_dolarTotal > 0) {
@@ -19749,7 +19751,8 @@ async function realizarCorte() {
   const contado = parseFloat(document.getElementById('caja-contado').value);
   if (isNaN(contado)) { toast('Captura el efectivo contado', true); return; }
   // Terminal obligatorio si hubo tarjeta/MSI
-  var _tarjetaEsp = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0);
+  var _tarjetaEsp = cajaDayData.pagos.filter(p => p.metodo_pago === 'Tarjeta' || p.metodo_pago === 'MSI').reduce((s,p) => s + Number(p.monto), 0)
+    + (cajaDayData.creditoAbonos||[]).filter(a => { var m = (a.metodo_pago||'').toLowerCase(); return m === 'tarjeta' || m === 'msi'; }).reduce((s,a) => s + Number(a.monto), 0);
   var _termContEl = document.getElementById('caja-terminal-contado');
   if (_tarjetaEsp > 0 && (!_termContEl?.value || isNaN(parseFloat(_termContEl.value)))) {
     toast('Ingresa el total que marca tu terminal bancaria', true);
@@ -19777,7 +19780,8 @@ async function realizarCorte() {
   const terminalContadoVal = parseFloat(document.getElementById('caja-terminal-contado')?.value) || null;
   const terminalEsperadoVal = _tarjetaEsp > 0 ? _tarjetaEsp : null;
   const diffTerminal = (terminalContadoVal !== null && terminalEsperadoVal !== null) ? Math.round((terminalContadoVal - terminalEsperadoVal) * 100) / 100 : null;
-  const dolarEspVal = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0) || null;
+  const dolarEspVal = (cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s,p) => s + Number(p.monto), 0)
+    + (cajaDayData.creditoAbonos||[]).filter(a => { var m = (a.metodo_pago||'').toLowerCase(); return m === 'dólar' || m === 'dolar'; }).reduce((s,a) => s + Number(a.monto), 0)) || null;
   const dolarContadoVal = parseFloat(document.getElementById('caja-dolar-contado')?.value) || null;
   const diffDolar = (dolarContadoVal !== null && dolarEspVal !== null) ? Math.round((dolarContadoVal - dolarEspVal) * 100) / 100 : null;
   const { error } = await db.from('cortes_caja').update({
