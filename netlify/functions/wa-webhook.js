@@ -551,10 +551,10 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'sin que tengas que acordarte. Y con 10% de descuento."';
   }
 
-  // Check for VIP Reactivation campaign context
+  // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)
   var hasVIPReactivation = false;
   for (var vr = 0; vr < Math.min(history.length, 10); vr++) {
-    if (history[vr].content && history[vr].content.indexOf('[VIP-Reactivacion]') !== -1) {
+    if (history[vr].content && (history[vr].content.indexOf('[VIP-Reactivacion]') !== -1 || history[vr].content.indexOf('[AME-Fase3]') !== -1)) {
       hasVIPReactivation = true;
       break;
     }
@@ -1997,8 +1997,8 @@ exports.handler = async function(event) {
         try {
           var recentMsgs2 = recentMsgs || await getConversationHistory(from);
           if (recentMsgs2) {
-            var isVIPReact = recentMsgs2.some(function(m) { return m.content && m.content.indexOf('[VIP-Reactivacion]') !== -1; });
-            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1; });
+            var isVIPReact = recentMsgs2.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1); });
+            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1 && m.content.indexOf('[AME-Fase3]') === -1; });
             if (isVIPReact) {
               var cfgAlert2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
               if (cfgAlert2 && cfgAlert2[0]) {
