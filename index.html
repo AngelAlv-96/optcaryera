@@ -2511,6 +2511,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <input type="hidden" id="vs-nueva-pxid">
             <div class="fg" style="margin-bottom:12px"><label>Paciente</label><input id="vs-nueva-px-nombre" type="text" disabled></div>
             <div class="fg" style="margin-bottom:12px"><label>Identificador de armaz&oacute;n</label><input id="vs-nueva-armazon" type="text" placeholder="Ej. Ray-Ban RB5154, Armazón propio..."></div>
+            <div class="fg" style="margin-bottom:12px"><label>Fecha de compra</label><input id="vs-nueva-fecha" type="date" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;color:var(--white);font-family:'Outfit',sans-serif;font-size:14px" onchange="vsCalcVencimiento()"><div id="vs-nueva-venc-info" style="font-size:11px;color:var(--muted);margin-top:4px"></div></div>
             <div class="fg" style="margin-bottom:16px"><label>Plan</label>
               <select id="vs-nueva-plan" onchange="mostrarInfoPlan()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;color:var(--white);font-family:'Outfit',sans-serif;font-size:14px">
                 <option value="">— Seleccionar plan —</option>
@@ -13351,7 +13352,7 @@ async function cargarProteccionesVS(pxId) {
         <div><span style="color:var(--muted)">Disponible:</span><br><strong style="color:${esActivo?'#72c47e':'var(--muted)'}">${lentesDisp} lentes · ${repoDisp} repo</strong></div>
       </div>
       ${proxFecha}
-      ${esActivo ? `<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><button class="btn btn-p" onclick="abrirEventoVS('${p.id}','${p.plan}')" style="font-size:12px">Registrar evento</button>${tienePermiso('del_coberturas')?`<button class="btn btn-g btn-sm" onclick="eliminarCoberturaVS('${p.id}')" style="font-size:11px;color:#e08080" title="Eliminar cobertura">🗑</button>`:''}</div>` : `${tienePermiso('del_coberturas')?`<div style="margin-top:12px"><button class="btn btn-g btn-sm" onclick="eliminarCoberturaVS('${p.id}')" style="font-size:11px;color:#e08080">🗑 Eliminar</button></div>`:''}`}
+      ${esActivo ? `<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><button class="btn btn-p" onclick="abrirEventoVS('${p.id}','${p.plan}')" style="font-size:12px">Registrar evento</button>${currentUser&&currentUser.rol==='admin'?`<button class="btn btn-g btn-sm" onclick="editarFechaVS('${p.id}','${p.fecha_inicio}')" style="font-size:11px;color:#d4b84a" title="Editar fecha de compra">✏️ Fecha</button>`:''}${tienePermiso('del_coberturas')?`<button class="btn btn-g btn-sm" onclick="eliminarCoberturaVS('${p.id}')" style="font-size:11px;color:#e08080" title="Eliminar cobertura">🗑</button>`:''}</div>` : `<div style="margin-top:12px;display:flex;gap:8px;align-items:center">${currentUser&&currentUser.rol==='admin'?`<button class="btn btn-g btn-sm" onclick="editarFechaVS('${p.id}','${p.fecha_inicio}')" style="font-size:11px;color:#d4b84a">✏️ Fecha</button>`:''}${tienePermiso('del_coberturas')?`<button class="btn btn-g btn-sm" onclick="eliminarCoberturaVS('${p.id}')" style="font-size:11px;color:#e08080">🗑 Eliminar</button>`:''}</div>`}
     </div>`;
   }).join('');
 
@@ -13385,7 +13386,19 @@ function abrirNuevaProteccion() {
   document.getElementById('vs-nueva-armazon').value = '';
   document.getElementById('vs-nueva-plan').value = '';
   document.getElementById('vs-plan-info').innerHTML = '';
+  const fechaEl = document.getElementById('vs-nueva-fecha');
+  fechaEl.value = new Date().toLocaleDateString('en-CA');
+  vsCalcVencimiento();
   document.getElementById('vs-modal-nueva').style.display = 'block';
+}
+
+function vsCalcVencimiento() {
+  const v = document.getElementById('vs-nueva-fecha').value;
+  const info = document.getElementById('vs-nueva-venc-info');
+  if (!v) { info.textContent = ''; return; }
+  const ini = new Date(v + 'T12:00:00');
+  const fin = new Date(ini); fin.setMonth(fin.getMonth() + 12);
+  info.textContent = 'Vence: ' + fin.toLocaleDateString('es-MX', {day:'2-digit',month:'short',year:'numeric'});
 }
 
 async function crearProteccionVS() {
@@ -13397,14 +13410,15 @@ async function crearProteccionVS() {
   const { data: existing } = await db.from('vision_segura').select('id').eq('id_armazon', armazon).eq('estado', 'VIGENTE');
   if (existing && existing.length > 0) { toast('Este armazón ya tiene una protección activa', true); return; }
 
-  const hoy = new Date();
-  const fin = new Date(hoy); fin.setMonth(fin.getMonth() + 12);
+  const fechaInput = document.getElementById('vs-nueva-fecha').value;
+  const inicio = fechaInput ? new Date(fechaInput + 'T12:00:00') : new Date();
+  const fin = new Date(inicio); fin.setMonth(fin.getMonth() + 12);
 
   const payload = {
     id_px: pxId,
     id_armazon: armazon,
     plan: plan,
-    fecha_inicio: hoy.toISOString().split('T')[0],
+    fecha_inicio: inicio.toISOString().split('T')[0],
     fecha_fin: fin.toISOString().split('T')[0],
     eventos_lentes_usados: 0,
     eventos_reposicion_usados: 0,
@@ -13425,6 +13439,22 @@ async function eliminarCoberturaVS(protId) {
   const { error } = await db.from('vision_segura').delete().eq('id', protId);
   if (error) { toast('Error: ' + error.message, true); return; }
   toast('Cobertura eliminada');
+  if (vsPxActual) cargarProteccionesVS(vsPxActual.id);
+}
+
+async function editarFechaVS(protId, fechaActual) {
+  if (!currentUser || currentUser.rol !== 'admin') { toast('Solo administradores pueden editar fechas', true); return; }
+  const nuevaFecha = prompt('Fecha de compra (AAAA-MM-DD):', fechaActual);
+  if (!nuevaFecha || nuevaFecha === fechaActual) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)) { toast('Formato inválido. Usa AAAA-MM-DD', true); return; }
+  const ini = new Date(nuevaFecha + 'T12:00:00');
+  if (isNaN(ini.getTime())) { toast('Fecha inválida', true); return; }
+  const fin = new Date(ini); fin.setMonth(fin.getMonth() + 12);
+  const ahora = new Date();
+  const nuevoEstado = fin < ahora ? 'VENCIDO' : 'VIGENTE';
+  const { error } = await db.from('vision_segura').update({ fecha_inicio: nuevaFecha, fecha_fin: fin.toISOString().split('T')[0], estado: nuevoEstado }).eq('id', protId);
+  if (error) { toast('Error: ' + error.message, true); return; }
+  toast('✓ Fecha actualizada — vence ' + fin.toLocaleDateString('es-MX', {day:'2-digit',month:'short',year:'numeric'}));
   if (vsPxActual) cargarProteccionesVS(vsPxActual.id);
 }
 
