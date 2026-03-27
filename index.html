@@ -16000,7 +16000,7 @@ async function verificarPacientesSinVisita() {
           const waMsg = `Hola ${p.nombre}, te saludamos de Ópticas Car & Era. Ha pasado tiempo desde tu última revisión visual. Te invitamos a agendar una cita. ¡Te esperamos!`;
           return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)">
             <div><div style="font-size:12px;color:var(--white)">${p.nombre} ${p.apellidos}</div><div style="font-size:10px;color:var(--muted)">${p.telefono} · Última: ${ultima}</div></div>
-            <button onclick="event.stopPropagation();sendWA('${p.telefono}','${waMsg.replace(/'/g,"\\'")}')" style="font-size:10px;padding:3px 8px;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.2);border-radius:5px;cursor:pointer;font-weight:600">WhatsApp</button>
+            <button onclick="event.stopPropagation();this.disabled=true;this.textContent='⏳';sendWA('${p.telefono}','${waMsg.replace(/'/g,"\\'")}').then(r=>{this.textContent=r.ok?'✅':'❌';if(!r.ok)this.disabled=false}).catch(()=>{this.textContent='❌';this.disabled=false})" style="font-size:10px;padding:3px 8px;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.2);border-radius:5px;cursor:pointer;font-weight:600">WhatsApp</button>
           </div>`;
         }).join('')}
       </div>
@@ -19261,6 +19261,9 @@ async function enviarComprobanteAbono() {
   const tel = v.pacientes?.telefono || '';
   if (!tel) { toast('Cliente sin teléfono', true); return; }
   _actionBusy['enviarComprobanteAbono'] = true;
+  var _waBtn = document.querySelector('#mvta-comprobante-wrap [onclick*="enviarComprobanteAbono"]');
+  if (_waBtn) { _waBtn.disabled = true; _waBtn.innerHTML = '⏳ Enviando...'; }
+  try {
   const nombre = pac ? pac.split(' ')[0] : 'Cliente';
   const cleanTel = tel.replace(/\D/g, '');
   const whatsappNum = cleanTel.startsWith('52') ? cleanTel : cleanTel.length === 10 ? '52' + cleanTel : cleanTel;
@@ -19281,8 +19284,14 @@ async function enviarComprobanteAbono() {
       '7': portalUrl || 'https://optcaryera.netlify.app'
     }
   });
-  if (!result.ok) toast('Error enviando comprobante', true);
-  _actionBusy['enviarComprobanteAbono'] = false;
+  if (result.ok) {
+    if (_waBtn) { _waBtn.innerHTML = '✅ Enviado'; _waBtn.style.background = 'rgba(114,196,126,0.15)'; _waBtn.style.color = '#72c47e'; }
+  } else {
+    toast('Error enviando comprobante', true);
+    if (_waBtn) { _waBtn.disabled = false; _waBtn.innerHTML = '❌ Reintentar'; }
+  }
+  } catch(e) { toast('Error: '+e.message, true); if (_waBtn) { _waBtn.disabled = false; _waBtn.innerHTML = '❌ Reintentar'; } }
+  finally { _actionBusy['enviarComprobanteAbono'] = false; }
 }
 
 function imprimirComprobanteAbono() {
@@ -20429,7 +20438,11 @@ async function reenviarCorte(corteId) {
   var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
   var msg = '💰 ' + (c.sucursal||'').toUpperCase() + ' - CORTE\n📍 ' + c.fecha + ' · ' + hc + ' ' + (c.cortado_por||'') + '\n📋 Ventas: ' + (c.num_ventas||0) + ' por $' + Number(c.total_ventas).toFixed(2) + ' (' + desgloseTxt + ')\n💵 Abonos: $' + Number(c.total_abonos).toFixed(2) + '\n💸 Retiros: $' + totalRet.toFixed(2) + '\n📊 ' + diffTxt + '\nCar & Era';
   if (!confirm('¿Reenviar corte de ' + c.sucursal + ' (' + c.fecha + ') por WhatsApp?')) return;
-  sendCorteWA(msg, tplVars);
+  if (_actionBusy['reenviarCorte']) { toast('Ya se está reenviando...', true); return; }
+  _actionBusy['reenviarCorte'] = true;
+  toast('📲 Reenviando corte...');
+  try { await sendCorteWA(msg, tplVars); toast('✅ Corte reenviado'); } catch(e) { toast('Error: '+e.message, true); }
+  finally { _actionBusy['reenviarCorte'] = false; }
 }
 
 let retiroDisponible = 0;
