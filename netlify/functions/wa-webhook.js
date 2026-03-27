@@ -551,6 +551,41 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'sin que tengas que acordarte. Y con 10% de descuento."';
   }
 
+  // Check for VIP Reactivation campaign context
+  var hasVIPReactivation = false;
+  for (var vr = 0; vr < Math.min(history.length, 10); vr++) {
+    if (history[vr].content && history[vr].content.indexOf('[VIP-Reactivacion]') !== -1) {
+      hasVIPReactivation = true;
+      break;
+    }
+  }
+  if (hasVIPReactivation) {
+    systemPrompt += '\n\nCONTEXTO CAMPAÑA REACTIVACIÓN VIP:\n' +
+      'Este cliente es un paciente anterior que no ha comprado en más de un año. ' +
+      'Le enviamos un mensaje invitándolo a revisar su graduación. Trátalo con calidez especial — es alguien que ya nos conoce y confió en nosotros.\n\n' +
+      'FLUJO DE ATENCIÓN:\n' +
+      '1. Si responde con interés en revisar graduación:\n' +
+      '   → Dile que puede pasarse a cualquier sucursal SIN CITA, lo atendemos al momento\n' +
+      '   → Sucursales: Américas (Av. de las Américas), Pinocelli, Magnolia (Plaza Magnolia sobre Av. Jilotepec)\n' +
+      '   → Horario: L-S 10am-7pm, Dom 11am-5pm\n' +
+      '   → Confirma que el examen de vista es INCLUIDO al comprar lentes (no decir "gratis" solo)\n' +
+      '   → Menciona la promo 3x1 en lentes completos + lentes listos en 35 minutos\n' +
+      '   → NUNCA mencionar "cita" ni "agendar" — no manejamos citas, es llegando directo\n' +
+      '2. Si pregunta por precios:\n' +
+      '   → Explica que depende de armazón + graduación + material/tratamiento\n' +
+      '   → Promo 3x1 desde $1,200 (material básico CR-39 visión sencilla, armazones seleccionados)\n' +
+      '   → Tratamientos (AR, Blue Light, Transitions) tienen costo adicional\n' +
+      '   → Para cotización exacta necesitamos su graduación — por eso lo invitamos a revisarla\n' +
+      '3. Si dice que ya compró en otro lado o ya no necesita:\n' +
+      '   → Agradece amablemente, dile que aquí estamos cuando lo necesite\n' +
+      '   → NO insistas\n\n' +
+      'REGLAS:\n' +
+      '- Si se muestra DESINTERESADO: agradece y no insistas\n' +
+      '- Si se muestra MOLESTO: discúlpate y deja de responder\n' +
+      '- NUNCA más de 2 mensajes sin respuesta del cliente\n' +
+      '- El objetivo es que venga a la sucursal para el examen — la venta se cierra en persona';
+  }
+
   var messages = [];
   for (var i = 0; i < history.length; i++) {
     messages.push({ role: history[i].role, content: history[i].content });
@@ -1957,6 +1992,31 @@ exports.handler = async function(event) {
             }
           }
         } catch(alertErr) { console.warn('[LC-React Alert]', alertErr.message); }
+
+        // ── ALERT: VIP Reactivation client responding ──
+        try {
+          var recentMsgs2 = recentMsgs || await getConversationHistory(from);
+          if (recentMsgs2) {
+            var isVIPReact = recentMsgs2.some(function(m) { return m.content && m.content.indexOf('[VIP-Reactivacion]') !== -1; });
+            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1; });
+            if (isVIPReact) {
+              var cfgAlert2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+              if (cfgAlert2 && cfgAlert2[0]) {
+                var alertCfg2 = typeof cfgAlert2[0].value === 'string' ? JSON.parse(cfgAlert2[0].value) : cfgAlert2[0].value;
+                var alertPhones2 = alertCfg2.admin_phones || [];
+                var alertEmoji2 = isFirstVIP ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
+                var alertMsg2 = alertEmoji2 + ' — *VIP Reactivación*\n\n'
+                  + '👤 ' + (userName || 'Cliente') + '\n'
+                  + '📱 ' + from + '\n'
+                  + '💬 "' + userText.substring(0, 100) + '"\n\n'
+                  + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
+                for (var ap2 = 0; ap2 < alertPhones2.length; ap2++) {
+                  await sendWhatsAppReply(alertPhones2[ap2], alertMsg2);
+                }
+              }
+            }
+          }
+        } catch(alertErr2) { console.warn('[VIP-React Alert]', alertErr2.message); }
 
         var reply = await getAIResponse(userText, userName, from);
         

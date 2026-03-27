@@ -14498,7 +14498,7 @@ function renderClariConversations() {
   // Ocultar conversaciones de campañas masivas (magnolia-reactivate, etc.) donde el cliente NO ha respondido
   convos = convos.filter(function(c) {
     var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
-    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion'; });
+    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion'; });
     return !isCampaignOnly;
   });
   if (search) convos = convos.filter(function(c) { return c.name.toLowerCase().includes(search) || c.phone.includes(search); });
@@ -14519,7 +14519,8 @@ function renderClariConversations() {
     var hasLCRecompra = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Recompra]') !== -1; });
     var hasReview = c.messages.some(function(m) { return m.content && m.content.indexOf('[Review]') !== -1; });
     var hasLCReactivacion = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
-    var campaignBadge = hasMagReact ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b33;margin-left:4px;white-space:nowrap">🏪 Magnolia</span>' : hasLCReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444418;color:#ef4444;border:1px solid #ef444433;margin-left:4px;white-space:nowrap">👁 LC Reactivación</span>' : hasLCRecompra ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b5cf618;color:#8b5cf6;border:1px solid #8b5cf633;margin-left:4px;white-space:nowrap">🔄 LC Recompra</span>' : hasReview ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#10b98118;color:#10b981;border:1px solid #10b98133;margin-left:4px;white-space:nowrap">⭐ Encuesta</span>' : '';
+    var hasVIPReactivacion = c.messages.some(function(m) { return m.content && m.content.indexOf('[VIP-Reactivacion]') !== -1; });
+    var campaignBadge = hasMagReact ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b33;margin-left:4px;white-space:nowrap">🏪 Magnolia</span>' : hasLCReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444418;color:#ef4444;border:1px solid #ef444433;margin-left:4px;white-space:nowrap">👁 LC Reactivación</span>' : hasVIPReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#3b82f618;color:#3b82f6;border:1px solid #3b82f633;margin-left:4px;white-space:nowrap">⭐ VIP Reactivación</span>' : hasLCRecompra ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b5cf618;color:#8b5cf6;border:1px solid #8b5cf633;margin-left:4px;white-space:nowrap">🔄 LC Recompra</span>' : hasReview ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#10b98118;color:#10b981;border:1px solid #10b98133;margin-left:4px;white-space:nowrap">⭐ Encuesta</span>' : '';
     var replyPhoneId = c.via_phone_id || '';
     html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px">';
     html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';

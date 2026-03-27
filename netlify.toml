@@ -18,8 +18,11 @@
 #   schedule = "0 17 * * 1"
 
 # LC Reactivation — envío MANUAL: GET /.netlify/functions/lc-reactivate?key=SECRET
-# Dry run: ?key=SECRET&dry=1 — A/B/C test con 3 templates
-# No tiene cron — se dispara manualmente cuando Angel lo decida
+# Dry run: ?key=SECRET&dry=1 — A/B/C test con 3 templates (136 contactos LC dormidos)
+
+# VIP Reactivation — envío MANUAL: GET /.netlify/functions/vip-reactivate?key=SECRET
+# Dry run: ?key=SECRET&dry=1 — A/B/C test con 3 templates (418 contactos VIP dormidos 2024)
+# Ambas funciones sin cron — se disparan manualmente cuando Angel lo decida
 
 # Review Follow-up — DESACTIVADO (muy insistente, con links directos g.page ya no es necesario)
 # [functions."review-followup"]
