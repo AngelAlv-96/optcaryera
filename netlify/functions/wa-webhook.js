@@ -1968,47 +1968,48 @@ exports.handler = async function(event) {
 
       // ── CLARI AI (default for non-admin or unmatched commands) ──
       if (!isAuthResponse && !asistHandled && !cmdHandled) {
-        // ── ALERT: LC Reactivation client responding ──
+        // ── CHECK: Is this a reactivation campaign client? ──
+        var recentMsgs = null;
+        var isReactivationClient = false;
+        var reactType = '';
         try {
-          var recentMsgs = await getConversationHistory(from);
+          recentMsgs = await getConversationHistory(from);
           if (recentMsgs) {
-            var isLCReact = recentMsgs.some(function(m) { return m.content && (m.content.indexOf('[LC-Reactivacion]') !== -1 || m.content.indexOf('[PIN-LC-Reactivacion]') !== -1); });
-            var isFirstReply = isLCReact && !recentMsgs.some(function(m) { return m.role === 'user' && m.content.indexOf('[LC-Reactivacion]') === -1; });
-            if (isLCReact) {
-              var alertPhones = ['5216564269961']; // Solo Angel — alertas de reactivación
-              var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
-              var alertMsg = alertEmoji + ' — *LC Reactivación*\n\n'
-                + '👤 ' + (userName || 'Cliente') + '\n'
-                + '📱 ' + from + '\n'
-                + '💬 "' + userText.substring(0, 100) + '"\n\n'
-                + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
-              for (var ap = 0; ap < alertPhones.length; ap++) {
-                await sendWhatsAppReply(alertPhones[ap], alertMsg);
+            var reactTags = [
+              { tag: '[LC-Reactivacion]', type: 'LC' },
+              { tag: '[PIN-LC-Reactivacion]', type: 'LC Pinocelli' },
+              { tag: '[VIP-Reactivacion]', type: 'VIP' },
+              { tag: '[PIN-VIP-Reactivacion]', type: 'VIP Pinocelli' },
+              { tag: '[AME-Fase3]', type: 'Fase3' },
+              { tag: '[PIN-Fase3]', type: 'Fase3 Pinocelli' }
+            ];
+            for (var rt = 0; rt < reactTags.length; rt++) {
+              if (recentMsgs.some(function(m) { return m.content && m.content.indexOf(reactTags[rt].tag) !== -1; })) {
+                isReactivationClient = true;
+                reactType = reactTags[rt].type;
+                break;
               }
             }
           }
-        } catch(alertErr) { console.warn('[LC-React Alert]', alertErr.message); }
+        } catch(e) { /* continue */ }
 
-        // ── ALERT: VIP Reactivation client responding ──
-        try {
-          var recentMsgs2 = recentMsgs || await getConversationHistory(from);
-          if (recentMsgs2) {
-            var isVIPReact = recentMsgs2.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1 || m.content.indexOf('[PIN-VIP-Reactivacion]') !== -1 || m.content.indexOf('[PIN-Fase3]') !== -1); });
-            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1 && m.content.indexOf('[AME-Fase3]') === -1 && m.content.indexOf('[PIN-VIP-Reactivacion]') === -1 && m.content.indexOf('[PIN-Fase3]') === -1; });
-            if (isVIPReact) {
-              var alertPhones2 = ['5216564269961']; // Solo Angel — alertas de reactivación
-              var alertEmoji2 = isFirstVIP ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
-              var alertMsg2 = alertEmoji2 + ' — *VIP Reactivación*\n\n'
-                + '👤 ' + (userName || 'Cliente') + '\n'
-                + '📱 ' + from + '\n'
-                + '💬 "' + userText.substring(0, 100) + '"\n\n'
-                + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
-              for (var ap2 = 0; ap2 < alertPhones2.length; ap2++) {
-                await sendWhatsAppReply(alertPhones2[ap2], alertMsg2);
-              }
-            }
-          }
-        } catch(alertErr2) { console.warn('[VIP-React Alert]', alertErr2.message); }
+        if (isReactivationClient) {
+          // ── REACTIVATION: Alert Angel, save message, do NOT auto-respond ──
+          var isFirstReply = !recentMsgs.some(function(m) { return m.role === 'user'; });
+          try {
+            var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
+            var alertMsg = alertEmoji + ' — *' + reactType + ' Reactivación*\n\n'
+              + '👤 ' + (userName || 'Cliente') + '\n'
+              + '📱 ' + from + '\n'
+              + '💬 "' + userText.substring(0, 100) + '"\n\n'
+              + '⏸ Clari NO respondió — revisa y responde desde el sistema.';
+            await sendWhatsAppReply('5216564269961', alertMsg);
+          } catch(alertErr) { console.warn('[React Alert]', alertErr.message); }
+          // Save client message to history (but no AI response)
+          await saveMessage(from, 'user', '[Cliente: ' + (userName || '') + '] ' + userText, userName);
+          console.log('[REACTIVATION] ' + reactType + ' client ' + from + ' responded: "' + userText.substring(0, 50) + '" — waiting for Angel');
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
 
         var reply = await getAIResponse(userText, userName, from);
         
