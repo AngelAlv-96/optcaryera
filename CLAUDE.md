@@ -63,8 +63,8 @@ Si algo se rompe gravemente:
     ├── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST, máx 40/día)
     ├── review-followup.js — Segundo toque reseñas: recordatorio a positivos 2-5 días después (filtro sentimiento)
     ├── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
-    ├── conekta-subscribe.js — Crea Conekta HostedPayment checkout para suscripciones (Google auth + planes dinámicos)
-    ├── conekta-webhook.js  — Webhook Conekta: auto-crea ventas en cada cobro recurrente + notifica WA
+    ├── conekta-subscribe.js — ⛔ DEPRECATED (v204, Conekta abandonado) — mantener como referencia
+    ├── conekta-webhook.js  — ⛔ DEPRECATED (v204, Conekta abandonado) — mantener como referencia
     ├── stripe-subscribe.js — ⛔ DEPRECATED (Stripe bloqueado para LC) — mantener como referencia
     ├── magnolia-reactivate.js — Cron reactivación Magnolia: WA a clientes dormidos 60-365 días (lunes 11am CST)
     ├── asistencia-cron.js  — Cron asistencia: recordatorios ausencia + envío firmas (cada 30min 10am-12pm)
@@ -81,7 +81,7 @@ Si algo se rompe gravemente:
 - **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
-- **Pagos**: Conekta (suscripciones recurrentes tienda, pendiente validación) + Clip API (checkout links portal pacientes + pagos únicos tienda + pagos recurrentes vía dashboard como plan B)
+- **Pagos**: Clip API (checkout links portal pacientes + pagos únicos tienda + pagos recurrentes vía dashboard manual)
 - **Facturación**: Facturapi (CFDI 4.0, IVA 8% zona fronteriza) — sk_test_ configurada, pendiente activar producción
 - **Hosting**: Netlify — dominio: optcaryera.netlify.app
 - **CDNs**: qrcode-generator, html5-qrcode, xlsx, Supabase JS v2.38.4
@@ -273,23 +273,18 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Máx 20 encuestas por ejecución, rate limit 1.5s entre mensajes
 
 ## 💳 SUSCRIPCIONES RECURRENTES (Tienda Online)
-- **Estado actual**: Conekta en proceso de validación de cuenta (esperando respuesta a solicitud de info, mar 2026)
-- **Stripe**: ⛔ ABANDONADO — Stripe bloqueó la cuenta por "dispositivos médicos" (lentes de contacto). stripe-subscribe.js, stripe-webhook.js, stripe-portal.js marcados DEPRECATED
-- **Conekta** (código listo, cuenta pendiente):
-  - `conekta-subscribe.js`: Google auth + planes dinámicos + HostedPayment checkout
-  - `conekta-webhook.js`: `order.paid` → crea venta (ONL-SUB-xxx) + registra pago + notifica WA + lc_seguimiento
-  - Frontend en `tienda.html`: Google Sign-In + toggle suscripción + frecuencias (30/60/90 días) + descuento 10%
-  - Env vars: `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`, `GOOGLE_CLIENT_ID`
-  - Webhook URL: `https://optcaryera.netlify.app/.netlify/functions/conekta-webhook`
-- **Plan B — Clip pagos recurrentes** (si Conekta no procede):
-  - Clip tiene pagos recurrentes en dashboard (`dashboard.clip.mx/payments/recurring/plans`)
+- **Procesador activo**: Clip (único)
+- **Stripe**: ⛔ ABANDONADO (v158) — bloqueado por "dispositivos médicos"
+- **Conekta**: ⛔ ABANDONADO (v204) — requisitos excesivos de validación, cuenta nunca aprobada
+- **OpenPay**: ⛔ DESCARTADO (v204) — cuenta activa pero solo Link de pago, sin API de suscripciones habilitada
+- **Pagos únicos**: Clip API (checkout links, `clip-payment.js`) — funciona en portal pacientes + tienda
+- **Pagos recurrentes**: Clip dashboard manual (`dashboard.clip.mx/payments/recurring/plans`)
   - Soporta semanal/quincenal/mensual, tarjeta + efectivo en tiendas
-  - ⚠️ Solo se crean planes desde dashboard (NO hay API de recurrentes), clientes se suscriben vía link compartido
-  - Clip NO tiene restricción con lentes de contacto (a diferencia de Stripe) — incluso se promocionan para ópticas
-  - Ya tenemos cuenta Clip verificada y activa (pagos únicos funcionando)
-- **Google Sign-In**: ✅ configurado, `GOOGLE_CID` en tienda.html
-- **Frecuencias**: 30d→mensual, 60d→bimestral, 90d→trimestral
-- **Descuento suscripción**: 10% automático
+  - Solo se crean planes desde dashboard (NO hay API de recurrentes), clientes se suscriben vía link compartido
+  - Sin restricción con lentes de contacto
+  - Cuenta verificada y activa
+- **Google Sign-In**: ⛔ ELIMINADO (v204) — ya no se necesita sin Conekta
+- **OpenPay cuenta**: OPTICAS CARRERA, Merchant ID `mhrn62t5deasibtz8r8i`, activa pero sin uso. Giro: OPTICAS, LENTES Y ANTEOJOS
 
 ## 📊 CONTABILIDAD (mod-contabilidad.js)
 - 4 pestañas: Estado de Resultados, Gastos, Flujo de Efectivo, Facturación CFDI
@@ -318,7 +313,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v203
+## 📊 VERSIÓN ACTIVA: v204
+Cambios v204: Abandonar Conekta/OpenPay — Clip como único procesador de pagos online. **Decisión**: Conekta ponía demasiados requisitos de validación, Stripe bloqueado por "dispositivos médicos", OpenPay solo tenía Link de pago activado (sin API de suscripciones). Clip ya funciona, está verificado y sin restricciones con LC. **Tienda LC limpiada**: eliminado Google Identity Services (script CDN + auth flow completo), eliminado toggle Suscripción/Compra única con frecuencias (30/60/90 días) y descuento 10%, eliminado path de Conekta en checkout (`conekta-subscribe` POST + redirect), eliminado modal "Mi cuenta / Mis suscripciones", eliminado post-payment handler (return from Conekta), eliminados ~100 líneas CSS (auth-menu, cuenta modal, sub-toggle, sub-freq, sub-discount, sub-badge, sub-promo, google-signin), eliminado bloque HTML promo suscripción. **Nav simplificado**: botón "Mis pedidos" + WhatsApp + carrito (sin auth Google). **Carrito simplificado**: sin badges de suscripción ni precios tachados. **conekta-subscribe.js y conekta-webhook.js**: marcados DEPRECATED (v204). **Pagos vigentes**: Clip (en línea) + transferencia BBVA + pago en sucursal. **Pagos recurrentes**: vía dashboard Clip (`dashboard.clip.mx/payments/recurring/plans`) — manual, sin API, compartir link. **Env vars a limpiar de Netlify**: `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`, `GOOGLE_CLIENT_ID`. Sin cambios a DB.
 Cambios v203: Fix facturación — total $0 al marcar emitida rápido. **Bug**: `contMarcarEmitidaRapido()` solo hacía `update({ status: 'valid' })` sin actualizar el campo `total`. Si la solicitud venía del portal de pacientes (que no incluye total de venta), la factura quedaba en $0. **Caso real**: factura folio 15693 (Brenda Yazmin Arellano Becerril, $5,899) marcada como emitida con total $0 — corregida en DB. **Fix**: `contMarcarEmitidaRapido()` ahora consulta `ventas.total` antes de marcar como emitida y lo incluye en el update. Sin cambios a DB.
 Cambios v202: Fix cortes de caja — total ventas vs ingreso + cuadre neto + terminal incluye créditos SICAR. **Total ventas separado de ingreso**: dashboard resumen, historial cards, semanas y modal ahora muestran `total_ventas` (suma de ventas.total) en vez de `totalIngreso` (suma del desglose de métodos de pago que incluía abonos). Antes un día con $40K en ventas y $2K en abonos mostraba $42K como si fueran ventas. Ahora dice "Total ventas del día $40,482" con nota "Cobrado: $42,302 (ventas + abonos)". **Órdenes lab por sucursal**: el mensaje WA de corte mostraba el MISMO conteo de órdenes para todas las sucursales (no filtraba por sucursal). Corregido en `initCaja()` y `reenviarCorte()` — ahora usa `.eq('sucursal', suc)`. **Terminal esperado incluye créditos SICAR**: abonos a créditos SICAR por tarjeta/MSI/dólar no se contaban en el esperado de terminal ni de dólar, causando sobrantes falsos. Fix en 3 puntos: UI `renderCajaResumen`, `hacerCorte` terminal_esperado, y dolar_esperado — todos suman `creditoAbonos` además de `venta_pagos`. **Diferencia general = neta**: el estado del corte (cuadra/faltante/sobrante) ahora es la SUMA de diferencia_efectivo + diferencia_terminal + diferencia_dolar. Si efectivo falta $3,873 y terminal sobra $3,869, el estado general es "FALTANTE -$4" (no -$3,873). Helper `_corteDiffNeta(c)` calcula la resta. Modal detalle mantiene cuadres individuales (efectivo, terminal, dólar) con la alerta "posible pago mal clasificado". Aplica en: dashboard resumen, historial cards, historial resumen ("con diferencia" count), semana, y header del modal. **Template WA v2**: `corte_caja_resumen_v2` (SID `HX23d232e120ff04a785bb92734974fba0`) creado con "Total ventas" en vez de "Total cobrado", pendiente aprobación WhatsApp — cuando se apruebe, cambiar SID en `sendCorteWA()` (línea ~19930) y `reenviarCorte()` (línea ~20260). Variable {{4}} ya pasa `totalVentas` en vez de `totalCobrado`. Sin cambios a DB.
 Cambios v201: Rediseño historial cortes + cuadre terminal obligatorio + alerta retiro efectivo + confirmación pagos grandes. **Historial cortes rediseñado**: filtros de fecha Desde/Hasta + selector de sucursal reemplazan dropdown de periodo, agrupación por semana colapsable (solo semana actual abierta por default), dentro de cada semana agrupación por sucursal con colores, cards compactas con día de la semana (Lun, Mar, Mié...), ingreso total en resumen. `_renderCortesCards()` función helper para renderizar cards. **Cuadre de terminal obligatorio**: 6 columnas nuevas en `cortes_caja` (terminal_esperado, terminal_contado, diferencia_terminal, dolar_esperado, dolar_contado, diferencia_dolar). Si hubo pagos con tarjeta/MSI, el campo "Terminal contado" es obligatorio para hacer el corte — label "Ingresa el total que marca tu terminal bancaria". Se guarda en DB y se muestra en modal detalle del corte con cuadre completo (Esperado vs Contado vs Diferencia). **Alerta cruzada**: si efectivo faltante ≈ terminal sobrante (o viceversa, dentro del 15%), el modal de detalle muestra aviso "Posible pago mal clasificado". **Confirmación pagos efectivo >$2,000**: en `_procesarVentaInner()` y `registrarAbono()`, si el monto en efectivo supera $2,000 se pide confirmación explícita ("¿Confirmas que es en EFECTIVO?"). **Alerta flotante retiro de efectivo**: `_checkAlertaEfectivoFlotante()` — banner rojo fijo en bottom center de TODAS las vistas (no solo Caja) cuando efectivo en caja >$5,000. Solo desktop (>768px), solo rol sucursal. Sin montos visibles (seguridad — clientes podrían ver pantalla). Se puede posponer 3 veces (20 min cada una), después no se puede cerrar. Desaparece inmediatamente al hacer retiro. Notifica admin por WA después de 3 dismisses ignorados. `_initAlertaEfectivoGlobal()` calcula efectivo al arrancar la app sin necesidad de ir a vista Caja. Re-check automático cada 5 min. Animación pulse CSS. **DB**: 6 columnas nuevas en `cortes_caja`.
@@ -468,8 +464,8 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 5. Precios Marina pendientes de confirmar
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
-8. **Conekta**: ✅ `CONEKTA_PRIVATE_KEY` en Netlify (nueva cuenta), ✅ webhook activo (Tienda LC Pagos), ✅ llave firma producción, ✅ código completo (conekta-subscribe.js + conekta-webhook.js + frontend), ⏳ validación de cuenta en proceso (Conekta pidió info sobre pasarela actual/historial/contracargos — se les respondió que es sistema nuevo sin historial previo, mar 2026), ⬜ subir Constancia Situación Fiscal actualizada, ⬜ probar flujo completo. **Plan B**: Clip pagos recurrentes desde dashboard (sin API, manual) — cuenta ya verificada, sin restricción con LC
-9. **Google Sign-In**: ✅ configurado
+8. **Conekta**: ⛔ ABANDONADO (v204) — requisitos excesivos, cuenta nunca aprobada. Código en conekta-subscribe.js y conekta-webhook.js marcado DEPRECATED. Env vars `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`, `GOOGLE_CLIENT_ID` pueden eliminarse de Netlify
+9. **Google Sign-In**: ⛔ ELIMINADO (v204) — ya no se necesita
 10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
 12. **Lottie animations**: ✅ COMPLETADO (v182). CDN `dotlottie-wc@0.9.2`, 7 stages con URLs reales `.lottie` de `assets-v2.lottiefiles.com`, web component `<dotlottie-wc>` con canvas WebAssembly, fallback emoji CSS, auto-refresh compatible. URLs restantes del catálogo (179 total, 7 usadas) guardadas en sesión Claude Code para futuras variaciones.

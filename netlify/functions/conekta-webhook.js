@@ -1,3 +1,4 @@
+// ⛔ DEPRECATED (v204) — Conekta abandonado, usando Clip para pagos
 // /.netlify/functions/conekta-webhook
 // Handles Conekta webhook events for subscription payments
 // On each successful payment: creates venta, registers payment, notifies via WA

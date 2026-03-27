@@ -1,3 +1,4 @@
+// ⛔ DEPRECATED (v204) — Conekta abandonado, usando Clip para pagos
 // /.netlify/functions/conekta-subscribe
 // Creates a Conekta HostedPayment checkout for subscriptions
 // Uses Conekta REST API directly (zero npm dependencies)
