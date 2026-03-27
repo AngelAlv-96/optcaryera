@@ -8192,7 +8192,10 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
     var desglose = corte?.desglose_metodos || {};
     var numAbonos = corte ? (corte.num_abonos||0) : 0;
     var totalAbonos = corte ? Number(corte.total_abonos||0) : 0;
-    var d = corte ? Number(corte.diferencia) : 0;
+    var dEfvo = corte ? Number(corte.diferencia) : 0;
+    var dTerm = corte ? Number(corte.diferencia_terminal||0) : 0;
+    var dDolar = corte ? Number(corte.diferencia_dolar||0) : 0;
+    var d = Math.round((dEfvo + dTerm + dDolar) * 100) / 100;
     var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
     var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
     var c = sucColors[s];
@@ -19983,7 +19986,7 @@ async function verHistorialCortes() {
   }
   // Resumen cards
   var totalCortes = data.length;
-  var conDiff = data.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01});
+  var conDiff = data.filter(function(c){return Math.abs(_corteDiffNeta(c))>=0.01});
   var cuadran = totalCortes - conDiff.length;
   var totalIngAll = data.reduce(function(s,c){ return s+Number(c.total_ventas||0)},0);
   var rh = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px">';
@@ -20019,7 +20022,7 @@ async function verHistorialCortes() {
   weekKeys.forEach(function(wk, wi) {
     var wCortes = weeks[wk];
     var wIng = wCortes.reduce(function(s,c){ return s+Number(c.total_ventas||0)},0);
-    var wDiff = wCortes.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01}).length;
+    var wDiff = wCortes.filter(function(c){return Math.abs(_corteDiffNeta(c))>=0.01}).length;
     var isOpen = wi === 0; // first week open by default
     h += '<details style="margin-bottom:8px;background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;overflow:hidden"'+(isOpen?' open':'')+'>';
     h += '<summary style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none">';
@@ -20049,10 +20052,11 @@ async function verHistorialCortes() {
   });
   list.innerHTML = h;
 }
+function _corteDiffNeta(c) { return Math.round((Number(c.diferencia||0) + Number(c.diferencia_terminal||0) + Number(c.diferencia_dolar||0)) * 100) / 100; }
 function _renderCortesCards(cortes, showSucName, sucColors) {
   var h = '<div style="display:grid;gap:4px">';
   cortes.forEach(function(c) {
-    var d = Number(c.diferencia);
+    var d = _corteDiffNeta(c);
     var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
     var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
     var tvta = Number(c.total_ventas) || 0;
@@ -20101,9 +20105,9 @@ function verDetalleCorte(corteId) {
   db.from('cortes_caja').select('*').eq('id', corteId).single().then(function(res) {
     var c = res.data;
     if (!c) { toast('Corte no encontrado', true); return; }
-    var d = Number(c.diferencia);
-    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
-    var diffTxt = Math.abs(d) < 0.01 ? 'CUADRA $0.00' : d > 0 ? 'SOBRANTE +$'+d.toFixed(2) : 'FALTANTE -$'+Math.abs(d).toFixed(2);
+    var dNeta = _corteDiffNeta(c);
+    var dColor = Math.abs(dNeta) < 0.01 ? '#72c47e' : dNeta > 0 ? '#d4b84a' : '#e08080';
+    var diffTxt = Math.abs(dNeta) < 0.01 ? 'CUADRA $0.00' : dNeta > 0 ? 'SOBRANTE +$'+dNeta.toFixed(2) : 'FALTANTE -$'+Math.abs(dNeta).toFixed(2);
     var desglose = c.desglose_metodos || {};
     var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
     var fondo = Number(c.fondo_inicial) || 0;
