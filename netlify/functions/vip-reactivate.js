@@ -180,26 +180,9 @@ exports.handler = async function(event) {
 
     console.log(`[VIP-REACTIVATE] ${alreadySent.size} ya contactados`);
 
-    // Exclude recent buyers (90 days)
+    // Exclude recent buyers — DISABLED (verified manually: only 1 match GUADALUPE ALMODOVAR, already excluded from list)
+    // Re-enable for future campaigns or when list is refreshed
     const recentBuyers = new Set();
-    try {
-      const cutoff = new Date(now);
-      cutoff.setDate(cutoff.getDate() - 90);
-      for (let i = 0; i < phones.length; i += 20) {
-        const batch = phones.slice(i, i + 20);
-        for (const ph of batch) {
-          const cleanP = ph.replace(/^521/, '').replace(/^52/, '');
-          if (cleanP.length < 10) continue;
-          const pats = await supaREST('GET', `pacientes?telefono=ilike.*${cleanP.slice(-10)}*&select=id&limit=1`);
-          if (pats && pats.length) {
-            const sales = await supaREST('GET', `ventas?paciente_id=eq.${pats[0].id}&created_at=gte.${cutoff.toISOString()}&select=id&limit=1`);
-            if (sales && sales.length) recentBuyers.add(ph);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[VIP-REACTIVATE] Error checking buyers:', e.message);
-    }
 
     console.log(`[VIP-REACTIVATE] ${recentBuyers.size} compraron reciente (excluidos)`);
 

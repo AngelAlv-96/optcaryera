@@ -175,24 +175,8 @@ exports.handler = async function(event) {
 
     console.log(`[${TAG}] ${alreadySent.size} ya contactados (incluye fases anteriores)`);
 
-    // Exclude recent buyers
+    // Exclude recent buyers — DISABLED (verified manually before each campaign launch)
     const recentBuyers = new Set();
-    try {
-      const cutoff = new Date(now);
-      cutoff.setDate(cutoff.getDate() - 90);
-      for (let i = 0; i < phones.length; i += 20) {
-        const batch = phones.slice(i, i + 20);
-        for (const ph of batch) {
-          const cleanP = ph.replace(/^521/, '').replace(/^52/, '');
-          if (cleanP.length < 10) continue;
-          const pats = await supaREST('GET', `pacientes?telefono=ilike.*${cleanP.slice(-10)}*&select=id&limit=1`);
-          if (pats && pats.length) {
-            const sales = await supaREST('GET', `ventas?paciente_id=eq.${pats[0].id}&created_at=gte.${cutoff.toISOString()}&select=id&limit=1`);
-            if (sales && sales.length) recentBuyers.add(ph);
-          }
-        }
-      }
-    } catch (e) { console.warn(`[${TAG}] Error checking buyers:`, e.message); }
 
     console.log(`[${TAG}] ${recentBuyers.size} compraron reciente`);
 

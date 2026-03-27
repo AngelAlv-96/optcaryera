@@ -161,27 +161,8 @@ exports.handler = async function(event) {
 
     console.log(`[LC-REACTIVATE] ${alreadySent.size} ya contactados en últimos ${DEDUP_DAYS} días`);
 
-    // ── Also exclude anyone who bought in the new system recently ──
+    // Exclude recent buyers — DISABLED (verified manually before each campaign launch)
     const recentBuyers = new Set();
-    try {
-      // Get patients by phone who have sales in last 90 days
-      const cutoff = new Date(now);
-      cutoff.setDate(cutoff.getDate() - 90);
-      for (let i = 0; i < phones.length; i += 20) {
-        const batch = phones.slice(i, i + 20);
-        for (const ph of batch) {
-          const cleanP = ph.replace(/^521/, '').replace(/^52/, '');
-          if (cleanP.length < 10) continue;
-          const pats = await supaREST('GET', `pacientes?telefono=ilike.*${cleanP.slice(-10)}*&select=id&limit=1`);
-          if (pats && pats.length) {
-            const sales = await supaREST('GET', `ventas?paciente_id=eq.${pats[0].id}&created_at=gte.${cutoff.toISOString()}&select=id&limit=1`);
-            if (sales && sales.length) recentBuyers.add(ph);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('[LC-REACTIVATE] Error checking recent buyers:', e.message);
-    }
 
     console.log(`[LC-REACTIVATE] ${recentBuyers.size} compraron recientemente (excluidos)`);
 
