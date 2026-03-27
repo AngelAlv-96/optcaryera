@@ -1118,7 +1118,11 @@ async function contEmitirFactura() {
 async function contMarcarEmitidaRapido(facturaId, folio) {
   if (!confirm('¿Marcar la factura de ' + folio + ' como emitida?')) return;
   try {
-    await db.from('facturas').update({ status: 'valid', facturapi_id: 'manual_' + Date.now() }).eq('id', facturaId);
+    var upd = { status: 'valid', facturapi_id: 'manual_' + Date.now() };
+    // Ensure total is set from the actual venta (solicitudes from portal may have total=0)
+    var { data: ventas } = await db.from('ventas').select('total').eq('folio', folio).limit(1);
+    if (ventas && ventas[0] && Number(ventas[0].total) > 0) upd.total = Number(ventas[0].total);
+    await db.from('facturas').update(upd).eq('id', facturaId);
     toast('Factura marcada como emitida', 'ok');
     contRenderFacturacion();
   } catch(err) {
