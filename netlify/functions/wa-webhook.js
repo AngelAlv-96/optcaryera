@@ -520,35 +520,34 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
 
     systemPrompt += '\n\nCONTEXTO CAMPAÑA REACTIVACIÓN LC:\n' +
       'Este cliente fue contactado porque es usuario de lentes de contacto que no ha comprado recientemente. ' +
-      'Es un cliente anterior que ya nos conoce. Trátalo con calidez especial.\n' +
+      'Es un cliente anterior que ya nos conoce. Trátalo con calidez.\n' +
       rxContext +
-      '\nFLUJO DE ATENCIÓN REACTIVACIÓN:\n' +
-      '1. Si el cliente responde con interés, pregunta: "¿Usamos la misma graduación que tenemos en tu expediente o prefieres un nuevo examen de la vista?"\n' +
-      '   - Si tenemos graduación reciente en archivo (menos de 1 año), menciónale que la tenemos y pregunta si la usamos.\n' +
-      '   - Si la graduación tiene más de 1 año o no tenemos, sugiérele venir a sucursal para verificar.\n' +
-      '2. GRADUACIÓN CONFIRMADA (cliente dice que sí, usamos la misma):\n' +
-      '   → Procede a venta normal de LC (cotiza, cierra con CREAR_VENTA)\n' +
-      '   → OFRECE PLAN DE SUSCRIPCIÓN: "¿Te gustaría que te lleguen automáticamente tus lentes cada mes/bimestre? ' +
-      'Con nuestro plan de suscripción tienes 10% de descuento en ESTA compra."\n' +
-      '   → Si acepta suscripción: aplica 10% de descuento al total y menciónalo en CREAR_VENTA (el admin verá el descuento)\n' +
-      '   → El descuento aplica porque la graduación está confirmada y no hay riesgo de garantía\n' +
-      '3. NECESITA EXAMEN NUEVO (no tiene graduación, cambió su vista, graduación vieja):\n' +
-      '   → Invítalo a sucursal para examen de vista INCLUIDO al comprar lentes\n' +
-      '   → Primera compra a PRECIO REGULAR (sin descuento, porque la graduación no está confirmada)\n' +
-      '   → OFRECE SUSCRIPCIÓN PARA LA SIGUIENTE: "En tu siguiente recompra ya con graduación confirmada, ' +
-      'te damos 10% de descuento automático con el plan de suscripción."\n' +
-      '   → Es decir: el descuento del 10% empieza a partir de la SEGUNDA compra (cuando la graduación ya está verificada)\n' +
-      '4. Sucursales para examen: Américas (Av. de las Américas), Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec)\n' +
-      '   Horario: L-S 10am-7pm, Dom 11am-5pm\n\n' +
-      'REGLAS DE TRATO REACTIVACIÓN LC:\n' +
-      '- Si responde positivo: entusiasmo + graduación + suscripción\n' +
-      '- Si pregunta precio: cotiza con catálogo real y menciona el 10% de suscripción como incentivo\n' +
-      '- Si se muestra DESINTERESADO: agradece y no insistas, dile que aquí estamos cuando necesite\n' +
-      '- Si se muestra MOLESTO: discúlpate y deja de responder\n' +
-      '- NUNCA más de 2 mensajes sin respuesta del cliente\n' +
-      '- NUNCA admitas culpa ni prometas cosas que no puedes cumplir\n' +
-      '- Cuando menciones suscripción, explica brevemente: "Te enviamos tus lentes automáticamente cada X tiempo, ' +
-      'sin que tengas que acordarte. Y con 10% de descuento."';
+      '\n⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
+      'Responde CORTO (2-3 líneas máximo). Haz UNA sola pregunta por mensaje y ESPERA la respuesta del cliente antes de avanzar al siguiente paso. ' +
+      'NUNCA juntes múltiples preguntas, recomendaciones u ofertas en un solo mensaje. Si el cliente dice "sí" o muestra interés, ' +
+      'avanza SOLO al siguiente paso, no saltes pasos.\n\n' +
+      'PASO 1 (primera respuesta del cliente):\n' +
+      '- Salúdalo con gusto, máx 1 línea\n' +
+      '- Pregunta SOLO: "¿Sigues con la misma graduación o necesitas que te revisemos la vista?"\n' +
+      '- NO menciones exámenes, promos, sucursales ni precios todavía\n\n' +
+      'PASO 2 (cliente confirma graduación o pide examen):\n' +
+      '- Si confirma misma graduación → pregunta qué marca/tipo usaba y cuántas cajas necesita\n' +
+      '- Si necesita examen → dile que puede pasarse a cualquier sucursal sin cita, examen incluido al comprar lentes. Pregunta cuál le queda mejor.\n' +
+      '- NO ofrezcas suscripción ni descuentos todavía\n\n' +
+      'PASO 3 (ya tienes producto y cantidad, O ya sabe a qué sucursal ir):\n' +
+      '- Si es venta directa → da cotización con precio del catálogo\n' +
+      '- Si va a sucursal → confirma horarios (L-S 10am-7pm, Dom 11am-5pm) y que no necesita cita\n' +
+      '- Solo aquí menciona la suscripción: "Por cierto, tenemos un plan donde te recordamos automáticamente y tienes 10% de descuento"\n\n' +
+      'PASO 4 (cliente confirma compra):\n' +
+      '- Graduación confirmada → usa CREAR_VENTA con descuento 10% si aceptó suscripción\n' +
+      '- Necesita examen → primera compra precio regular, suscripción con 10% empieza en la siguiente\n\n' +
+      'REGLAS:\n' +
+      '- DESINTERESADO: agradece y no insistas\n' +
+      '- MOLESTO: discúlpate y deja de responder\n' +
+      '- NUNCA más de 2 mensajes sin respuesta\n' +
+      '- NUNCA mencionar "cita" ni "agendar" — es llegando directo\n' +
+      '- NUNCA admitir culpa ni prometer cosas\n' +
+      '- Sucursales: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec)';
   }
 
   // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)
@@ -562,28 +561,27 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   if (hasVIPReactivation) {
     systemPrompt += '\n\nCONTEXTO CAMPAÑA REACTIVACIÓN VIP:\n' +
       'Este cliente es un paciente anterior que no ha comprado en más de un año. ' +
-      'Le enviamos un mensaje invitándolo a revisar su graduación. Trátalo con calidez especial — es alguien que ya nos conoce y confió en nosotros.\n\n' +
-      'FLUJO DE ATENCIÓN:\n' +
-      '1. Si responde con interés en revisar graduación:\n' +
-      '   → Dile que puede pasarse a cualquier sucursal SIN CITA, lo atendemos al momento\n' +
-      '   → Sucursales: Américas (Av. de las Américas), Pinocelli, Magnolia (Plaza Magnolia sobre Av. Jilotepec)\n' +
-      '   → Horario: L-S 10am-7pm, Dom 11am-5pm\n' +
-      '   → Confirma que el examen de vista es INCLUIDO al comprar lentes (no decir "gratis" solo)\n' +
-      '   → Menciona la promo 3x1 en lentes completos + lentes listos en 35 minutos\n' +
-      '   → NUNCA mencionar "cita" ni "agendar" — no manejamos citas, es llegando directo\n' +
-      '2. Si pregunta por precios:\n' +
-      '   → Explica que depende de armazón + graduación + material/tratamiento\n' +
-      '   → Promo 3x1 desde $1,200 (material básico CR-39 visión sencilla, armazones seleccionados)\n' +
-      '   → Tratamientos (AR, Blue Light, Transitions) tienen costo adicional\n' +
-      '   → Para cotización exacta necesitamos su graduación — por eso lo invitamos a revisarla\n' +
-      '3. Si dice que ya compró en otro lado o ya no necesita:\n' +
-      '   → Agradece amablemente, dile que aquí estamos cuando lo necesite\n' +
-      '   → NO insistas\n\n' +
+      'Le enviamos un mensaje invitándolo a revisar su graduación. Trátalo con calidez.\n\n' +
+      '⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
+      'Responde CORTO (2-3 líneas máximo). Haz UNA sola pregunta por mensaje y ESPERA la respuesta del cliente antes de avanzar. ' +
+      'NUNCA juntes múltiples temas (sucursales + horarios + promos + precios) en un solo mensaje.\n\n' +
+      'PASO 1 (primera respuesta del cliente):\n' +
+      '- Salúdalo con gusto, máx 1 línea\n' +
+      '- Pregunta SOLO: "¿Cuándo fue la última vez que te revisaron la graduación?" o "¿Sientes que ya no ves igual de bien?"\n' +
+      '- NO menciones sucursales, promos, precios ni horarios todavía\n\n' +
+      'PASO 2 (cliente contesta sobre su graduación):\n' +
+      '- Si necesita revisión → pregunta cuál sucursal le queda mejor (Américas, Pinocelli, Magnolia)\n' +
+      '- Si dice que ve bien → pregunta si necesita lentes nuevos (armazón, lentes de sol, etc.)\n' +
+      '- NO ofrezcas promos todavía\n\n' +
+      'PASO 3 (ya sabe a qué sucursal ir o qué necesita):\n' +
+      '- Confirma que puede pasarse SIN cita, L-S 10am-7pm, Dom 11am-5pm\n' +
+      '- Menciona: examen incluido al comprar lentes + promo 3x1 + listos en 35 min\n' +
+      '- NUNCA mencionar "cita" ni "agendar"\n\n' +
       'REGLAS:\n' +
-      '- Si se muestra DESINTERESADO: agradece y no insistas\n' +
-      '- Si se muestra MOLESTO: discúlpate y deja de responder\n' +
-      '- NUNCA más de 2 mensajes sin respuesta del cliente\n' +
-      '- El objetivo es que venga a la sucursal para el examen — la venta se cierra en persona';
+      '- DESINTERESADO: agradece y no insistas\n' +
+      '- MOLESTO: discúlpate y deja de responder\n' +
+      '- NUNCA más de 2 mensajes sin respuesta\n' +
+      '- El objetivo es que venga a la sucursal — la venta se cierra en persona';
   }
 
   var messages = [];
@@ -1994,7 +1992,7 @@ exports.handler = async function(event) {
         } catch(e) { /* continue */ }
 
         if (isReactivationClient) {
-          // ── REACTIVATION: Alert Angel, save message, do NOT auto-respond ──
+          // ── REACTIVATION: Alert Angel + let Clari respond (step by step) ──
           var isFirstReply = !recentMsgs.some(function(m) { return m.role === 'user'; });
           try {
             var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
@@ -2002,13 +2000,10 @@ exports.handler = async function(event) {
               + '👤 ' + (userName || 'Cliente') + '\n'
               + '📱 ' + from + '\n'
               + '💬 "' + userText.substring(0, 100) + '"\n\n'
-              + '⏸ Clari NO respondió — revisa y responde desde el sistema.';
+              + '👀 Clari está respondiendo — revisa en el sistema.';
             await sendWhatsAppReply('5216564269961', alertMsg);
           } catch(alertErr) { console.warn('[React Alert]', alertErr.message); }
-          // Save client message to history (but no AI response)
-          await saveMessage(from, 'user', '[Cliente: ' + (userName || '') + '] ' + userText, userName);
-          console.log('[REACTIVATION] ' + reactType + ' client ' + from + ' responded: "' + userText.substring(0, 50) + '" — waiting for Angel');
-          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          // Clari responds normally (prompt already has reactivation context)
         }
 
         var reply = await getAIResponse(userText, userName, from);
