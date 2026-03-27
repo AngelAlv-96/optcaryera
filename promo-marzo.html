@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>3x1 Abril — Ópticas Car & Era</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+<!-- Google Analytics GA4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N84GYVTQKX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-N84GYVTQKX');</script>
+
+<!-- Meta Pixel -->
+<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --beige:#ede4d8;
+  --beige2:#e0d4c4;
+  --black:#18140f;
+  --muted:#8c7f73;
+  --white:#fff;
+}
+html,body{
+  width:100%;max-width:390px;margin:0 auto;
+  font-family:'DM Sans',sans-serif;
+  background:var(--beige);
+  color:var(--black);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── HEADER ── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:28px 24px 0;
+  opacity:0;animation:fade .7s ease forwards .1s;
+}
+.logo{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;letter-spacing:-.2px}
+.tag{
+  font-size:8px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);border:1px solid rgba(0,0,0,.15);
+  padding:5px 10px;border-radius:20px;
+}
+
+/* ── HERO ── */
+.hero{
+  padding:40px 24px 32px;
+  opacity:0;animation:fade .7s ease forwards .2s;
+}
+.hero-eyebrow{
+  font-size:9px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;
+}
+.hero-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(48px,14vw,64px);
+  font-weight:700;line-height:.95;
+  letter-spacing:-2px;
+  margin-bottom:16px;
+}
+.hero-title em{font-style:italic;font-weight:400}
+.hero-desc{
+  font-size:13px;color:var(--muted);
+  line-height:1.6;font-weight:300;
+  max-width:260px;
+}
+
+/* ── LENTES ── */
+.lentes{
+  margin:0 24px 40px;
+  opacity:0;animation:fade .7s ease forwards .3s;
+}
+.lentes-label{
+  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:20px;
+}
+.lentes-row{
+  display:flex;align-items:center;
+  gap:8px;
+}
+.lente{opacity:0;flex:0 0 auto}
+.lente:nth-child(1){animation:slideUp .55s ease forwards .7s}
+.lente:nth-child(3){animation:slideUp .55s ease forwards 1.15s}
+.lente:nth-child(5){animation:slideUp .55s ease forwards 1.6s}
+.lente svg{width:min(26vw,94px);height:auto;display:block}
+.lente-name{
+  font-size:9px;color:var(--muted);
+  text-align:center;margin-top:7px;line-height:1.3;
+}
+.lente-name b{display:block;font-size:10px;font-weight:500;color:var(--black);margin-bottom:1px}
+.sep{
+  font-family:'Playfair Display',serif;
+  font-size:22px;color:var(--beige2);
+  flex-shrink:0;margin-bottom:24px;opacity:0;
+}
+.sep:nth-child(2){animation:fade .3s ease forwards .92s}
+.sep:nth-child(4){animation:fade .3s ease forwards 1.37s}
+
+/* ── DIVIDER ── */
+hr{border:none;border-top:1px solid rgba(0,0,0,.08);margin:0 24px}
+
+/* ── DETALLES ── */
+.detalles{
+  padding:28px 24px;
+  display:flex;flex-direction:column;gap:16px;
+  opacity:0;animation:fade .7s ease forwards .4s;
+}
+.detalle-row{
+  display:flex;align-items:flex-start;gap:14px;
+}
+.detalle-icon{
+  width:32px;height:32px;
+  background:var(--beige2);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.detalle-text{font-size:12px;color:var(--muted);line-height:1.55;padding-top:6px}
+.detalle-text b{color:var(--black);font-weight:500}
+
+/* ── CTA ── */
+.cta{
+  padding:0 24px 36px;
+  opacity:0;animation:fade .7s ease forwards .5s;
+}
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  background:var(--black);color:var(--white);
+  text-decoration:none;font-size:14px;font-weight:500;
+  padding:17px;border-radius:14px;width:100%;
+  transition:opacity .15s,transform .15s;
+  letter-spacing:.2px;
+}
+.btn:active{opacity:.8;transform:scale(.98)}
+.wa-circle{
+  width:20px;height:20px;background:#25D366;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+}
+.cta-sub{
+  text-align:center;font-size:10px;
+  color:var(--muted);margin-top:10px;
+}
+
+/* ── SUCURSALES ── */
+.sucursales{
+  padding:0 24px 40px;
+  opacity:0;animation:fade .7s ease forwards .55s;
+}
+.suc-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.suc-title{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted)}
+.suc-horario{font-size:9px;color:var(--muted)}
+
+.suc-list{display:flex;flex-direction:column;gap:1px}
+.suc-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0;
+  border-bottom:1px solid rgba(0,0,0,.07);
+}
+.suc-item:last-child{border-bottom:none}
+.suc-left{}
+.suc-nombre{font-size:13px;font-weight:500;color:var(--black);margin-bottom:2px}
+.suc-dir{font-size:10px;color:var(--muted)}
+.suc-badge{
+  font-size:8px;letter-spacing:1px;text-transform:uppercase;
+  color:var(--muted);background:var(--beige2);
+  padding:3px 8px;border-radius:10px;white-space:nowrap;
+  flex-shrink:0;margin-left:10px;
+}
+
+/* ── FOOT ── */
+foot{
+  display:block;
+  text-align:center;
+  padding:0 0 32px;
+  font-size:9px;color:var(--muted);letter-spacing:.5px;
+  opacity:0;animation:fade .5s ease forwards .65s;
+}
+
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+@media(prefers-reduced-motion:no-preference){
+  .ar{animation:ar 2.5s ease-in-out infinite 2s}
+  @keyframes ar{0%,100%{opacity:0}45%,55%{opacity:.85}}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Car & Era</div>
+  <div class="tag">Marzo 2026</div>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Promoción de temporada</div>
+  <div class="hero-title">3<em>×</em>1<br>en lentes</div>
+  <div class="hero-desc">Dos lentes completos con antirreflejante más un solar graduado. Desde $1,200.</div>
+</div>
+
+<div class="lentes">
+  <div class="lentes-label">Lo que incluye</div>
+  <div class="lentes-row">
+
+    <!-- Par 1 rectangular AR -->
+    <div class="lente">
+      <svg viewBox="0 0 94 48" fill="none">
+        <rect x="2" y="7" width="38" height="25" rx="10" stroke="#3a2e22" stroke-width="2"/>
+        <rect x="3.5" y="8.5" width="35" height="22" rx="9" fill="rgba(190,220,245,0.5)"/>
+        <line class="ar" x1="10" y1="13" x2="24" y2="13" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        <line class="ar" x1="8"  y1="17" x2="18" y2="17" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+        <rect x="54" y="7" width="38" height="25" rx="10" stroke="#3a2e22" stroke-width="2"/>
+        <rect x="55.5" y="8.5" width="35" height="22" rx="9" fill="rgba(190,220,245,0.5)"/>
+        <line class="ar" x1="62" y1="13" x2="76" y2="13" stroke="white" stroke-width="1.2" stroke-linecap="round"/>
+        <line class="ar" x1="60" y1="17" x2="70" y2="17" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+        <path d="M40 19 Q47 15 54 19" stroke="#3a2e22" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <line x1="2"  y1="19" x2="-4" y2="21" stroke="#3a2e22" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="92" y1="19" x2="98" y2="21" stroke="#3a2e22" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <div class="lente-name"><b>1er par</b>Antirreflejante</div>
+    </div>
+
+    <div class="sep">+</div>
+
+    <!-- Par 2 redondo AR -->
+    <div class="lente">
+      <svg viewBox="0 0 94 48" fill="none">
+        <circle cx="21" cy="20" r="16" stroke="#1e1610" stroke-width="2"/>
+        <circle cx="21" cy="20" r="14.5" fill="rgba(190,220,245,0.48)"/>
+        <line class="ar" x1="13" y1="14" x2="24" y2="14" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <line class="ar" x1="11" y1="18" x2="20" y2="18" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+        <circle cx="73" cy="20" r="16" stroke="#1e1610" stroke-width="2"/>
+        <circle cx="73" cy="20" r="14.5" fill="rgba(190,220,245,0.48)"/>
+        <line class="ar" x1="65" y1="14" x2="76" y2="14" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <line class="ar" x1="63" y1="18" x2="72" y2="18" stroke="white" stroke-width=".7" stroke-linecap="round"/>
+        <path d="M37 20 Q47 15 57 20" stroke="#1e1610" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <line x1="5"  y1="20" x2="0"  y2="22" stroke="#1e1610" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="89" y1="20" x2="94" y2="22" stroke="#1e1610" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <div class="lente-name"><b>2do par</b>Antirreflejante</div>
+    </div>
+
+    <div class="sep">+</div>
+
+    <!-- Par 3 solar -->
+    <div class="lente">
+      <svg viewBox="0 0 94 48" fill="none">
+        <defs>
+          <linearGradient id="sol" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3d3228"/>
+            <stop offset="100%" stop-color="#161008"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="7" width="38" height="25" rx="8" stroke="#161008" stroke-width="2.2"/>
+        <rect x="3.5" y="8.5" width="35" height="22" rx="7" fill="url(#sol)"/>
+        <path d="M9 13 Q20 11 30 13" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <rect x="54" y="7" width="38" height="25" rx="8" stroke="#161008" stroke-width="2.2"/>
+        <rect x="55.5" y="8.5" width="35" height="22" rx="7" fill="url(#sol)"/>
+        <path d="M61 13 Q72 11 82 13" stroke="rgba(255,255,255,0.18)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+        <path d="M40 19 Q47 16 54 19" stroke="#161008" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+        <line x1="2"  y1="19" x2="-4" y2="21" stroke="#161008" stroke-width="2" stroke-linecap="round"/>
+        <line x1="92" y1="19" x2="98" y2="21" stroke="#161008" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div class="lente-name"><b>3er par</b>Solar graduado</div>
+    </div>
+
+  </div>
+</div>
+
+<hr>
+
+<div class="detalles">
+  <div class="detalle-row">
+    <div class="detalle-icon">🔬</div>
+    <div class="detalle-text"><b>Lab propio en sucursal.</b> Tus lentes los fabricamos aquí en Juárez — sin intermediarios.</div>
+  </div>
+  <div class="detalle-row">
+    <div class="detalle-icon">🛡</div>
+    <div class="detalle-text"><b>Garantía 90 días</b> sin preguntas. Optometristas propios. Examen incluido con tu compra.</div>
+  </div>
+</div>
+
+<div class="cta">
+  <a class="btn" href="https://wa.me/5216563110094?text=Hola%20%F0%9F%91%8B%20quiero%20info%20de%20la%20promo%203x1%20de%20marzo" onclick="trackLead()">
+    <div class="wa-circle">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+      </svg>
+    </div>
+    Quiero mi promo de marzo
+  </a>
+  <div class="cta-sub">Te respondemos en minutos · Sin compromiso</div>
+</div>
+
+<div class="sucursales">
+  <div class="suc-header">
+    <div class="suc-title">Sucursales</div>
+    <div class="suc-horario">L–S 10–7 &nbsp;·&nbsp; D 11–5</div>
+  </div>
+  <div class="suc-list">
+    <div class="suc-item">
+      <div class="suc-left">
+        <div class="suc-nombre">Plaza de las Américas</div>
+        <div class="suc-dir">Zona Pronaf</div>
+      </div>
+    </div>
+    <div class="suc-item">
+      <div class="suc-left">
+        <div class="suc-nombre">Plaza Pinocelli</div>
+        <div class="suc-dir">Av. Miguel de la Madrid</div>
+      </div>
+    </div>
+    <div class="suc-item">
+      <div class="suc-left">
+        <div class="suc-nombre">Magnolia</div>
+        <div class="suc-dir">Av. Jilotepec / M. J. Clouthier 9436</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<foot>© 2026 Ópticas Car & Era · Ciudad Juárez</foot>
+
+<script>
+function trackLead(){
+  if(typeof fbq==='function') fbq('track','Lead');
+  if(typeof gtag==='function') gtag('event','generate_lead',{event_category:'promo',event_label:'promo_marzo_3x1'});
+}
+</script>
+</body>
+</html>

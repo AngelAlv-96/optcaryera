@@ -35,6 +35,12 @@
   to = "/firma-asistencia.html"
   status = 200
 
+# Promo Marzo 2026 — static landing with pixels
+[[redirects]]
+  from = "/l/promo-marzo"
+  to = "/promo-marzo.html"
+  status = 200
+
 # Dynamic landing pages: /l/slug → function
 [[redirects]]
   from = "/l/*"
