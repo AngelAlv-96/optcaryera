@@ -3813,7 +3813,14 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <button class="btn btn-g btn-sm" onclick="initCaja()">🔄</button>
           </div>
         </div>
+        <!-- Tabs Caja -->
+        <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.06);padding:0 12px" id="caja-tabs">
+          <button onclick="cajaTab('dia')" id="caja-tab-dia" style="flex:1;padding:10px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--beige);cursor:pointer;font-family:'Outfit',sans-serif">Caja del día</button>
+          <button onclick="cajaTab('historial')" id="caja-tab-historial" style="flex:1;padding:10px;font-size:12px;font-weight:600;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-family:'Outfit',sans-serif">Historial de cortes</button>
+        </div>
         <div class="body" style="padding:12px">
+        <!-- Tab: Caja del día -->
+        <div id="caja-content-dia">
           <!-- Estado de caja -->
           <div id="caja-estado-bar" style="margin-bottom:14px"></div>
 
@@ -3925,15 +3932,24 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <div class="fg" style="margin-bottom:12px"><label style="font-size:10px">Observaciones del corte</label><input type="text" id="caja-obs" placeholder="Notas opcionales sobre el corte"></div>
               <div style="display:flex;gap:8px">
                 <button class="btn btn-p" onclick="realizarCorte()" style="flex:1;font-size:14px;padding:10px">Realizar corte de caja</button>
-                <button class="btn btn-g" onclick="verHistorialCortes()" style="font-size:11px;padding:10px 14px">📋 Historial</button>
+                <button class="btn btn-g" onclick="cajaTab('historial')" style="font-size:11px;padding:10px 14px">📋 Historial</button>
               </div>
             </div>
           </div>
+          </div><!-- /caja-content-dia -->
 
-          <!-- Historial de cortes -->
-          <div id="caja-historial" style="display:none;margin-top:14px">
-            <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Historial de cortes</div>
-            <div id="caja-historial-list" style="display:grid;gap:6px"></div>
+          <!-- Tab: Historial de cortes -->
+          <div id="caja-content-historial" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em">Historial de cortes</div>
+              <select id="caja-hist-periodo" onchange="verHistorialCortes()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:var(--beige);font-family:'Outfit',sans-serif;font-size:11px;outline:none">
+                <option value="7">Últimos 7 días</option>
+                <option value="15">Últimos 15 días</option>
+                <option value="30" selected>Últimos 30 días</option>
+                <option value="90">Últimos 3 meses</option>
+              </select>
+            </div>
+            <div id="caja-historial-list"></div>
           </div>
         </div>
       </div>
@@ -19376,24 +19392,23 @@ async function initCaja() {
   if (!cajaData) {
     document.getElementById('caja-apertura-section').style.display = '';
     document.getElementById('caja-resumen').style.display = 'none';
-    document.getElementById('caja-historial').style.display = 'none';
+    document.getElementById('caja-content-historial').style.display = 'none';
     document.getElementById('caja-estado-bar').innerHTML = `<div style="background:rgba(224,128,128,0.08);border:1px solid rgba(224,128,128,0.15);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:8px"><span style="font-size:16px">🔒</span><div><div style="font-size:12px;font-weight:600;color:#e08080">Caja cerrada</div><div style="font-size:10px;color:var(--muted)">${today} · ${suc}</div></div></div>`;
     document.getElementById('caja-fondo').value = '0';
   } else if (cajaData.estado === 'abierta') {
     document.getElementById('caja-apertura-section').style.display = 'none';
     document.getElementById('caja-resumen').style.display = '';
-    document.getElementById('caja-historial').style.display = 'none';
+    document.getElementById('caja-content-historial').style.display = 'none';
     const ha = cajaData.hora_apertura ? new Date(cajaData.hora_apertura).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
     document.getElementById('caja-estado-bar').innerHTML = `<div style="background:rgba(114,196,126,0.08);border:1px solid rgba(114,196,126,0.15);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">🟢</span><div><div style="font-size:12px;font-weight:600;color:#72c47e">Caja abierta</div><div style="font-size:10px;color:var(--muted)">${today} · ${suc} · Abrió: ${cajaData.abierta_por||'—'} ${ha}</div></div></div><div style="font-size:11px;color:var(--muted)">Fondo: $${Number(cajaData.fondo_inicial).toFixed(2)}</div></div>`;
     await cargarDatosCaja();
   } else {
     document.getElementById('caja-apertura-section').style.display = '';
     document.getElementById('caja-resumen').style.display = 'none';
-    document.getElementById('caja-historial').style.display = 'none';
+    document.getElementById('caja-content-historial').style.display = 'none';
     document.getElementById('caja-fondo').value = '0';
     const hc = cajaData.hora_corte ? new Date(cajaData.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
     document.getElementById('caja-estado-bar').innerHTML = `<div style="background:rgba(196,162,101,0.08);border:1px solid rgba(196,162,101,0.15);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px">✅</span><div><div style="font-size:12px;font-weight:600;color:var(--beige)">Corte realizado</div><div style="font-size:10px;color:var(--muted)">${today} · ${suc} · Cortó: ${cajaData.cortado_por||'—'} ${hc}</div></div></div><div style="text-align:right"><div style="font-size:9px;color:var(--muted)">Diferencia</div><div style="font-size:14px;font-weight:700;color:${Number(cajaData.diferencia)===0?'#72c47e':Number(cajaData.diferencia)>0?'#d4b84a':'#e08080'}">$${Number(cajaData.diferencia).toFixed(2)}</div></div></div>`;
-    verHistorialCortes();
   }
   // Gerencia readonly: hide all action elements
   if (isReadOnlyCaja) {
@@ -19876,49 +19891,190 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
 }
 
 async function verHistorialCortes() {
-  const suc = currentUser?.sucursal || 'Todas';
-  const isAdmin = currentUser?.rol === 'admin';
-  const isGerencia = currentUser?.rol === 'gerencia';
-  let query = db.from('cortes_caja').select('*').eq('estado', 'cortada');
+  var suc = currentUser?.sucursal || 'Todas';
+  var isAdmin = currentUser?.rol === 'admin';
+  var isGerencia = currentUser?.rol === 'gerencia';
+  var dias = parseInt(document.getElementById('caja-hist-periodo')?.value || '30');
+  var desde = new Date(); desde.setDate(desde.getDate() - dias);
+  var desdeStr = desde.toISOString().slice(0,10);
+  var query = db.from('cortes_caja').select('*').eq('estado', 'cortada').gte('fecha', desdeStr);
   if (suc !== 'Todas' && !isGerencia) query = query.eq('sucursal', suc);
-  const { data } = await query.order('fecha', { ascending: false }).limit(30);
-  const el = document.getElementById('caja-historial');
-  el.style.display = '';
-  const list = document.getElementById('caja-historial-list');
-  if (!data?.length) { list.innerHTML = '<div style="padding:14px;text-align:center;font-size:11px;color:var(--muted)">Sin cortes anteriores</div>'; return; }
-  list.innerHTML = data.map(c => {
-    const d = Number(c.diferencia);
-    const dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
-    const dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
-    const desglose = c.desglose_metodos || {};
-    const metodos = Object.entries(desglose).sort((a,b)=>b[1]-a[1]).map(([m,a])=>`${m}: $${Number(a).toFixed(2)}`).join(' · ');
-    const hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
-    const reenviarBtn = isAdmin ? `<button onclick="event.stopPropagation();reenviarCorte('${c.id}')" style="margin-top:6px;padding:4px 10px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.2);border-radius:6px;color:#25D366;font-size:10px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif">📲 Reenviar WA</button>` : '';
-    return `<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:12px 14px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:13px">${dIcon}</span>
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--white)">${c.fecha}</div>
-            <div style="font-size:10px;color:var(--muted)">${c.sucursal} · ${c.cortado_por||''} · ${hc}</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:14px;font-weight:700;color:${dColor}">$${d.toFixed(2)}</div>
-          <div style="font-size:9px;color:var(--muted)">${Math.abs(d)<0.01?'cuadra':d>0?'sobrante':'faltante'}</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:4px;flex-wrap:wrap">
-        <span>💰 Ventas: ${c.num_ventas} ($${Number(c.total_ventas).toFixed(2)})</span>
-        <span>💳 Abonos: ${c.num_abonos} ($${Number(c.total_abonos).toFixed(2)})</span>
-        ${c.num_cancelaciones > 0 ? `<span>❌ Cancel: ${c.num_cancelaciones} ($${Number(c.total_cancelaciones).toFixed(2)})</span>` : ''}
-      </div>
-      <div style="font-size:9px;color:var(--muted)">${metodos}</div>
-      ${c.observaciones ? `<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">📝 ${c.observaciones}</div>` : ''}
-      ${reenviarBtn}
-    </div>`;
-  }).join('');
+  var { data } = await query.order('fecha', { ascending: false });
+  var list = document.getElementById('caja-historial-list');
+  if (!data?.length) { list.innerHTML = '<div style="padding:30px;text-align:center;font-size:12px;color:var(--muted)">Sin cortes en este periodo</div>'; return; }
+  // Agrupar por sucursal
+  var porSuc = {};
+  var sucOrder = ['Américas','Pinocelli','Magnolia'];
+  var sucColors = {'Américas':'#72c47e','Pinocelli':'#8bb4f0','Magnolia':'#d4b84a'};
+  data.forEach(function(c) {
+    var s = c.sucursal || 'Otra';
+    if (!porSuc[s]) porSuc[s] = [];
+    porSuc[s].push(c);
+  });
+  // Resumen general
+  var totalCortes = data.length;
+  var conDiff = data.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01});
+  var cuadran = totalCortes - conDiff.length;
+  var h = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;margin-bottom:14px">';
+  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:var(--white)">'+totalCortes+'</div><div style="font-size:9px;color:var(--muted)">Cortes</div></div>';
+  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:#72c47e">'+cuadran+'</div><div style="font-size:9px;color:var(--muted)">Cuadran</div></div>';
+  h += '<div style="background:var(--surface);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:16px;font-weight:700;color:'+(conDiff.length>0?'#e08080':'var(--white)')+'">'+conDiff.length+'</div><div style="font-size:9px;color:var(--muted)">Con diferencia</div></div>';
+  h += '</div>';
+  // Renderizar por sucursal
+  var sucKeys = sucOrder.filter(function(s){return porSuc[s]});
+  Object.keys(porSuc).forEach(function(s){if(sucKeys.indexOf(s)===-1) sucKeys.push(s)});
+  var showSucHeader = sucKeys.length > 1;
+  sucKeys.forEach(function(sucName) {
+    var cortes = porSuc[sucName];
+    var color = sucColors[sucName] || 'var(--beige)';
+    if (showSucHeader) {
+      var sucDiff = cortes.filter(function(c){return Math.abs(Number(c.diferencia))>=0.01}).length;
+      h += '<div style="display:flex;align-items:center;gap:8px;margin:14px 0 8px"><div style="width:4px;height:18px;border-radius:2px;background:'+color+'"></div><div style="font-size:13px;font-weight:700;color:'+color+'">'+sucName+'</div><div style="font-size:10px;color:var(--muted)">'+cortes.length+' cortes'+(sucDiff>0?' · <span style="color:#e08080">'+sucDiff+' con diferencia</span>':'')+'</div></div>';
+    }
+    h += '<div style="display:grid;gap:6px">';
+    cortes.forEach(function(c) {
+      var d = Number(c.diferencia);
+      var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
+      var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
+      var desglose = c.desglose_metodos || {};
+      var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
+      var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+      h += '<div onclick="verDetalleCorte(\''+c.id+'\')" style="background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:10px 12px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor=\'rgba(255,255,255,0.12)\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.04)\'">';
+      h += '<div style="display:flex;align-items:center;justify-content:space-between">';
+      h += '<div style="display:flex;align-items:center;gap:6px">';
+      h += '<span style="font-size:13px">'+dIcon+'</span>';
+      h += '<div><div style="font-size:12px;font-weight:700;color:var(--white)">'+c.fecha+'</div>';
+      h += '<div style="font-size:10px;color:var(--muted)">'+(showSucHeader?'':c.sucursal+' · ')+(c.cortado_por||'')+' · '+hc+'</div></div>';
+      h += '</div>';
+      h += '<div style="text-align:right">';
+      h += '<div style="font-size:13px;font-weight:700;color:'+dColor+'">$'+Math.abs(d).toFixed(2)+'</div>';
+      h += '<div style="font-size:9px;color:var(--muted)">'+(Math.abs(d)<0.01?'cuadra':d>0?'sobrante':'faltante')+'</div>';
+      h += '</div></div>';
+      h += '<div style="display:flex;gap:10px;font-size:10px;color:var(--muted);margin-top:4px">';
+      h += '<span>'+c.num_ventas+' ventas</span><span>$'+totalIngreso.toFixed(2)+' ingreso</span>';
+      if (c.observaciones) h += '<span style="font-style:italic">📝</span>';
+      h += '</div>';
+      h += '</div>';
+    });
+    h += '</div>';
+  });
+  list.innerHTML = h;
 }
+
+function cajaTab(tab) {
+  var tabs = ['dia','historial'];
+  tabs.forEach(function(t) {
+    var btn = document.getElementById('caja-tab-'+t);
+    var content = document.getElementById('caja-content-'+t);
+    if (t === tab) {
+      btn.style.borderBottomColor = 'var(--accent)';
+      btn.style.color = 'var(--beige)';
+      content.style.display = '';
+    } else {
+      btn.style.borderBottomColor = 'transparent';
+      btn.style.color = 'var(--muted)';
+      content.style.display = 'none';
+    }
+  });
+  if (tab === 'historial') verHistorialCortes();
+}
+
+function verDetalleCorte(corteId) {
+  db.from('cortes_caja').select('*').eq('id', corteId).single().then(function(res) {
+    var c = res.data;
+    if (!c) { toast('Corte no encontrado', true); return; }
+    var d = Number(c.diferencia);
+    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
+    var diffTxt = Math.abs(d) < 0.01 ? 'CUADRA $0.00' : d > 0 ? 'SOBRANTE +$'+d.toFixed(2) : 'FALTANTE -$'+Math.abs(d).toFixed(2);
+    var desglose = c.desglose_metodos || {};
+    var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
+    var fondo = Number(c.fondo_inicial) || 0;
+    var efvoCobrado = Number(desglose['Efectivo'] || 0);
+    var totalRetiros = Number(c.total_retiros) || 0;
+    var esperado = Number(c.efectivo_esperado) || 0;
+    var contado = Number(c.efectivo_contado) || 0;
+    var tarjetaMSI = Number(desglose['Tarjeta'] || 0) + Number(desglose['MSI'] || 0);
+    var dolar = Number(desglose['Dólar'] || 0);
+    var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
+    var isAdmin = currentUser?.rol === 'admin';
+    // Build modal HTML
+    var h = '';
+    h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+    h += '<div><div style="font-size:16px;font-weight:700;color:var(--white)">Corte de Caja</div>';
+    h += '<div style="font-size:11px;color:var(--muted)">' + c.sucursal + ' · ' + c.fecha + ' · ' + hc + '</div>';
+    h += '<div style="font-size:11px;color:var(--muted)">Realizó: ' + (c.cortado_por||'') + '</div></div>';
+    h += '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:'+dColor+'">'+diffTxt+'</div></div>';
+    h += '</div>';
+    // Métodos de pago
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
+    h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Métodos de pago</div>';
+    Object.entries(desglose).sort(function(a,b){return b[1]-a[1]}).forEach(function(e) {
+      h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">'+e[0]+'</span><span style="color:var(--white);font-weight:600">$'+Number(e[1]).toFixed(2)+'</span></div>';
+    });
+    h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:6px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px"><span style="color:var(--white)">Total ingreso</span><span style="color:var(--white)">$'+totalIngreso.toFixed(2)+'</span></div>';
+    h += '</div>';
+    // Resumen ventas/abonos
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+c.num_ventas+'</div><div style="font-size:10px;color:var(--muted)">Ventas · $'+Number(c.total_ventas).toFixed(2)+'</div></div>';
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--white)">'+c.num_abonos+'</div><div style="font-size:10px;color:var(--muted)">Abonos · $'+Number(c.total_abonos).toFixed(2)+'</div></div>';
+    h += '</div>';
+    if (c.num_cancelaciones > 0 || totalRetiros > 0) {
+      h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
+      if (c.num_cancelaciones > 0) h += '<div style="background:rgba(224,128,128,0.06);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:#e08080">'+c.num_cancelaciones+'</div><div style="font-size:10px;color:var(--muted)">Cancelaciones · $'+Number(c.total_cancelaciones).toFixed(2)+'</div></div>';
+      if (totalRetiros > 0) h += '<div style="background:rgba(212,184,74,0.06);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:#d4b84a">'+c.num_retiros+'</div><div style="font-size:10px;color:var(--muted)">Retiros · $'+totalRetiros.toFixed(2)+'</div></div>';
+      h += '</div>';
+    }
+    // Cuadre Efectivo
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
+    h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Cuadre de efectivo</div>';
+    var rows = [['Fondo inicial', fondo],['+ Efectivo cobrado', efvoCobrado]];
+    if (totalRetiros > 0) rows.push(['- Retiros', totalRetiros]);
+    rows.forEach(function(r) {
+      h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">'+r[0]+'</span><span style="color:var(--white)">$'+r[1].toFixed(2)+'</span></div>';
+    });
+    h += '<div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px">';
+    h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Esperado</span><span style="color:var(--white)">$'+esperado.toFixed(2)+'</span></div>';
+    h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Contado</span><span style="color:var(--white)">$'+contado.toFixed(2)+'</span></div>';
+    h += '</div>';
+    h += '<div style="margin-top:6px;text-align:center;padding:6px;border-radius:6px;font-weight:700;font-size:13px;color:'+dColor+';background:rgba(255,255,255,0.04)">'+diffTxt+'</div>';
+    h += '</div>';
+    // Tarjeta/MSI section
+    if (tarjetaMSI > 0) {
+      h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
+      h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Tarjeta / MSI</div>';
+      if (desglose['Tarjeta']) h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">Tarjeta</span><span style="color:var(--white)">$'+Number(desglose['Tarjeta']).toFixed(2)+'</span></div>';
+      if (desglose['MSI']) h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">MSI</span><span style="color:var(--white)">$'+Number(desglose['MSI']).toFixed(2)+'</span></div>';
+      h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:4px 0 0;border-top:1px solid rgba(255,255,255,0.06);margin-top:4px"><span style="color:var(--white)">Esperado terminal</span><span style="color:var(--white)">$'+tarjetaMSI.toFixed(2)+'</span></div>';
+      h += '</div>';
+    }
+    // Dólar section
+    if (dolar > 0) {
+      h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
+      h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Dólar</div>';
+      h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">Equiv. MXN cobrado</span><span style="color:var(--white)">$'+dolar.toFixed(2)+'</span></div>';
+      h += '</div>';
+    }
+    // Observaciones
+    if (c.observaciones) {
+      h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--muted);font-style:italic">📝 '+c.observaciones+'</div>';
+    }
+    // Buttons
+    h += '<div style="display:flex;gap:8px;margin-top:12px">';
+    if (isAdmin) h += '<button onclick="event.stopPropagation();cerrarModalCorteDetalle();reenviarCorte(\''+c.id+'\')" style="flex:1;padding:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.2);border-radius:8px;color:#25D366;font-size:11px;font-weight:600;cursor:pointer;font-family:\'Outfit\',sans-serif">📲 Reenviar WA</button>';
+    h += '<button onclick="cerrarModalCorteDetalle()" style="flex:1;padding:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:var(--white);font-size:11px;font-weight:600;cursor:pointer;font-family:\'Outfit\',sans-serif">Cerrar</button>';
+    h += '</div>';
+    // Create modal overlay
+    var existing = document.getElementById('m-corte-detalle');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = 'm-corte-detalle';
+    overlay.className = 'm-overlay open';
+    overlay.onclick = function(e) { if (e.target === overlay) cerrarModalCorteDetalle(); };
+    overlay.innerHTML = '<div class="m-box" style="max-width:420px;max-height:90vh;overflow-y:auto">'+h+'</div>';
+    document.body.appendChild(overlay);
+  });
+}
+function cerrarModalCorteDetalle() { var m = document.getElementById('m-corte-detalle'); if (m) m.remove(); }
 
 async function reenviarCorte(corteId) {
   var { data: c } = await db.from('cortes_caja').select('*').eq('id', corteId).single();
