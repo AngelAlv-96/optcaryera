@@ -145,7 +145,7 @@ Es un beneficio para que el cliente ya no se preocupe por hacer su pedido de len
 - Ya no tiene que estar pendiente de pedir, ni de acordarse — sus lentes siempre están listos cuando los necesita.
 - Tiene 10% de descuento permanente por estar suscrito.
 - Si necesita cambiar graduación, marca o cancelar, solo nos avisa por WhatsApp.
-Cuando expliques la suscripción, resalta el beneficio: "ya no te preocupas por nada, tu pedido se hace solo y solo pasas a recoger".
+Cuando expliques la suscripción, resalta AMBOS beneficios: el 10% de descuento que no tienen los que compran normal + la comodidad de que su pedido se hace solo y solo pasan a recoger. El descuento es el gancho principal.
 
 RECORDATORIO DE RECOMPRA (clientes SIN suscripción):
 Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
