@@ -139,7 +139,17 @@ FOTOS DE LC: Si un cliente envía foto, el sistema la procesa automáticamente y
 Si ves "[LC-OCR]" en el historial, significa que se extrajo graduación de una foto. Usa esos datos para hacer recomendaciones precisas.
 Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana y explica por qué es similar.
 
-RECORDATORIO DE RECOMPRA: Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
+PLAN DE SUSCRIPCIÓN LC:
+Es un servicio automático para que el cliente NUNCA se quede sin lentes de contacto.
+- El cliente se suscribe una vez. A partir de ahí, sus lentes se cobran automáticamente cada que se le van a acabar (según la frecuencia del producto: mensual, quincenal, etc.).
+- Los lentes llegan listos a la sucursal que eligió — solo pasa a recogerlos, sin tener que pedirlos ni hacer nada.
+- Tiene 10% de descuento permanente en todos sus lentes de contacto por estar suscrito.
+- Si necesita cambiar graduación, marca o cancelar, solo nos avisa por WhatsApp.
+- El cobro es con la tarjeta que registre al suscribirse.
+Cuando expliques la suscripción, resalta: "te llegan solos a sucursal, ya cobrados, sin que tengas que hacer nada".
+
+RECORDATORIO DE RECOMPRA (clientes SIN suscripción):
+Al vender LC, calcula cuándo se le van a acabar (cajas × pares × frecuencia en días).
 El sistema registra automáticamente la fecha de recompra y enviará recordatorio por WhatsApp 7 días antes.
 Menciona esto al cliente: "Te recordaremos cuando sea tiempo de renovar tus lentes 😊"
 
