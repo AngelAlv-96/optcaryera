@@ -4920,7 +4920,7 @@ async function sendCorteWA(message, templateVars) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'send_corte_template',
-            template: 'HX7baea51b259a055403edfc70646d94d9',
+            template: 'HX23d232e120ff04a785bb92734974fba0',
             template_variables: templateVars,
             auth: { id: currentUser?.id, pass: currentUser?.pass }
           })
@@ -19932,7 +19932,7 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
   var ordenesLabHoy = 0;
   try { ordenesLabHoy = cajaDayData._ordenesLabCount || 0; } catch(e) {}
 
-  // Template variables for HX7baea51b259a055403edfc70646d94d9
+  // Template variables for HX23d232e120ff04a785bb92734974fba0
   // {{1}} Sucursal, {{2}} Fecha, {{3}} Ventas registradas, {{4}} Total ventas
   // {{5}} Efectivo, {{6}} Tarjeta, {{7}} Otros métodos, {{8}} Retiros, {{9}} Órdenes lab
   var tplVars = {
