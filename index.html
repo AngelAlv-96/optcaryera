@@ -3122,6 +3122,13 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="Pinocelli">Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
               </select>
+              <select class="ord-input" id="wcrm-filtro-campana" onchange="filtrarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:130px">
+                <option value="">Todas las campa&ntilde;as</option>
+                <option value="LC">LC Reactivaci&oacute;n</option>
+                <option value="VIP">VIP Reactivaci&oacute;n</option>
+                <option value="Fase3">Am&eacute;ricas Fase 3</option>
+                <option value="Magnolia">Magnolia</option>
+              </select>
               <select class="ord-input" id="wcrm-filtro-dias" onchange="cargarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:120px">
                 <option value="30">&Uacute;ltimos 30 d&iacute;as</option>
                 <option value="7">&Uacute;ltimos 7 d&iacute;as</option>
@@ -14659,6 +14666,7 @@ var _wcrmData = [];
 var _wcrmFiltered = [];
 var WCRM_COLS = [
   { id: 'atencion', label: 'Necesita atenci\u00f3n', icon: '\u26a0\ufe0f', color: '#e08080' },
+  { id: 'reactivacion', label: 'Reactivaci\u00f3n', icon: '\ud83d\udce3', color: '#f97316' },
   { id: 'encuesta', label: 'Encuesta OK', icon: '\u2b50', color: '#72c47e' },
   { id: 'lc', label: 'LC Online', icon: '\ud83d\udc41', color: '#8ab0e8' },
   { id: 'cliente', label: 'Cliente', icon: '\ud83d\udcb0', color: '#d4b84a' },
@@ -14809,6 +14817,8 @@ async function cargarWaCrm() {
 
       // Tags — scan messages for classification
       var hasReviewSent = false, hasReviewResponse = false, needsAttention = false, hasLCInterest = lc.length > 0;
+      var campana = '', templateGroup = '', respondio = false, hasCampanaTag = false;
+      var campanaTagIdx = -1;
       for (var mi = 0; mi < conv.messages.length; mi++) {
         var mc = conv.messages[mi].content;
         if (mc.includes('[Review]') && !mc.includes('[Review Response]')) hasReviewSent = true;
@@ -14823,11 +14833,26 @@ async function cargarWaCrm() {
             if (lower.includes(lcKeywords[ki])) { hasLCInterest = true; break; }
           }
         }
+        // Campaign tags
+        if (mc.includes('[LC-Reactivacion]')) { campana = 'LC'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[VIP-Reactivacion]')) { campana = 'VIP'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[AME-Fase3]')) { campana = 'Fase3'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[Magnolia-Reactivation]')) { campana = 'Magnolia'; hasCampanaTag = true; campanaTagIdx = mi; }
+        // Template group
+        var tMatch = mc.match(/\[Template-([ABC])\]/);
+        if (tMatch) templateGroup = tMatch[1];
+      }
+      // Check if client responded (any user message after the campaign tag)
+      if (hasCampanaTag) {
+        for (var ri = campanaTagIdx + 1; ri < conv.messages.length; ri++) {
+          if (conv.messages[ri].role === 'user') { respondio = true; break; }
+        }
       }
       var reviewOK = hasReviewResponse && !needsAttention;
 
       var column;
       if (needsAttention) column = 'atencion';
+      else if (hasCampanaTag) column = 'reactivacion';
       else if (reviewOK) column = 'encuesta';
       else if (hasLCInterest) column = 'lc';
       else if (activeSales.length > 0) column = 'cliente';
@@ -14841,7 +14866,10 @@ async function cargarWaCrm() {
       conv.reviewOK = reviewOK;
       conv.needsAttention = needsAttention;
       conv.hasReviewSent = hasReviewSent;
-      conv.sucursal = activeSales.length ? activeSales[0].sucursal : '';
+      conv.campana = campana;
+      conv.templateGroup = templateGroup;
+      conv.respondio = respondio;
+      conv.sucursal = activeSales.length ? activeSales[0].sucursal : (hasCampanaTag && campana !== 'Magnolia' ? 'Américas' : '');
       if (pac) conv.name = (pac.nombre || '') + (pac.apellidos ? ' ' + pac.apellidos : '');
     });
 
@@ -14859,9 +14887,11 @@ async function cargarWaCrm() {
 function filtrarWaCrm() {
   var search = (document.getElementById('wcrm-search')?.value || '').toLowerCase();
   var suc = document.getElementById('wcrm-filtro-suc')?.value || '';
+  var camp = document.getElementById('wcrm-filtro-campana')?.value || '';
   _wcrmFiltered = _wcrmData.filter(function(c) {
     if (search && !(c.name || '').toLowerCase().includes(search) && !c.phone.includes(search)) return false;
     if (suc && c.sucursal !== suc) return false;
+    if (camp && c.campana !== camp) return false;
     return true;
   });
   renderWaCrmStats();
@@ -14989,6 +15019,72 @@ function renderWaCrmInsights() {
   // Engagement
   items.push({ icon: '\ud83d\udcac', color: 'var(--muted)', text: 'Promedio de <b>' + avgMsgs + '</b> mensajes por conversaci\u00f3n \u00b7 <b>' + _wcrmFiltered.length + '</b> contactos totales' });
 
+  // ── Campaign dashboard ──
+  var campContacts = _wcrmFiltered.filter(function(c) { return c.campana; });
+  var campHtml = '';
+  if (campContacts.length > 0) {
+    var campStats = {};
+    campContacts.forEach(function(c) {
+      var k = c.campana;
+      if (!campStats[k]) campStats[k] = { total: 0, respondio: 0, tA: 0, tB: 0, tC: 0, rA: 0, rB: 0, rC: 0, sucursales: {} };
+      campStats[k].total++;
+      if (c.respondio) campStats[k].respondio++;
+      if (c.templateGroup === 'A') { campStats[k].tA++; if (c.respondio) campStats[k].rA++; }
+      if (c.templateGroup === 'B') { campStats[k].tB++; if (c.respondio) campStats[k].rB++; }
+      if (c.templateGroup === 'C') { campStats[k].tC++; if (c.respondio) campStats[k].rC++; }
+      var s = c.sucursal || 'Sin sucursal';
+      campStats[k].sucursales[s] = (campStats[k].sucursales[s] || 0) + 1;
+    });
+    var totalReact = campContacts.length;
+    var totalResp = campContacts.filter(function(c) { return c.respondio; }).length;
+    var tasaReact = totalReact > 0 ? Math.round(totalResp / totalReact * 100) : 0;
+
+    items.push({ icon: '\ud83d\udce3', color: '#f97316', text: '<b>' + totalResp + ' de ' + totalReact + '</b> contactos de reactivaci\u00f3n respondieron <span style="color:var(--muted)">(' + tasaReact + '% tasa de respuesta)</span>' });
+
+    // A/B/C breakdown
+    campHtml += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05)">';
+    campHtml += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;margin-bottom:8px">\ud83d\udce3 Campa\u00f1as de Reactivaci\u00f3n</div>';
+
+    var campNames = { LC: 'LC Reactivaci\u00f3n', VIP: 'VIP Reactivaci\u00f3n', Fase3: 'Am\u00e9ricas Fase 3', Magnolia: 'Magnolia' };
+    var campColors = { LC: '#ef4444', VIP: '#3b82f6', Fase3: '#f97316', Magnolia: '#f59e0b' };
+    Object.keys(campStats).forEach(function(k) {
+      var s = campStats[k];
+      var pct = s.total > 0 ? Math.round(s.respondio / s.total * 100) : 0;
+      var col = campColors[k] || '#888';
+      campHtml += '<div style="margin-bottom:8px;padding:8px 10px;background:' + col + '0a;border:1px solid ' + col + '22;border-radius:8px">';
+      campHtml += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      campHtml += '<span style="font-size:11px;font-weight:600;color:' + col + '">' + (campNames[k] || k) + '</span>';
+      campHtml += '<span style="font-size:10px;color:var(--muted)">' + s.respondio + '/' + s.total + ' (' + pct + '%)</span>';
+      campHtml += '</div>';
+      // Progress bar
+      campHtml += '<div style="margin-top:4px;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden">';
+      campHtml += '<div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:2px"></div>';
+      campHtml += '</div>';
+      // A/B/C test results
+      if (s.tA + s.tB + s.tC > 0) {
+        var pA = s.tA > 0 ? Math.round(s.rA / s.tA * 100) : 0;
+        var pB = s.tB > 0 ? Math.round(s.rB / s.tB * 100) : 0;
+        var pC = s.tC > 0 ? Math.round(s.rC / s.tC * 100) : 0;
+        var best = pA >= pB && pA >= pC ? 'A' : (pB >= pC ? 'B' : 'C');
+        campHtml += '<div style="display:flex;gap:6px;margin-top:4px;font-size:10px;color:var(--muted)">';
+        campHtml += '<span style="' + (best === 'A' ? 'color:#72c47e;font-weight:700' : '') + '">A: ' + s.rA + '/' + s.tA + ' (' + pA + '%)</span>';
+        campHtml += '<span style="' + (best === 'B' ? 'color:#72c47e;font-weight:700' : '') + '">B: ' + s.rB + '/' + s.tB + ' (' + pB + '%)</span>';
+        campHtml += '<span style="' + (best === 'C' ? 'color:#72c47e;font-weight:700' : '') + '">C: ' + s.rC + '/' + s.tC + ' (' + pC + '%)</span>';
+        if (totalResp > 0) campHtml += '<span style="color:#72c47e"> \u2190 ' + best + ' gana</span>';
+        campHtml += '</div>';
+      }
+      // Sucursales
+      var sucKeys = Object.keys(s.sucursales);
+      if (sucKeys.length > 0) {
+        campHtml += '<div style="margin-top:3px;font-size:9px;color:var(--muted)">';
+        campHtml += sucKeys.map(function(sk) { return sk + ': ' + s.sucursales[sk]; }).join(' \u00b7 ');
+        campHtml += '</div>';
+      }
+      campHtml += '</div>';
+    });
+    campHtml += '</div>';
+  }
+
   var html = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--beige);margin-bottom:10px">\ud83d\udcca Insights del CRM</div>';
   items.forEach(function(item) {
     html += '<div style="display:flex;align-items:start;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03)">';
@@ -14997,7 +15093,7 @@ function renderWaCrmInsights() {
     html += '</div>';
   });
 
-  el.innerHTML = html;
+  el.innerHTML = html + campHtml;
   el.style.display = '';
 }
 
@@ -15037,6 +15133,17 @@ function renderWaCrm() {
 
       // Badges
       var badges = '';
+      // Campaign badges
+      if (c.campana === 'LC') badges += '<span class="wcrm-badge" style="background:#ef444422;color:#ef4444;border:1px solid #ef444433">\ud83d\udce3 LC</span>';
+      else if (c.campana === 'VIP') badges += '<span class="wcrm-badge" style="background:#3b82f622;color:#3b82f6;border:1px solid #3b82f633">\ud83d\udce3 VIP</span>';
+      else if (c.campana === 'Fase3') badges += '<span class="wcrm-badge" style="background:#f9731622;color:#f97316;border:1px solid #f9731633">\ud83d\udce3 F3</span>';
+      else if (c.campana === 'Magnolia') badges += '<span class="wcrm-badge" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b33">\ud83c\udfea Magnolia</span>';
+      // Template group badge (small, gray)
+      if (c.templateGroup) badges += '<span class="wcrm-badge" style="background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid rgba(255,255,255,0.1);font-size:8px;padding:0 4px">' + c.templateGroup + '</span>';
+      // Responded badge
+      if (c.campana && c.respondio) badges += '<span class="wcrm-badge" style="background:#72c47e22;color:#72c47e;border:1px solid #72c47e33">\u2705</span>';
+      else if (c.campana && !c.respondio) badges += '<span class="wcrm-badge" style="background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid rgba(255,255,255,0.06)">Sin resp</span>';
+      // Existing badges
       if (c.ventas && c.ventas.length) {
         badges += '<span class="wcrm-badge" style="background:#d4b84a22;color:#d4b84a;border:1px solid #d4b84a33">' + c.ventas[0].folio + '</span>';
       }
