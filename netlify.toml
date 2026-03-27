@@ -17,6 +17,10 @@
 # [functions."magnolia-reactivate"]
 #   schedule = "0 17 * * 1"
 
+# LC Reactivation — envío MANUAL: GET /.netlify/functions/lc-reactivate?key=SECRET
+# Dry run: ?key=SECRET&dry=1 — A/B/C test con 3 templates
+# No tiene cron — se dispara manualmente cuando Angel lo decida
+
 # Review Follow-up — DESACTIVADO (muy insistente, con links directos g.page ya no es necesario)
 # [functions."review-followup"]
 #   schedule = "0 17 * * 3"

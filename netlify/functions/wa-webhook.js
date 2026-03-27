@@ -490,6 +490,67 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- El objetivo es reconectar con calidez, NO presionar la venta';
   }
 
+  // Check for LC Reactivation campaign context
+  var hasLCReactivation = false;
+  for (var lr = 0; lr < Math.min(history.length, 10); lr++) {
+    if (history[lr].content && history[lr].content.indexOf('[LC-Reactivacion]') !== -1) {
+      hasLCReactivation = true;
+      break;
+    }
+  }
+  if (hasLCReactivation) {
+    // Lookup patient LC history for graduation data
+    var lcHist = await lookupLCHistory(phone);
+    var rxContext = '';
+    if (lcHist && lcHist.lcRx) {
+      var diasDesdeRx = Math.floor((Date.now() - new Date(lcHist.lcRx.fecha).getTime()) / 86400000);
+      rxContext = '\n📋 GRADUACIÓN LC EN ARCHIVO:\n' +
+        '- Marca anterior: ' + lcHist.lcRx.marca + '\n' +
+        '- OD: ' + lcHist.lcRx.od + ' | OI: ' + lcHist.lcRx.oi + '\n' +
+        (lcHist.lcRx.bc ? '- BC: ' + lcHist.lcRx.bc + ' | DIA: ' + lcHist.lcRx.dia + '\n' : '') +
+        '- Fecha de graduación: ' + lcHist.lcRx.fecha.slice(0,10) + ' (' + diasDesdeRx + ' días atrás)\n' +
+        (diasDesdeRx <= 365 ? '✅ Graduación RECIENTE (menos de 1 año) — se puede usar directamente\n' : '⚠️ Graduación tiene más de 1 año — recomendar verificar en sucursal\n');
+    } else if (lcHist && lcHist.rx) {
+      rxContext = '\n📋 GRADUACIÓN GENERAL EN ARCHIVO (no específica de LC):\n' +
+        '- OD: ' + lcHist.rx.od + ' | OI: ' + lcHist.rx.oi + '\n' +
+        '- Necesita conversión vertex para LC — invitar a sucursal si quiere verificar\n';
+    } else {
+      rxContext = '\n📋 NO hay graduación en archivo para este paciente — necesita examen en sucursal\n';
+    }
+
+    systemPrompt += '\n\nCONTEXTO CAMPAÑA REACTIVACIÓN LC:\n' +
+      'Este cliente fue contactado porque es usuario de lentes de contacto que no ha comprado recientemente. ' +
+      'Es un cliente anterior que ya nos conoce. Trátalo con calidez especial.\n' +
+      rxContext +
+      '\nFLUJO DE ATENCIÓN REACTIVACIÓN:\n' +
+      '1. Si el cliente responde con interés, pregunta: "¿Usamos la misma graduación que tenemos en tu expediente o prefieres un nuevo examen de la vista?"\n' +
+      '   - Si tenemos graduación reciente en archivo (menos de 1 año), menciónale que la tenemos y pregunta si la usamos.\n' +
+      '   - Si la graduación tiene más de 1 año o no tenemos, sugiérele venir a sucursal para verificar.\n' +
+      '2. GRADUACIÓN CONFIRMADA (cliente dice que sí, usamos la misma):\n' +
+      '   → Procede a venta normal de LC (cotiza, cierra con CREAR_VENTA)\n' +
+      '   → OFRECE PLAN DE SUSCRIPCIÓN: "¿Te gustaría que te lleguen automáticamente tus lentes cada mes/bimestre? ' +
+      'Con nuestro plan de suscripción tienes 10% de descuento en ESTA compra."\n' +
+      '   → Si acepta suscripción: aplica 10% de descuento al total y menciónalo en CREAR_VENTA (el admin verá el descuento)\n' +
+      '   → El descuento aplica porque la graduación está confirmada y no hay riesgo de garantía\n' +
+      '3. NECESITA EXAMEN NUEVO (no tiene graduación, cambió su vista, graduación vieja):\n' +
+      '   → Invítalo a sucursal para examen de vista INCLUIDO al comprar lentes\n' +
+      '   → Primera compra a PRECIO REGULAR (sin descuento, porque la graduación no está confirmada)\n' +
+      '   → OFRECE SUSCRIPCIÓN PARA LA SIGUIENTE: "En tu siguiente recompra ya con graduación confirmada, ' +
+      'te damos 10% de descuento automático con el plan de suscripción."\n' +
+      '   → Es decir: el descuento del 10% empieza a partir de la SEGUNDA compra (cuando la graduación ya está verificada)\n' +
+      '4. Sucursales para examen: Américas (Av. de las Américas), Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec)\n' +
+      '   Horario: L-S 10am-7pm, Dom 11am-5pm\n\n' +
+      'REGLAS DE TRATO REACTIVACIÓN LC:\n' +
+      '- Si responde positivo: entusiasmo + graduación + suscripción\n' +
+      '- Si pregunta precio: cotiza con catálogo real y menciona el 10% de suscripción como incentivo\n' +
+      '- Si se muestra DESINTERESADO: agradece y no insistas, dile que aquí estamos cuando necesite\n' +
+      '- Si se muestra MOLESTO: discúlpate y deja de responder\n' +
+      '- NUNCA más de 2 mensajes sin respuesta del cliente\n' +
+      '- NUNCA admitas culpa ni prometas cosas que no puedes cumplir\n' +
+      '- Cuando menciones suscripción, explica brevemente: "Te enviamos tus lentes automáticamente cada X tiempo, ' +
+      'sin que tengas que acordarte. Y con 10% de descuento."';
+  }
+
   var messages = [];
   for (var i = 0; i < history.length; i++) {
     messages.push({ role: history[i].role, content: history[i].content });
@@ -1009,6 +1070,41 @@ async function cmdPromo(newPromoText, userName) {
     return '✅ Promociones actualizadas en Clari.\n\n📝 Nuevo texto:\n' + newPromoText + '\n\n👤 Por: ' + (userName || 'Admin');
   }
   return '❌ Error al actualizar promociones. Intenta de nuevo.';
+}
+
+// ── LC HISTORY LOOKUP (graduation by phone) ──
+async function lookupLCHistory(phone) {
+  if (!SERVICE_KEY) return null;
+  try {
+    var cleanPhone = phone.replace(/^521/, '').replace(/^52/, '').replace(/^1/, '');
+    if (cleanPhone.length > 10) cleanPhone = cleanPhone.slice(-10);
+    var patients = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id,nombre,apellidos&limit=3');
+    if (!patients || !patients.length) return null;
+    var patIds = patients.map(function(p) { return p.id; });
+    // Get most recent historia_clinica with LC data
+    var hcs = await supaFetch('historias_clinicas?paciente_id=in.(' + patIds.join(',') + ')&select=paciente_id,created_at,lc_marca,lc_programa,lc_od_esfera,lc_od_cilindro,lc_od_eje,lc_oi_esfera,lc_oi_cilindro,lc_oi_eje,lc_bc,lc_dia,od_esfera,od_cilindro,od_eje,oi_esfera,oi_cilindro,oi_eje,od_add,oi_add&order=created_at.desc&limit=3');
+    if (!hcs || !hcs.length) return { patient: patients[0], rx: null, lcRx: null };
+    // Find one with LC data first
+    var lcHc = hcs.find(function(h) { return h.lc_od_esfera || h.lc_marca; });
+    var anyHc = hcs[0]; // most recent regardless
+    var result = { patient: patients[0], rx: null, lcRx: null, rxDate: anyHc.created_at };
+    if (lcHc) {
+      result.lcRx = {
+        marca: lcHc.lc_marca || '',
+        od: (lcHc.lc_od_esfera || '') + (lcHc.lc_od_cilindro ? ' / ' + lcHc.lc_od_cilindro + ' x ' + (lcHc.lc_od_eje || '') : ''),
+        oi: (lcHc.lc_oi_esfera || '') + (lcHc.lc_oi_cilindro ? ' / ' + lcHc.lc_oi_cilindro + ' x ' + (lcHc.lc_oi_eje || '') : ''),
+        bc: lcHc.lc_bc || '', dia: lcHc.lc_dia || '',
+        fecha: lcHc.created_at
+      };
+    }
+    if (anyHc.od_esfera) {
+      result.rx = {
+        od: (anyHc.od_esfera || '') + (anyHc.od_cilindro ? ' / ' + anyHc.od_cilindro + ' x ' + (anyHc.od_eje || '') : '') + (anyHc.od_add ? ' ADD ' + anyHc.od_add : ''),
+        oi: (anyHc.oi_esfera || '') + (anyHc.oi_cilindro ? ' / ' + anyHc.oi_cilindro + ' x ' + (anyHc.oi_eje || '') : '') + (anyHc.oi_add ? ' ADD ' + anyHc.oi_add : '')
+      };
+    }
+    return result;
+  } catch(e) { console.error('[LC History]', e.message); return null; }
 }
 
 // ── LC CATALOG LOOKUP ──
@@ -1837,6 +1933,31 @@ exports.handler = async function(event) {
 
       // ── CLARI AI (default for non-admin or unmatched commands) ──
       if (!isAuthResponse && !asistHandled && !cmdHandled) {
+        // ── ALERT: LC Reactivation client responding ──
+        try {
+          var recentMsgs = await getConversationHistory(from);
+          if (recentMsgs) {
+            var isLCReact = recentMsgs.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
+            var isFirstReply = isLCReact && !recentMsgs.some(function(m) { return m.role === 'user' && m.content.indexOf('[LC-Reactivacion]') === -1; });
+            if (isLCReact) {
+              var cfgAlert = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+              if (cfgAlert && cfgAlert[0]) {
+                var alertCfg = typeof cfgAlert[0].value === 'string' ? JSON.parse(cfgAlert[0].value) : cfgAlert[0].value;
+                var alertPhones = alertCfg.admin_phones || [];
+                var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
+                var alertMsg = alertEmoji + ' — *LC Reactivación*\n\n'
+                  + '👤 ' + (userName || 'Cliente') + '\n'
+                  + '📱 ' + from + '\n'
+                  + '💬 "' + userText.substring(0, 100) + '"\n\n'
+                  + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
+                for (var ap = 0; ap < alertPhones.length; ap++) {
+                  await sendWhatsAppReply(alertPhones[ap], alertMsg);
+                }
+              }
+            }
+          }
+        } catch(alertErr) { console.warn('[LC-React Alert]', alertErr.message); }
+
         var reply = await getAIResponse(userText, userName, from);
         
         // Check if AI response contains CREAR_VENTA command
