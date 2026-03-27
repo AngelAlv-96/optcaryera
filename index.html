@@ -3124,9 +3124,12 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               </select>
               <select class="ord-input" id="wcrm-filtro-campana" onchange="filtrarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:130px">
                 <option value="">Todas las campa&ntilde;as</option>
-                <option value="LC">LC Reactivaci&oacute;n</option>
-                <option value="VIP">VIP Reactivaci&oacute;n</option>
-                <option value="Fase3">Am&eacute;ricas Fase 3</option>
+                <option value="LC">LC Am&eacute;ricas</option>
+                <option value="VIP">VIP Am&eacute;ricas</option>
+                <option value="Fase3">Fase 3 Am&eacute;ricas</option>
+                <option value="PIN-LC">LC Pinocelli</option>
+                <option value="PIN-VIP">VIP Pinocelli</option>
+                <option value="PIN-F3">Fase 3 Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
               </select>
               <select class="ord-input" id="wcrm-filtro-dias" onchange="cargarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:120px">
@@ -14505,7 +14508,7 @@ function renderClariConversations() {
   // Ocultar conversaciones de campañas masivas (magnolia-reactivate, etc.) donde el cliente NO ha respondido
   convos = convos.filter(function(c) {
     var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
-    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3'; });
+    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3' || m.user_name === 'pin-lc-reactivacion' || m.user_name === 'pin-vip-reactivacion' || m.user_name === 'pin-fase3'; });
     return !isCampaignOnly;
   });
   if (search) convos = convos.filter(function(c) { return c.name.toLowerCase().includes(search) || c.phone.includes(search); });
@@ -14837,6 +14840,9 @@ async function cargarWaCrm() {
         if (mc.includes('[LC-Reactivacion]')) { campana = 'LC'; hasCampanaTag = true; campanaTagIdx = mi; }
         if (mc.includes('[VIP-Reactivacion]')) { campana = 'VIP'; hasCampanaTag = true; campanaTagIdx = mi; }
         if (mc.includes('[AME-Fase3]')) { campana = 'Fase3'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[PIN-LC-Reactivacion]')) { campana = 'PIN-LC'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[PIN-VIP-Reactivacion]')) { campana = 'PIN-VIP'; hasCampanaTag = true; campanaTagIdx = mi; }
+        if (mc.includes('[PIN-Fase3]')) { campana = 'PIN-F3'; hasCampanaTag = true; campanaTagIdx = mi; }
         if (mc.includes('[Magnolia-Reactivation]')) { campana = 'Magnolia'; hasCampanaTag = true; campanaTagIdx = mi; }
         // Template group
         var tMatch = mc.match(/\[Template-([ABC])\]/);
@@ -14869,7 +14875,7 @@ async function cargarWaCrm() {
       conv.campana = campana;
       conv.templateGroup = templateGroup;
       conv.respondio = respondio;
-      conv.sucursal = activeSales.length ? activeSales[0].sucursal : (hasCampanaTag && campana !== 'Magnolia' ? 'Américas' : '');
+      conv.sucursal = activeSales.length ? activeSales[0].sucursal : (hasCampanaTag && campana.startsWith('PIN') ? 'Pinocelli' : hasCampanaTag && campana !== 'Magnolia' ? 'Américas' : (hasCampanaTag && campana === 'Magnolia' ? 'Magnolia' : ''));
       if (pac) conv.name = (pac.nombre || '') + (pac.apellidos ? ' ' + pac.apellidos : '');
     });
 
@@ -15045,8 +15051,8 @@ function renderWaCrmInsights() {
     campHtml += '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05)">';
     campHtml += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#f97316;margin-bottom:8px">\ud83d\udce3 Campa\u00f1as de Reactivaci\u00f3n</div>';
 
-    var campNames = { LC: 'LC Reactivaci\u00f3n', VIP: 'VIP Reactivaci\u00f3n', Fase3: 'Am\u00e9ricas Fase 3', Magnolia: 'Magnolia' };
-    var campColors = { LC: '#ef4444', VIP: '#3b82f6', Fase3: '#f97316', Magnolia: '#f59e0b' };
+    var campNames = { LC: 'LC Am\u00e9ricas', VIP: 'VIP Am\u00e9ricas', Fase3: 'Fase 3 Am\u00e9ricas', 'PIN-LC': 'LC Pinocelli', 'PIN-VIP': 'VIP Pinocelli', 'PIN-F3': 'Fase 3 Pinocelli', Magnolia: 'Magnolia' };
+    var campColors = { LC: '#ef4444', VIP: '#3b82f6', Fase3: '#f97316', 'PIN-LC': '#ef4444', 'PIN-VIP': '#3b82f6', 'PIN-F3': '#f97316', Magnolia: '#f59e0b' };
     Object.keys(campStats).forEach(function(k) {
       var s = campStats[k];
       var pct = s.total > 0 ? Math.round(s.respondio / s.total * 100) : 0;
@@ -15134,9 +15140,9 @@ function renderWaCrm() {
       // Badges
       var badges = '';
       // Campaign badges
-      if (c.campana === 'LC') badges += '<span class="wcrm-badge" style="background:#ef444422;color:#ef4444;border:1px solid #ef444433">\ud83d\udce3 LC</span>';
-      else if (c.campana === 'VIP') badges += '<span class="wcrm-badge" style="background:#3b82f622;color:#3b82f6;border:1px solid #3b82f633">\ud83d\udce3 VIP</span>';
-      else if (c.campana === 'Fase3') badges += '<span class="wcrm-badge" style="background:#f9731622;color:#f97316;border:1px solid #f9731633">\ud83d\udce3 F3</span>';
+      if (c.campana === 'LC' || c.campana === 'PIN-LC') badges += '<span class="wcrm-badge" style="background:#ef444422;color:#ef4444;border:1px solid #ef444433">\ud83d\udce3 LC</span>';
+      else if (c.campana === 'VIP' || c.campana === 'PIN-VIP') badges += '<span class="wcrm-badge" style="background:#3b82f622;color:#3b82f6;border:1px solid #3b82f633">\ud83d\udce3 VIP</span>';
+      else if (c.campana === 'Fase3' || c.campana === 'PIN-F3') badges += '<span class="wcrm-badge" style="background:#f9731622;color:#f97316;border:1px solid #f9731633">\ud83d\udce3 F3</span>';
       else if (c.campana === 'Magnolia') badges += '<span class="wcrm-badge" style="background:#f59e0b22;color:#f59e0b;border:1px solid #f59e0b33">\ud83c\udfea Magnolia</span>';
       // Template group badge (small, gray)
       if (c.templateGroup) badges += '<span class="wcrm-badge" style="background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid rgba(255,255,255,0.1);font-size:8px;padding:0 4px">' + c.templateGroup + '</span>';

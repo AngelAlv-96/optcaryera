@@ -493,7 +493,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   // Check for LC Reactivation campaign context
   var hasLCReactivation = false;
   for (var lr = 0; lr < Math.min(history.length, 10); lr++) {
-    if (history[lr].content && history[lr].content.indexOf('[LC-Reactivacion]') !== -1) {
+    if (history[lr].content && (history[lr].content.indexOf('[LC-Reactivacion]') !== -1 || history[lr].content.indexOf('[PIN-LC-Reactivacion]') !== -1)) {
       hasLCReactivation = true;
       break;
     }
@@ -554,7 +554,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)
   var hasVIPReactivation = false;
   for (var vr = 0; vr < Math.min(history.length, 10); vr++) {
-    if (history[vr].content && (history[vr].content.indexOf('[VIP-Reactivacion]') !== -1 || history[vr].content.indexOf('[AME-Fase3]') !== -1)) {
+    if (history[vr].content && (history[vr].content.indexOf('[VIP-Reactivacion]') !== -1 || history[vr].content.indexOf('[AME-Fase3]') !== -1 || history[vr].content.indexOf('[PIN-VIP-Reactivacion]') !== -1 || history[vr].content.indexOf('[PIN-Fase3]') !== -1)) {
       hasVIPReactivation = true;
       break;
     }
@@ -1972,7 +1972,7 @@ exports.handler = async function(event) {
         try {
           var recentMsgs = await getConversationHistory(from);
           if (recentMsgs) {
-            var isLCReact = recentMsgs.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
+            var isLCReact = recentMsgs.some(function(m) { return m.content && (m.content.indexOf('[LC-Reactivacion]') !== -1 || m.content.indexOf('[PIN-LC-Reactivacion]') !== -1); });
             var isFirstReply = isLCReact && !recentMsgs.some(function(m) { return m.role === 'user' && m.content.indexOf('[LC-Reactivacion]') === -1; });
             if (isLCReact) {
               var cfgAlert = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
@@ -1997,8 +1997,8 @@ exports.handler = async function(event) {
         try {
           var recentMsgs2 = recentMsgs || await getConversationHistory(from);
           if (recentMsgs2) {
-            var isVIPReact = recentMsgs2.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1); });
-            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1 && m.content.indexOf('[AME-Fase3]') === -1; });
+            var isVIPReact = recentMsgs2.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1 || m.content.indexOf('[PIN-VIP-Reactivacion]') !== -1 || m.content.indexOf('[PIN-Fase3]') !== -1); });
+            var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1 && m.content.indexOf('[AME-Fase3]') === -1 && m.content.indexOf('[PIN-VIP-Reactivacion]') === -1 && m.content.indexOf('[PIN-Fase3]') === -1; });
             if (isVIPReact) {
               var cfgAlert2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
               if (cfgAlert2 && cfgAlert2[0]) {
