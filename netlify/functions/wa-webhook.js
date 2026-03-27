@@ -1975,19 +1975,15 @@ exports.handler = async function(event) {
             var isLCReact = recentMsgs.some(function(m) { return m.content && (m.content.indexOf('[LC-Reactivacion]') !== -1 || m.content.indexOf('[PIN-LC-Reactivacion]') !== -1); });
             var isFirstReply = isLCReact && !recentMsgs.some(function(m) { return m.role === 'user' && m.content.indexOf('[LC-Reactivacion]') === -1; });
             if (isLCReact) {
-              var cfgAlert = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
-              if (cfgAlert && cfgAlert[0]) {
-                var alertCfg = typeof cfgAlert[0].value === 'string' ? JSON.parse(cfgAlert[0].value) : cfgAlert[0].value;
-                var alertPhones = alertCfg.admin_phones || [];
-                var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
-                var alertMsg = alertEmoji + ' — *LC Reactivación*\n\n'
-                  + '👤 ' + (userName || 'Cliente') + '\n'
-                  + '📱 ' + from + '\n'
-                  + '💬 "' + userText.substring(0, 100) + '"\n\n'
-                  + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
-                for (var ap = 0; ap < alertPhones.length; ap++) {
-                  await sendWhatsAppReply(alertPhones[ap], alertMsg);
-                }
+              var alertPhones = ['5216564269961']; // Solo Angel — alertas de reactivación
+              var alertEmoji = isFirstReply ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
+              var alertMsg = alertEmoji + ' — *LC Reactivación*\n\n'
+                + '👤 ' + (userName || 'Cliente') + '\n'
+                + '📱 ' + from + '\n'
+                + '💬 "' + userText.substring(0, 100) + '"\n\n'
+                + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
+              for (var ap = 0; ap < alertPhones.length; ap++) {
+                await sendWhatsAppReply(alertPhones[ap], alertMsg);
               }
             }
           }
@@ -2000,19 +1996,15 @@ exports.handler = async function(event) {
             var isVIPReact = recentMsgs2.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1 || m.content.indexOf('[PIN-VIP-Reactivacion]') !== -1 || m.content.indexOf('[PIN-Fase3]') !== -1); });
             var isFirstVIP = isVIPReact && !recentMsgs2.some(function(m) { return m.role === 'user' && m.content.indexOf('[VIP-Reactivacion]') === -1 && m.content.indexOf('[AME-Fase3]') === -1 && m.content.indexOf('[PIN-VIP-Reactivacion]') === -1 && m.content.indexOf('[PIN-Fase3]') === -1; });
             if (isVIPReact) {
-              var cfgAlert2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
-              if (cfgAlert2 && cfgAlert2[0]) {
-                var alertCfg2 = typeof cfgAlert2[0].value === 'string' ? JSON.parse(cfgAlert2[0].value) : cfgAlert2[0].value;
-                var alertPhones2 = alertCfg2.admin_phones || [];
-                var alertEmoji2 = isFirstVIP ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
-                var alertMsg2 = alertEmoji2 + ' — *VIP Reactivación*\n\n'
-                  + '👤 ' + (userName || 'Cliente') + '\n'
-                  + '📱 ' + from + '\n'
-                  + '💬 "' + userText.substring(0, 100) + '"\n\n'
-                  + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
-                for (var ap2 = 0; ap2 < alertPhones2.length; ap2++) {
-                  await sendWhatsAppReply(alertPhones2[ap2], alertMsg2);
-                }
+              var alertPhones2 = ['5216564269961']; // Solo Angel — alertas de reactivación
+              var alertEmoji2 = isFirstVIP ? '🚨 PRIMERA RESPUESTA' : '💬 CONVERSACIÓN ACTIVA';
+              var alertMsg2 = alertEmoji2 + ' — *VIP Reactivación*\n\n'
+                + '👤 ' + (userName || 'Cliente') + '\n'
+                + '📱 ' + from + '\n'
+                + '💬 "' + userText.substring(0, 100) + '"\n\n'
+                + '👀 Revisa la conversación en Clari para dar seguimiento en tiempo real.';
+              for (var ap2 = 0; ap2 < alertPhones2.length; ap2++) {
+                await sendWhatsAppReply(alertPhones2[ap2], alertMsg2);
               }
             }
           }
