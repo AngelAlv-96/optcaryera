@@ -162,7 +162,7 @@ async function contCargarResultados() {
     });
     var compras = results[2].data || [];
     var gastos = (results[3].data || []).filter(function(g) {
-      if (_contSucursal) return !g.sucursal || g.sucursal === _contSucursal;
+      if (_contSucursal) return g.sucursal === 'General' || g.sucursal === _contSucursal;
       return true;
     });
 
@@ -277,7 +277,7 @@ async function contCargarGastos() {
 
     // Filter gastos in JS: include matching sucursal + General (null/empty)
     if (_contSucursal) {
-      gastos = gastos.filter(function(g) { return !g.sucursal || g.sucursal === _contSucursal; });
+      gastos = gastos.filter(function(g) { return g.sucursal === 'General' || g.sucursal === _contSucursal; });
     }
 
     // Merge
@@ -578,7 +578,7 @@ async function contGuardarGasto() {
       fecha: fecha,
       categoria: categoria,
       subcategoria: subcategoria || null,
-      sucursal: sucursal || null,
+      sucursal: sucursal || 'General',
       metodo_pago: metodo_pago || null,
       nota: nota || null,
       comprobante_url: window._contComprobanteUrl || null,
@@ -660,7 +660,7 @@ async function contCargarFlujo() {
       return !_contSucursal || a.sucursal === _contSucursal;
     });
     var gastos = (results[2].data || []).filter(function(g) {
-      if (_contSucursal) return !g.sucursal || g.sucursal === _contSucursal;
+      if (_contSucursal) return g.sucursal === 'General' || g.sucursal === _contSucursal;
       return true;
     });
     var compras = results[3].data || [];
