@@ -586,10 +586,12 @@ async function contGuardarGasto() {
     };
 
     if (_contEditId) {
-      await db.from('gastos').update(row).eq('id', _contEditId);
+      var res = await db.from('gastos').update(row).eq('id', _contEditId);
+      if (res.error) throw new Error(res.error.message || 'Error al actualizar');
       toast('Gasto actualizado', 'ok');
     } else {
-      await db.from('gastos').insert(row);
+      var res = await db.from('gastos').insert(row);
+      if (res.error) throw new Error(res.error.message || 'Error al guardar');
       toast('Gasto registrado', 'ok');
     }
 
