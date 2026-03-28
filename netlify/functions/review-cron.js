@@ -1,5 +1,6 @@
-// Review CRM — Auto-request Google Maps reviews via WhatsApp
-// Runs daily, sends encuesta_opinion template to customers who bought 3-7 days ago
+// Review CRM — Envía encuestas de opinión 2h después de entrega de lentes
+// Lee de tabla review_queue (insertada al marcar Entregado en el sistema)
+// Cron cada 15 min — envía individualmente, no en batch
 // Netlify Scheduled Function
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -8,15 +9,11 @@ const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 
-// Template SID from Twilio Content Builder (encuesta_opinion)
+// Template SID from Twilio Content Builder (opinion_servicio)
 const TEMPLATE_SID = 'HX80c7577a56dea4c6a675a9a7ea5c5cea';
 
-// Days after purchase to send review request
-const DIAS_MIN = 1;
-const DIAS_MAX = 4;
-
-// Max reviews per run (rate limiting)
-const MAX_PER_RUN = 40;
+// Max per run (individual, not batch)
+const MAX_PER_RUN = 10;
 
 async function supaREST(method, path, body) {
   const opts = {
@@ -87,63 +84,36 @@ async function saveToHistory(phone, role, content) {
 }
 
 exports.handler = async function(event) {
-  console.log('[REVIEW-CRON] Iniciando envío de encuestas de opinión...');
+  console.log('[REVIEW-CRON] Verificando cola de encuestas...');
 
   try {
     // ⏰ Guard de horario: solo enviar entre 10am-8pm hora Chihuahua
     const nowCH = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
     const hora = nowCH.getHours();
     if (hora < 10 || hora >= 20) {
-      console.log(`[REVIEW-CRON] ⏰ Fuera de horario (${hora}:${String(nowCH.getMinutes()).padStart(2,'0')} Chihuahua). No se envían encuestas.`);
-      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Fuera de horario permitido (10am-8pm CST)' }) };
+      console.log(`[REVIEW-CRON] ⏰ Fuera de horario (${hora}:${String(nowCH.getMinutes()).padStart(2,'0')} Chihuahua). Encuestas pendientes se enviarán mañana.`);
+      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Fuera de horario (10am-8pm)' }) };
     }
 
-    // Calculate date range: ventas from DIAS_MIN to DIAS_MAX days ago
-    const now = new Date();
-    const dateMax = new Date(now);
-    dateMax.setDate(dateMax.getDate() - DIAS_MIN);
-    const dateMin = new Date(now);
-    dateMin.setDate(dateMin.getDate() - DIAS_MAX);
+    const now = new Date().toISOString();
 
-    const fromDate = dateMin.toISOString();
-    const toDate = dateMax.toISOString();
-
-    // Find completed ventas in the date range with patient phone
-    // Use updated_at (set when liquidada) instead of created_at to catch ventas
-    // that were created as Apartado and liquidated days later
-    const ventas = await supaREST('GET',
-      `ventas?estado=eq.Liquidada&updated_at=gte.${fromDate}&updated_at=lte.${toDate}&select=id,folio,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)&order=updated_at.desc&limit=100`
+    // Leer encuestas pendientes donde send_at ya pasó
+    const queue = await supaREST('GET',
+      `review_queue?sent=eq.false&send_at=lte.${now}&order=send_at.asc&limit=${MAX_PER_RUN}`
     );
 
-    if (!ventas || !ventas.length) {
-      console.log('[REVIEW-CRON] No hay ventas elegibles para encuesta');
+    if (!queue || !queue.length) {
+      console.log('[REVIEW-CRON] Cola vacía — nada que enviar');
       return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0 }) };
     }
 
-    console.log(`[REVIEW-CRON] ${ventas.length} ventas candidatas`);
+    console.log(`[REVIEW-CRON] ${queue.length} encuesta(s) pendiente(s)`);
 
-    // Filter: only ventas where patient has phone
-    const withPhone = ventas.filter(v => v.pacientes?.telefono);
-    console.log(`[REVIEW-CRON] ${withPhone.length} con teléfono`);
-
-    // Deduplicate by phone (one review per customer, not per venta)
-    const byPhone = {};
-    for (const v of withPhone) {
-      const phone = normalizePhone(v.pacientes.telefono);
-      if (!byPhone[phone]) byPhone[phone] = v;
-    }
-    // Prioritize Magnolia customers (local SEO recovery)
-    const candidates = Object.values(byPhone).sort((a, b) =>
-      (b.sucursal === 'Magnolia' ? 1 : 0) - (a.sucursal === 'Magnolia' ? 1 : 0)
-    );
-    console.log(`[REVIEW-CRON] ${candidates.length} clientes únicos (Magnolia priorizados)`);
-
-    // Check which phones already got a review request (in last 30 days)
-    const phones = Object.keys(byPhone);
-    const cutoff30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    // Dedup: verificar que no se haya enviado ya (por si se encoló duplicado)
+    const cutoff30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const phones = queue.map(q => normalizePhone(q.phone));
     const alreadySent = new Set();
 
-    // Check in batches to avoid URL length issues
     for (let i = 0; i < phones.length; i += 20) {
       const batch = phones.slice(i, i + 20);
       const phoneFilter = batch.map(p => `"${p}"`).join(',');
@@ -157,39 +127,41 @@ exports.handler = async function(event) {
       }
     }
 
-    console.log(`[REVIEW-CRON] ${alreadySent.size} ya encuestados en últimos 30 días`);
-
-    // Filter out already sent
-    const toSend = candidates.filter(v => {
-      const phone = normalizePhone(v.pacientes.telefono);
-      return !alreadySent.has(phone);
-    }).slice(0, MAX_PER_RUN);
-
-    console.log(`[REVIEW-CRON] ${toSend.length} por enviar (máx ${MAX_PER_RUN})`);
-
     let enviados = 0;
-    for (const v of toSend) {
-      const tel = v.pacientes.telefono;
-      const nombre = (v.pacientes.nombre || 'Cliente').split(' ')[0];
-      const sucursal = v.sucursal || 'N/A';
+    let saltados = 0;
 
-      const ok = await sendTemplate(tel, TEMPLATE_SID, { '1': nombre });
+    for (const item of queue) {
+      const phone = normalizePhone(item.phone);
 
-      if (ok) {
-        // Log in clari_conversations with [Review] tag for tracking
-        await saveToHistory(tel, 'assistant',
-          `[Review] Encuesta de opinión enviada — Folio: ${v.folio}, Sucursal: ${sucursal}`
-        );
-        enviados++;
-        console.log(`[REVIEW-CRON] Enviado a ${nombre} (${sucursal})`);
+      // Ya le enviaron encuesta en los últimos 30 días → marcar como sent y saltar
+      if (alreadySent.has(phone)) {
+        await supaREST('PATCH', `review_queue?id=eq.${item.id}`, { sent: true });
+        saltados++;
+        continue;
       }
 
-      // Rate limit: 1.5s between messages
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const nombre = (item.paciente_nombre || 'Cliente').split(' ')[0];
+      const ok = await sendTemplate(phone, TEMPLATE_SID, { '1': nombre });
+
+      if (ok) {
+        await saveToHistory(phone, 'assistant',
+          `[Review] Encuesta de opinión enviada — Folio: ${item.folio || 'N/A'}, Sucursal: ${item.sucursal || 'N/A'}`
+        );
+        enviados++;
+        console.log(`[REVIEW-CRON] ✅ Enviado a ${nombre} (${item.sucursal || '?'})`);
+      }
+
+      // Marcar como enviado (incluso si falló, para no reintentar infinitamente)
+      await supaREST('PATCH', `review_queue?id=eq.${item.id}`, { sent: true });
+
+      // Rate limit: 1.5s entre mensajes
+      if (queue.indexOf(item) < queue.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
 
-    console.log(`[REVIEW-CRON] Completado: ${enviados}/${toSend.length} enviados`);
-    return { statusCode: 200, body: JSON.stringify({ ok: true, enviados, total: toSend.length }) };
+    console.log(`[REVIEW-CRON] Completado: ${enviados} enviados, ${saltados} saltados (dedup)`);
+    return { statusCode: 200, body: JSON.stringify({ ok: true, enviados, saltados }) };
 
   } catch (e) {
     console.error('[REVIEW-CRON] Error:', e.message);

@@ -6598,6 +6598,41 @@ async function _marcarEntregados(ids, asesor) {
   if (errores) toast('⚠ ' + errores + ' orden(es) con error al actualizar', true);
   else toast('✅ ' + ids.length + ' orden(es) entregadas');
 
+  // ── ENCOLAR ENCUESTA DE OPINIÓN (2h después) ──
+  try {
+    // Obtener paciente_id y sucursal de la primera orden
+    var { data: ordInfo } = await db.from('ordenes_laboratorio')
+      .select('paciente_id, sucursal, notas_laboratorio')
+      .eq('id', ids[0]).single();
+    if (ordInfo && ordInfo.paciente_id) {
+      var { data: pac } = await db.from('pacientes')
+        .select('nombre, apellidos, telefono')
+        .eq('id', ordInfo.paciente_id).single();
+      var tel = (pac?.telefono || '').replace(/\D/g, '');
+      if (tel.length >= 10 && pac?.nombre) {
+        // Extraer folio de notas
+        var folioMatch = (ordInfo.notas_laboratorio || '').match(/Folio:\s*(\S+)/);
+        var folio = folioMatch ? folioMatch[1] : '';
+        // Verificar que no exista encuesta reciente (30 días)
+        var cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        var { data: yaEncolado } = await db.from('review_queue')
+          .select('id').eq('phone', tel.startsWith('521') ? tel : '521' + tel)
+          .gte('created_at', cutoff30).limit(1);
+        if (!yaEncolado || yaEncolado.length === 0) {
+          var sendAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+          var phoneNorm = tel.startsWith('521') ? tel : '521' + tel;
+          await secureWrite('review_queue', 'insert', {
+            phone: phoneNorm,
+            paciente_nombre: (pac.nombre + ' ' + (pac.apellidos || '')).trim(),
+            folio: folio,
+            sucursal: ordInfo.sucursal || '',
+            send_at: sendAt
+          });
+        }
+      }
+    }
+  } catch(e) { console.log('review_queue insert error:', e); }
+
   // Cerrar modal y refrescar
   if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; }
   _entregaVentaData = null;
