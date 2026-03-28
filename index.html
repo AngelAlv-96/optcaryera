@@ -13981,8 +13981,8 @@ async function loadReporteMateriales() {
   // ── TOTALIZACIÓN ESTIMADA DE COSTOS ──
   html += await clbEstimarCostosSurtido(ojos, lcItems);
 
-  // ── COMPARATIVO ESTIMADO VS COMPRAS REALES ──
-  html += await clbComparativoCompras(ini, fin);
+  // ── COMPARATIVO ESTIMADO VS COMPRAS REALES ── (oculto v216: desfase temporal compras vs ventas lo hace impreciso)
+  // html += await clbComparativoCompras(ini, fin);
 
   content.innerHTML = html;
   } catch(renderErr) {
