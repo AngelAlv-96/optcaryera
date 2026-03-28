@@ -8,7 +8,7 @@
 4. **NUNCA borrar ni reemplazar archivos completos sin respaldo** — siempre hacer copia antes: `cp archivo.html archivo.html.bak`
 5. **NUNCA hacer deploy sin que Angel lo pida explícitamente** — Netlify auto-deploys desde GitHub (cada push a main = deploy). Manual: `netlify deploy --prod --dir=.` solo si es necesario.
 6. **Cambios de DB vía Supabase Management API** — Claude Code tiene acceso directo para ejecutar DDL (ALTER TABLE, CREATE TABLE, INSERT en app_config, etc.).
-   - **Token**: `sbp_f01ac0bb4d5c3b0c941b11bbb95e34320b58152b` (expira ~2026-04-25)
+   - **Token**: `sbp_aa736b4afc729caee8180cf219b3674120c5cab2` (sin expiración)
    - **Endpoint**: `POST https://api.supabase.com/v1/projects/icsnlgeereepesbrdjhf/database/query`
    - **Uso**: `node -e "fetch('https://api.supabase.com/v1/projects/icsnlgeereepesbrdjhf/database/query',{method:'POST',headers:{'Authorization':'Bearer sbp_f01ac0bb4d5c3b0c941b11bbb95e34320b58152b','Content-Type':'application/json'},body:JSON.stringify({query:'TU SQL AQUÍ'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))"`
    - **Renovar**: https://supabase.com/dashboard/account/tokens
@@ -298,7 +298,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - **Clari entrenada para Facebook Ads**: meta-webhook.js tiene contexto Magnolia para gente que llega por anuncios preguntando cómo llegar — siempre envía link Maps + referencias
 - **Filtro chat Clari**: conversaciones de campañas masivas sin respuesta se ocultan de la lista (magnolia-reactivate, review-cron, lc-cron) — aparecen cuando el cliente responde
 - Review prioridad: review-cron.js pone clientes Magnolia al frente de la cola
-- **Milestones**: Fase 1 $160K (estabilizar), Fase 2 $200K (parcial), Fase 3 $260K (recuperación total)
+- **Milestones**: Fase 1 $160K (estabilizar), Fase 2 $200K (parcial), Fase 3 $260K (recuperación total). **Meta abril 2026: $226K** (override manual, recuperación total al promedio pre-mudanza 2021-2023)
 - **Promo principal**: 3x1 en Lentes Completos + Examen incluido + Listos en 35 min
 - **Env vars necesarias**: `MAGNOLIA_TEMPLATE_SID` (Twilio), `BLAST_KEY` (auth)
 - **⚠️ LECCIÓN APRENDIDA (v188)**: la lista SICAR de 116 no se cruzó contra ventas del sistema nuevo — algunos clientes (ej: Anabel Corona, compra reciente folio 10538) recibieron mensaje de "te extrañamos" cuando ya habían vuelto a comprar. **Para futuras campañas masivas**: SIEMPRE cruzar lista estática contra tabla `ventas` de Supabase y excluir clientes con compras recientes (ej: últimos 60 días)
@@ -536,7 +536,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 - **Competencia**: Ben & Frank (47/60), Devlyn (41/60), +Visión (38/60), Salud Digna (36/60), Car & Era (33/60)
 - **Oportunidad**: Ninguna óptica local tiene estrategia digital sostenida. Quien entre primero domina 12-18 meses
 - **Alerta descuentos**: 67.5% de ventas con descuento, tasa 45% — 3x1 permanente comprime márgenes
-- **Magnolia**: -$1.2M/año vs pre-mudanza. Prueba: Meta Ads zona + driver tráfico digital. Si en 3 meses no mejora → revisar viabilidad
+- **Magnolia**: -$1.2M/año vs pre-mudanza. Reactivación WA activa: 3 conversiones ($17,917) en 3 días de 116 contactos. Meta abril $226K (recuperación total). Meta Ads zona activa. Medir resultados a 4 semanas
 - **Plan 90 días**: Ángel (ads/promos), Ivon (contenido), Karen (operación). Fases de 4 semanas c/u
 - **KPIs meta**: 120 reseñas Google, 150 leads/mes, 100 citas digital, 4.5x ROAS, +1000 followers IG, +15% retención
 - **Datos históricos SICAR**: hardcodeados en `js/mod-estrategia.js` (ventas mensuales 2021-2026 por sucursal)
@@ -547,7 +547,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 2. SICAR migración completa
 3. Landing pages bug
 4. Plantillas Twilio: lc_recompra + venta_clari_pendiente
-14. **Rescate Magnolia**: ✅ Lista SICAR 116 clientes extraída y cargada en `app_config` (v188), ✅ magnolia-reactivate.js reescrito para lista estática, ✅ 115 mensajes enviados (2026-03-25), ✅ Clari entrenada (ubicación + no insistir + Maps link), ✅ `MAGNOLIA_TEMPLATE_SID=HX06ad99f2b5c7b1ff5ff3bcc758052c5c` template aprobado, ✅ Cron desactivado (envío único), ❌ landing pages descartadas, ✅ Meta Ads geo-targeting zona Magnolia — campaña configurada, ⬜ limpiar ~322 campañas viejas desactivadas en Ads Manager, ⬜ medir conversión de los 115 contactados (cuántos responden/visitan/compran)
+14. **Rescate Magnolia**: ✅ Lista SICAR 116 clientes extraída y cargada en `app_config` (v188), ✅ magnolia-reactivate.js reescrito para lista estática, ✅ 115 mensajes enviados (2026-03-25), ✅ Clari entrenada (ubicación + no insistir + Maps link), ✅ `MAGNOLIA_TEMPLATE_SID=HX06ad99f2b5c7b1ff5ff3bcc758052c5c` template aprobado, ✅ Cron desactivado (envío único), ❌ landing pages descartadas, ✅ Meta Ads geo-targeting zona Magnolia — campaña configurada, ✅ **Conversión medida (28-mar, 3 días post-envío)**: 8 respondieron WA (6.9%), 3 conversiones a venta (Crystal Medina $7,999 + Edgar Ibarra $5,319 + Martha Dominguez/Aracely $4,599) = **$17,917** atribuible a campaña. Anabel Corona ($5,799) compró 1 día antes del envío (no atribuible). Total ventas Magnolia post-envío: $50,300, campaña = 35.6%. SaMaViLe y otros 3 expresaron interés sin compra aún. ⬜ limpiar ~322 campañas viejas desactivadas en Ads Manager, ⬜ re-medir conversión a 2-4 semanas (cola larga WA)
 15. **Decisiones estratégicas Magnolia (v186 sesión 2)**: (a) "Nos mudamos" solo para clientes registrados vía WA reactivation, NO para ads a nuevos clientes. (b) Landing pages descartadas — Clari ya mide funnel completo (WA→venta→ticket), pixel no necesario para negocio local con 3 sucursales. (c) "Examen de vista incluido" en vez de "gratis" (más ético). (d) Creative Canva: diseño 3x1 con modelo, "solo por tiempo limitado", ubicación Plaza Magnolia. (e) Ads directo a WhatsApp, sin intermediario landing page.
 5. Precios Marina pendientes de confirmar
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
@@ -557,7 +557,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
 12. **Lottie animations**: ✅ COMPLETADO (v182). CDN `dotlottie-wc@0.9.2`, 7 stages con URLs reales `.lottie` de `assets-v2.lottiefiles.com`, web component `<dotlottie-wc>` con canvas WebAssembly, fallback emoji CSS, auto-refresh compatible. URLs restantes del catálogo (179 total, 7 usadas) guardadas en sesión Claude Code para futuras variaciones.
-13. **Metas mensuales**: al hacer deploy, insertar en Supabase `app_config` id=`metas_mensuales` con `{"crecimiento_pct":5,"overrides":{"2026-03":{"americas":420000,"pinocelli":320000,"magnolia":160000}}}` si Angel quiere override manual para marzo
+13. **Metas mensuales**: ✅ Insertado en Supabase `app_config` id=`metas_mensuales` con `{"crecimiento_pct":5,"overrides":{"2026-04":{"magnolia":226000}}}`. Magnolia abril override $226K (recuperación total pre-mudanza). Américas ($452K) y Pinocelli ($335K) en automático
 16. **Auditoría Pedidos DB**: ✅ Tabla `inventario_auditorias` creada, ✅ RLS + policy anon SELECT, ✅ app_config `inventario_ultimo_conteo` + `inventario_config` insertadas
 17. **Template WA corte v2**: ✅ `HX23d232e120ff04a785bb92734974fba0` aprobado y activado (v202)
 

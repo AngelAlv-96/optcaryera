@@ -18856,16 +18856,55 @@ async function cargarHistorialVentas() {
       };
     });
   } catch(e) { console.warn('Error cargando créditos SICAR:', e.message); }
-  const liquidadas=histVentasData.filter(v=>v.estado==='Liquidada').length;
-  const apartados=histVentasData.filter(v=>v.estado==='Apartado').length + _hvCreditosSicar.filter(c=>c.saldo>0).length;
-  const totalMonto=histVentasData.reduce((s,v)=>s+Number(v.total),0);
-  const totalSaldo=histVentasData.reduce((s,v)=>s+Number(v.saldo),0) + _hvCreditosSicar.reduce((s,c)=>s+c.saldo,0);
-  document.getElementById('hv-stats').innerHTML=`
-    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${count||0}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Total</div></div>
-    <div style="background:var(--surface);border:1px solid rgba(114,196,126,0.1);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#72c47e">${liquidadas}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Liquidadas</div></div>
-    <div style="background:var(--surface);border:1px solid rgba(212,184,74,0.1);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#d4b84a">${apartados}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Pendientes</div></div>
-    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">$${totalMonto.toLocaleString('es-MX',{minimumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Ventas</div></div>
-    ${totalSaldo>0?`<div style="background:var(--surface);border:1px solid rgba(224,128,128,0.12);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#e08080">$${totalSaldo.toLocaleString('es-MX',{minimumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Por cobrar</div></div>`:''}`;
+  // Stats: query ligera de TODAS las ventas del periodo (sin paginación) para stats correctos
+  var hvStLiquidadas=0, hvStApartados=0, hvStTotalMonto=0, hvStTotalSaldo=0, hvStCount=count||0;
+  if (q) {
+    // En búsqueda los datos ya son todos los encontrados (sin paginar)
+    hvStLiquidadas=histVentasData.filter(v=>v.estado==='Liquidada').length;
+    hvStApartados=histVentasData.filter(v=>v.estado==='Apartado').length;
+    hvStTotalMonto=histVentasData.reduce((s,v)=>s+Number(v.total),0);
+    hvStTotalSaldo=histVentasData.reduce((s,v)=>s+Number(v.saldo),0);
+    hvStCount=histVentasData.length;
+  } else {
+    try {
+      var qSt=db.from('ventas').select('estado,total,saldo');
+      if (hvSuc!=='Todas') qSt=qSt.eq('sucursal',hvSuc);
+      if (desde) qSt=qSt.gte('created_at',desde+'T00:00:00');
+      if (hasta){var hSt=new Date(hasta+'T23:59:59');hSt.setHours(hSt.getHours()+8);qSt=qSt.lte('created_at',hSt.toISOString());}
+      var {data:stData}=await qSt;
+      // También incluir Online asignadas a esta sucursal
+      if (hvSuc!=='Todas'){
+        var qStOnl=db.from('ventas').select('estado,total,saldo').eq('sucursal','Online').eq('sucursal_entrega',hvSuc);
+        if (desde) qStOnl=qStOnl.gte('created_at',desde+'T00:00:00');
+        if (hasta){var hSt2=new Date(hasta+'T23:59:59');hSt2.setHours(hSt2.getHours()+8);qStOnl=qStOnl.lte('created_at',hSt2.toISOString());}
+        var {data:stOnl}=await qStOnl;
+        if (stOnl?.length) stData=(stData||[]).concat(stOnl);
+      }
+      var allSt=stData||[];
+      hvStCount=allSt.length;
+      hvStLiquidadas=allSt.filter(v=>v.estado==='Liquidada').length;
+      hvStApartados=allSt.filter(v=>v.estado==='Apartado').length;
+      hvStTotalMonto=allSt.reduce((s,v)=>s+Number(v.total),0);
+      hvStTotalSaldo=allSt.reduce((s,v)=>s+Number(v.saldo),0);
+    } catch(e) { console.warn('Error stats ventas:', e.message);
+      hvStLiquidadas=histVentasData.filter(v=>v.estado==='Liquidada').length;
+      hvStApartados=histVentasData.filter(v=>v.estado==='Apartado').length;
+      hvStTotalMonto=histVentasData.reduce((s,v)=>s+Number(v.total),0);
+      hvStTotalSaldo=histVentasData.reduce((s,v)=>s+Number(v.saldo),0);
+    }
+  }
+  hvStApartados += _hvCreditosSicar.filter(c=>c.saldo>0).length;
+  hvStTotalSaldo += _hvCreditosSicar.reduce((s,c)=>s+c.saldo,0);
+  var _hvIsAdmin = currentUser && (currentUser.rol==='admin'||currentUser.rol==='gerencia');
+  var hvStatsHtml=`
+    <div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">${hvStCount}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Total</div></div>
+    <div style="background:var(--surface);border:1px solid rgba(114,196,126,0.1);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#72c47e">${hvStLiquidadas}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Liquidadas</div></div>
+    <div style="background:var(--surface);border:1px solid rgba(212,184,74,0.1);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#d4b84a">${hvStApartados}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Pendientes</div></div>`;
+  if (_hvIsAdmin) {
+    hvStatsHtml += `<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--beige)">$${hvStTotalMonto.toLocaleString('es-MX',{minimumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Ventas</div></div>`;
+    if (hvStTotalSaldo>0) hvStatsHtml += `<div style="background:var(--surface);border:1px solid rgba(224,128,128,0.12);border-radius:8px;padding:8px 12px;text-align:center"><div style="font-size:18px;font-weight:700;color:#e08080">$${hvStTotalSaldo.toLocaleString('es-MX',{minimumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);text-transform:uppercase">Por cobrar</div></div>`;
+  }
+  document.getElementById('hv-stats').innerHTML=hvStatsHtml;
   filtrarHistVentas();
   const pagEl=document.getElementById('hv-pagination');
   // Ocultar paginación cuando hay búsqueda activa
