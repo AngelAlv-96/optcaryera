@@ -7781,7 +7781,7 @@ async function _conteoEnviarVerificacion() {
 
 // ── Burbuja flotante: Tarea de Conteo Físico ─────────────────────────
 
-function _conteoCheckTarea() {
+async function _conteoCheckTarea() {
   // Solo para rol sucursal (admin y gerencia no necesitan la burbuja)
   if (!currentUser) return;
   if (currentUser.rol === 'admin' || currentUser.rol === 'gerencia' || currentUser.rol === 'laboratorio') return;
@@ -7799,8 +7799,24 @@ function _conteoCheckTarea() {
   // If already completed today, don't show
   if (estado.completado === hoy) return;
 
-  // Determine if task is due today
+  // Determine last conteo date — check DB as source of truth, fallback to localStorage
   var ultimoConteo = estado.ultimo_conteo || '';
+  try {
+    var {data:cfgUC} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
+    if (cfgUC && cfgUC.value) {
+      var ucObj = typeof cfgUC.value === 'string' ? JSON.parse(cfgUC.value) : cfgUC.value;
+      // Normalize sucursal name for matching (with/without accent)
+      var sucNorm = suc.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      var fechaDB = ucObj[suc] || ucObj[sucNorm] || '';
+      if (fechaDB && fechaDB > ultimoConteo) {
+        ultimoConteo = fechaDB;
+        // Sync to localStorage so it persists
+        estado.ultimo_conteo = ultimoConteo;
+        localStorage.setItem(key, JSON.stringify(estado));
+      }
+    }
+  } catch(e) { /* DB read failed, use localStorage */ }
+
   var diasDesdeConteo = ultimoConteo ? Math.floor((Date.now() - new Date(ultimoConteo).getTime()) / 86400000) : 999;
 
   // Show task if: it's past 10am AND (never done OR >10 days since last conteo)
