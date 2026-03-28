@@ -116,7 +116,12 @@ exports.handler = async function() {
       if (horarios.override && horarios.override[emp.uid]) {
         var ov = horarios.override[emp.uid][dayKey];
         if (ov === null) return; // day off
-        if (ov) sched = ov;
+        if (ov && ov.alternating) {
+          var _refD = new Date(ov.ref + 'T00:00:00');
+          var _diffW = Math.round((now.getTime() - _refD.getTime()) / (7 * 86400000));
+          if ((Math.abs(_diffW) % 2) === ov.parity) return; // alternating day off this week
+        }
+        else if (ov) sched = ov;
       }
       if (!sched || !sched.entrada) return; // no schedule today
 

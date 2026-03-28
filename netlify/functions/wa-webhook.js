@@ -787,6 +787,12 @@ async function cmdAsistencia(phone, action, profileName) {
     if (horarios.override && horarios.override[uid]) {
       var ov = horarios.override[uid][dayKey];
       if (ov === null) sched = null;
+      else if (ov && ov.alternating) {
+        // Alternating day off (e.g. domingos alternos)
+        var _refD = new Date(ov.ref + 'T00:00:00');
+        var _diffW = Math.round((nowLocal.getTime() - _refD.getTime()) / (7 * 86400000));
+        if ((Math.abs(_diffW) % 2) === ov.parity) sched = null; // this week is their turn off
+      }
       else if (ov) sched = ov;
     }
 
@@ -849,6 +855,11 @@ async function cmdAsistencia(phone, action, profileName) {
           if (horarios.override && horarios.override[uid]) {
             var checkOv = horarios.override[uid][checkDayKey];
             if (checkOv === null) checkSched = null;
+            else if (checkOv && checkOv.alternating) {
+              var _refD2 = new Date(checkOv.ref + 'T00:00:00');
+              var _diffW2 = Math.round((checkDate.getTime() - _refD2.getTime()) / (7 * 86400000));
+              if ((Math.abs(_diffW2) % 2) === checkOv.parity) checkSched = null;
+            }
             else if (checkOv) checkSched = checkOv;
           }
           if (!checkSched) continue; // day off

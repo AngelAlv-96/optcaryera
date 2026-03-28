@@ -37,13 +37,20 @@ function _asistDayLabel(date) {
   return ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][d.getDay()];
 }
 
-function _asistResolveSchedule(uid, dayKey) {
+function _asistResolveSchedule(uid, dayKey, dateObj) {
   if (!_asistHorarios) return null;
   var sched = _asistHorarios.default ? _asistHorarios.default[dayKey] : null;
   if (_asistHorarios.override && _asistHorarios.override[uid]) {
     var ov = _asistHorarios.override[uid][dayKey];
     if (ov === null) return null; // day off
-    if (ov) sched = ov;
+    if (ov && ov.alternating) {
+      // Alternating day off — need a date to calculate which week
+      var d = dateObj || new Date();
+      var refD = new Date(ov.ref + 'T00:00:00');
+      var diffW = Math.round((d.getTime() - refD.getTime()) / (7 * 86400000));
+      if ((Math.abs(diffW) % 2) === ov.parity) return null; // this week is their turn off
+    }
+    else if (ov) sched = ov;
   }
   return sched;
 }
@@ -907,11 +914,14 @@ function asistRenderConfig() {
       dayOrder.forEach(function(dk) {
         var sched = _asistResolveSchedule(emp.uid, dk);
         var isDayOff = empOv[dk] === null;
+        var isAlternating = empOv[dk] && empOv[dk].alternating;
         var entVal = sched ? sched.entrada : '';
         var salVal = sched ? sched.salida : '';
         html += '<td style="padding:2px 1px;text-align:center;vertical-align:top">';
         if (isDayOff) {
           html += '<div style="font-size:9px;color:var(--muted);padding:4px 0">Descanso</div>';
+        } else if (isAlternating) {
+          html += '<div style="font-size:8px;color:#f0c674;padding:4px 0">🔄 Alterno</div>';
         } else {
           html += '<input type="time" value="' + (entVal || '') + '" style="width:100%;' + inputS + ';font-size:9px;padding:2px 3px;margin-bottom:2px" data-sched="' + emp.uid + '-' + dk + '-ent">';
           html += '<input type="time" value="' + (salVal || '') + '" style="width:100%;' + inputS + ';font-size:9px;padding:2px 3px" data-sched="' + emp.uid + '-' + dk + '-sal">';
