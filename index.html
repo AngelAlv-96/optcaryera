@@ -6912,20 +6912,24 @@ async function _loadDashSucPendientes(suc, cardExists) {
 
 async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol) {
   var sucs = ['Américas','Pinocelli','Magnolia','Online'];
-  var [{data:ventasHoy},{count:nHC},{count:nPre},{data:citasH},{data:cortesHoy},{data:garantiasHoy},{count:ordenesLab}] = await Promise.all([
+  var [{data:ventasHoy},{count:nHC},{count:nPre},{data:citasH},{data:cortesHoy},{data:garantiasHoy},{count:ordenesLab},{data:pagosHoyDash},{data:abonosHoyDash}] = await Promise.all([
     db.from('ventas').select('sucursal,total,estado,pagado').gte('created_at',utcStart).lte('created_at',utcEnd).neq('estado','Cancelada'),
     db.from('historias_clinicas').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('pacientes').select('*',{count:'exact',head:true}).eq('estado','pre-registro').gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('citas').select('*,pacientes(nombre,apellidos)').eq('fecha',today).order('hora'),
     db.from('cortes_caja').select('*, creditos_abonos:desglose_metodos').eq('fecha', today).eq('estado','cortada'),
     db.from('ordenes_laboratorio').select('id,sucursal').gte('created_at',utcStart).lte('created_at',utcEnd).ilike('notas_laboratorio','%Folio: GTA-%'),
-    db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd)
+    db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
+    db.from('venta_pagos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd),
+    db.from('creditos_abonos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd)
   ]);
   ventasHoy = ventasHoy || [];
   cortesHoy = cortesHoy || [];
   garantiasHoy = garantiasHoy || [];
+  pagosHoyDash = pagosHoyDash || [];
+  abonosHoyDash = abonosHoyDash || [];
   var totalVentas = ventasHoy.reduce(function(s,v){return s+Number(v.total)},0);
-  var totalPagado = ventasHoy.reduce(function(s,v){return s+Number(v.pagado)},0);
+  var totalCobradoHoy = pagosHoyDash.reduce(function(s,p){return s+Number(p.monto)},0) + abonosHoyDash.reduce(function(s,a){return s+Number(a.monto)},0);
 
   // Check if all 3 physical branches have closed — show summary grid
   var corteSucs = cortesHoy.map(c => c.sucursal);
@@ -6939,7 +6943,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   var h = '<div class="stats">';
   h += _miniStat('Ventas hoy', ventasHoy.length, '#72c47e', '🛒');
   h += _miniStat('Total vendido', '$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}), '#d4b84a', '💰');
-  h += _miniStat('Cobrado', '$'+totalPagado.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
+  h += _miniStat('Cobrado', '$'+totalCobradoHoy.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
   h += _miniStat('Consultas', nHC||0, '#8ab0e8', '👁');
   h += _miniStat('Pedidos lab', ordenesLab||0, '#d4b84a', '🔧');
   h += '</div>';
