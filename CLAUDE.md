@@ -60,7 +60,7 @@ Si algo se rompe gravemente:
     ├── lc-cron.js        — Cron recordatorios LC por WA
     ├── clip-payment.js   — Genera links de pago Clip checkout (portal pacientes)
     ├── clip-webhook.js   — Webhook Clip: registra pagos + notifica WA
-    ├── review-cron.js    — Cron encuesta de opinión Google Maps (diario 12pm CST, máx 40/día)
+    ├── review-cron.js    — Cron encuesta de opinión Google Maps (cada 15 min, lee review_queue)
     ├── review-followup.js — Segundo toque reseñas: recordatorio a positivos 2-5 días después (filtro sentimiento)
     ├── meta-webhook.js   — Webhook Meta: Clari chatbot para Facebook Messenger + Instagram DM
     ├── conekta-subscribe.js — ⛔ DEPRECATED (v204, Conekta abandonado) — mantener como referencia
@@ -298,18 +298,21 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - **⚠️ LECCIÓN APRENDIDA (v188)**: la lista SICAR de 116 no se cruzó contra ventas del sistema nuevo — algunos clientes (ej: Anabel Corona, compra reciente folio 10538) recibieron mensaje de "te extrañamos" cuando ya habían vuelto a comprar. **Para futuras campañas masivas**: SIEMPRE cruzar lista estática contra tabla `ventas` de Supabase y excluir clientes con compras recientes (ej: últimos 60 días)
 
 ## ⭐ ENCUESTA DE OPINIÓN / GOOGLE MAPS REVIEWS
-- `review-cron.js`: cron diario 12pm CST, envía template `opinion_servicio` a clientes que compraron hace 3-7 días
+- **Flujo (v220)**: al marcar lentes como "Entregado" → `_marcarEntregados()` inserta en `review_queue` con `send_at = +2 horas` → `review-cron.js` (cron cada 15 min) procesa cola y envía template
+- **DB**: tabla `review_queue` (phone, paciente_nombre, folio, sucursal, send_at, sent, created_at)
+- `review-cron.js`: cron `*/15 * * * *`, lee `review_queue` donde `send_at <= now AND sent = false`, máx 10/ejecución
 - Template WA: `HX30905d80304bed820dce55b439f1eca3` (Quick Reply, 3 botones: Todo excelente / Buenas promos / Podría mejorar)
 - Variable `{{1}}`: nombre del cliente
 - Respuestas manejadas en `wa-webhook.js`:
-  - "Todo excelente" / "Buenas promos" → agradece + envía link Google Maps de la sucursal donde compró
+  - "Todo excelente" / "Buenas promos" → `¡Gracias! 😊 Nos encantaría que compartieras tu experiencia en Google:` + link (2 líneas)
   - "Podría mejorar" → Clari pide detalles + notifica admin_phones con alerta
 - Links directos de reseña Google por sucursal:
   - Américas: https://g.page/r/CV9ZD9ZPVjvbEBM/review
   - Pinocelli: https://g.page/r/Cdzzax18yI15EBM/review
   - Magnolia: https://g.page/r/CTVxzblIsQ6IEBM/review
-- Tracking: `[Review]` tag en `clari_conversations` (evita re-envío en 30 días)
-- Máx 20 encuestas por ejecución, rate limit 1.5s entre mensajes
+- **Dedup**: frontend verifica review_queue 30 días + cron verifica `[Review]` en `clari_conversations` 30 días
+- Tracking: `[Review]` tag en `clari_conversations`
+- Guard horario: 10am-8pm Chihuahua (fuera de horario se queda en cola)
 
 ## 💳 SUSCRIPCIONES RECURRENTES (Tienda Online)
 - **Procesador activo**: Clip (único)
@@ -352,7 +355,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Intercepta escrituras (no guarda nada), no envía WA
 - Banner dorado fijo
 
-## 📊 VERSIÓN ACTIVA: v219
+## 📊 VERSIÓN ACTIVA: v220
+Cambios v220: Encuestas individuales 2h después de entrega + mensaje corto. **Antes**: `review-cron.js` enviaba batch diario a las 4pm, encuestando ventas de 1-4 días atrás — el cliente recibía la encuesta sin conexión emocional con el momento de entrega, y casi nadie daba click al link de Google. **Ahora**: al marcar lentes como "Entregado" en `_marcarEntregados()` se inserta en nueva tabla `review_queue` con `send_at = now + 2 horas`. Cron cada 15 min (`*/15 * * * *`) procesa la cola individualmente (máx 10/ejecución). **Dedup**: frontend verifica que no exista encuesta para ese teléfono en últimos 30 días antes de encolar; cron verifica contra `[Review]` en `clari_conversations`. **Guard horario**: 10am-8pm Chihuahua (fuera de horario se queda en cola). **Mensaje acortado**: "Todo excelente" y "Buenas promos" ahora responden `¡Gracias! 😊 Nos encantaría que compartieras tu experiencia en Google:\n👉 {link}` (2 líneas vs 5 antes). **DB nueva**: tabla `review_queue` (phone, paciente_nombre, folio, sucursal, send_at, sent). **Archivos**: index.html (`_marcarEntregados` +35 líneas), review-cron.js (reescrito completo), wa-webhook.js (mensaje corto), dbwrite.js (+review_queue), netlify.toml (cron `*/15`).
 Cambios v219: Clari quejas profesionales + investigación de horarios. **Problema**: Mirella fue a Magnolia y no estaba el optometrista, Clari respondió con mensaje dramático y largo ("¡Ay no!", "muchísimo", "me da mucha pena", 6 emojis, promesa vaga de mejorar). **Fix reglas de quejas** (wa-webhook.js + meta-webhook.js): (1) NUNCA ser dramática/exagerada, tono profesional y contenido, máx 2-3 líneas, 0-1 emojis. (2) NUNCA prometer mejoras vagas ("tomaremos en cuenta"). (3) INVESTIGAR ANTES DE REDIRIGIR: si el cliente reporta que fue y no lo atendieron, preguntar a qué hora fue (puede ser horario de comida del personal u otro problema operativo). (4) Si el cliente ya no quiere hablar, cerrar breve sin alargar. Aplica a los 3 canales (WA, Messenger, Instagram). **⚠️ LECCIÓN v219**: las respuestas de Clari a quejas deben ser profesionales y breves, no dramáticas ni exageradas — y cuando un cliente reporta que no lo atendieron, la primera reacción debe ser investigar (¿a qué hora fue?) para reportar internamente, no solo disculparse. Sin cambios a DB.
 Cambios v218: Fix chat Clari — historial completo al abrir conversación. **Problema**: `loadClariConversations()` cargaba los últimos 500 mensajes GLOBALES de `clari_conversations` y los agrupaba por teléfono. Conversaciones con mensajes más viejos que esa ventana de 500 mostraban historial incompleto (ej: Mirella con 20 mensajes solo mostraba los últimos 6). **Fix**: `toggleClariConvo()` ahora es async — al expandir una conversación, consulta TODOS los mensajes de ese teléfono directo de la DB (`db.from('clari_conversations').eq('phone', phone).order('created_at', { ascending: true })`) y re-renderiza las burbujas completas. Muestra "Cargando historial completo..." mientras consulta. Los mensajes cargados se agregan al array en memoria para consistencia. Sin cambios a DB.
 Cambios v217: Ocultar sección "Compras realizadas vs Estimado" en Compras Lab. **Problema**: el comparativo compara compras y ventas del mismo periodo, pero las compras de hoy surten ventas de ayer — el desfase temporal hace que los números no cuadren y confunda. **Fix**: comentada la llamada a `clbComparativoCompras()` en la vista de Compras Lab. La función se mantiene en el código para reactivar cuando el algoritmo compense el desfase (comparar compras de hoy vs ventas del periodo anterior). Sin cambios a DB.
