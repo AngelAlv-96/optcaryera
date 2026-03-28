@@ -73,7 +73,8 @@ async function iaEnviar() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system: await getIAPrompt(),
-        messages: iaMessages.slice(-20)
+        messages: iaMessages.slice(-20),
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
       })
     });
 
