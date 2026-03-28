@@ -14639,7 +14639,7 @@ function renderClariConversations() {
 
 function escH(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function toggleClariConvo(card, phone) {
+async function toggleClariConvo(card, phone) {
   var msgs = card.querySelector('.clari-msgs');
   if (!msgs) return;
   var isOpen = msgs.style.display !== 'none';
@@ -14647,7 +14647,40 @@ function toggleClariConvo(card, phone) {
   if (!isOpen) {
     msgs.style.display = '';
     clariOpenPhone = phone;
+    // Load ALL messages for this phone from DB (not just the global 500 window)
     var scroll = msgs.querySelector('.clari-msgs-scroll');
+    if (scroll) scroll.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:11px">Cargando historial completo...</div>';
+    try {
+      var { data: fullMsgs } = await db.from('clari_conversations').select('*').eq('phone', phone).order('created_at', { ascending: true });
+      if (fullMsgs && fullMsgs.length && scroll) {
+        var html = '';
+        fullMsgs.forEach(function(m) {
+          var isBot = m.role === 'assistant';
+          var isSistema = isBot && m.content.startsWith('[Sistema]');
+          var isAdmin = isBot && m.content.startsWith('[Admin]');
+          var isCorte = isBot && m.content.startsWith('[Corte]');
+          var t = new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+          var d = new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+          var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
+          var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
+          var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
+          var chatImg = null;
+          var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+          if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
+          html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
+          html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+          if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
+          html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
+          html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
+          html += '</div></div>';
+        });
+        scroll.innerHTML = html;
+        // Also update the in-memory array so it stays consistent
+        var existing = {};
+        clariConversations.forEach(function(m) { existing[m.id] = true; });
+        fullMsgs.forEach(function(m) { if (!existing[m.id]) clariConversations.push(m); });
+      }
+    } catch(e) { console.error('[Clari] Error loading full history:', e); }
     if (scroll) setTimeout(function() { scroll.scrollTop = scroll.scrollHeight; }, 50);
     var input = msgs.querySelector('.clari-reply-input');
     if (input) setTimeout(function() { input.focus(); }, 100);
