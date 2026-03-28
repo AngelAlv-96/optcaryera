@@ -8,9 +8,9 @@
 4. **NUNCA borrar ni reemplazar archivos completos sin respaldo** — siempre hacer copia antes: `cp archivo.html archivo.html.bak`
 5. **NUNCA hacer deploy sin que Angel lo pida explícitamente** — Netlify auto-deploys desde GitHub (cada push a main = deploy). Manual: `netlify deploy --prod --dir=.` solo si es necesario.
 6. **Cambios de DB vía Supabase Management API** — Claude Code tiene acceso directo para ejecutar DDL (ALTER TABLE, CREATE TABLE, INSERT en app_config, etc.).
-   - **Token**: `sbp_aa736b4afc729caee8180cf219b3674120c5cab2` (sin expiración)
+   - **Token**: Usar env var `SUPABASE_MGMT_TOKEN` (configurar en Claude Code settings o pasar manualmente)
    - **Endpoint**: `POST https://api.supabase.com/v1/projects/icsnlgeereepesbrdjhf/database/query`
-   - **Uso**: `node -e "fetch('https://api.supabase.com/v1/projects/icsnlgeereepesbrdjhf/database/query',{method:'POST',headers:{'Authorization':'Bearer sbp_f01ac0bb4d5c3b0c941b11bbb95e34320b58152b','Content-Type':'application/json'},body:JSON.stringify({query:'TU SQL AQUÍ'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))"`
+   - **Uso**: `node -e "fetch('https://api.supabase.com/v1/projects/icsnlgeereepesbrdjhf/database/query',{method:'POST',headers:{'Authorization':'Bearer '+process.env.SUPABASE_MGMT_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({query:'TU SQL AQUÍ'})}).then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))"`
    - **Renovar**: https://supabase.com/dashboard/account/tokens
 
 ## 🛟 PROTOCOLO DE SEGURIDAD
