@@ -557,7 +557,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'PASO 1: Saludo corto (1 línea) + pregunta: "¿Sigues con la misma graduación o necesitas revisión?"\n' +
       'PASO 2: Si confirma graduación → pregunta marca/cantidad. Si necesita examen → invita a sucursal sin cita.\n' +
       'PASO 3: Cotiza el producto con precio. Ofrece hacer el pedido: "¿Te lo pedimos? Solo nos dices cuántas cajas y en qué sucursal recoges".\n' +
-      'PASO 4: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece formas de pago (transferencia BBVA, link de pago, o pagar al recoger). Usa CREAR_VENTA cuando confirme.\n' +
+      'PASO 4: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece pago: puede liquidar completo o anticipo del 50%. Formas de pago: transferencia BBVA o link de pago con tarjeta. NO hay opción de pagar al recoger. Usa CREAR_VENTA cuando confirme.\n' +
       'PASO 5: Solo después de cerrar la venta, menciona suscripción: "Por cierto, tenemos plan de compra automática — se cobra solo de tu tarjeta, tus lentes se preparan sin pedirlos, y tienes 10% de descuento. ¿Te interesa?".\n\n' +
       'REGLAS:\n' +
       '- PRIORIDAD: vender por WhatsApp. Solo mandar a sucursal si necesita examen de graduación\n' +
