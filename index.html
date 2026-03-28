@@ -7150,7 +7150,8 @@ async function _loadDashAuditoria() {
     // Conteo status
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
     ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
-      var last = ultimoConteo[s];
+      var sNorm = s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      var last = ultimoConteo[s] || ultimoConteo[sNorm];
       var dias = last ? Math.floor((now.getTime() - new Date(last).getTime()) / 86400000) : 999;
       var ok = dias <= 10;
       var txt = dias >= 999 ? 'Nunca' : 'hace '+dias+'d';
@@ -7443,7 +7444,11 @@ async function _conteoFinalizar() {
         var {data:cfg} = await db.from('app_config').select('value').eq('id','inventario_ultimo_conteo').single();
         if (cfg) ultimoConteo = JSON.parse(cfg.value);
       } catch(e) {}
-      ultimoConteo[suc] = new Date().toISOString().slice(0,10);
+      // Normalize: always store with accent (Américas) for consistency
+      var sucKey = suc === 'Americas' ? 'Américas' : suc;
+      // Remove old key without accent if exists
+      if (ultimoConteo['Americas'] && sucKey === 'Américas') delete ultimoConteo['Americas'];
+      ultimoConteo[sucKey] = new Date().toISOString().slice(0,10);
       await db.from('app_config').upsert({ id: 'inventario_ultimo_conteo', value: JSON.stringify(ultimoConteo) }, { onConflict: 'id' });
     } catch(e) { console.error('Error guardando conteo:', e); }
 
