@@ -7,7 +7,7 @@ var _authCodigo = null;
 var _authTipo = null;
 
 function solicitarAutorizacion(tipo, descripcion, onAprobado) {
-  if (currentUser?.rol === 'admin') { onAprobado(); return; }
+  if (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') { onAprobado(); return; }
   _authCallback = onAprobado;
   _authTipo = tipo;
   _authDesc = descripcion;
@@ -25,7 +25,7 @@ function solicitarAutorizacion(tipo, descripcion, onAprobado) {
     + '<input id="auth-motivo" placeholder="Escribe el motivo..." style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none;box-sizing:border-box"></div>'
     + '<div style="display:flex;gap:8px;margin-bottom:16px">'
     + '<button id="auth-tab-code" onclick="authModoCode()" class="btn btn-p btn-sm" style="flex:1;font-size:11px">📱 Código por WA</button>'
-    + '<button id="auth-tab-pass" onclick="authModoPass()" class="btn btn-g btn-sm" style="flex:1;font-size:11px">🔑 Credenciales admin</button>'
+    + '<button id="auth-tab-pass" onclick="authModoPass()" class="btn btn-g btn-sm" style="flex:1;font-size:11px">🔑 Credenciales</button>'
     + '</div>'
     + '<div id="auth-mode-code">'
     + '<div style="text-align:center;margin-bottom:12px">'
@@ -174,9 +174,9 @@ function authValidarPass() {
     err.textContent = 'Usuario o contraseña incorrectos'; err.style.display = '';
     return;
   }
-  if (u.rol !== 'admin') {
+  if (u.rol !== 'admin' && u.rol !== 'gerencia') {
     var err = document.getElementById('auth-pass-error');
-    err.textContent = 'Solo administradores pueden autorizar'; err.style.display = '';
+    err.textContent = 'Solo administradores o gerencia pueden autorizar'; err.style.display = '';
     return;
   }
   authExito(u.nombre || user);
