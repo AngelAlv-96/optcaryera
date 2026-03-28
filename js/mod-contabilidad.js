@@ -363,7 +363,8 @@ function contMostrarFormGasto(editData) {
   _contEditId = editData ? editData.id : null;
   var f = document.getElementById('cont-form-gasto');
   if (!f) return;
-  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: currentUser?.sucursal || '', nota: '', metodo_pago: '' };
+  var sucDef = (currentUser?.rol === 'sucursal' || currentUser?.rol === 'laboratorio') ? (currentUser?.sucursal || '') : '';
+  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: sucDef, nota: '', metodo_pago: '' };
   var html = '<div style="background:var(--surface);border-radius:12px;padding:16px">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   html += '<h4 style="font-size:13px;color:var(--text)">' + (editData ? '✏️ Editar gasto' : '+ Nuevo gasto') + '</h4>';
