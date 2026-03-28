@@ -5127,7 +5127,7 @@ function setupApp(u) {
     startDashRefresh();
     initRealtimeSubscriptions();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
-    setTimeout(_initAlertaEfectivoGlobal, 4000); // Check cash alert after 4s
+    setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';

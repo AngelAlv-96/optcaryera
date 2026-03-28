@@ -147,7 +147,7 @@ async function contCargarResultados() {
 
     if (_contSucursal) {
       comprasQ = comprasQ.eq('sucursal', _contSucursal);
-      gastosQ = gastosQ.eq('sucursal', _contSucursal);
+      // gastos: no filter by sucursal in query — filter in JS to include General (null)
     }
 
     var results = await Promise.all([pagosQ, credAbQ, comprasQ, gastosQ]);
@@ -161,7 +161,10 @@ async function contCargarResultados() {
       return true;
     });
     var compras = results[2].data || [];
-    var gastos = results[3].data || [];
+    var gastos = (results[3].data || []).filter(function(g) {
+      if (_contSucursal) return !g.sucursal || g.sucursal === _contSucursal;
+      return true;
+    });
 
     // Ingresos by method
     var ingresosPorMetodo = {};
@@ -261,10 +264,10 @@ async function contCargarGastos() {
 
   try {
     var gastosQ = db.from('gastos').select('*').gte('fecha', r.inicio).lte('fecha', r.fin).order('fecha', { ascending: false });
-    var comprasQ = db.from('compras_lab').select('id,fecha,total,proveedor,sucursal,folio').gte('fecha', r.inicio).lte('fecha', r.fin).order('fecha', { ascending: false });
+    var comprasQ = db.from('compras_lab').select('id,fecha,total,proveedor,sucursal').gte('fecha', r.inicio).lte('fecha', r.fin).order('fecha', { ascending: false });
 
     if (_contSucursal) {
-      gastosQ = gastosQ.eq('sucursal', _contSucursal);
+      // Only filter compras by sucursal; gastos filtered in JS to include General (null)
       comprasQ = comprasQ.eq('sucursal', _contSucursal);
     }
 
@@ -272,13 +275,18 @@ async function contCargarGastos() {
     var gastos = results[0].data || [];
     var compras = results[1].data || [];
 
+    // Filter gastos in JS: include matching sucursal + General (null/empty)
+    if (_contSucursal) {
+      gastos = gastos.filter(function(g) { return !g.sucursal || g.sucursal === _contSucursal; });
+    }
+
     // Merge
     var items = [];
     gastos.forEach(function(g) {
       items.push({ tipo: 'gasto', id: g.id, fecha: g.fecha, concepto: g.concepto, monto: parseFloat(g.monto || 0), categoria: g.categoria, subcategoria: g.subcategoria, sucursal: g.sucursal, metodo_pago: g.metodo_pago, comprobante_url: g.comprobante_url, nota: g.nota, registrado_por: g.registrado_por });
     });
     compras.forEach(function(c) {
-      items.push({ tipo: 'compra', id: c.id, fecha: c.fecha, concepto: (c.proveedor || 'Compra Lab') + (c.folio ? ' #' + c.folio : ''), monto: parseFloat(c.total || 0), categoria: 'Proveedores/materiales', subcategoria: 'Materiales ópticos', sucursal: c.sucursal || '—', nota: null, registrado_por: null });
+      items.push({ tipo: 'compra', id: c.id, fecha: c.fecha, concepto: (c.proveedor || 'Compra Lab'), monto: parseFloat(c.total || 0), categoria: 'Proveedores/materiales', subcategoria: 'Materiales ópticos', sucursal: c.sucursal || 'General', nota: null, registrado_por: null });
     });
     items.sort(function(a, b) { return b.fecha > a.fecha ? 1 : b.fecha < a.fecha ? -1 : 0; });
 
@@ -328,7 +336,7 @@ async function contCargarGastos() {
         html += '<td style="padding:8px">' + _contFechaCorta(i.fecha) + '</td>';
         html += '<td style="padding:8px">' + i.concepto + (isCompra ? ' <span style="font-size:9px;background:#3b82f6;color:white;padding:1px 5px;border-radius:4px">Compra Lab</span>' : '') + '</td>';
         html += '<td style="padding:8px;color:var(--muted)">' + i.categoria + (i.subcategoria ? ' · ' + i.subcategoria : '') + '</td>';
-        html += '<td style="padding:8px;color:var(--muted)">' + i.sucursal + '</td>';
+        html += '<td style="padding:8px;color:var(--muted)">' + (i.sucursal || 'General') + '</td>';
         html += '<td style="padding:8px;color:var(--muted);font-size:11px">' + (i.metodo_pago || '') + '</td>';
         html += '<td style="padding:8px;text-align:right;font-weight:600;color:#f87171">' + _contMoney(i.monto) + '</td>';
         html += '<td style="padding:8px;text-align:center">';
@@ -355,7 +363,7 @@ function contMostrarFormGasto(editData) {
   _contEditId = editData ? editData.id : null;
   var f = document.getElementById('cont-form-gasto');
   if (!f) return;
-  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: currentUser?.sucursal || 'Américas', nota: '', metodo_pago: '' };
+  var d = editData || { fecha: _contHoy(), concepto: '', monto: '', categoria: '', subcategoria: '', sucursal: currentUser?.sucursal || '', nota: '', metodo_pago: '' };
   var html = '<div style="background:var(--surface);border-radius:12px;padding:16px">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
   html += '<h4 style="font-size:13px;color:var(--text)">' + (editData ? '✏️ Editar gasto' : '+ Nuevo gasto') + '</h4>';
@@ -377,6 +385,7 @@ function contMostrarFormGasto(editData) {
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Fecha</label><input type="date" id="cont-fecha" value="' + d.fecha + '" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Monto</label><input type="number" id="cont-monto" value="' + (d.monto || '') + '" step="0.01" placeholder="0.00" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Sucursal</label><select id="cont-suc" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">';
+  html += '<option value=""' + (!d.sucursal ? ' selected' : '') + '>General</option>';
   ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
     html += '<option' + (d.sucursal === s ? ' selected' : '') + '>' + s + '</option>';
   });
@@ -569,7 +578,7 @@ async function contGuardarGasto() {
       fecha: fecha,
       categoria: categoria,
       subcategoria: subcategoria || null,
-      sucursal: sucursal,
+      sucursal: sucursal || null,
       metodo_pago: metodo_pago || null,
       nota: nota || null,
       comprobante_url: window._contComprobanteUrl || null,
@@ -634,7 +643,7 @@ async function contCargarFlujo() {
     var retirosQ = db.from('retiros_caja').select('monto,created_at,sucursal').gte('created_at', utc.start).lte('created_at', utc.end);
 
     if (_contSucursal) {
-      gastosQ = gastosQ.eq('sucursal', _contSucursal);
+      // gastos: filter in JS to include General (null)
       comprasQ = comprasQ.eq('sucursal', _contSucursal);
       retirosQ = retirosQ.eq('sucursal', _contSucursal);
     }
@@ -648,7 +657,10 @@ async function contCargarFlujo() {
     var credAb = (results[1].data || []).filter(function(a) {
       return !_contSucursal || a.sucursal === _contSucursal;
     });
-    var gastos = results[2].data || [];
+    var gastos = (results[2].data || []).filter(function(g) {
+      if (_contSucursal) return !g.sucursal || g.sucursal === _contSucursal;
+      return true;
+    });
     var compras = results[3].data || [];
     var retiros = (results[4].data || []).filter(function(r) {
       return !_contSucursal || r.sucursal === _contSucursal;
