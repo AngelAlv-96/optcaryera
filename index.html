@@ -5728,13 +5728,14 @@ function renderLabGrouped(data, esOptica) {
 
       let waHtml = '';
       if (allListos && todosRevisados && phones.length) {
+        const firstOrderId = group[0]?.id || 'null';
         waHtml = phones.map((ph, i) => {
           const nm = (names[i] || names[0]).split(' ')[0];
           const num = ph.replace(/\D/g,'');
           const waNum = formatWAPhone(num);
           const rawMsg = 'Hola ' + nm + ', tus lentes del folio ' + folioBase + ' ya están listos en Ópticas Car & Era. ¡Te esperamos!';
           const sucEsc = (currentUser?.sucursal||'').replace(/'/g,"\\'");
-          return '<button onclick="event.stopPropagation();confirmarEnvioWA(\'' + waNum + '\',\'' + rawMsg.replace(/'/g,"\\\\'") + '\',\'' + nm.replace(/'/g,"\\\\'") + '\', null)" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.2);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">📱' + (phones.length>1?' '+ph.slice(-4):' Notificar') + '</button>';
+          return '<button onclick="event.stopPropagation();this.disabled=true;this.style.opacity=\'0.5\';confirmarEnvioWA(\'' + waNum + '\',\'' + rawMsg.replace(/'/g,"\\\\'") + '\',\'' + nm.replace(/'/g,"\\\\'") + '\',\'' + firstOrderId + '\')" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:rgba(37,211,102,0.15);color:#25d366;border:1px solid rgba(37,211,102,0.2);border-radius:6px;cursor:pointer;font-size:10px;font-weight:600">📱' + (phones.length>1?' '+ph.slice(-4):' Notificar') + '</button>';
         }).join('');
       }
       // Botón "Entregar todos" si todos están listos para entrega
@@ -5890,7 +5891,7 @@ function renderLabCard(o, esOptica) {
         ${tienePermiso('del_ordenes') && puedeEliminarEnEstado(estadoReal) ? `<button class="btn btn-g btn-sm" onclick="event.stopPropagation();eliminarOrdenLab('${o.id}','${nombre.replace(/'/g,"\\\\'")}')" style="font-size:11px;padding:5px 10px;color:#e08080">\ud83d\uddd1</button>` : ''}
         ${cambiarHtml}
         ${puedeWA ? `
-        <button class="btn-wa" onclick="event.stopPropagation();enviarWA('${tel}', '${nombre.replace(/'/g,"\\\\'")}', null, '${o.id}')">
+        <button class="btn-wa" onclick="event.stopPropagation();this.disabled=true;this.style.opacity='0.5';enviarWA('${tel}', '${nombre.replace(/'/g,"\\\\'")}', null, '${o.id}')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
           Notificar
         </button>` : ''}
@@ -6040,11 +6041,32 @@ function enviarWA(tel, nombre, tipo, ordenId) {
   confirmarEnvioWA(num, msgText, nombre, ordenId);
 }
 
+// --- Throttle anti-duplicados WA ---
+var _waSentLog = {};
+function _waCheckThrottle(tipo, id) {
+  var key = tipo + ':' + id;
+  var entry = _waSentLog[key];
+  if (!entry) return { ok: true, attempts: 0 };
+  var elapsed = (Date.now() - entry.ts) / 60000;
+  if (elapsed < 10) return { ok: false, blocked: entry.count >= 3, wait: Math.ceil(10 - elapsed), attempts: entry.count };
+  delete _waSentLog[key];
+  return { ok: true, attempts: 0 };
+}
+function _waMarkSent(tipo, id) {
+  var key = tipo + ':' + id;
+  var entry = _waSentLog[key];
+  _waSentLog[key] = { ts: Date.now(), count: (entry ? entry.count : 0) + 1 };
+}
+
 function confirmarEnvioWA(num, msg, nombre, ordenId) {
   // Throttle check
-  var thr = typeof _waCheckThrottle === 'function' ? _waCheckThrottle('lentes', ordenId || num) : { ok: true, attempts: 0 };
+  var thr = _waCheckThrottle('lentes', ordenId || num);
   if (thr && thr.blocked) { toast('\u274c Notificaci\u00f3n bloqueada para este cliente', true); return; }
   if (thr && !thr.ok) { toast('\u23f3 Espera ' + thr.wait + ' min para reenviar la notificaci\u00f3n', true); return; }
+
+  // Cerrar modal de notificación WA previo si existe (previene duplicados)
+  var prevOv = document.querySelector('.m-overlay.wa-notif-modal');
+  if (prevOv) prevOv.remove();
 
   if (typeof _mostrarDialogoWA === 'function') {
     async function ejecutarDesdeDialogo(telParam, esNuevoTel, pacId) {
@@ -6063,7 +6085,7 @@ function confirmarEnvioWA(num, msg, nombre, ordenId) {
   }
 
   const ov = document.createElement('div');
-  ov.className = 'm-overlay open';
+  ov.className = 'm-overlay open wa-notif-modal';
   ov.style.cssText = 'z-index:99999!important';
   const preview = msg.replace(/\n/g, '<br>');
   ov.innerHTML = `<div class="modal" style="max-width:420px">
@@ -6098,7 +6120,7 @@ async function ejecutarEnvioWA(overlay, num, msg, ordenId, esNuevoTel) {
     });
     if (!result.ok) result = await sendWA(num, msg, { silent: true });
     if (result.ok) {
-      if (typeof _waMarkSent === 'function') _waMarkSent('lentes', ordenId || num);
+      _waMarkSent('lentes', ordenId || num);
       if (btn) {
         btn.textContent = '\u2705 Enviado por WhatsApp';
         btn.style.background = 'rgba(114,196,126,0.25)';
