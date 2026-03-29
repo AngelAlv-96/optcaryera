@@ -6709,7 +6709,7 @@ async function _marcarEntregados(ids, asesor) {
         if (!yaEncolado || yaEncolado.length === 0) {
           var sendAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
           var phoneNorm = tel.startsWith('521') ? tel : '521' + tel;
-          await secureWrite('review_queue', 'insert', {
+          await db.from('review_queue').insert({
             phone: phoneNorm,
             paciente_nombre: (pac.nombre + ' ' + (pac.apellidos || '')).trim(),
             folio: folio,
@@ -20857,6 +20857,9 @@ async function registrarRetiroDolar() {
       registrado_por: currentUser?.nombre || ''
     }).select();
     if (error) throw new Error(error.message || error);
+    _rtSuppressUntil = Date.now() + 5000;
+    _cajaEfectivoActual = Math.max(0, _cajaEfectivoActual - montoMXN);
+    _checkAlertaEfectivoFlotante();
     imprimirTicketRetiro(suc, today, montoMXN, obsAuto, retiroDisponible - montoMXN);
     toast('✓ Retiro USD $' + usd.toFixed(2) + ' = $' + montoMXN.toLocaleString('es-MX', {minimumFractionDigits:2}) + ' MXN');
     cerrarRetiro();
@@ -20923,6 +20926,11 @@ async function registrarRetiro() {
       registrado_por: currentUser?.nombre || ''
     }).select();
     if (error) throw new Error(error.message || error);
+    // Suppress Realtime para evitar que el banner reaparezca con datos stale
+    _rtSuppressUntil = Date.now() + 5000;
+    // Actualizar efectivo inmediatamente para ocultar banner
+    _cajaEfectivoActual = Math.max(0, _cajaEfectivoActual - monto);
+    _checkAlertaEfectivoFlotante();
     imprimirTicketRetiro(suc, today, monto, obs, retiroDisponible - monto);
     toast('✓ Retiro registrado: $' + monto.toFixed(2));
     cerrarRetiro();
@@ -21047,6 +21055,7 @@ setInterval(function() {
 
 // ── ALERTA ENTREGAS PENDIENTES (pedidos con fecha vencida sin entregar) ──
 var _entregaPendData = [];
+var _entregaPendAllDone = false; // Flag: ya revisó todos hoy, no re-mostrar
 // localStorage: revisados hoy (no ha venido) — key: entrega_pend_revisados_{fecha}
 function _epGetRevisados() {
   var key = 'entrega_pend_revisados_' + hoyLocal();
@@ -21065,6 +21074,7 @@ function _epAddRevisado(ordenId) {
 }
 
 async function _checkEntregasPendientes() {
+  if (_entregaPendAllDone) return; // Ya revisó todos hoy
   if (currentUser?.rol !== 'sucursal') return;
   var suc = currentUser?.sucursal;
   var hoy = hoyLocal();
@@ -21175,10 +21185,19 @@ async function _marcarEntregadoPend(ordenId, btn) {
   }
 }
 
-function _marcarNoHaVenido(ordenId, tel, nombre, btn) {
+async function _marcarNoHaVenido(ordenId, tel, nombre, btn) {
   if (btn.disabled) return;
   btn.disabled = true;
   btn.textContent = '⏳';
+  // Save log in DB — notas_laboratorio
+  try {
+    var ahora = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+    var asesor = currentUser?.nombre || currentUser?.id || '';
+    var { data: ord } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', ordenId).single();
+    var notas = (ord?.notas_laboratorio || '') + ' | No ha venido — ' + asesor + ' (' + ahora + ')';
+    _rtSuppressUntil = Date.now() + 3000;
+    await db.from('ordenes_laboratorio').update({ notas_laboratorio: notas }).eq('id', ordenId);
+  } catch(e) { console.warn('[NoHaVenido] DB error:', e); }
   // Save as reviewed today — won't show in banner again until tomorrow
   _epAddRevisado(ordenId);
   _epRemoveRow(ordenId, '📞 Marcado como "no ha venido"');
@@ -21191,6 +21210,7 @@ function _epRemoveRow(ordenId, toastMsg) {
   setTimeout(function() {
     _entregaPendData = _entregaPendData.filter(function(o) { return o.id !== ordenId; });
     if (_entregaPendData.length === 0) {
+      _entregaPendAllDone = true; // No re-mostrar en esta sesión
       _removeEntregaPendBanner();
       var ov = document.getElementById('entrega-pend-overlay');
       if (ov) ov.remove();
