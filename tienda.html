@@ -1277,6 +1277,7 @@ var gEmail=(_gUser&&_gUser.email)?_gUser.email:'';
 if(_gUser&&!_gUser.phone&&t){_gUser.phone=t;sessionStorage.setItem('ce_guser',JSON.stringify(_gUser));if(_gUser.email)localStorage.setItem('ce_phone_'+_gUser.email,t)}
 var subNote=_subActive?'\n🔄 SUSCRIPCIÓN: recompra cada '+subFreq+' días (10% desc desde siguiente compra)':'';
 try{var r=await fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'ventas',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,sucursal:'Online',folio:'ONL-WEB-'+Date.now().toString(36).toUpperCase(),total:tot,monto_pagado:0,estado:'Apartado',canal_venta:'Tienda Web',sucursal_entrega:s,asesor:'Tienda Online',notas:'PEDIDO WEB\nCliente: '+n+'\nTel: '+t+(gEmail?'\nEmail: '+gEmail:'')+'\nPago: En línea (Clip)'+subNote+'\nProductos: '+desc+(nt?'\nNotas: '+nt:''),created_at:new Date().toISOString()},options:{select:true}})});
+if(!r.ok){var errTxt=await r.text();console.error('dbwrite error:',r.status,errTxt);tt('Error al crear pedido ('+r.status+')');btn.disabled=false;btn.textContent='Confirmar pedido';return}
 var rs=await r.json(),fo=(rs&&rs[0])?rs[0].folio:'ONL-WEB',vid=(rs&&rs[0])?rs[0].id:null;
 saveOrder(fo,tot,s,cart.map(function(c){return c.nombre+' x'+c.qty}));
 if(typeof gtag==='function')gtag('event','purchase',{transaction_id:fo,value:tot,currency:'MXN',items:cart.map(function(c){return{item_id:c.key||'',item_name:c.nombre,price:c.precio,quantity:c.qty}})});
@@ -1294,7 +1295,7 @@ _subActive=false;var stEl=document.getElementById('sub-toggle');if(stEl)stEl.cla
 // Generar link de pago Clip y REDIRIGIR (no nueva pestaña)
 if(vid){btn.textContent='Redirigiendo al pago...';
 try{var cr=await fetch('/.netlify/functions/clip-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venta_id:vid,folio:fo,amount:tot,paciente_nombre:n,source:'tienda'})});
-var cd=await cr.json();if(cd.payment_url){window.location.href=cd.payment_url;return}else{tt('Error al generar link de pago. Intenta de nuevo.');sessionStorage.removeItem('ce_pending_order')}}catch(clipErr){tt('Error al conectar con el procesador de pago');sessionStorage.removeItem('ce_pending_order')}}else{tt('Error al crear pedido');sessionStorage.removeItem('ce_pending_order')}
+var cd=await cr.json();if(cd.payment_url){window.location.href=cd.payment_url;return}else{console.error('Clip resp:',cd);tt('Error al generar link de pago: '+(cd.error||'intenta de nuevo'));sessionStorage.removeItem('ce_pending_order')}}catch(clipErr){console.error('Clip exception:',clipErr);tt('Error al conectar con el procesador de pago');sessionStorage.removeItem('ce_pending_order')}}else{tt('Error al crear pedido (sin ID de venta)');sessionStorage.removeItem('ce_pending_order')}
 }catch(e){tt('Error al procesar pedido')}btn.disabled=false;btn.textContent='Confirmar pedido'}
 // Payment method is now always 'clip' (hidden input)
 function waQ(n){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, me interesa: '+decodeURIComponent(n)),'_blank')}
