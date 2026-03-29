@@ -5390,8 +5390,11 @@ var _rtRefreshMap = null;
 
 // Debounce para no refrescar 10 veces seguidas
 var _rtDebounce = {};
+var _rtSuppressUntil = 0; // Timestamp: suppress Realtime refresh until this time
 function _rtHandleChange(table) {
   if (!_rtRefreshMap) return; // Aún no inicializado
+  // Suppress if we just made a local change (avoid race condition with stale data)
+  if (Date.now() < _rtSuppressUntil) return;
   var cfg = _rtRefreshMap[table];
   if (!cfg) return;
   // ¿La vista activa necesita refrescarse?
@@ -5405,6 +5408,8 @@ function _rtHandleChange(table) {
   if (_rtDebounce[key]) clearTimeout(_rtDebounce[key]);
   _rtDebounce[key] = setTimeout(function() {
     delete _rtDebounce[key];
+    // Re-check suppress (could have been set during debounce)
+    if (Date.now() < _rtSuppressUntil) return;
     try {
       window[fnName]();
       _rtToast('Datos actualizados');
@@ -5956,6 +5961,9 @@ function pedirMotivoDevolucion(id, nombre, tel) {
 
 async function cambiarEstadoLab(id, nuevoEstado, nombre, tel) {
   if (nuevoEstado === 'Faltante') { marcarFaltante(id); return; }
+  if (_actionBusy['cambiarEstado_' + id]) return;
+  _actionBusy['cambiarEstado_' + id] = true;
+  try {
   const update = { estado_lab: nuevoEstado };
   if (nuevoEstado === 'Surtido') {
     const { data: ord } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', id).single();
@@ -5979,6 +5987,8 @@ async function cambiarEstadoLab(id, nuevoEstado, nombre, tel) {
       _alertaQCSinRevision([{ id, folio: folioMatch?.[1] || '', notas: chk.notas_laboratorio || '', paciente: nombre || '', tipo: (chk.tipo_lente || '') + ' ' + (chk.material || '') }], 'sucursal');
     }
   }
+  // Suppress Realtime refresh to avoid race condition
+  _rtSuppressUntil = Date.now() + 5000;
   const { error } = await db.from('ordenes_laboratorio')
     .update(update).eq('id', id);
   if (error) { toast('Error: ' + error.message, true); return; }
@@ -5998,6 +6008,7 @@ async function cambiarEstadoLab(id, nuevoEstado, nombre, tel) {
       }
     }
   }
+  } finally { delete _actionBusy['cambiarEstado_' + id]; }
 }
 
 function pedirTelefono(pacienteId, nombre, ordenId) {
@@ -6653,6 +6664,8 @@ async function _marcarEntregados(ids, asesor) {
   var ahora = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
   var errores = 0;
   var _qcEntregaList = [];
+  // Suppress Realtime refresh to avoid race condition
+  _rtSuppressUntil = Date.now() + 5000;
 
   for (var i = 0; i < ids.length; i++) {
     var id = ids[i];
@@ -12538,6 +12551,9 @@ async function asignarMaquina(orderId, maqNum) {
 
 async function moverEstadoLab(orderId, nuevoEstado) {
   if (nuevoEstado === 'Faltante') { marcarFaltante(orderId); return; }
+  if (_actionBusy['moverEstado_' + orderId]) return;
+  _actionBusy['moverEstado_' + orderId] = true;
+  try {
   const update = { estado_lab: nuevoEstado };
   if (nuevoEstado === 'Control de calidad') update.lab_hora_control = new Date().toISOString();
   if (nuevoEstado === 'Biselado completado') update.lab_hora_terminado = new Date().toISOString();
@@ -12571,6 +12587,7 @@ async function moverEstadoLab(orderId, nuevoEstado) {
   toast('✓ ' + nuevoEstado);
   loadLabTablero();
   if (typeof loadLab === 'function') loadLab();
+  } finally { delete _actionBusy['moverEstado_' + orderId]; }
 }
 
 function marcarFaltante(orderId) {
@@ -13234,6 +13251,8 @@ async function enviarLoteASucursal() {
   const user = currentUser?.nombre || 'Sistema';
   let ok = 0, errores = 0;
   var _qcCheckList = [];
+  // Suppress Realtime refresh to avoid race condition
+  _rtSuppressUntil = Date.now() + 10000; // 10s for batch operations
   toast('Enviando ' + total + ' órdenes...');
   for (const id of _pendingEnvioIds) {
     try {
@@ -13316,6 +13335,8 @@ async function updateLabOrder(id, payload) {
       p.notas_laboratorio = notas + ' | LOG:' + logEntry;
     }
   }
+  // Suppress Realtime refresh for 5s to avoid race condition with stale data
+  _rtSuppressUntil = Date.now() + 5000;
   for (let attempt = 0; attempt < 15; attempt++) {
     const res = await db.from('ordenes_laboratorio').update(p).eq('id', id);
     if (!res.error) return;
@@ -14350,6 +14371,8 @@ async function confirmarRevisionQC(orderId, nombre, tel) {
   const { data: orden } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', orderId).single();
   const notasActuales = orden?.notas_laboratorio || '';
   const notasNuevas = notasActuales + ` | Revisado por: ${revisor}`;
+  // Suppress Realtime refresh to avoid race condition
+  _rtSuppressUntil = Date.now() + 5000;
   const { error } = await db.from('ordenes_laboratorio').update({ estado_lab: 'Listo para entrega', notas_laboratorio: notasNuevas }).eq('id', orderId);
   if (error) { toast('Error: ' + error.message, true); return; }
   document.getElementById('qc-review-overlay').style.display = 'none';
