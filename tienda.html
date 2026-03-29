@@ -2226,6 +2226,7 @@ function _onGoogleSignIn(resp){
 if(!resp||!resp.credential)return;
 var payload=_decodeJWT(resp.credential);
 if(!payload)return;
+var gModal=document.getElementById('g-signin-tmp');if(gModal)gModal.remove();
 _gUser={name:payload.name||'',email:payload.email||'',picture:payload.picture||'',phone:''};
 // Check if we have a saved phone for this email
 var saved=localStorage.getItem('ce_phone_'+_gUser.email);
