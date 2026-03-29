@@ -470,7 +470,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 - **`_epGetRevisados()` / `_epAddRevisado()`**: localStorage `entrega_pend_revisados_{fecha}` — IDs revisados como "no ha venido" hoy. Se limpia automáticamente al cambiar de día
 - **WA recordatorio**: al marcar "No ha venido", envía freeform al paciente: "Tus lentes están listos, pásate cuando gustes"
 - **Si el personal marca entregas correctamente, el banner NO aparece** — solo sale cuando hay inconsistencias
-- **Admin/gerencia**: ven todas las sucursales agrupadas. **Sucursal**: solo la suya. **Laboratorio**: no ve
+- **Solo rol `sucursal`**: admin, gerencia y laboratorio NO ven el banner
 - **Timing**: 5s después de login, sin interval (una vez al día)
 - **Posición**: debajo del banner de efectivo si existe (`bottom:90px` vs `bottom:20px`)
 
