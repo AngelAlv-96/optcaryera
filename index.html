@@ -21050,7 +21050,7 @@ function _epAddRevisado(ordenId) {
 }
 
 async function _checkEntregasPendientes() {
-  if (currentUser?.rol === 'laboratorio') return;
+  if (currentUser?.rol !== 'sucursal') return;
   var suc = currentUser?.sucursal;
   var hoy = hoyLocal();
   try {
