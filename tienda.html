@@ -2236,16 +2236,17 @@ tt('Bienvenido, '+(_gUser.name||'').split(' ')[0]+'!');
 }
 function googleSignIn(){
 if(typeof google==='undefined'||!google.accounts){tt('Cargando Google...');setTimeout(googleSignIn,500);return}
-if(!_gsiInitDone){_gsiInitDone=true;google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn})}
-google.accounts.id.prompt(function(notification){
-if(notification.isNotDisplayed()||notification.isSkippedMoment()){
-// Fallback: render button in a temporary container
+if(!_gsiInitDone){_gsiInitDone=true;google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,use_fedcm_for_prompt:true})}
+// Render Google button in modal (más estable que One Tap, sin cooldowns)
+var existing=document.getElementById('g-signin-tmp');if(existing)existing.remove();
 var tmp=document.createElement('div');tmp.id='g-signin-tmp';
-tmp.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--bg2);padding:24px;border-radius:var(--r);border:1px solid var(--glass-border);text-align:center';
-tmp.innerHTML='<div style="color:var(--tx);font-size:13px;margin-bottom:12px">Inicia sesión con Google</div><div id="g-btn-wrap"></div><button onclick="this.parentElement.remove()" style="margin-top:12px;padding:6px 16px;border-radius:var(--rs);background:var(--glass);border:1px solid var(--bd);color:var(--t2);cursor:pointer;font-size:11px;font-family:var(--ft)">Cancelar</button>';
-document.body.appendChild(tmp);
-google.accounts.id.renderButton(document.getElementById('g-btn-wrap'),{theme:'filled_black',size:'large',text:'signin_with',shape:'pill',width:220});
-}});
+tmp.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+tmp.onclick=function(ev){if(ev.target===tmp)tmp.remove()};
+var box=document.createElement('div');
+box.style.cssText='background:var(--bg2);padding:28px 24px;border-radius:var(--r);border:1px solid var(--glass-border);text-align:center;min-width:280px';
+box.innerHTML='<div style="font-size:14px;font-weight:600;color:var(--tx);margin-bottom:4px">Iniciar sesi\u00f3n</div><div style="font-size:11px;color:var(--t3);margin-bottom:16px">Para ver tus pedidos, suscripciones y perfil</div><div id="g-btn-wrap" style="display:flex;justify-content:center"></div><button onclick="document.getElementById(\'g-signin-tmp\').remove()" style="margin-top:14px;padding:6px 16px;border-radius:var(--rs);background:var(--glass);border:1px solid var(--bd);color:var(--t2);cursor:pointer;font-size:11px;font-family:var(--ft)">Cancelar</button>';
+tmp.appendChild(box);document.body.appendChild(tmp);
+google.accounts.id.renderButton(document.getElementById('g-btn-wrap'),{theme:'filled_black',size:'large',text:'signin_with',shape:'pill',width:240});
 }
 function googleSignOut(){
 _gUser=null;sessionStorage.removeItem('ce_guser');_updateAuthUI();
