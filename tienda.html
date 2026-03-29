@@ -2236,7 +2236,7 @@ tt('Bienvenido, '+(_gUser.name||'').split(' ')[0]+'!');
 }
 function googleSignIn(){
 if(typeof google==='undefined'||!google.accounts){tt('Cargando Google...');setTimeout(googleSignIn,500);return}
-google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,auto_select:true});
+if(!_gsiInitDone){_gsiInitDone=true;google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,auto_select:true})}
 google.accounts.id.prompt(function(notification){
 if(notification.isNotDisplayed()||notification.isSkippedMoment()){
 // Fallback: render button in a temporary container
@@ -2358,9 +2358,11 @@ var txt='$'+tot.toLocaleString('es-MX');if(t1)t1.textContent=txt;if(t2)t2.textCo
 
 // Auto-restore Google session
 if(_gUser)_updateAuthUI();
-// Initialize Google One Tap on load
+// Initialize Google One Tap on load (only once)
+var _gsiInitDone=false;
 window.addEventListener('load',function(){
-if(typeof google!=='undefined'&&google.accounts&&!_gUser){
+if(typeof google!=='undefined'&&google.accounts&&!_gUser&&!_gsiInitDone){
+_gsiInitDone=true;
 google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,auto_select:true});
 google.accounts.id.prompt()}});
 
