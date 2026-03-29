@@ -1301,6 +1301,8 @@ var confirmHtml=_rxConfirmHtml();
 if(confirmHtml&&!document.getElementById('rxc-panel')){
 var pm=document.getElementById('pm');if(!pm)return;
 pm.dataset.grad=g;pm.dataset.qty=q;
+pm.dataset.rxOe=_rxGetVal('oe');pm.dataset.rxOc=_rxGetVal('oc');pm.dataset.rxOj=_rxGetVal('oj');
+pm.dataset.rxIe=_rxGetVal('ie');pm.dataset.rxIc=_rxGetVal('ic');pm.dataset.rxIj=_rxGetVal('ij');
 var mbox=pm.querySelector('.mbox');if(!mbox)return;
 mbox.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'</h2><div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--gd)">$'+p.precio.toLocaleString('es-MX')+' <span style="font-size:11px;font-weight:400;color:var(--t3)">por caja</span></div></div>'+
 '<div id="rxc-panel">'+confirmHtml+
