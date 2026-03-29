@@ -1290,7 +1290,7 @@ var cd=await cr.json();if(cd.payment_url){window.open(cd.payment_url,'_blank')}e
 // Registrar suscripción en DB si se activó
 if(_subActive&&vid){
 var subProducts=cart.map(function(c){return c.nombre+' x'+c.qty}).join(', ');
-fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'lc_seguimiento',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,producto:subProducts,fecha_compra:new Date().toISOString().slice(0,10),fecha_prox_compra:new Date(Date.now()+parseInt(subFreq)*86400000).toISOString().slice(0,10),estado:'activo',notas:'Suscripción web | Tel: '+t+(gEmail?' | '+gEmail:'')+' | Folio: '+fo+' | Frecuencia: cada '+subFreq+' días | Sucursal: '+s}})}).catch(function(){})}
+fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'lc_seguimiento',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,producto:subProducts,fecha_compra:new Date().toISOString().slice(0,10),fecha_recompra:new Date(Date.now()+parseInt(subFreq)*86400000).toISOString().slice(0,10),estado:'activo',notas:'Suscripción web | Tel: '+t+(gEmail?' | '+gEmail:'')+' | Folio: '+fo+' | Frecuencia: cada '+subFreq+' días | Sucursal: '+s}})}).catch(function(){})}
 document.getElementById('sfo').textContent=fo;
 document.getElementById('swa').href='https://wa.me/'+WA+'?text='+encodeURIComponent('Pedido '+fo);
 var subSuccEl=document.getElementById('sub-success');
@@ -2325,13 +2325,13 @@ var pats=await pr.json();
 if(!Array.isArray(pats)||!pats.length){subEl.innerHTML='<div class="sub-empty">No encontramos una cuenta con ese teléfono.<br>Si ya eres cliente, verifica tu número en "Perfil".</div>';return}
 var patIds=pats.map(function(p){return p.id});
 // Load LC seguimiento
-var lr=await fetch(SU+'/rest/v1/lc_seguimiento?paciente_id=in.('+patIds.join(',')+')&select=id,paciente_id,producto,fecha_compra,fecha_prox_compra,estado,notas&order=fecha_prox_compra.desc&limit=10',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var lr=await fetch(SU+'/rest/v1/lc_seguimiento?paciente_id=in.('+patIds.join(',')+')&select=id,paciente_id,producto,fecha_compra,fecha_recompra,estado,notas&order=fecha_recompra.desc&limit=10',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
 var lcs=await lr.json();
 if(!Array.isArray(lcs)||!lcs.length){subEl.innerHTML='<div class="sub-empty">No tienes suscripciones de LC activas.<br>Pregunta en sucursal o por <a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Quiero información sobre la suscripción de lentes de contacto')+'" target="_blank" style="color:var(--ac);text-decoration:none">WhatsApp</a> sobre nuestro plan de suscripción con 10% de descuento.</div>';return}
 var patMap={};pats.forEach(function(p){patMap[p.id]=p.nombre+(p.apellidos?' '+p.apellidos:'')});
 subEl.innerHTML=lcs.map(function(lc){
 var isActive=lc.estado==='activo'||lc.estado==='Activo';
-var prox=lc.fecha_prox_compra?new Date(lc.fecha_prox_compra):null;
+var prox=lc.fecha_recompra?new Date(lc.fecha_recompra):null;
 var proxTxt=prox?(prox.getDate()+'/'+(prox.getMonth()+1)+'/'+prox.getFullYear()):'—';
 var diasRestantes=prox?Math.ceil((prox-new Date())/(1000*60*60*24)):0;
 return'<div class="sub-card"><div class="sub-card-hdr"><div class="sub-card-name">'+(lc.producto||'Lentes de Contacto')+'</div><span class="sub-badge sub-badge--'+(isActive?'active':'pending')+'">'+(isActive?'Activa':'Pendiente')+'</span></div>'+

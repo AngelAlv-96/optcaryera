@@ -9,6 +9,9 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 
 const DIAS_ANTES = 7;
+const CLIP_API_KEY = process.env.CLIP_API_KEY;
+const CLIP_API_SECRET = process.env.CLIP_API_SECRET;
+const SITE_URL = process.env.URL || 'https://optcaryera.netlify.app';
 
 async function supaREST(method, path, body) {
   const opts = {
@@ -68,6 +71,41 @@ async function enviarWA(to, message) {
   }
 }
 
+async function generarLinkClip(monto, nombre, producto) {
+  if (!CLIP_API_KEY || !CLIP_API_SECRET) return null;
+  try {
+    const resp = await fetch('https://api.payclip.com/v2/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic ' + Buffer.from(CLIP_API_KEY + ':' + CLIP_API_SECRET).toString('base64')
+      },
+      body: JSON.stringify({
+        amount: monto,
+        currency: 'MXN',
+        purchase_description: `Recompra LC ${producto} - Opticas Car y Era (10% desc suscripción)`,
+        redirection_url: {
+          success: `${SITE_URL}/tienda.html?pago=ok`,
+          error: `${SITE_URL}/tienda.html?pago=error`,
+          default: `${SITE_URL}/tienda.html`
+        },
+        metadata: {
+          me_reference_id: 'LC-RECOMPRA-' + Date.now().toString(36).toUpperCase(),
+          customer_info: { name: nombre }
+        },
+        webhook_url: `${SITE_URL}/.netlify/functions/clip-webhook`
+      })
+    });
+    const data = await resp.json();
+    if (resp.ok && data.payment_request_url) return data.payment_request_url;
+    console.error('[LC-CRON] Clip error:', data);
+    return null;
+  } catch(e) {
+    console.error('[LC-CRON] Clip exception:', e.message);
+    return null;
+  }
+}
+
 exports.handler = async function(event) {
   console.log('[LC-CRON] Iniciando revisión de recompras LC...');
 
@@ -118,12 +156,38 @@ exports.handler = async function(event) {
       // Determine sucursal for pickup
       const suc = r.sucursal && r.sucursal !== 'Online' ? r.sucursal : 'la sucursal de tu preferencia';
 
+      // Check if this is a web subscription (10% discount) — detect by notas field
+      const esSuscripcionWeb = r.notas && r.notas.includes('Suscripción web');
+      let linkPago = '';
+      let descuentoTxt = '';
+
+      if (esSuscripcionWeb) {
+        // Look up last sale price for this product to calculate 10% discount
+        try {
+          const ventasResp = await supaREST('GET',
+            `ventas?notas=ilike.*${encodeURIComponent(r.producto.split(' x')[0].substring(0,20))}*&canal_venta=eq.Tienda%20Web&select=total&order=created_at.desc&limit=1`
+          );
+          if (ventasResp && ventasResp.length > 0) {
+            const precioOriginal = ventasResp[0].total;
+            const precioConDesc = Math.round(precioOriginal * 0.90);
+            const link = await generarLinkClip(precioConDesc, nombre, r.producto);
+            if (link) {
+              linkPago = `\n\n💳 *Paga aquí con tu 10% de descuento de suscriptor:*\n👉 ${link}\n(Total: $${precioConDesc.toLocaleString('es-MX')} — antes $${precioOriginal.toLocaleString('es-MX')})`;
+              descuentoTxt = ' con 10% de descuento de suscriptor';
+            }
+          }
+        } catch(e) { console.error('[LC-CRON] Error lookup venta:', e.message); }
+      }
+
       const msg = `Hola ${nombre} 👋\n\n`
         + `Te escribo porque ${urgencia}\n\n`
         + `👁️ *${r.producto}*\n\n`
-        + `¿Quieres que te los pida para que estén listos cuando pases a recogerlos a ${suc}? Solo responde *SI* y yo me encargo de todo 😊\n\n`
-        + `💰 Puedes pagar por transferencia (sin comisión) o con tarjeta.\n\n`
-        + `Si sientes que tu graduación cambió, también te podemos hacer un examen de vista sin costo cuando recojas tus lentes ✨`;
+        + (linkPago
+          ? `Tus lentes están listos para pedir${descuentoTxt}. Paga directo con tu tarjeta y los tenemos listos en ${suc}:${linkPago}\n\n`
+          + `Si prefieres, también puedes responder *SI* y yo me encargo 😊`
+          : `¿Quieres que te los pida para que estén listos cuando pases a recogerlos a ${suc}? Solo responde *SI* y yo me encargo de todo 😊\n\n`
+          + `💰 Puedes pagar con tarjeta en línea o en sucursal.`)
+        + `\n\nSi sientes que tu graduación cambió, también te podemos hacer un examen de vista sin costo cuando recojas tus lentes ✨`;
 
       const ok = await enviarWA(tel, msg);
       if (ok) {
