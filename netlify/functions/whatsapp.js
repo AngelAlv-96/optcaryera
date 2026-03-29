@@ -19,6 +19,7 @@ const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) :
   'gerencia':  { pass: 'car2024ge',   rol: 'gerencia' },
   'admin':     { pass: 'car2024ad',   rol: 'admin' },
   'carera':    { pass: 'carera2024',  rol: 'admin' },
+  'tienda':    { pass: 'tienda2024', rol: 'sucursal' },
 };
 
 async function getCustomUsers() {

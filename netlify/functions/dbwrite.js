@@ -15,6 +15,7 @@ const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) :
   'admin':     { pass: 'car2024ad',   rol: 'admin' },
   'carera':    { pass: 'carera2024',  rol: 'admin' },
   'laboratorio': { pass: 'lab2024', rol: 'laboratorio' },
+  'tienda':      { pass: 'tienda2024', rol: 'sucursal' },
 };
 
 const ALLOWED_TABLES = [
