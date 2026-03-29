@@ -2220,7 +2220,7 @@ return unique}catch(e){return[]}
 
 // === GOOGLE SIGN-IN ===
 var _gUser=JSON.parse(sessionStorage.getItem('ce_guser')||'null');
-var GOOGLE_CLIENT_ID='906574340703715-placeholder.apps.googleusercontent.com';
+var GOOGLE_CLIENT_ID='961220697987-6a871h0obi1kmlnmk4448758ohqp6e2a.apps.googleusercontent.com';
 function _decodeJWT(token){try{var b=token.split('.')[1];var s=atob(b.replace(/-/g,'+').replace(/_/g,'/'));return JSON.parse(s)}catch(e){return null}}
 function _onGoogleSignIn(resp){
 if(!resp||!resp.credential)return;
