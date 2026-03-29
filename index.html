@@ -5157,6 +5157,7 @@ function setupApp(u) {
     initRealtimeSubscriptions();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
+    setTimeout(function(){ try { _checkEntregasPendientes(); } catch(e) { console.warn('Entregas pend init:', e.message); } }, 5000);
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';
@@ -21028,6 +21029,145 @@ setInterval(function() {
   if (_cajaEfectivoActual > 5000) _checkAlertaEfectivoFlotante();
   else if (cajaData && cajaData.estado === 'abierta') _initAlertaEfectivoGlobal(); // re-calc in background
 }, 5 * 60 * 1000);
+
+// ── ALERTA ENTREGAS PENDIENTES (pedidos con fecha vencida sin entregar) ──
+var _entregaPendData = [];
+var _entregaPendDismissed = false;
+async function _checkEntregasPendientes() {
+  if (currentUser?.rol === 'laboratorio') return;
+  var suc = currentUser?.sucursal;
+  // Admin/gerencia: consulta todas. Sucursal: solo la suya
+  var hoy = hoyLocal();
+  try {
+    var query = db.from('ordenes_laboratorio')
+      .select('id, fecha_entrega, estado_lab, sucursal, notas_laboratorio, pacientes(nombre, apellidos, telefono)')
+      .in('estado_lab', ['Listo para entrega', 'Recibido en óptica'])
+      .lt('fecha_entrega', hoy)
+      .not('fecha_entrega', 'is', null);
+    if (suc && suc !== 'Todas') query = query.eq('sucursal', suc);
+    var { data } = await query;
+    if (!data || data.length === 0) { _removeEntregaPendBanner(); _entregaPendData = []; return; }
+    // Enrich with folio and days overdue
+    _entregaPendData = data.map(function(o) {
+      var folioMatch = (o.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      var pac = o.pacientes || {};
+      var nombre = ((pac.nombre || '') + ' ' + (pac.apellidos || '')).trim();
+      var dias = Math.floor((new Date(hoy) - new Date(o.fecha_entrega)) / 86400000);
+      return { id: o.id, folio: folioMatch?.[1] || '?', nombre: nombre, tel: pac.telefono || '', sucursal: o.sucursal, dias: dias, estado: o.estado_lab, fecha_entrega: o.fecha_entrega };
+    }).sort(function(a, b) { return b.dias - a.dias; });
+    if (!_entregaPendDismissed) _showEntregaPendBanner();
+  } catch(e) { console.warn('[EntregaPend] Error:', e); }
+}
+
+function _showEntregaPendBanner() {
+  if (_entregaPendData.length === 0) return;
+  var existing = document.getElementById('alerta-entrega-pend');
+  if (existing) existing.remove();
+  var count = _entregaPendData.length;
+  var maxDias = _entregaPendData[0]?.dias || 0;
+  var suc = currentUser?.sucursal;
+  var isAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
+  // Group by sucursal for admin
+  var resumen = '';
+  if (isAdmin) {
+    var porSuc = {};
+    _entregaPendData.forEach(function(o) { porSuc[o.sucursal] = (porSuc[o.sucursal] || 0) + 1; });
+    resumen = Object.keys(porSuc).map(function(s) { return s + ': ' + porSuc[s]; }).join(' · ');
+  }
+  var div = document.createElement('div');
+  div.id = 'alerta-entrega-pend';
+  div.style.cssText = 'position:fixed;bottom:' + (document.getElementById('alerta-efectivo-flotante') ? '90px' : '20px') + ';left:50%;transform:translateX(-50%);z-index:99998;background:linear-gradient(135deg,#d97706,#f59e0b);border:2px solid #fde68a;border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(217,119,6,0.4);max-width:440px;width:92%;cursor:pointer';
+  var h = '<div style="display:flex;align-items:center;gap:10px">';
+  h += '<div style="font-size:24px;line-height:1">📦</div>';
+  h += '<div style="flex:1">';
+  h += '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">' + count + ' pedido' + (count > 1 ? 's' : '') + ' con fecha vencida sin entregar</div>';
+  h += '<div style="font-size:10px;color:#fef3c7">' + (isAdmin ? resumen : 'Más antiguo: ' + maxDias + ' día' + (maxDias > 1 ? 's' : '') + ' de retraso') + '</div>';
+  h += '</div>';
+  h += '<button onclick="event.stopPropagation();_abrirEntregaPendModal()" style="padding:6px 14px;background:#fff;color:#d97706;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">Ver lista</button>';
+  h += '<button onclick="event.stopPropagation();_dismissEntregaPend()" style="padding:6px 8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:10px;cursor:pointer;font-family:Outfit,sans-serif">✕</button>';
+  h += '</div>';
+  div.innerHTML = h;
+  div.onclick = function() { _abrirEntregaPendModal(); };
+  document.body.appendChild(div);
+}
+
+function _removeEntregaPendBanner() {
+  var el = document.getElementById('alerta-entrega-pend');
+  if (el) el.remove();
+}
+
+function _dismissEntregaPend() {
+  _entregaPendDismissed = true;
+  _removeEntregaPendBanner();
+  // Re-show after 2 hours
+  setTimeout(function() { _entregaPendDismissed = false; _checkEntregasPendientes(); }, 2 * 60 * 60 * 1000);
+}
+
+function _abrirEntregaPendModal() {
+  var ov = document.getElementById('entrega-pend-overlay');
+  if (ov) ov.remove();
+  ov = document.createElement('div');
+  ov.id = 'entrega-pend-overlay';
+  ov.className = 'm-overlay open';
+  ov.style.zIndex = '99999';
+  var isAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
+  var items = _entregaPendData;
+  var rows = items.map(function(o) {
+    var diasColor = o.dias >= 5 ? '#ef4444' : o.dias >= 2 ? '#f59e0b' : '#a3a3a3';
+    var diasLabel = o.dias + 'd';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+      + '<div style="min-width:36px;text-align:center;font-size:14px;font-weight:800;color:' + diasColor + '">' + diasLabel + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:600;color:var(--beige);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + o.nombre + '</div>'
+      + '<div style="font-size:11px;color:var(--muted)">Folio ' + o.folio + (isAdmin ? ' · ' + o.sucursal : '') + ' · Entrega: ' + o.fecha_entrega + ' · ' + o.estado + '</div>'
+      + '</div>'
+      + '<button onclick="_marcarEntregadoPend(\'' + o.id + '\',this)" style="padding:6px 12px;background:rgba(114,196,126,0.15);color:#72c47e;border:1px solid rgba(114,196,126,0.3);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">🤝 Entregado</button>'
+      + '</div>';
+  }).join('');
+  ov.innerHTML = '<div class="modal" style="max-width:500px;max-height:80vh;overflow-y:auto">'
+    + '<h3 style="font-family:Cormorant Garamond,serif;font-size:18px;color:var(--beige);margin-bottom:4px">📦 Pedidos con fecha vencida</h3>'
+    + '<p style="font-size:12px;color:var(--muted);margin-bottom:16px">' + items.length + ' pedido' + (items.length > 1 ? 's' : '') + ' pasaron su fecha de entrega y siguen sin marcar como entregados</p>'
+    + '<div>' + rows + '</div>'
+    + '<div style="margin-top:16px;text-align:right"><button class="btn btn-g" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div>'
+    + '</div>';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+
+async function _marcarEntregadoPend(ordenId, btn) {
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '⏳';
+  try {
+    await _marcarEntregados([ordenId], currentUser?.nombre || '');
+    btn.textContent = '✅';
+    btn.style.color = '#72c47e';
+    // Refresh data
+    setTimeout(function() {
+      _entregaPendData = _entregaPendData.filter(function(o) { return o.id !== ordenId; });
+      if (_entregaPendData.length === 0) {
+        _removeEntregaPendBanner();
+        var ov = document.getElementById('entrega-pend-overlay');
+        if (ov) ov.remove();
+        toast('✅ Todos los pedidos pendientes actualizados');
+      } else {
+        _showEntregaPendBanner();
+        _abrirEntregaPendModal(); // Re-render modal
+      }
+    }, 500);
+  } catch(e) {
+    btn.textContent = '❌';
+    btn.disabled = false;
+    toast('Error: ' + e.message, true);
+  }
+}
+
+// Check entregas pendientes al arrancar y cada 30 min
+// (se inicia desde setupApp via setTimeout)
+setInterval(function() {
+  if (!_entregaPendDismissed) _checkEntregasPendientes();
+}, 30 * 60 * 1000);
+// ── Fin alerta entregas pendientes ──
 
 async function eliminarRetiro(retiroId, montoStr) {
   if (currentUser?.rol !== 'admin') { toast('Solo administradores pueden eliminar retiros', true); return; }
