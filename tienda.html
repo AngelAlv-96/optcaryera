@@ -1054,7 +1054,44 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 <script>
 var SU='https://icsnlgeereepesbrdjhf.supabase.co',SK='sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm',WA='5216563110094';
-var P=[],cart=JSON.parse(localStorage.getItem('ce_cart')||'[]'),I={acuvue_oasys:'https://cdn11.bigcommerce.com/s-fu16hs0usz/images/stencil/original/products/1734/2660/2308-2__29097.1601912675.jpg',air_optix_hydraglyde:'https://www.myalcon.com/sites/g/files/rbvwei2521/files/2023-12/airoptix-plus-hydraglyde.png','bausch+lomb_ultra':'https://bauschcontactlenses.com/siteassets/img/img-407x305-ultra-family-herobanner.png',acuvue_moist_1_day:'https://m.contactlensking.com/ProdImages/en/AC1M90_Main.jpg',soflens_59:'https://trendysweet.com/cdn/shop/products/bausch-and-lomb-soflens-59-contact-lenses-6-pack-2.png?v=1754837256',biomedics_now:'https://res2.contactlenses.co.uk/data/images/large/9.jpg',dailies_total_1:'https://do6sydhp1s299.cloudfront.net/web/files/collections/6427063dc9cce4.72561226.webp',freshlook_colorblends:'https://www.perfectlensworld.com/img/products/img_flb.jpg'},fT=null,fU=null;
+var P=[],cart=JSON.parse(localStorage.getItem('ce_cart')||'[]'),I={
+acuvue_oasys:'https://cdn11.bigcommerce.com/s-fu16hs0usz/images/stencil/original/products/1734/2660/2308-2__29097.1601912675.jpg',
+air_optix_hydraglyde:'https://www.myalcon.com/sites/g/files/rbvwei2521/files/2023-12/airoptix-plus-hydraglyde.png',
+'bausch+lomb_ultra':'https://bauschcontactlenses.com/siteassets/img/img-407x305-ultra-family-herobanner.png',
+acuvue_moist_1_day:'https://m.contactlensking.com/ProdImages/en/AC1M90_Main.jpg',
+soflens_59:'https://trendysweet.com/cdn/shop/products/bausch-and-lomb-soflens-59-contact-lenses-6-pack-2.png?v=1754837256',
+biomedics_now:'https://res2.contactlenses.co.uk/data/images/large/9.jpg',
+dailies_total_1:'https://do6sydhp1s299.cloudfront.net/web/files/collections/6427063dc9cce4.72561226.webp',
+freshlook_colorblends:'https://www.perfectlensworld.com/img/products/img_flb.jpg',
+acuvue_moist_1_day_multifocal:'https://www.contactlensking.com/prodimages/en/AC1MF90_Main.jpg',
+acuvue_moist_1_day_torico:'https://www.contactlensking.com/prodimages/en/AC1MT90_Main.jpg',
+acuvue_oasys_1_day:'https://www.contactlensking.com/prodimages/en/ACO190_Main.jpg',
+acuvue_oasys_multifocal:'https://www.contactlensking.com/prodimages/en/ACOMF_Main.jpg',
+acuvue_oasys_torico:'https://www.contactlensking.com/prodimages/en/ACOT_Main.jpg',
+air_optix_hydraglyde_torico:'https://www.contactlensking.com/prodimages/en/AIRPT_Main.jpg',
+air_optix_torico:'https://www.contactlensking.com/prodimages/en/AIRT_Main.jpg',
+dailies_total_1_multifocal:'https://www.contactlensking.com/prodimages/en/T1MF90_Main.jpg',
+dailies_total_1_torico:'https://www.contactlensking.com/prodimages/en/T1T90_Main.jpg',
+total30:'https://www.contactlensking.com/prodimages/en/TM30_Main.jpg',
+total30_multifocal:'https://www.contactlensking.com/prodimages/en/T30MF_Main.jpg',
+total30_torico:'https://www.contactlensking.com/prodimages/en/TMT30_Main.jpg',
+precision1:'https://www.contactlensking.com/prodimages/en/PRE90_Main.jpg',
+precision1_torico:'https://www.contactlensking.com/prodimages/en/PRET90_Main.jpg',
+avaira_vitality:'https://www.contactlensking.com/prodimages/en/AVV_Main.jpg',
+avaira_vitality_torico:'https://www.contactlensking.com/prodimages/en/AVVT_Main.jpg',
+biofinity_energys:'https://www.contactlensking.com/prodimages/en/BIOE_Main.jpg',
+biofinity_torico:'https://www.contactlensking.com/prodimages/en/BIOT_Main.jpg',
+biofinity_xr_torico:'https://www.contactlensking.com/prodimages/en/BIOTXR_Main.jpg',
+biomedics_torico:'https://www.contactlensking.com/prodimages/en/OS1_Main.jpg',
+clariti_1_day_torico:'https://www.contactlensking.com/prodimages/en/CLAT90_Main.jpg',
+'bausch+lomb_ultra_multifocal':'https://www.contactlensking.com/prodimages/en/ULTRAMF_Main.jpg',
+'bausch+lomb_ultra_torico':'https://www.contactlensking.com/prodimages/en/ULTRAT_Main.jpg',
+biotrue_oneday_multifocal:'https://www.contactlensking.com/prodimages/en/TRU90MF_Main.jpg',
+biotrue_oneday_torico:'https://www.contactlensking.com/prodimages/en/TRU90T_Main.jpg',
+infuse:'https://www.contactlensking.com/prodimages/en/INFUSE_Main.jpg',
+infuse_multifocal:'https://www.contactlensking.com/prodimages/en/infmf_Main.jpg',
+infuse_torico:'https://www.contactlensking.com/prodimages/en/INFT_Main.jpg'
+},fT=null,fU=null;
 var BM={'acuvue':'Acuvue','air':'Air Optix','biofinity':'Biofinity','biomedics':'Biomedics','biotrue':'Biotrue','bausch+lomb':'Bausch+Lomb','ultra':'Bausch+Lomb','soflens':'Bausch+Lomb','dailies':'Dailies','freshlook':'FreshLook','avaira':'Avaira','clariti':'Clariti','o2':'O2 Optix','total30':'Total30','precision1':'Precision1','infuse':'Infuse','lenticon':'Lenticon','lumitoric':'Lenticon','start':'Start','halloween':'Especial'};
 var LM={'Acuvue':'Johnson & Johnson','Air Optix':'Alcon','O2 Optix':'Alcon','Dailies':'Alcon','FreshLook':'Alcon','Total30':'Alcon','Precision1':'Alcon','Biofinity':'CooperVision','Biomedics':'CooperVision','Clariti':'CooperVision','Avaira':'CooperVision','CooperVision':'CooperVision','Bausch+Lomb':'Bausch+Lomb','Biotrue':'Bausch+Lomb','Infuse':'Bausch+Lomb'};
 var HK=['Lenticon','Start','Especial'],HI=['halloween','ultra_terapeutico','o2_optix'];
