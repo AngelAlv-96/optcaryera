@@ -5963,6 +5963,22 @@ async function cambiarEstadoLab(id, nuevoEstado, nombre, tel) {
       update.notas_laboratorio = (ord.notas_laboratorio||'').replace(/\s*\|\s*Faltante:\s*(OD|OI)\s*/g, '');
     }
   }
+  // Alerta QC: si envían a sucursal sin revisión (lab)
+  if (nuevoEstado === 'En camino a sucursal') {
+    const { data: chk } = await db.from('ordenes_laboratorio').select('notas_laboratorio, tipo_lente, material').eq('id', id).single();
+    if (chk) {
+      const folioMatch = (chk.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      _alertaQCSinRevision([{ id, folio: folioMatch?.[1] || '', notas: chk.notas_laboratorio || '', paciente: nombre || '', tipo: (chk.tipo_lente || '') + ' ' + (chk.material || '') }], 'lab');
+    }
+  }
+  // Alerta QC: si marcan Listo/Entregado sin revisión (sucursal bypass)
+  if (nuevoEstado === 'Listo para entrega' || nuevoEstado === 'Entregado') {
+    const { data: chk } = await db.from('ordenes_laboratorio').select('notas_laboratorio, tipo_lente, material').eq('id', id).single();
+    if (chk && !(chk.notas_laboratorio || '').includes('Revisado por:')) {
+      const folioMatch = (chk.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      _alertaQCSinRevision([{ id, folio: folioMatch?.[1] || '', notas: chk.notas_laboratorio || '', paciente: nombre || '', tipo: (chk.tipo_lente || '') + ' ' + (chk.material || '') }], 'sucursal');
+    }
+  }
   const { error } = await db.from('ordenes_laboratorio')
     .update(update).eq('id', id);
   if (error) { toast('Error: ' + error.message, true); return; }
@@ -6636,18 +6652,25 @@ async function _entregarGrupoLab(ids, nombre) {
 async function _marcarEntregados(ids, asesor) {
   var ahora = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
   var errores = 0;
+  var _qcEntregaList = [];
 
   for (var i = 0; i < ids.length; i++) {
     var id = ids[i];
     // Leer notas actuales
-    var { data: ord } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', id).single();
+    var { data: ord } = await db.from('ordenes_laboratorio').select('notas_laboratorio, tipo_lente, material, pacientes(nombre, apellidos)').eq('id', id).single();
     var notas = (ord?.notas_laboratorio || '') + ' | Entregó: ' + asesor + ' (' + ahora + ')';
+    // Track para alerta QC
+    var folioM = (ord?.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+    var pacN = ord?.pacientes ? (ord.pacientes.nombre || '') + ' ' + (ord.pacientes.apellidos || '') : '';
+    _qcEntregaList.push({ id: id, folio: folioM?.[1] || '', notas: ord?.notas_laboratorio || '', paciente: pacN.trim(), tipo: (ord?.tipo_lente || '') + ' ' + (ord?.material || '') });
     var { error } = await db.from('ordenes_laboratorio').update({ estado_lab: 'Entregado', notas_laboratorio: notas }).eq('id', id);
     if (error) errores++;
   }
 
   if (errores) toast('⚠ ' + errores + ' orden(es) con error al actualizar', true);
   else toast('✅ ' + ids.length + ' orden(es) entregadas');
+  // Alerta QC: si se entregan sin revisión
+  if (_qcEntregaList.length > 0) _alertaQCSinRevision(_qcEntregaList, 'sucursal');
 
   // ── ENCOLAR ENCUESTA DE OPINIÓN (2h después) ──
   try {
@@ -12526,6 +12549,24 @@ async function moverEstadoLab(orderId, nuevoEstado) {
       update.notas_laboratorio = cleanNotas;
     }
   }
+  // Alerta QC: si envían a sucursal sin revisión (lab)
+  if (nuevoEstado === 'En camino a sucursal') {
+    const { data: chk } = await db.from('ordenes_laboratorio').select('notas_laboratorio, tipo_lente, material, pacientes(nombre, apellidos)').eq('id', orderId).single();
+    if (chk) {
+      const folioMatch = (chk.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      const pacNom = chk.pacientes ? (chk.pacientes.nombre || '') + ' ' + (chk.pacientes.apellidos || '') : '';
+      _alertaQCSinRevision([{ id: orderId, folio: folioMatch?.[1] || '', notas: chk.notas_laboratorio || '', paciente: pacNom.trim(), tipo: (chk.tipo_lente || '') + ' ' + (chk.material || '') }], 'lab');
+    }
+  }
+  // Alerta QC: si marcan Listo/Entregado sin revisión (sucursal bypass)
+  if (nuevoEstado === 'Listo para entrega' || nuevoEstado === 'Entregado') {
+    const { data: chk } = await db.from('ordenes_laboratorio').select('notas_laboratorio, tipo_lente, material, pacientes(nombre, apellidos)').eq('id', orderId).single();
+    if (chk && !(chk.notas_laboratorio || '').includes('Revisado por:')) {
+      const folioMatch = (chk.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      const pacNom = chk.pacientes ? (chk.pacientes.nombre || '') + ' ' + (chk.pacientes.apellidos || '') : '';
+      _alertaQCSinRevision([{ id: orderId, folio: folioMatch?.[1] || '', notas: chk.notas_laboratorio || '', paciente: pacNom.trim(), tipo: (chk.tipo_lente || '') + ' ' + (chk.material || '') }], 'sucursal');
+    }
+  }
   await updateLabOrder(orderId, update);
   toast('✓ ' + nuevoEstado);
   loadLabTablero();
@@ -13192,10 +13233,11 @@ async function enviarLoteASucursal() {
   const ts = new Date().toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
   const user = currentUser?.nombre || 'Sistema';
   let ok = 0, errores = 0;
+  var _qcCheckList = [];
   toast('Enviando ' + total + ' órdenes...');
   for (const id of _pendingEnvioIds) {
     try {
-      const { data: orden } = await db.from('ordenes_laboratorio').select('estado_lab, notas_laboratorio').eq('id', id).single();
+      const { data: orden } = await db.from('ordenes_laboratorio').select('estado_lab, notas_laboratorio, tipo_lente, material, pacientes(nombre, apellidos)').eq('id', id).single();
       if (!orden) { errores++; continue; }
       // Guard: skip orders already in advanced states
       var skipStates = ['En camino a sucursal', 'Recibido en óptica', 'Listo para entrega', 'Entregado'];
@@ -13204,6 +13246,10 @@ async function enviarLoteASucursal() {
       const logEntry = '[' + ts + '] ' + prevEstado + ' → En camino a sucursal (' + user + ')';
       const notas = (orden.notas_laboratorio || '') + ' | Enviado por: ' + entrega + ' | LOG:' + logEntry;
       const p = { estado_lab: 'En camino a sucursal', lab_hora_enviado: now, notas_laboratorio: notas };
+      // Track for QC check
+      const folioMatch = (orden.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
+      const pacNom = orden.pacientes ? (orden.pacientes.nombre || '') + ' ' + (orden.pacientes.apellidos || '') : '';
+      _qcCheckList.push({ id, folio: folioMatch?.[1] || '', notas: orden.notas_laboratorio || '', paciente: pacNom.trim(), tipo: (orden.tipo_lente || '') + ' ' + (orden.material || '') });
       for (let attempt = 0; attempt < 5; attempt++) {
         const res = await db.from('ordenes_laboratorio').update(p).eq('id', id);
         if (!res.error) { ok++; break; }
@@ -13214,12 +13260,48 @@ async function enviarLoteASucursal() {
   }
   if (errores > 0) toast('⚠️ ' + ok + ' enviadas, ' + errores + ' con error', true);
   else toast('✓ ' + ok + ' órdenes enviadas — Entrega: ' + entrega);
+  // Alerta QC si hay envíos sin revisión
+  if (_qcCheckList.length > 0) _alertaQCSinRevision(_qcCheckList, 'lab');
   _pendingEnvioIds = [];
   _pendingEnvioEntrega = '';
   labEnvioSet.clear();
   if (document.getElementById('lp-envio-entrega')) document.getElementById('lp-envio-entrega').value = '';
   loadLabTablero();
   } finally { _actionBusy['enviarLote'] = false; }
+}
+
+// === ALERTA QC: detecta envío/entrega sin revisión de calidad ===
+async function _alertaQCSinRevision(ordenes, etapa) {
+  // ordenes: array de { id, folio, notas, paciente, tipo }
+  // etapa: 'lab' (envío a sucursal) o 'sucursal' (entrega/listo sin QC)
+  const sinQC = ordenes.filter(o => !(o.notas || '').includes('Revisado por:'));
+  if (sinQC.length === 0) return;
+  const label = etapa === 'sucursal' ? 'sin revisión en sucursal' : 'enviados sin revisión del lab';
+  // Toast visual en pantalla
+  const folios = sinQC.map(o => o.folio || '?').join(', ');
+  toast('⚠️ QC faltante en: ' + folios + ' — ' + label, true);
+  // Alerta WA a admin
+  try {
+    const detalles = sinQC.map(o => {
+      const f = o.folio || '?';
+      const p = o.paciente || '';
+      const t = o.tipo || '';
+      return f + ' (' + p + ') ' + t;
+    }).join('\n');
+    const emoji = etapa === 'sucursal' ? '🏪' : '⚠️';
+    const titulo = etapa === 'sucursal'
+      ? 'ALERTA QC SUCURSAL — Pedidos marcados listos/entregados SIN revisión en sucursal'
+      : 'ALERTA QC LAB — Pedidos enviados a sucursal SIN revisión de calidad';
+    const msg = emoji + ' ' + titulo + ':\n\n'
+      + detalles + '\n\n'
+      + 'Usuario: ' + (currentUser?.nombre || '?') + '\n'
+      + 'Hora: ' + new Date().toLocaleString('es-MX', { timeZone:'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:true, day:'2-digit', month:'short' });
+    await fetch('/.netlify/functions/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send_admin', message: msg, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+  } catch(e) { console.error('[QC Alert] WA error:', e); }
 }
 
 async function updateLabOrder(id, payload) {
