@@ -1,5 +1,5 @@
 // /.netlify/functions/clip-payment.js
-// Creates a Clip checkout payment link for portal online payments
+// Creates a Clip checkout payment link for portal + tienda online payments
 // Env vars: CLIP_API_KEY, CLIP_API_SECRET
 
 const CLIP_API_KEY = process.env.CLIP_API_KEY;
@@ -21,20 +21,39 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
-    const { venta_id, folio, amount, paciente_nombre, token_portal } = JSON.parse(event.body || '{}');
+    const { venta_id, folio, amount, paciente_nombre, token_portal, source } = JSON.parse(event.body || '{}');
 
-    if (!venta_id || !folio || !amount || !token_portal) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields: venta_id, folio, amount, token_portal' }) };
+    if (!venta_id || !folio || !amount) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields: venta_id, folio, amount' }) };
     }
 
-    // Validate token_portal against the venta in Supabase
-    const ventaResp = await fetch(
-      `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}&token_portal=eq.${encodeURIComponent(token_portal)}&select=id,folio,saldo`,
-      { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
-    );
-    const ventaData = await ventaResp.json();
-    if (!Array.isArray(ventaData) || ventaData.length === 0) {
-      return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido o venta no encontrada' }) };
+    let ventaSaldo = Number(amount);
+
+    if (source === 'tienda') {
+      // Tienda web: validate venta exists by id (no token_portal required)
+      const ventaResp = await fetch(
+        `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}&canal_venta=eq.Tienda%20Web&select=id,folio,total,saldo`,
+        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+      );
+      const ventaData = await ventaResp.json();
+      if (!Array.isArray(ventaData) || ventaData.length === 0) {
+        return { statusCode: 404, headers, body: JSON.stringify({ error: 'Venta no encontrada' }) };
+      }
+      ventaSaldo = Number(ventaData[0].saldo) || Number(ventaData[0].total) || 0;
+    } else {
+      // Portal: require token_portal
+      if (!token_portal) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing token_portal' }) };
+      }
+      const ventaResp = await fetch(
+        `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}&token_portal=eq.${encodeURIComponent(token_portal)}&select=id,folio,saldo`,
+        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+      );
+      const ventaData = await ventaResp.json();
+      if (!Array.isArray(ventaData) || ventaData.length === 0) {
+        return { statusCode: 401, headers, body: JSON.stringify({ error: 'Token inválido o venta no encontrada' }) };
+      }
+      ventaSaldo = Number(ventaData[0].saldo) || 0;
     }
 
     if (amount < 1) {
@@ -42,13 +61,18 @@ exports.handler = async (event) => {
     }
 
     // Validate amount does not exceed venta saldo
-    const ventaSaldo = Number(ventaData[0].saldo) || 0;
     if (amount > ventaSaldo + 0.01) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: `Monto ($${amount}) excede el saldo pendiente ($${ventaSaldo.toFixed(2)})` }) };
     }
 
-    // Build redirect URLs — return to portal after payment
-    const portalUrl = token_portal ? `${SITE_URL}/portal.html?t=${token_portal}` : SITE_URL;
+    // Build redirect URLs
+    let redirectUrl;
+    if (source === 'tienda') {
+      redirectUrl = `${SITE_URL}/tienda.html`;
+    } else {
+      redirectUrl = token_portal ? `${SITE_URL}/portal.html?t=${token_portal}` : SITE_URL;
+    }
+    const portalUrl = redirectUrl;
 
     const clipBody = {
       amount: Number(amount),

@@ -28,6 +28,7 @@
 <!-- Meta Pixel — Replace 26143384325317414 with your Pixel ID -->
 <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');</script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&display=swap" rel="stylesheet">
 <script type="application/ld+json">
@@ -210,7 +211,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(7,11,20,.8);backdrop-filte
 .ccl{background:none;border:none;font-size:16px;cursor:pointer;color:var(--t3);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:all .2s}.ccl:hover{background:var(--s2);color:var(--tx)}
 .cbdy{flex:1;overflow-y:auto;padding:14px 20px}
 .cit{padding:12px 0;border-bottom:1px solid var(--bd)}.cit-t{display:flex;justify-content:space-between;align-items:center}.cit-n{font-size:12px;font-weight:500;flex:1;color:var(--tx)}.cit-p{font-weight:600;margin:0 8px;font-size:12px;color:var(--ac)}.cit-x{background:none;border:none;cursor:pointer;font-size:12px;color:var(--t3)}.cit-x:hover{color:#f87171}
-.cftr{padding:18px 20px;border-top:1px solid var(--bd)}.ctot{display:flex;justify-content:space-between;font-size:15px;font-weight:600;margin-bottom:14px}.ctot span:last-child{color:var(--ac)}
+.cftr{padding:18px 20px;border-top:1px solid var(--bd);overflow-y:auto;max-height:70vh}.ctot{display:flex;justify-content:space-between;font-size:15px;font-weight:600;margin-bottom:14px}.ctot span:last-child{color:var(--ac)}
 .cf{display:flex;flex-direction:column;gap:8px}.cf label{font-size:9px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.08em}.cf input,.cf select{width:100%;padding:10px 12px;background:var(--bg3);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx);font-size:12px;font-family:var(--ft);outline:none}.cf input:focus,.cf select:focus{border-color:var(--ac);box-shadow:0 0 12px rgba(226,198,166,.1)}
 .btnc{width:100%;padding:12px;background:linear-gradient(135deg,var(--ac),#c4a47e);color:#fff;border:none;border-radius:var(--rs);font-size:13px;font-weight:600;font-family:var(--ft);cursor:pointer;margin-top:6px;transition:all .3s;box-shadow:0 4px 16px rgba(226,198,166,.25)}.btnc:hover{box-shadow:0 6px 24px rgba(226,198,166,.35)}.btnc:disabled{opacity:.4}
 .mov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(12px)}.mov.open{display:flex}
@@ -608,6 +609,13 @@ footer .fi{font-size:11px;color:var(--t3)}
 
 /* AUTH */
 .auth-btn{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);padding:6px 14px;border-radius:20px;border:1px solid var(--glass-border);transition:all .3s;font-weight:500;cursor:pointer;background:none;font-family:var(--ft)}.auth-btn:hover{border-color:var(--ac);color:var(--ac)}
+.auth-avatar{width:28px;height:28px;border-radius:50%;border:1px solid var(--glass-border);cursor:pointer;transition:border-color .3s;object-fit:cover}.auth-avatar:hover{border-color:var(--ac)}
+.auth-menu{position:absolute;top:44px;right:0;background:var(--bg2);border:1px solid var(--glass-border);border-radius:var(--rs);padding:6px 0;min-width:180px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.5);display:none}
+.auth-menu.open{display:block}
+.auth-menu-user{padding:10px 14px;border-bottom:1px solid var(--glass-border);margin-bottom:4px}
+.auth-menu-name{font-size:12px;font-weight:600;color:var(--tx)}
+.auth-menu-email{font-size:10px;color:var(--t3);word-break:break-all}
+.auth-menu-item{padding:8px 14px;font-size:12px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .2s}.auth-menu-item:hover{background:var(--glass);color:var(--ac)}
 
 /* ORDER TRACKING */
 .orders-btn{font-size:11px;color:var(--t2);text-decoration:none;padding:6px 14px;border-radius:20px;border:1px solid var(--glass-border);transition:all .3s;font-weight:500;cursor:pointer;background:none;font-family:var(--ft)}.orders-btn:hover{border-color:var(--ac);color:var(--ac)}
@@ -623,6 +631,42 @@ footer .fi{font-size:11px;color:var(--t3)}
 .ord-status--listo{background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2)}
 .ord-status--entregado{background:rgba(226,198,166,.1);color:var(--ac);border:1px solid rgba(226,198,166,.2)}
 .ord-empty{text-align:center;color:var(--t3);font-size:12px;padding:20px 0}
+/* ACCOUNT TABS */
+.acct-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--glass-border)}
+.acct-tab{flex:1;padding:8px 4px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}.acct-tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.acct-tab:hover{color:var(--t2)}
+.acct-panel{display:none}.acct-panel.active{display:block}
+.acct-profile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 0}
+.acct-profile img{width:56px;height:56px;border-radius:50%;border:2px solid var(--ac)}
+.acct-profile-name{font-size:14px;font-weight:600;color:var(--tx)}
+.acct-profile-email{font-size:11px;color:var(--t3)}
+.acct-profile-phone{font-size:11px;color:var(--t2);margin-top:2px}
+.sub-card{background:var(--glass);border:1px solid var(--glass-border);border-radius:var(--rs);padding:14px;margin-bottom:8px}
+.sub-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sub-card-name{font-size:13px;font-weight:600;color:var(--tx)}
+.sub-badge{padding:3px 8px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase}
+.sub-badge--active{background:rgba(74,222,128,.1);color:#4ade80;border:1px solid rgba(74,222,128,.2)}
+.sub-badge--pending{background:rgba(250,204,21,.1);color:#facc15;border:1px solid rgba(250,204,21,.2)}
+.sub-info-row{font-size:11px;color:var(--t2);margin-bottom:2px}
+.sub-info-row span{color:var(--ac);font-weight:500}
+.sub-empty{text-align:center;color:var(--t3);font-size:12px;padding:16px 0}
+/* SUBSCRIPTION TOGGLE IN CHECKOUT */
+.sub-toggle{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:var(--rs);border:1px solid var(--glass-border);background:var(--glass);margin-top:6px;cursor:pointer;transition:all .3s}
+.sub-toggle.active{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.06)}
+.sub-toggle-sw{width:36px;height:20px;border-radius:10px;background:var(--s3);position:relative;transition:background .3s;flex-shrink:0}
+.sub-toggle.active .sub-toggle-sw{background:rgba(74,222,128,.5)}
+.sub-toggle-sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .3s}
+.sub-toggle.active .sub-toggle-sw::after{transform:translateX(16px)}
+.sub-toggle-info{flex:1}
+.sub-toggle-title{font-size:11px;font-weight:600;color:var(--tx)}
+.sub-toggle-desc{font-size:10px;color:var(--t3);line-height:1.3;margin-top:1px}
+.sub-discount-badge{display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(74,222,128,.15);color:#4ade80;font-size:10px;font-weight:700;margin-left:6px}
+.sub-freq{display:none;margin-top:6px;padding:8px 12px;border-radius:var(--rs);border:1px solid var(--glass-border);background:var(--glass)}
+.sub-toggle.active+.sub-freq{display:block}
+.sub-freq label{font-size:10px;color:var(--t3);display:block;margin-bottom:4px}
+.sub-freq select{width:100%;padding:6px 10px;border-radius:var(--rs);border:1px solid var(--glass-border);background:var(--bg2);color:var(--tx);font-size:12px;font-family:var(--ft)}
+.sub-savings{font-size:10px;color:#4ade80;margin-top:4px;font-weight:500}
+.cart-sub-badge{display:inline-block;padding:1px 6px;border-radius:6px;background:rgba(74,222,128,.15);color:#4ade80;font-size:9px;font-weight:600;margin-left:4px}
 
 /* FAQ */
 .faq{max-width:700px;margin:0 auto;padding:48px clamp(16px,4vw,32px);position:relative;z-index:1}
@@ -741,7 +785,8 @@ footer .fi{font-size:11px;color:var(--t3)}
 <div class="particles" id="particles-bg" aria-hidden="true"></div>
 
 <nav><div class="logo">Car & Era</div><div class="nr" style="position:relative">
-<button class="auth-btn" onclick="showOrders()">&#x1f4e6; Mis pedidos</button>
+<div id="nav-auth-guest"><button class="auth-btn" onclick="googleSignIn()">&#x1f464; Iniciar sesi&oacute;n</button></div>
+<div id="nav-auth-user" style="display:none;position:relative"><img class="auth-avatar" id="nav-avatar" src="" alt="perfil" onclick="toggleAuthMenu()"><div class="auth-menu" id="auth-menu"><div class="auth-menu-user"><div class="auth-menu-name" id="menu-name"></div><div class="auth-menu-email" id="menu-email"></div></div><div class="auth-menu-item" onclick="openAccount('pedidos')">&#x1f4e6; Mis pedidos</div><div class="auth-menu-item" onclick="openAccount('suscripciones')">&#x1f504; Suscripciones</div><div class="auth-menu-item" onclick="openAccount('perfil')">&#x1f464; Mi perfil</div><div class="auth-menu-item" onclick="googleSignOut()">&#x274c; Cerrar sesi&oacute;n</div></div></div>
 <a href="https://wa.me/5216563110094" target="_blank" class="nl">WhatsApp</a><button class="cb" onclick="tC()">&#x1f6d2;<div class="cbg" id="cart-badge">0</div></button></div></nav>
 
 <!-- HERO -->
@@ -916,7 +961,7 @@ footer .fi{font-size:11px;color:var(--t3)}
 <div class="cart-steps" id="cart-steps" style="display:none"><div class="cart-step active" onclick="goCartStep(1)"><span class="cart-step-num">1</span>Productos</div><div class="cart-step" onclick="goCartStep(2)"><span class="cart-step-num">2</span>Datos y pago</div></div>
 <div class="cbdy" id="cbd"><div class="empty">Carrito vac&iacute;o</div></div><div class="cftr" id="cft" style="display:none">
 <div class="cf-step active" id="cart-step1"><div class="ctot"><span>Total</span><span id="ctp">$0</span></div><button class="btnc" onclick="goCartStep(2)">Continuar</button></div>
-<div class="cf-step" id="cart-step2"><button class="cart-back" onclick="goCartStep(1)">&larr; Volver a productos</button><div class="ctot"><span>Total</span><span id="ctp2">$0</span></div><div class="cf"><div><label>Nombre</label><input type="text" id="cn" placeholder="Tu nombre"></div><div><label>WhatsApp</label><input type="tel" id="ct" placeholder="656 123 4567"></div><div><label>Sucursal</label><select id="cs"><option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option></select></div><div><label>Notas</label><input type="text" id="cno" placeholder="Opcional"></div><div><label>Forma de pago</label><select id="cpay"><option value="sucursal">Pago en sucursal</option><option value="clip">Pagar en l&iacute;nea (tarjeta)</option><option value="transfer">Transferencia BBVA</option></select></div><div id="transfer-info" style="display:none;background:var(--s2);border-radius:var(--rs);padding:10px;margin-top:4px;font-size:11px;color:var(--t2);line-height:1.6"><strong style="color:var(--ac)">Transferencia BBVA (sin comisi&oacute;n):</strong><br>Cuenta: 0485220280<br>CLABE: 012164004852202892<br>Benef: Ivonne Y. Alvidrez Flores<br><em>Env&iacute;a tu comprobante por WhatsApp</em></div><button class="btnc" id="cbk" onclick="chk()">Confirmar pedido</button></div></div>
+<div class="cf-step" id="cart-step2"><button class="cart-back" onclick="goCartStep(1)">&larr; Volver a productos</button><div class="ctot"><span>Total</span><span id="ctp2">$0</span></div><div class="cf"><div><label>Nombre</label><input type="text" id="cn" placeholder="Tu nombre"></div><div><label>WhatsApp</label><input type="tel" id="ct" placeholder="656 123 4567"></div><div><label>Sucursal</label><select id="cs"><option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option></select></div><div><label>Notas</label><input type="text" id="cno" placeholder="Opcional"></div><div><label>Forma de pago</label><select id="cpay"><option value="sucursal">Pago en sucursal</option><option value="clip">Pagar en l&iacute;nea (tarjeta)</option><option value="transfer">Transferencia BBVA</option></select></div><div id="transfer-info" style="display:none;background:var(--s2);border-radius:var(--rs);padding:10px;margin-top:4px;font-size:11px;color:var(--t2);line-height:1.6"><strong style="color:var(--ac)">Transferencia BBVA (sin comisi&oacute;n):</strong><br>Cuenta: 0485220280<br>CLABE: 012164004852202892<br>Benef: Ivonne Y. Alvidrez Flores<br><em>Env&iacute;a tu comprobante por WhatsApp</em></div><div class="sub-toggle" id="sub-toggle" onclick="toggleSub()"><div class="sub-toggle-sw"></div><div class="sub-toggle-info"><div class="sub-toggle-title">&#x1f504; Suscripci&oacute;n de recompra autom&aacute;tica<span class="sub-discount-badge">-10%</span></div><div class="sub-toggle-desc">Recibe tus lentes peri&oacute;dicamente sin tener que volver a pedir. Cobro autom&aacute;tico con tarjeta. Cancela cuando quieras por WhatsApp.</div></div></div><div class="sub-freq" id="sub-freq"><label>Frecuencia de recompra</label><select id="sub-freq-sel" onchange="updateSubSavings()"><option value="30">Mensual (cada 30 d&iacute;as)</option><option value="60" selected>Bimestral (cada 60 d&iacute;as)</option><option value="90">Trimestral (cada 90 d&iacute;as)</option></select><div class="sub-savings" id="sub-savings"></div></div><button class="btnc" id="cbk" onclick="chk()">Confirmar pedido</button></div></div>
 </div></div></div>
 <div class="mov" id="sov"><div class="mbox" style="text-align:center"><div style="font-size:32px;margin-bottom:8px">&#x2705;</div><h2>Pedido recibido</h2><div id="sfo" style="display:inline-block;margin:8px 0;padding:6px 16px;background:var(--s2);border-radius:var(--rs);font-weight:600;font-size:14px;color:var(--ac)">ONL-0001</div><p style="font-size:12px;color:var(--t2);margin-bottom:12px">Te contactamos por WhatsApp.</p><div style="display:flex;gap:8px;justify-content:center"><a id="swa" href="#" target="_blank" style="padding:8px 16px;border-radius:var(--rs);background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:#25d366;text-decoration:none;font-size:12px;font-weight:600">WhatsApp</a><button onclick="document.getElementById('sov').classList.remove('open')" style="padding:8px 16px;border-radius:var(--rs);background:var(--s2);border:1px solid var(--bd);color:var(--tx);cursor:pointer;font-size:12px;font-family:var(--ft)">Cerrar</button></div><div id="sub-success" style="display:none"></div></div></div>
 
@@ -1223,24 +1268,31 @@ function goCartStep(n){
 var s1=document.getElementById('cart-step1'),s2=document.getElementById('cart-step2');
 var steps=document.querySelectorAll('.cart-step');
 steps.forEach(function(s,i){s.classList.toggle('active',i===n-1);s.classList.toggle('done',i<n-1)});
-s1.classList.toggle('active',n===1);s2.classList.toggle('active',n===2)}
+s1.classList.toggle('active',n===1);s2.classList.toggle('active',n===2);
+if(n===2&&_gUser){var cn=document.getElementById('cn'),ct=document.getElementById('ct');if(cn&&!cn.value&&_gUser.name)cn.value=_gUser.name;if(ct&&!ct.value&&_gUser.phone)ct.value=_gUser.phone}}
 async function chk(){var n=document.getElementById('cn').value.trim(),t=document.getElementById('ct').value.trim().replace(/[\s\-\(\)]/g,''),s=document.getElementById('cs').value,nt=document.getElementById('cno').value.trim();if(!n){tt('Ingresa tu nombre');return}if(!t||t.length<7){tt('Ingresa teléfono');return}if(!cart.length)return;
-var btn=document.getElementById('cbk');btn.disabled=true;btn.textContent='...';var tot=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var desc=cart.map(function(c){return c.nombre+' x'+c.qty+(c.grad?' ['+c.grad+']':'')}).join(', ');
+var btn=document.getElementById('cbk');btn.disabled=true;btn.textContent='...';var totBruto=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var subDisc=_subActive?Math.round(totBruto*0.10):0;var tot=totBruto-subDisc;var subFreq=_subActive?document.getElementById('sub-freq-sel').value:'';var desc=cart.map(function(c){return c.nombre+' x'+c.qty+(c.grad?' ['+c.grad+']':'')}).join(', ');
 var payMethod=document.getElementById('cpay').value;
-try{var r=await fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'ventas',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,sucursal:'Online',folio:'ONL-WEB-'+Date.now().toString(36).toUpperCase(),total:tot,monto_pagado:0,estado:'Apartado',canal_venta:'Tienda Web',sucursal_entrega:s,asesor:'Tienda Online',notas:'PEDIDO WEB\nCliente: '+n+'\nTel: '+t+'\nPago: '+(payMethod==='clip'?'En línea (Clip)':payMethod==='transfer'?'Transferencia BBVA':'En sucursal')+'\nProductos: '+desc+(nt?'\nNotas: '+nt:''),created_at:new Date().toISOString()},options:{select:true}})});
+var gEmail=(_gUser&&_gUser.email)?_gUser.email:'';
+if(_gUser&&!_gUser.phone&&t){_gUser.phone=t;sessionStorage.setItem('ce_guser',JSON.stringify(_gUser));if(_gUser.email)localStorage.setItem('ce_phone_'+_gUser.email,t)}
+var subNote=_subActive?'\n🔄 SUSCRIPCIÓN: cada '+subFreq+' días (10% desc: -$'+subDisc.toLocaleString('es-MX')+')':'';
+try{var r=await fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'ventas',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,sucursal:'Online',folio:'ONL-WEB-'+Date.now().toString(36).toUpperCase(),total:tot,monto_pagado:0,estado:'Apartado',canal_venta:'Tienda Web',sucursal_entrega:s,asesor:'Tienda Online',notas:'PEDIDO WEB\nCliente: '+n+'\nTel: '+t+(gEmail?'\nEmail: '+gEmail:'')+'\nPago: '+(payMethod==='clip'?'En línea (Clip)':payMethod==='transfer'?'Transferencia BBVA':'En sucursal')+subNote+'\nProductos: '+desc+(nt?'\nNotas: '+nt:''),created_at:new Date().toISOString()},options:{select:true}})});
 var rs=await r.json(),fo=(rs&&rs[0])?rs[0].folio:'ONL-WEB',vid=(rs&&rs[0])?rs[0].id:null;
 saveOrder(fo,tot,s,cart.map(function(c){return c.nombre+' x'+c.qty}));
 if(typeof gtag==='function')gtag('event','purchase',{transaction_id:fo,value:tot,currency:'MXN',items:cart.map(function(c){return{item_id:c.key||'',item_name:c.nombre,price:c.precio,quantity:c.qty}})});
 if(typeof fbq==='function')fbq('track','Purchase',{value:tot,currency:'MXN',content_ids:cart.map(function(c){return c.key||c.nombre}),content_type:'product'});
 var payEmoji=payMethod==='clip'?'💳 Pago en línea':payMethod==='transfer'?'🏦 Transferencia':'🏪 Pago en sucursal';
-fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:WA,text:'🛒 *PEDIDO WEB*\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n'+payEmoji+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});
+var subWA=_subActive?'\n🔄 *SUSCRIPCIÓN* cada '+subFreq+' días (10% desc: -$'+subDisc.toLocaleString('es-MX')+')':'';
+fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:WA,text:'🛒 *PEDIDO WEB*\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n'+payEmoji+subWA+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*'+(subDisc>0?' (antes $'+totBruto.toLocaleString('es-MX')+')':'')+'\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});
 if(payMethod==='clip'&&vid){btn.textContent='Generando link de pago...';
-try{var cr=await fetch('/.netlify/functions/clip-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venta_id:vid,folio:fo,amount:tot,paciente_nombre:n})});
-var cd=await cr.json();if(cd.payment_url){window.open(cd.payment_url,'_blank')}}catch(e){}}
+try{var cr=await fetch('/.netlify/functions/clip-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venta_id:vid,folio:fo,amount:tot,paciente_nombre:n,source:'tienda'})});
+var cd=await cr.json();if(cd.payment_url){window.open(cd.payment_url,'_blank')}else{tt('Error al generar link de pago. Intenta otro método.')}}catch(clipErr){tt('Error al conectar con el procesador de pago. Intenta de nuevo.')}}
 document.getElementById('sfo').textContent=fo;
 document.getElementById('swa').href='https://wa.me/'+WA+'?text='+encodeURIComponent('Pedido '+fo);
 if(payMethod==='transfer'){document.getElementById('sov').querySelector('.mbox p').innerHTML='Transfiere <strong>$'+tot.toLocaleString('es-MX')+'</strong> a BBVA Cuenta <strong>0485220280</strong><br>CLABE: 012164004852202892<br>Envía tu comprobante por WhatsApp.'}
-document.getElementById('sov').classList.add('open');cart=[];saveCart();uB();tC()}catch(e){tt('Error')}btn.disabled=false;btn.textContent='Confirmar pedido'}
+var subSuccEl=document.getElementById('sub-success');
+if(_subActive&&subSuccEl){subSuccEl.style.display='block';subSuccEl.innerHTML='<div style="margin-top:12px;padding:10px 14px;border-radius:var(--rs);border:1px solid rgba(74,222,128,.2);background:rgba(74,222,128,.06)"><div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:4px">🔄 Suscripción solicitada</div><div style="font-size:11px;color:var(--t2);line-height:1.5">Recompra cada '+subFreq+' días con 10% de descuento.<br>Te contactaremos por WhatsApp para activar el cobro automático con tarjeta.</div></div>'}else if(subSuccEl){subSuccEl.style.display='none'}
+document.getElementById('sov').classList.add('open');cart=[];saveCart();uB();tC();_subActive=false;var st=document.getElementById('sub-toggle');if(st)st.classList.remove('active');document.getElementById('sub-freq').style.display='none'}catch(e){tt('Error al procesar pedido')}btn.disabled=false;btn.textContent='Confirmar pedido'}
 // Toggle transfer info visibility
 document.addEventListener('change',function(e){if(e.target.id==='cpay'){var ti=document.getElementById('transfer-info');if(ti)ti.style.display=e.target.value==='transfer'?'':'none'}});
 function waQ(n){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, me interesa: '+decodeURIComponent(n)),'_blank')}
@@ -2137,39 +2189,180 @@ orders.unshift({folio:folio,total:total,sucursal:sucursal,items:items,date:new D
 if(orders.length>10)orders=orders.slice(0,10);
 localStorage.setItem('ce_orders',JSON.stringify(orders));
 }
-async function showOrders(){
-var orders=JSON.parse(localStorage.getItem('ce_orders')||'[]');
-var e=document.createElement('div');e.className='mov open';e.id='om';
-e.onclick=function(ev){if(ev.target===e)e.remove()};
-var b=document.createElement('div');b.className='mbox';b.style.position='relative';
-b.innerHTML='<button class="det-close" onclick="document.getElementById(\'om\').remove()">&#x2715;</button>'+
-'<div class="det-hdr" style="margin-bottom:4px"><div class="det-marca">Seguimiento</div><h2 class="det-name">Mis pedidos</h2></div>'+
-(orders.length?'<div class="ord-list" id="ord-list">'+orders.map(function(o){
-var sc=o.status==='Apartado'?'apartado':o.status==='Confirmado'?'confirmado':o.status==='Listo para recoger'?'listo':'entregado';
-var d=new Date(o.date);var df=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-return'<div class="ord-card"><div class="ord-info"><div class="ord-folio">'+o.folio+'</div><div class="ord-date">'+df+' &middot; '+o.sucursal+'</div><div class="ord-total">$'+o.total.toLocaleString('es-MX')+'</div></div><span class="ord-status ord-status--'+sc+'">'+o.status+'</span></div>'
-}).join('')+'</div>':'<div class="ord-empty">No tienes pedidos recientes.<br>Tus pedidos aparecer&aacute;n aqu&iacute; despu&eacute;s de comprar.</div>')+
-'<div style="text-align:center;margin-top:14px"><a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, quiero saber el estado de mi pedido')+'" target="_blank" style="color:var(--ac);font-size:12px;font-weight:500;text-decoration:none">Consultar estado por WhatsApp &rarr;</a></div>';
-e.appendChild(b);document.body.appendChild(e);
-// Try to refresh status from DB
-if(orders.length){
-var folios=orders.map(function(o){return o.folio});
-try{var r=await fetch(SU+'/rest/v1/ventas?folio=in.('+folios.map(function(f){return'"'+f+'"'}).join(',')+')&select=folio,estado',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
-var data=await r.json();if(Array.isArray(data)){
-var map={};data.forEach(function(v){map[v.folio]=v.estado});
-orders.forEach(function(o){if(map[o.folio]){
-var st=map[o.folio];if(st==='Apartado'||st==='Pendiente')o.status='Apartado';
-else if(st==='Liquidada'||st==='Completada'||st==='Entregada')o.status='Entregado';
-else if(st==='Listo')o.status='Listo para recoger';
-else o.status=st}});
-localStorage.setItem('ce_orders',JSON.stringify(orders));
-var list=document.getElementById('ord-list');
-if(list){list.innerHTML=orders.map(function(o){
-var sc=o.status==='Apartado'?'apartado':o.status==='Confirmado'?'confirmado':o.status==='Listo para recoger'?'listo':'entregado';
-var d=new Date(o.date);var df=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-return'<div class="ord-card"><div class="ord-info"><div class="ord-folio">'+o.folio+'</div><div class="ord-date">'+df+' &middot; '+o.sucursal+'</div><div class="ord-total">$'+o.total.toLocaleString('es-MX')+'</div></div><span class="ord-status ord-status--'+sc+'">'+o.status+'</span></div>'
-}).join('')}}}catch(e){}}
+function _ordStatusClass(st){return st==='Apartado'?'apartado':st==='Confirmado'?'confirmado':st==='Listo para recoger'?'listo':'entregado'}
+function _ordRenderList(orders){
+return orders.map(function(o){
+var sc=_ordStatusClass(o.status);
+var d=new Date(o.date||o.created_at);var df=d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+return'<div class="ord-card"><div class="ord-info"><div class="ord-folio">'+(o.folio||'—')+'</div><div class="ord-date">'+df+(o.sucursal?' · '+o.sucursal:'')+(o.sucursal_entrega?' → '+o.sucursal_entrega:'')+'</div><div class="ord-total">$'+(o.total||0).toLocaleString('es-MX')+(o.saldo>0?' <span style="color:#facc15;font-size:10px">(Saldo: $'+o.saldo.toLocaleString('es-MX')+')</span>':'')+'</div></div><span class="ord-status ord-status--'+sc+'">'+(o.status||'Apartado')+'</span></div>'
+}).join('')}
+async function _loadOrdersFromDB(){
+if(!_gUser)return[];
+var phone=(_gUser.phone||'').replace(/[\s\-\(\)]/g,'');
+var email=_gUser.email||'';
+// Search by phone or email in ventas notas (which contain "Tel: xxx")
+var queries=[];
+if(phone&&phone.length>=7){
+queries.push(fetch(SU+'/rest/v1/ventas?notas=ilike.*'+encodeURIComponent(phone.slice(-10))+'*&canal_venta=eq.Tienda%20Web&select=folio,total,monto_pagado,estado,sucursal,sucursal_entrega,created_at,notas&order=created_at.desc&limit=20',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}}))}
+if(email){
+queries.push(fetch(SU+'/rest/v1/ventas?notas=ilike.*'+encodeURIComponent(email)+'*&canal_venta=eq.Tienda%20Web&select=folio,total,monto_pagado,estado,sucursal,sucursal_entrega,created_at,notas&order=created_at.desc&limit=20',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}}))}
+if(!queries.length)return[];
+try{
+var results=await Promise.all(queries);
+var all=[];
+for(var i=0;i<results.length;i++){var d=await results[i].json();if(Array.isArray(d))all=all.concat(d)}
+// Dedup by folio
+var seen={},unique=[];
+all.forEach(function(v){if(!seen[v.folio]){seen[v.folio]=true;
+unique.push({folio:v.folio,total:v.total||0,saldo:Math.max(0,(v.total||0)-(v.monto_pagado||0)),status:v.estado==='Liquidada'||v.estado==='Completada'||v.estado==='Entregada'?'Entregado':v.estado==='Listo'?'Listo para recoger':v.estado||'Apartado',sucursal:v.sucursal,sucursal_entrega:v.sucursal_entrega,date:v.created_at})}});
+return unique}catch(e){return[]}
 }
+
+// === GOOGLE SIGN-IN ===
+var _gUser=JSON.parse(sessionStorage.getItem('ce_guser')||'null');
+var GOOGLE_CLIENT_ID='906574340703715-placeholder.apps.googleusercontent.com';
+function _decodeJWT(token){try{var b=token.split('.')[1];var s=atob(b.replace(/-/g,'+').replace(/_/g,'/'));return JSON.parse(s)}catch(e){return null}}
+function _onGoogleSignIn(resp){
+if(!resp||!resp.credential)return;
+var payload=_decodeJWT(resp.credential);
+if(!payload)return;
+_gUser={name:payload.name||'',email:payload.email||'',picture:payload.picture||'',phone:''};
+// Check if we have a saved phone for this email
+var saved=localStorage.getItem('ce_phone_'+_gUser.email);
+if(saved)_gUser.phone=saved;
+sessionStorage.setItem('ce_guser',JSON.stringify(_gUser));
+_updateAuthUI();
+tt('Bienvenido, '+(_gUser.name||'').split(' ')[0]+'!');
+}
+function googleSignIn(){
+if(typeof google==='undefined'||!google.accounts){tt('Cargando Google...');setTimeout(googleSignIn,500);return}
+google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,auto_select:true});
+google.accounts.id.prompt(function(notification){
+if(notification.isNotDisplayed()||notification.isSkippedMoment()){
+// Fallback: render button in a temporary container
+var tmp=document.createElement('div');tmp.id='g-signin-tmp';
+tmp.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:var(--bg2);padding:24px;border-radius:var(--r);border:1px solid var(--glass-border);text-align:center';
+tmp.innerHTML='<div style="color:var(--tx);font-size:13px;margin-bottom:12px">Inicia sesión con Google</div><div id="g-btn-wrap"></div><button onclick="this.parentElement.remove()" style="margin-top:12px;padding:6px 16px;border-radius:var(--rs);background:var(--glass);border:1px solid var(--bd);color:var(--t2);cursor:pointer;font-size:11px;font-family:var(--ft)">Cancelar</button>';
+document.body.appendChild(tmp);
+google.accounts.id.renderButton(document.getElementById('g-btn-wrap'),{theme:'filled_black',size:'large',text:'signin_with',shape:'pill',width:220});
+}});
+}
+function googleSignOut(){
+_gUser=null;sessionStorage.removeItem('ce_guser');_updateAuthUI();
+if(typeof google!=='undefined'&&google.accounts)google.accounts.id.disableAutoSelect();
+document.getElementById('auth-menu').classList.remove('open');
+tt('Sesión cerrada');
+}
+function _updateAuthUI(){
+var guest=document.getElementById('nav-auth-guest'),user=document.getElementById('nav-auth-user');
+if(_gUser){
+guest.style.display='none';user.style.display='block';
+document.getElementById('nav-avatar').src=_gUser.picture||'';
+document.getElementById('menu-name').textContent=_gUser.name||'';
+document.getElementById('menu-email').textContent=_gUser.email||'';
+}else{guest.style.display='';user.style.display='none'}
+}
+function toggleAuthMenu(){var m=document.getElementById('auth-menu');m.classList.toggle('open')}
+document.addEventListener('click',function(e){var m=document.getElementById('auth-menu');if(m&&m.classList.contains('open')&&!e.target.closest('#nav-auth-user'))m.classList.remove('open')});
+
+// === ACCOUNT MODAL ===
+function openAccount(tab){
+document.getElementById('auth-menu').classList.remove('open');
+if(!_gUser){googleSignIn();return}
+var existing=document.getElementById('acct-modal');if(existing)existing.remove();
+var e=document.createElement('div');e.className='mov open';e.id='acct-modal';
+e.onclick=function(ev){if(ev.target===e)e.remove()};
+var b=document.createElement('div');b.className='mbox';b.style.position='relative';b.style.maxWidth='420px';
+b.innerHTML='<button class="det-close" onclick="document.getElementById(\'acct-modal\').remove()">&#x2715;</button>'+
+'<div class="acct-tabs"><div class="acct-tab" data-tab="pedidos" onclick="_acctTab(\'pedidos\')">Pedidos</div><div class="acct-tab" data-tab="suscripciones" onclick="_acctTab(\'suscripciones\')">Suscripciones</div><div class="acct-tab" data-tab="perfil" onclick="_acctTab(\'perfil\')">Perfil</div></div>'+
+'<div class="acct-panel" data-panel="pedidos" id="acct-pedidos"><div style="text-align:center;color:var(--t3);font-size:12px;padding:16px 0">Cargando pedidos...</div></div>'+
+'<div class="acct-panel" data-panel="suscripciones" id="acct-subs"><div style="text-align:center;color:var(--t3);font-size:12px;padding:16px 0">Cargando suscripciones...</div></div>'+
+'<div class="acct-panel" data-panel="perfil" id="acct-perfil"></div>'+
+'<div style="text-align:center;margin-top:14px"><a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, necesito ayuda con mi cuenta')+'" target="_blank" style="color:var(--ac);font-size:11px;font-weight:500;text-decoration:none">¿Necesitas ayuda? WhatsApp →</a></div>';
+e.appendChild(b);document.body.appendChild(e);
+_acctTab(tab||'pedidos');
+_loadAccountData();
+}
+function _acctTab(tab){
+document.querySelectorAll('#acct-modal .acct-tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===tab)});
+document.querySelectorAll('#acct-modal .acct-panel').forEach(function(p){p.classList.toggle('active',p.dataset.panel===tab)});
+}
+async function _loadAccountData(){
+// Load profile
+var profEl=document.getElementById('acct-perfil');
+if(profEl&&_gUser){
+profEl.innerHTML='<div class="acct-profile">'+
+(_gUser.picture?'<img src="'+_gUser.picture+'" alt="foto">':'')+
+'<div class="acct-profile-name">'+(_gUser.name||'')+'</div>'+
+'<div class="acct-profile-email">'+(_gUser.email||'')+'</div>'+
+'<div style="margin-top:8px;width:100%"><label style="font-size:11px;color:var(--t3);display:block;margin-bottom:4px">Teléfono (para buscar pedidos)</label><div style="display:flex;gap:6px"><input type="tel" id="acct-phone" value="'+(_gUser.phone||'')+'" placeholder="656 123 4567" style="flex:1;padding:8px 12px;border-radius:var(--rs);border:1px solid var(--glass-border);background:var(--glass);color:var(--tx);font-size:12px;font-family:var(--ft)"><button onclick="_savePhone()" style="padding:8px 14px;border-radius:var(--rs);background:linear-gradient(135deg,var(--ac),var(--ac2));color:#fff;border:none;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Guardar</button></div></div>'+
+'</div>'}
+// Load orders from DB
+var ordEl=document.getElementById('acct-pedidos');
+if(ordEl){
+var dbOrders=await _loadOrdersFromDB();
+// Also merge localStorage orders
+var localOrders=JSON.parse(localStorage.getItem('ce_orders')||'[]');
+var seen={};var allOrders=[];
+dbOrders.forEach(function(o){if(!seen[o.folio]){seen[o.folio]=true;allOrders.push(o)}});
+localOrders.forEach(function(o){if(!seen[o.folio]){seen[o.folio]=true;allOrders.push(o)}});
+ordEl.innerHTML=(allOrders.length?'<div class="ord-list">'+_ordRenderList(allOrders)+'</div>':'<div class="ord-empty">No tienes pedidos recientes.<br>Tus pedidos aparecerán aquí después de comprar.</div>')}
+// Load subscriptions (LC seguimiento by phone)
+var subEl=document.getElementById('acct-subs');
+if(subEl&&_gUser){
+var phone=(_gUser.phone||'').replace(/[\s\-\(\)]/g,'');
+if(!phone||phone.length<7){
+subEl.innerHTML='<div class="sub-empty">Agrega tu teléfono en "Perfil" para ver tus suscripciones de lentes de contacto.</div>';
+}else{
+try{
+// Look up patient by phone
+var pr=await fetch(SU+'/rest/v1/pacientes?telefono=ilike.*'+encodeURIComponent(phone.slice(-10))+'*&select=id,nombre,apellidos,telefono&limit=5',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var pats=await pr.json();
+if(!Array.isArray(pats)||!pats.length){subEl.innerHTML='<div class="sub-empty">No encontramos una cuenta con ese teléfono.<br>Si ya eres cliente, verifica tu número en "Perfil".</div>';return}
+var patIds=pats.map(function(p){return p.id});
+// Load LC seguimiento
+var lr=await fetch(SU+'/rest/v1/lc_seguimiento?paciente_id=in.('+patIds.join(',')+')&select=id,paciente_id,producto,fecha_compra,fecha_prox_compra,estado,notas&order=fecha_prox_compra.desc&limit=10',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var lcs=await lr.json();
+if(!Array.isArray(lcs)||!lcs.length){subEl.innerHTML='<div class="sub-empty">No tienes suscripciones de LC activas.<br>Pregunta en sucursal o por <a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Quiero información sobre la suscripción de lentes de contacto')+'" target="_blank" style="color:var(--ac);text-decoration:none">WhatsApp</a> sobre nuestro plan de suscripción con 10% de descuento.</div>';return}
+var patMap={};pats.forEach(function(p){patMap[p.id]=p.nombre+(p.apellidos?' '+p.apellidos:'')});
+subEl.innerHTML=lcs.map(function(lc){
+var isActive=lc.estado==='activo'||lc.estado==='Activo';
+var prox=lc.fecha_prox_compra?new Date(lc.fecha_prox_compra):null;
+var proxTxt=prox?(prox.getDate()+'/'+(prox.getMonth()+1)+'/'+prox.getFullYear()):'—';
+var diasRestantes=prox?Math.ceil((prox-new Date())/(1000*60*60*24)):0;
+return'<div class="sub-card"><div class="sub-card-hdr"><div class="sub-card-name">'+(lc.producto||'Lentes de Contacto')+'</div><span class="sub-badge sub-badge--'+(isActive?'active':'pending')+'">'+(isActive?'Activa':'Pendiente')+'</span></div>'+
+'<div class="sub-info-row">Próxima compra: <span>'+proxTxt+'</span>'+(diasRestantes>0?' (en '+diasRestantes+' días)':diasRestantes<0?' <span style="color:#f87171">(vencida hace '+Math.abs(diasRestantes)+' días)</span>':'')+'</div>'+
+(lc.fecha_compra?'<div class="sub-info-row">Última compra: <span>'+new Date(lc.fecha_compra).toLocaleDateString('es-MX')+'</span></div>':'')+
+'<div style="margin-top:6px"><a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, quiero pedir mis lentes de contacto: '+(lc.producto||'LC'))+'" target="_blank" style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:16px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.2);color:#25d366;font-size:11px;font-weight:600;text-decoration:none">Pedir recompra por WhatsApp</a></div></div>'
+}).join('')}catch(e){subEl.innerHTML='<div class="sub-empty">Error al cargar suscripciones.</div>'}
+}}
+}
+function _savePhone(){
+var phone=document.getElementById('acct-phone').value.trim();
+if(_gUser){_gUser.phone=phone;sessionStorage.setItem('ce_guser',JSON.stringify(_gUser));localStorage.setItem('ce_phone_'+_gUser.email,phone);tt('Teléfono guardado');_loadAccountData()}
+}
+
+// === SUBSCRIPTION TOGGLE ===
+var _subActive=false;
+function toggleSub(){_subActive=!_subActive;var el=document.getElementById('sub-toggle');el.classList.toggle('active',_subActive);document.getElementById('sub-freq').style.display=_subActive?'block':'none';updCartTotal();if(_subActive)updateSubSavings()}
+function updateSubSavings(){var tot=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var desc=Math.round(tot*0.10);document.getElementById('sub-savings').textContent='Ahorras $'+desc.toLocaleString('es-MX')+' en cada recompra con el 10% de descuento'}
+function getSubDiscount(){return _subActive?0.10:0}
+// Override updCartTotal to show subscription discount
+var _origUpdCartTotal=updCartTotal;
+updCartTotal=function(){var tot=cart.reduce(function(s,c){return s+(c.precio*c.qty)},0);var disc=_subActive?Math.round(tot*0.10):0;var final=tot-disc;
+var t1=document.getElementById('ctp'),t2=document.getElementById('ctp2');
+if(_subActive){
+var html='<span style="text-decoration:line-through;color:var(--t3);font-size:12px">$'+tot.toLocaleString('es-MX')+'</span> $'+final.toLocaleString('es-MX')+'<span class="cart-sub-badge">-10%</span>';
+if(t1)t1.innerHTML=html;if(t2)t2.innerHTML=html}else{
+var txt='$'+tot.toLocaleString('es-MX');if(t1)t1.textContent=txt;if(t2)t2.textContent=txt}}
+
+// Auto-restore Google session
+if(_gUser)_updateAuthUI();
+// Initialize Google One Tap on load
+window.addEventListener('load',function(){
+if(typeof google!=='undefined'&&google.accounts&&!_gUser){
+google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:_onGoogleSignIn,auto_select:true});
+google.accounts.id.prompt()}});
 
 load();uB();
 </script>
