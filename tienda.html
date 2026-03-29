@@ -1283,19 +1283,19 @@ if(typeof gtag==='function')gtag('event','purchase',{transaction_id:fo,value:tot
 if(typeof fbq==='function')fbq('track','Purchase',{value:tot,currency:'MXN',content_ids:cart.map(function(c){return c.key||c.nombre}),content_type:'product'});
 var subWA=_subActive?'\n🔄 *SUSCRIPCIÓN* recompra cada '+subFreq+' días (10% desc desde siguiente compra)':'';
 fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:WA,text:'🛒 *PEDIDO WEB*\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n💳 Pago en línea'+subWA+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});
-// Generar link de pago Clip
-if(vid){btn.textContent='Generando link de pago...';
-try{var cr=await fetch('/.netlify/functions/clip-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venta_id:vid,folio:fo,amount:tot,paciente_nombre:n,source:'tienda'})});
-var cd=await cr.json();if(cd.payment_url){window.open(cd.payment_url,'_blank')}else{tt('Error al generar link de pago')}}catch(clipErr){tt('Error al conectar con el procesador de pago')}}
 // Registrar suscripción en DB si se activó
 if(_subActive&&vid){
 var subProducts=cart.map(function(c){return c.nombre+' x'+c.qty}).join(', ');
 fetch('/.netlify/functions/dbwrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'insert',table:'lc_seguimiento',auth:{id:'tienda',pass:'tienda2024'},data:{paciente_id:null,producto:subProducts,fecha_compra:new Date().toISOString().slice(0,10),fecha_recompra:new Date(Date.now()+parseInt(subFreq)*86400000).toISOString().slice(0,10),estado:'activo',notas:'Suscripción web | Tel: '+t+(gEmail?' | '+gEmail:'')+' | Folio: '+fo+' | Frecuencia: cada '+subFreq+' días | Sucursal: '+s}})}).catch(function(){})}
-document.getElementById('sfo').textContent=fo;
-document.getElementById('swa').href='https://wa.me/'+WA+'?text='+encodeURIComponent('Pedido '+fo);
-var subSuccEl=document.getElementById('sub-success');
-if(_subActive&&subSuccEl){subSuccEl.style.display='block';subSuccEl.innerHTML='<div style="margin-top:12px;padding:10px 14px;border-radius:var(--rs);border:1px solid rgba(74,222,128,.2);background:rgba(74,222,128,.06)"><div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:4px">🔄 Suscripción activada</div><div style="font-size:11px;color:var(--t2);line-height:1.5">Recompra cada '+subFreq+' días.<br><strong>10% de descuento desde tu siguiente compra.</strong><br>Recibirás un link de pago por WhatsApp cuando toque tu recompra. Cancela cuando quieras.</div></div>'}else if(subSuccEl){subSuccEl.style.display='none'}
-document.getElementById('sov').classList.add('open');cart=[];saveCart();uB();tC();_subActive=false;var st=document.getElementById('sub-toggle');if(st)st.classList.remove('active');document.getElementById('sub-freq').style.display='none'}catch(e){tt('Error al procesar pedido')}btn.disabled=false;btn.textContent='Confirmar pedido'}
+// Guardar datos para mostrar éxito al regresar de Clip
+sessionStorage.setItem('ce_pending_order',JSON.stringify({folio:fo,total:tot,sub:_subActive,subFreq:subFreq}));
+cart=[];saveCart();uB();
+_subActive=false;var stEl=document.getElementById('sub-toggle');if(stEl)stEl.classList.remove('active');document.getElementById('sub-freq').style.display='none';
+// Generar link de pago Clip y REDIRIGIR (no nueva pestaña)
+if(vid){btn.textContent='Redirigiendo al pago...';
+try{var cr=await fetch('/.netlify/functions/clip-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({venta_id:vid,folio:fo,amount:tot,paciente_nombre:n,source:'tienda'})});
+var cd=await cr.json();if(cd.payment_url){window.location.href=cd.payment_url;return}else{tt('Error al generar link de pago. Intenta de nuevo.');sessionStorage.removeItem('ce_pending_order')}}catch(clipErr){tt('Error al conectar con el procesador de pago');sessionStorage.removeItem('ce_pending_order')}}else{tt('Error al crear pedido');sessionStorage.removeItem('ce_pending_order')}
+}catch(e){tt('Error al procesar pedido')}btn.disabled=false;btn.textContent='Confirmar pedido'}
 // Payment method is now always 'clip' (hidden input)
 function waQ(n){window.open('https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, me interesa: '+decodeURIComponent(n)),'_blank')}
 function showDetail(k){var p=P.find(function(x){return x.key===k});if(!p)return;
@@ -2355,6 +2355,30 @@ function updateSubSavings(){var tot=cart.reduce(function(s,c){return s+(c.precio
 if(_gUser)_updateAuthUI();
 // Google Sign-In init flag — NO auto-prompt on load (solo al hacer click en "Iniciar sesión")
 var _gsiInitDone=false;
+
+// === POST-PAYMENT HANDLER ===
+// Clip redirige a tienda.html?pago=ok o ?pago=error después del pago
+(function(){
+var params=new URLSearchParams(window.location.search);
+var pagoStatus=params.get('pago');
+if(!pagoStatus)return;
+// Limpiar URL
+history.replaceState(null,'',window.location.pathname);
+var pending=JSON.parse(sessionStorage.getItem('ce_pending_order')||'null');
+sessionStorage.removeItem('ce_pending_order');
+if(pagoStatus==='ok'){
+var folio=pending?pending.folio:'Tu pedido';
+var sov=document.getElementById('sov');
+document.getElementById('sfo').textContent=folio;
+document.getElementById('swa').href='https://wa.me/'+WA+'?text='+encodeURIComponent('Pedido '+folio);
+document.getElementById('sov-msg').innerHTML='<strong style="color:#4ade80">Pago completado.</strong> Te notificaremos por WhatsApp cuando tus lentes est&eacute;n listos para recoger en sucursal.';
+var subSuccEl=document.getElementById('sub-success');
+if(pending&&pending.sub&&subSuccEl){subSuccEl.style.display='block';subSuccEl.innerHTML='<div style="margin-top:12px;padding:10px 14px;border-radius:var(--rs);border:1px solid rgba(74,222,128,.2);background:rgba(74,222,128,.06)"><div style="font-size:12px;font-weight:600;color:#4ade80;margin-bottom:4px">\uD83D\uDD04 Suscripci\u00f3n activada</div><div style="font-size:11px;color:var(--t2);line-height:1.5">Recompra cada '+pending.subFreq+' d\u00edas.<br><strong>10% de descuento desde tu siguiente compra.</strong><br>Recibir\u00e1s un link de pago por WhatsApp cuando toque tu recompra. Cancela cuando quieras.</div></div>'}
+sov.classList.add('open');
+}else if(pagoStatus==='error'){
+tt('El pago no se completó. Puedes intentar de nuevo desde tu carrito.');
+}
+})();
 
 load();uB();
 </script>
