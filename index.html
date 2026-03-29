@@ -20570,22 +20570,36 @@ function cajaTab(tab) {
 }
 
 function verDetalleCorte(corteId) {
-  db.from('cortes_caja').select('*').eq('id', corteId).single().then(function(res) {
+  db.from('cortes_caja').select('*').eq('id', corteId).single().then(async function(res) {
     var c = res.data;
     if (!c) { toast('Corte no encontrado', true); return; }
-    var dNeta = _corteDiffNeta(c);
-    var dNetaColor = Math.abs(dNeta) < 0.01 ? '#72c47e' : dNeta > 0 ? '#d4b84a' : '#e08080';
-    var diffNetaTxt = Math.abs(dNeta) < 0.01 ? 'CUADRA $0.00' : dNeta > 0 ? 'SOBRANTE +$'+dNeta.toFixed(2) : 'FALTANTE -$'+Math.abs(dNeta).toFixed(2);
-    var d = Number(c.diferencia);
-    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
-    var diffTxt = Math.abs(d) < 0.01 ? 'CUADRA $0.00' : d > 0 ? 'SOBRANTE +$'+d.toFixed(2) : 'FALTANTE -$'+Math.abs(d).toFixed(2);
+    // Query retiros for this date+sucursal to separate cash vs dollar
+    var { data: retirosList } = await db.from('retiros_caja').select('monto,observaciones').eq('fecha', c.fecha).eq('sucursal', c.sucursal);
+    var totalRetirosDolar = (retirosList||[]).filter(function(r){return (r.observaciones||'').startsWith('Retiro USD')}).reduce(function(s,r){return s+Number(r.monto)},0);
+    var totalRetirosEfvo = (retirosList||[]).filter(function(r){return !(r.observaciones||'').startsWith('Retiro USD')}).reduce(function(s,r){return s+Number(r.monto)},0);
+    // Recalculate dolar esperado/diff using actual retiros
+    var dolarDesglose = Number((c.desglose_metodos||{})['Dólar'] || 0);
+    var dolarEsperadoCalc = dolarDesglose > 0 ? (dolarDesglose - totalRetirosDolar) : null;
+    var dolarContadoCalc = c.dolar_contado != null ? Number(c.dolar_contado) : null;
+    var dolarDiffCalc = (dolarEsperadoCalc !== null && dolarContadoCalc !== null) ? Math.round((dolarContadoCalc - dolarEsperadoCalc) * 100) / 100 : null;
     var desglose = c.desglose_metodos || {};
     var totalIngreso = Object.values(desglose).reduce(function(s,v){return s+Number(v)},0);
     var fondo = Number(c.fondo_inicial) || 0;
     var efvoCobrado = Number(desglose['Efectivo'] || 0);
     var totalRetiros = Number(c.total_retiros) || 0;
-    var esperado = Number(c.efectivo_esperado) || 0;
+    // Recalculate efectivo esperado using only cash retiros (fixes pre-v228 cortes)
+    var esperado = fondo + efvoCobrado - totalRetirosEfvo;
     var contado = Number(c.efectivo_contado) || 0;
+    // Recalculate diferencia efectivo with corrected esperado
+    var d = Math.round((contado - esperado) * 100) / 100;
+    var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
+    var diffTxt = Math.abs(d) < 0.01 ? 'CUADRA $0.00' : d > 0 ? 'SOBRANTE +$'+d.toFixed(2) : 'FALTANTE -$'+Math.abs(d).toFixed(2);
+    // Recalculate neta = efectivo + terminal + dolar
+    var tDiffStored = c.diferencia_terminal != null ? Number(c.diferencia_terminal) : 0;
+    var dDiffDolar = dolarDiffCalc != null ? dolarDiffCalc : 0;
+    var dNeta = Math.round((d + tDiffStored + dDiffDolar) * 100) / 100;
+    var dNetaColor = Math.abs(dNeta) < 0.01 ? '#72c47e' : dNeta > 0 ? '#d4b84a' : '#e08080';
+    var diffNetaTxt = Math.abs(dNeta) < 0.01 ? 'CUADRA $0.00' : dNeta > 0 ? 'SOBRANTE +$'+dNeta.toFixed(2) : 'FALTANTE -$'+Math.abs(dNeta).toFixed(2);
     var tarjetaMSI = Number(desglose['Tarjeta'] || 0) + Number(desglose['MSI'] || 0);
     var dolar = Number(desglose['Dólar'] || 0);
     var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
@@ -20614,14 +20628,18 @@ function verDetalleCorte(corteId) {
     if (c.num_cancelaciones > 0 || totalRetiros > 0) {
       h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
       if (c.num_cancelaciones > 0) h += '<div style="background:rgba(224,128,128,0.06);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:#e08080">'+c.num_cancelaciones+'</div><div style="font-size:10px;color:var(--muted)">Cancelaciones · $'+Number(c.total_cancelaciones).toFixed(2)+'</div></div>';
-      if (totalRetiros > 0) h += '<div style="background:rgba(212,184,74,0.06);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:#d4b84a">'+c.num_retiros+'</div><div style="font-size:10px;color:var(--muted)">Retiros · $'+totalRetiros.toFixed(2)+'</div></div>';
+      if (totalRetiros > 0) {
+        var retTxt = 'Retiros · $'+totalRetiros.toFixed(2);
+        if (totalRetirosDolar > 0) retTxt += ' <span style="font-size:9px;opacity:.7">(dólar $'+totalRetirosDolar.toFixed(2)+')</span>';
+        h += '<div style="background:rgba(212,184,74,0.06);border-radius:8px;padding:8px 10px;text-align:center"><div style="font-size:14px;font-weight:700;color:#d4b84a">'+c.num_retiros+'</div><div style="font-size:10px;color:var(--muted)">'+retTxt+'</div></div>';
+      }
       h += '</div>';
     }
     // Cuadre Efectivo
     h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
     h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Cuadre de efectivo</div>';
     var rows = [['Fondo inicial', fondo],['+ Efectivo cobrado', efvoCobrado]];
-    if (totalRetiros > 0) rows.push(['- Retiros', totalRetiros]);
+    if (totalRetirosEfvo > 0) rows.push(['- Retiros', totalRetirosEfvo]);
     rows.forEach(function(r) {
       h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">'+r[0]+'</span><span style="color:var(--white)">$'+r[1].toFixed(2)+'</span></div>';
     });
@@ -20654,11 +20672,25 @@ function verDetalleCorte(corteId) {
       }
       h += '</div>';
     }
-    // Dólar section
+    // Dólar section — full cuadre like efectivo/terminal
     if (dolar > 0) {
       h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px;margin-bottom:10px">';
       h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Dólar</div>';
       h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">Equiv. MXN cobrado</span><span style="color:var(--white)">$'+dolar.toFixed(2)+'</span></div>';
+      if (totalRetirosDolar > 0) h += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:2px 0"><span style="color:var(--muted)">- Retiros dólar</span><span style="color:var(--white)">$'+totalRetirosDolar.toFixed(2)+'</span></div>';
+      if (dolarEsperadoCalc !== null) {
+        h += '<div style="border-top:1px solid rgba(255,255,255,0.06);margin-top:4px;padding-top:4px">';
+        h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Esperado</span><span style="color:var(--white)">$'+dolarEsperadoCalc.toFixed(2)+'</span></div>';
+        if (dolarContadoCalc !== null) {
+          h += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;padding:2px 0"><span style="color:var(--white)">Contado</span><span style="color:var(--white)">$'+dolarContadoCalc.toFixed(2)+'</span></div>';
+          h += '</div>';
+          var dolDiffColor = dolarDiffCalc !== null && Math.abs(dolarDiffCalc) < 0.01 ? '#72c47e' : dolarDiffCalc > 0 ? '#d4b84a' : '#e08080';
+          var dolDiffTxt = dolarDiffCalc !== null ? (Math.abs(dolarDiffCalc) < 0.01 ? 'CUADRA $0.00' : dolarDiffCalc > 0 ? 'SOBRANTE +$'+dolarDiffCalc.toFixed(2) : 'FALTANTE -$'+Math.abs(dolarDiffCalc).toFixed(2)) : '';
+          if (dolDiffTxt) h += '<div style="margin-top:6px;text-align:center;padding:6px;border-radius:6px;font-weight:700;font-size:12px;color:'+dolDiffColor+';background:rgba(255,255,255,0.04)">'+dolDiffTxt+'</div>';
+        } else {
+          h += '</div>';
+        }
+      }
       h += '</div>';
     }
     // Alerta cruzada: efectivo falta X y terminal sobra X (pago mal clasificado)
