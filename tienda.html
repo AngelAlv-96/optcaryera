@@ -1198,12 +1198,54 @@ document.addEventListener('click',function(e){if(!e.target.closest('.rxp-wrap'))
 function ped(k){var p=P.find(function(x){return x.key===k});if(!p)return;var e=document.createElement('div');e.className='mov open';e.id='pm';e.onclick=function(ev){if(ev.target===e)e.remove()};var b=document.createElement('div');b.className='mbox';
 var lp=window.LC_PARAMS&&window.LC_PARAMS[p.key];var gdHtml=lp?_buildGdHtml(lp):_buildGdFallback();
 b.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'</h2><div style="font-size:18px;font-weight:600;margin-top:4px;color:var(--gd)">$'+p.precio.toLocaleString('es-MX')+' <span style="font-size:11px;font-weight:400;color:var(--t3)">por caja</span></div></div>'+
-'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px"><button id="gm" onclick="tG(\'m\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--gd);background:var(--gd);color:var(--bg);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Misma de siempre</button><button id="gn" onclick="tG(\'n\')" style="padding:9px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft)">Tengo graduación</button></div>'+
+'<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">'+
+'<button id="gc" onclick="tG(\'c\',\''+k+'\')" style="padding:10px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft);text-align:left">&#x1f464; Ya soy cliente <span style="font-size:9px;color:var(--t3);display:block;font-weight:400;margin-top:2px">Buscar mi graduaci\u00f3n por tel\u00e9fono</span></button>'+
+'<button id="gn" onclick="tG(\'n\')" style="padding:10px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft);text-align:left">&#x1f4cb; Tengo mi graduaci\u00f3n <span style="font-size:9px;color:var(--t3);display:block;font-weight:400;margin-top:2px">Ingresar datos manualmente</span></button>'+
+'<button id="gx" onclick="tG(\'x\')" style="padding:10px;border-radius:var(--rs);border:1.5px solid var(--bd);background:transparent;color:var(--t2);font-size:11px;font-weight:600;cursor:pointer;font-family:var(--ft);text-align:left">&#x1f453; No tengo graduaci\u00f3n <span style="font-size:9px;color:var(--t3);display:block;font-weight:400;margin-top:2px">Necesito examen de vista</span></button></div>'+
+'<div id="gc-search" style="display:none;margin-bottom:12px;padding:12px;background:var(--s2);border-radius:var(--rs)"><div style="font-size:11px;font-weight:600;color:var(--tx);margin-bottom:8px">Buscar mi graduaci\u00f3n</div><div class="cf" style="gap:6px"><div><label>Tel\u00e9fono</label><input type="tel" id="gc-tel" placeholder="656 123 4567" style="width:100%"></div></div><button onclick="_rxBuscarRx(\''+k+'\')" class="btnc" style="margin:8px 0 0;font-size:11px;padding:8px">Buscar</button><div id="gc-result" style="margin-top:8px"></div></div>'+
+'<div id="gx-msg" style="display:none;margin-bottom:12px;padding:14px;background:var(--s2);border-radius:var(--rs);text-align:center"><div style="font-size:13px;color:var(--tx);margin-bottom:6px">Vis\u00edtanos en sucursal</div><div style="font-size:11px;color:var(--t3);margin-bottom:10px">Te hacemos un examen de vista sin costo con tu compra. No necesitas cita, es llegando directo.</div><a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, quiero agendar un examen de vista para comprar '+p.nombre)+'" target="_blank" class="btnc" style="display:inline-block;margin:0;font-size:11px;padding:8px 16px;text-decoration:none">Escr\u00edbenos por WhatsApp</a></div>'+
 '<div id="gd" style="display:none;margin-bottom:12px">'+gdHtml+'</div>'+
-'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--t2)">Cajas:</label><select id="pq" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:13px;background:var(--s2);color:var(--tx)"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div>'+
-'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button onclick="document.getElementById(\'pm\').remove()" style="padding:10px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--ft)">Cancelar</button><button onclick="aC(\''+k+'\')" class="btnc" style="margin:0">Agregar</button></div>';
+'<div id="gd-actions" style="display:none"><div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><label style="font-size:12px;color:var(--t2)">Cajas:</label><select id="pq" style="padding:4px 8px;border:1px solid var(--bd);border-radius:var(--rs);font-family:var(--ft);font-size:13px;background:var(--s2);color:var(--tx)"><option>1</option><option>2</option><option>3</option><option>4</option><option>6</option></select></div>'+
+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"><button onclick="document.getElementById(\'pm\').remove()" style="padding:10px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:12px;cursor:pointer;font-family:var(--ft)">Cancelar</button><button onclick="aC(\''+k+'\')" class="btnc" style="margin:0">Agregar</button></div></div>';
 e.appendChild(b);document.body.appendChild(e);_initCylCascade()}
-var _g='m';function tG(v){_g=v;document.getElementById('gd').style.display=v==='n'?'':'none';var a=document.getElementById('gm'),b=document.getElementById('gn');[a,b].forEach(function(x){x.style.background='transparent';x.style.color='var(--t2)';x.style.borderColor='var(--bd)'});(v==='m'?a:b).style.cssText+='background:var(--gd);color:var(--bg);border-color:var(--gd)'}
+var _g='m';function tG(v,pk){_g=v==='c'?'n':v==='x'?'x':v;
+var gc=document.getElementById('gc'),gn=document.getElementById('gn'),gx=document.getElementById('gx');
+[gc,gn,gx].forEach(function(x){if(x){x.style.background='transparent';x.style.color='var(--t2)';x.style.borderColor='var(--bd)'}});
+var sel=v==='c'?gc:v==='n'?gn:v==='x'?gx:null;
+if(sel)sel.style.cssText+='background:var(--gd);color:var(--bg);border-color:var(--gd)';
+document.getElementById('gd').style.display=(v==='n')?'':'none';
+document.getElementById('gd-actions').style.display=(v==='n'||v==='c')?'':'none';
+var gcS=document.getElementById('gc-search');if(gcS)gcS.style.display=v==='c'?'':'none';
+var gxM=document.getElementById('gx-msg');if(gxM)gxM.style.display=v==='x'?'':'none';
+if(v==='c'){setTimeout(function(){var tel=document.getElementById('gc-tel');if(tel){if(_gUser&&_gUser.phone)tel.value=_gUser.phone;tel.focus()}},100)}}
+async function _rxBuscarRx(k){
+var tel=document.getElementById('gc-tel').value.trim().replace(/[\s\-\(\)]/g,'');
+var res=document.getElementById('gc-result');
+if(!tel||tel.length<7){res.innerHTML='<div style="color:#f87171;font-size:11px">Ingresa un tel\u00e9fono v\u00e1lido</div>';return}
+res.innerHTML='<div style="color:var(--t3);font-size:11px">Buscando...</div>';
+try{
+var pr=await fetch(SU+'/rest/v1/pacientes?telefono=ilike.*'+encodeURIComponent(tel.slice(-10))+'*&select=id,nombre,apellidos,telefono&limit=3',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var pats=await pr.json();
+if(!Array.isArray(pats)||!pats.length){res.innerHTML='<div style="color:var(--t3);font-size:11px">No encontramos ese tel\u00e9fono. Puedes ingresar tu graduaci\u00f3n manualmente.</div><button onclick="tG(\'n\')" style="margin-top:6px;padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--ft)">Ingresar manualmente</button>';return}
+var patId=pats[0].id,patName=pats[0].nombre+(pats[0].apellidos?' '+pats[0].apellidos:'');
+var hr=await fetch(SU+'/rest/v1/historias_clinicas?paciente_id=eq.'+patId+'&select=lc_od_esfera,lc_od_cilindro,lc_od_eje,lc_oi_esfera,lc_oi_cilindro,lc_oi_eje,lc_od_add,lc_oi_add,lc_od_bc,lc_oi_bc,od_esfera,od_cilindro,od_eje,oi_esfera,oi_cilindro,oi_eje,od_add,oi_add&order=created_at.desc&limit=1',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var hcs=await hr.json();
+if(!Array.isArray(hcs)||!hcs.length||(!hcs[0].lc_od_esfera&&!hcs[0].od_esfera)){res.innerHTML='<div style="color:var(--t3);font-size:11px">Hola '+patName.split(' ')[0]+', no encontramos graduaci\u00f3n LC en tu expediente. Ingresa manualmente o vis\u00edtanos.</div><button onclick="tG(\'n\')" style="margin-top:6px;padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--ft)">Ingresar manualmente</button>';return}
+var hc=hcs[0];var oe=hc.lc_od_esfera||hc.od_esfera,oc=hc.lc_od_cilindro||hc.od_cilindro,oj=hc.lc_od_eje||hc.od_eje;
+var ie=hc.lc_oi_esfera||hc.oi_esfera,ic=hc.lc_oi_cilindro||hc.oi_cilindro,ij=hc.lc_oi_eje||hc.oi_eje;
+var ad=hc.lc_od_add||hc.od_add||'';
+res.innerHTML='<div style="color:#4ade80;font-size:11px;font-weight:600;margin-bottom:6px">\u2705 Hola '+patName.split(' ')[0]+', encontramos tu graduaci\u00f3n:</div>'+
+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+
+'<div style="background:var(--glass);padding:8px;border-radius:var(--rs)"><div style="font-size:9px;font-weight:700;margin-bottom:4px">OJO DERECHO</div><div style="font-size:12px;color:var(--tx)">'+_fmtPwr(Number(oe))+''+(oc?' / '+Number(oc).toFixed(2):'')+(oj?' x '+oj+'\u00b0':'')+'</div></div>'+
+'<div style="background:var(--glass);padding:8px;border-radius:var(--rs)"><div style="font-size:9px;font-weight:700;color:var(--gd);margin-bottom:4px">OJO IZQUIERDO</div><div style="font-size:12px;color:var(--tx)">'+_fmtPwr(Number(ie))+''+(ic?' / '+Number(ic).toFixed(2):'')+(ij?' x '+ij+'\u00b0':'')+'</div></div></div>'+
+(ad?'<div style="font-size:10px;color:var(--t2);margin-top:4px">ADD: '+ad+'</div>':'')+
+'<button onclick="_rxUsarRxDB(\''+k+'\',\''+oe+'\',\''+oc+'\',\''+oj+'\',\''+ie+'\',\''+ic+'\',\''+ij+'\',\''+ad+'\')" class="btnc" style="margin:8px 0 0;font-size:11px;padding:8px">Usar esta graduaci\u00f3n</button>'+
+'<button onclick="tG(\'n\')" style="margin-top:4px;padding:6px;border:none;background:none;color:var(--t3);font-size:10px;cursor:pointer;font-family:var(--ft);width:100%;text-align:center">Ingresar otra graduaci\u00f3n</button>'}catch(e){res.innerHTML='<div style="color:#f87171;font-size:11px">Error al buscar. Intenta de nuevo.</div>'}}
+function _rxUsarRxDB(k,oe,oc,oj,ie,ic,ij,ad){
+_g='n';var p=P.find(function(x){return x.key===k});if(!p)return;
+var grad='OD:'+_fmtPwr(Number(oe))+(oc&&Number(oc)?'/'+Number(oc).toFixed(2):'')+(oj&&Number(oj)?'x'+oj+'\u00b0':'')+' OI:'+_fmtPwr(Number(ie))+(ic&&Number(ic)?'/'+Number(ic).toFixed(2):'')+(ij&&Number(ij)?'x'+ij+'\u00b0':'')+(ad&&Number(ad)?' ADD:'+ad:'');
+var pm=document.getElementById('pm');if(!pm)return;pm.dataset.grad=grad;pm.dataset.qty='1';pm.dataset.rxOe=oe||'';pm.dataset.rxOc=oc||'';pm.dataset.rxOj=oj||'';pm.dataset.rxIe=ie||'';pm.dataset.rxIc=ic||'';pm.dataset.rxIj=ij||'';
+_rxCheckOjos(k,p,grad,oe,oc,oj,ie,ic,ij)}
 function _rxGetVal(id){var el=document.getElementById(id);return el?(el.value||'').trim():''}
 function _rxBuildGrad(){
 var v=_rxGetVal;
@@ -1231,7 +1273,27 @@ if(clr)h+='<span class="rxc-tag clr"><span class="rxc-lbl">COLOR</span>'+clr+'</
 h+='</div>'}
 h+='<div class="rxc-warn">Verifica que los datos sean correctos</div></div>';
 return h}
-function aC(k){var p=P.find(function(x){return x.key===k});if(!p)return;var q=parseInt(document.getElementById('pq').value)||1,g='';
+function _rxCheckOjos(k,p,grad,oe,oc,oj,ie,ic,ij){
+var odKey=(oe||'')+'|'+(oc||'')+'|'+(oj||''),oiKey=(ie||'')+'|'+(ic||'')+'|'+(ij||'');
+var pm=document.getElementById('pm');if(!pm)return;var mbox=pm.querySelector('.mbox');if(!mbox)return;
+if(odKey!==oiKey&&oe&&ie){
+// Graduaciones diferentes — agregar 2 cajas
+var gradOD='OD:'+_fmtPwr(Number(oe))+(oc&&Number(oc)?'/'+Number(oc).toFixed(2):'')+(oj&&Number(oj)?'x'+oj+'°':'');
+var gradOI='OI:'+_fmtPwr(Number(ie))+(ic&&Number(ic)?'/'+Number(ic).toFixed(2):'')+(ij&&Number(ij)?'x'+ij+'°':'');
+cart.push({nombre:p.nombre+' (OD)',precio:p.precio,qty:1,grad:gradOD,key:p.key});
+cart.push({nombre:p.nombre+' (OI)',precio:p.precio,qty:1,grad:gradOI,key:p.key});
+saveCart();uB();tt('2 cajas agregadas (OD y OI diferentes)');
+if(typeof gtag==='function')gtag('event','add_to_cart',{currency:'MXN',value:p.precio*2,items:[{item_id:p.key,item_name:p.nombre,price:p.precio,quantity:2}]});
+pm.remove();_g='m';
+}else if(oe&&ie){
+// Misma graduación — preguntar 1 o 2
+mbox.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre+'</h2><div style="font-size:12px;color:var(--t2);margin-top:6px">Misma graduaci\u00f3n en ambos ojos</div><div style="font-size:11px;color:var(--t3);margin-top:2px">'+grad+'</div></div>'+
+'<div style="font-size:12px;color:var(--tx);text-align:center;margin-bottom:12px">\u00bfCu\u00e1ntas cajas deseas?</div>'+
+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+'<button onclick="_rxFinishAdd(\''+k+'\',P.find(function(x){return x.key===\''+k+'\'}),1,\''+grad.replace(/'/g,"\\'")+'\');document.getElementById(\'pm\')?.remove()" style="padding:14px;border-radius:var(--rs);border:1px solid var(--bd);background:var(--glass);color:var(--tx);cursor:pointer;font-family:var(--ft);text-align:center"><div style="font-size:18px;font-weight:600;color:var(--ac)">1 caja</div><div style="font-size:10px;color:var(--t3);margin-top:2px">Ambos ojos</div><div style="font-size:12px;color:var(--gd);margin-top:4px">$'+p.precio.toLocaleString('es-MX')+'</div></button>'+
+'<button onclick="_rxFinishAdd(\''+k+'\',P.find(function(x){return x.key===\''+k+'\'}),2,\''+grad.replace(/'/g,"\\'")+'\');document.getElementById(\'pm\')?.remove()" style="padding:14px;border-radius:var(--rs);border:1px solid var(--ac);background:rgba(226,198,166,.08);color:var(--tx);cursor:pointer;font-family:var(--ft);text-align:center"><div style="font-size:18px;font-weight:600;color:var(--ac)">2 cajas</div><div style="font-size:10px;color:var(--t3);margin-top:2px">M\u00e1s duraci\u00f3n</div><div style="font-size:12px;color:var(--gd);margin-top:4px">$'+(p.precio*2).toLocaleString('es-MX')+'</div></button></div>';
+}else{_rxFinishAdd(k,p,1,grad);pm.remove();_g='m'}}
+function aC(k){var p=P.find(function(x){return x.key===k});if(!p)return;var q=parseInt(document.getElementById('pq')?.value)||1,g='';
 if(_g==='n'){
 g=_rxBuildGrad();
 var confirmHtml=_rxConfirmHtml();
@@ -1243,14 +1305,18 @@ mbox.innerHTML='<div style="text-align:center;margin-bottom:14px"><h2>'+p.nombre
 '<div id="rxc-panel">'+confirmHtml+
 '<div class="rxc-btns"><button class="rxc-back" onclick="_rxBack(\''+k+'\')">&#x2190; Corregir</button><button onclick="_rxDoAdd(\''+k+'\')" class="btnc" style="margin:0">Confirmar</button></div></div>';
 return}
-}else{g='Misma graduaci\u00f3n de siempre'}
+}else if(_g==='x'){return}
+else{g='Misma graduaci\u00f3n de siempre'}
 _rxFinishAdd(k,p,q,g)}
 function _rxBack(k){document.getElementById('pm')?.remove();_g='m';ped(k);tG('n')}
 function _rxDoAdd(k){var p=P.find(function(x){return x.key===k});if(!p)return;
 var pm=document.getElementById('pm');
-var q=parseInt(pm?.dataset.qty)||1;
 var g=pm?.dataset.grad||'';
-_rxFinishAdd(k,p,q,g)}
+// Extract OD/OI values to check if different
+var oe=_rxGetVal('oe')||pm?.dataset.rxOe||'',oc=_rxGetVal('oc')||pm?.dataset.rxOc||'',oj=_rxGetVal('oj')||pm?.dataset.rxOj||'';
+var ie=_rxGetVal('ie')||pm?.dataset.rxIe||'',ic=_rxGetVal('ic')||pm?.dataset.rxIc||'',ij=_rxGetVal('ij')||pm?.dataset.rxIj||'';
+if(oe&&ie){_rxCheckOjos(k,p,g,oe,oc,oj,ie,ic,ij)}
+else{var q=parseInt(pm?.dataset.qty)||1;_rxFinishAdd(k,p,q,g);pm?.remove();_g='m'}}
 function _rxFinishAdd(k,p,q,g){
 cart.push({nombre:p.nombre,precio:p.precio,qty:q,grad:g,key:k});saveCart();uB();tt(p.nombre+' agregado');
 if(typeof gtag==='function')gtag('event','add_to_cart',{currency:'MXN',value:p.precio*q,items:[{item_id:k,item_name:p.nombre,price:p.precio,quantity:q}]});
@@ -1260,7 +1326,8 @@ function rC(i){cart.splice(i,1);saveCart();uB();dC()}
 function uB(){var t=cart.reduce(function(s,c){return s+c.qty},0);var b=document.getElementById('cart-badge');b.style.display=t>0?'flex':'none';b.textContent=t}
 function tC(){document.getElementById('co').classList.toggle('open');if(document.getElementById('co').classList.contains('open'))dC()}
 function dC(){var b=document.getElementById('cbd'),f=document.getElementById('cft'),st=document.getElementById('cart-steps');if(!cart.length){b.innerHTML='<div class="empty">Carrito vacío</div>';f.style.display='none';st.style.display='none';return}f.style.display='';st.style.display='flex';goCartStep(1);
-b.innerHTML=cart.map(function(c,i){return'<div class="cit"><div class="cit-t"><div class="cit-n">'+c.nombre+'</div><div class="cit-p">$'+(c.precio*c.qty).toLocaleString('es-MX')+'</div><button class="cit-x" onclick="rC('+i+')">&#x2715;</button></div><div class="cit-qty"><button onclick="cQty('+i+',-1)">−</button><span>'+c.qty+'</span><button onclick="cQty('+i+',1)">+</button></div>'+(c.grad?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+c.grad+'</div>':'')+'</div>'}).join('');
+b.innerHTML=cart.map(function(c,i){return'<div class="cit"><div class="cit-t"><div class="cit-n">'+c.nombre+'</div><div class="cit-p">$'+(c.precio*c.qty).toLocaleString('es-MX')+'</div><button class="cit-x" onclick="rC('+i+')">&#x2715;</button></div><div class="cit-qty"><button onclick="cQty('+i+',-1)">−</button><span>'+c.qty+'</span><button onclick="cQty('+i+',1)">+</button></div>'+(c.grad?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+c.grad+'</div>':'')+'</div>'}).join('')+
+'<a href="https://wa.me/'+WA+'?text='+encodeURIComponent('Hola, quiero verificar disponibilidad y tiempo de entrega de:\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+(c.grad?' ['+c.grad+']':'')}).join('\n'))+'" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;padding:8px 12px;border-radius:var(--rs);border:1px solid rgba(37,211,102,.2);background:rgba(37,211,102,.06);color:#25d366;font-size:11px;font-weight:600;text-decoration:none;cursor:pointer">&#x1f4e6; Consultar disponibilidad y tiempo de entrega</a>';
 updCartTotal()}
 function updCartTotal(){var t='$'+cart.reduce(function(s,c){return s+(c.precio*c.qty)},0).toLocaleString('es-MX');document.getElementById('ctp').textContent=t;var t2=document.getElementById('ctp2');if(t2)t2.textContent=t}
 function cQty(i,d){cart[i].qty=Math.max(1,cart[i].qty+d);saveCart();uB();dC()}
