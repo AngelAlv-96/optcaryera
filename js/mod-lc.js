@@ -51,7 +51,7 @@ async function initLcModule() {
 
   try {
     var [prodRes, cfgRes] = await Promise.all([
-      db.from('productos').select('id,nombre,marca,precio_venta,categoria,stock,pares_por_caja,frecuencia_cambio_dias,duracion_dias,activo,departamento,notas').eq('activo', true).ilike('categoria', '%contacto%').order('nombre'),
+      db.from('productos').select('id,nombre,marca,precio_venta,categoria,stock,pares_por_caja,frecuencia_cambio_dias,duracion_dias,activo,departamento,notas').ilike('categoria', '%contacto%').order('nombre'),
       db.from('app_config').select('id,value').in('id', ['lc_parametros', 'lc_imagenes'])
     ]);
 
@@ -204,6 +204,7 @@ function lcRenderCard(prod, imgMap, params) {
   var tipoBadge = '<span class="lc-badge lc-badge-tipo">' + (prod.tipo || 'Esf') + '</span>';
   var freqBadge = prod.frecuencia ? '<span class="lc-badge lc-badge-freq">' + prod.frecuencia + '</span>' : '';
   var stockBadge = prod.hasStock ? '<span class="lc-badge lc-badge-stock">En stock</span>' : '<span class="lc-badge lc-badge-nostock">Sobre pedido</span>';
+  var inactivoBadge = prod.inactivo ? '<span style="font-size:9px;color:#e74c3c;background:rgba(231,76,60,0.15);padding:1px 5px;border-radius:4px">No disponible</span>' : '';
 
   // PWR range
   var pwrHtml = '';
@@ -211,12 +212,12 @@ function lcRenderCard(prod, imgMap, params) {
     pwrHtml = '<div style="font-size:9px;color:var(--muted);margin-top:3px">Esfera: ' + (p.pwr.min || '') + ' a ' + (p.pwr.max || '') + '</div>';
   }
 
-  return '<div class="lc-card" onclick="lcShowDetail(\'' + prod.key.replace(/'/g, "\\'") + '\')">' +
+  return '<div class="lc-card" style="' + (prod.inactivo ? 'opacity:.5;' : '') + '" onclick="lcShowDetail(\'' + prod.key.replace(/'/g, "\\'") + '\')">' +
     '<div class="lc-card-img">' + imgHtml + '</div>' +
     '<div class="lc-card-body">' +
       '<div class="lc-card-brand">' + (prod.marca || '') + '</div>' +
       '<div class="lc-card-name" title="' + prod.nombre + '">' + prod.nombre + '</div>' +
-      '<div class="lc-card-meta">' + tipoBadge + freqBadge + stockBadge + '</div>' +
+      '<div class="lc-card-meta">' + tipoBadge + freqBadge + stockBadge + inactivoBadge + '</div>' +
       specHtml +
       pwrHtml +
       '<div class="lc-card-price">$' + (prod.precio || 0).toLocaleString('es-MX') + '</div>' +
@@ -286,8 +287,17 @@ function lcShowDetail(key) {
     specsHtml = '<div style="padding:12px;text-align:center;color:var(--muted);font-size:11px;margin-top:12px;background:var(--surface2);border-radius:8px">Sin parámetros técnicos registrados</div>';
   }
 
+  var isAdm = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
   var editBtn = currentUser?.rol === 'admin'
     ? '<button class="btn btn-g btn-sm" onclick="lcEditParams(\'' + (paramKey || prod.key).replace(/'/g, "\\'") + '\',\'' + prod.nombre.replace(/'/g, "\\'") + '\')" style="font-size:11px">✏️ Editar parámetros</button>'
+    : '';
+  var prodId = prod.prods && prod.prods[0] ? prod.prods[0].id : '';
+  var allInactivo = prod.inactivo;
+  var precioBtn = isAdm && prodId
+    ? '<button class="btn btn-g btn-sm" onclick="lcEditPrecio(\'' + prodId + '\')" style="font-size:11px">💲 Precio</button>'
+    : '';
+  var activoBtn = isAdm && prodId
+    ? '<button class="btn btn-g btn-sm" onclick="lcToggleActivo(\'' + prodId + '\',' + (!allInactivo) + ')" style="font-size:11px">' + (allInactivo ? '✅ Activar' : '🚫 Desactivar') + '</button>'
     : '';
 
   var el = document.createElement('div');
@@ -308,8 +318,9 @@ function lcShowDetail(key) {
     '<div style="text-align:center;background:rgba(255,255,255,0.02);border-radius:10px;padding:16px;margin-bottom:12px">' + imgHtml + '</div>' +
     '<div style="font-size:22px;font-weight:700;color:var(--beige)">$' + (prod.precio || 0).toLocaleString('es-MX') + '</div>' +
     specsHtml +
-    '<div class="m-actions" style="margin-top:14px">' +
-      editBtn +
+    (allInactivo ? '<div style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:11px;color:#e74c3c;text-align:center">🚫 Producto no disponible — no aparece en POS ni tienda</div>' : '') +
+    '<div class="m-actions" style="margin-top:14px;flex-wrap:wrap">' +
+      precioBtn + activoBtn + editBtn +
       '<button class="btn btn-g" onclick="document.getElementById(\'lc-detail-modal\').remove()">Cerrar</button>' +
     '</div>' +
   '</div>';
@@ -747,7 +758,8 @@ function lcGroupProducts(rawProducts) {
     else if (/MULTIFOCAL/i.test(name)) tipo = 'Multifocal';
     else if (/COLOR|FRESH\s*LOOK/i.test(name) && !/ONE DAY|ONEDAY/i.test(name)) tipo = 'Color';
     var key = baseName + '|' + tipo;
-    if (!groups[key]) { groups[key] = { precios: [], marca: (p.marca||'').trim(), stocks: [], freqs: [], prods: [] }; }
+    if (!groups[key]) { groups[key] = { precios: [], marca: (p.marca||'').trim(), stocks: [], freqs: [], prods: [], hasInactivo: false }; }
+    if (p.activo === false) groups[key].hasInactivo = true;
     var pv = parseFloat(p.precio_venta)||0;
     if (pv > 0) groups[key].precios.push(pv);
     groups[key].stocks.push(p.stock || 0);
@@ -773,7 +785,8 @@ function lcGroupProducts(rawProducts) {
       precio: precios.length ? precios[Math.floor(precios.length/2)] : 0,
       hasStock: totalStock > 0,
       frecuencia: _lcGetFreq({ frecuencia_cambio_dias: freq, nombre: cleanName }),
-      prods: g.prods
+      prods: g.prods,
+      inactivo: g.hasInactivo && g.prods.every(function(x){return x.activo===false;})
     };
   }).filter(function(p){return p.precio>0;}).sort(function(a,b){
     // Sort by sales count (most sold first), fallback to alphabetical
@@ -1589,4 +1602,38 @@ async function vtaLcCreateOrder(prod, rxLC, folio, pacienteId, sucursal, fechaEn
     console.warn('[LC Orden] Error creando orden:', e.message);
     if (typeof showToast === 'function') showToast('⚠️ Error en orden LC: ' + e.message, true);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDICIÓN RÁPIDA PRECIO + TOGGLE ACTIVO (LC)
+// ═══════════════════════════════════════════════════════════
+
+async function lcEditPrecio(prodId) {
+  var p = _lcModProds.find(function(x){return x.id===prodId;});
+  if(!p) return;
+  var nuevo = prompt('Nuevo precio para:\n'+p.nombre+'\n\nPrecio actual: $'+Number(p.precio_venta).toLocaleString('es-MX'), p.precio_venta);
+  if(nuevo===null) return;
+  nuevo = parseFloat(nuevo);
+  if(!nuevo||nuevo<=0){toast('Precio inválido',true);return;}
+  var {error} = await db.from('productos').update({precio_venta:nuevo,updated_at:new Date().toISOString()}).eq('id',prodId);
+  if(error){toast('Error: '+error.message,true);return;}
+  p.precio_venta = nuevo;
+  toast('✓ Precio actualizado a $'+nuevo.toLocaleString('es-MX'));
+  var modal = document.getElementById('lc-detail-modal');
+  if(modal) modal.remove();
+  lcRenderCatalogo();
+}
+
+async function lcToggleActivo(prodId, desactivar) {
+  var p = _lcModProds.find(function(x){return x.id===prodId;});
+  if(!p) return;
+  var nuevoEstado = !desactivar;
+  if(desactivar && !confirm('¿Desactivar "'+p.nombre+'"?\nNo aparecerá en POS ni tienda.')){return;}
+  var {error} = await db.from('productos').update({activo:nuevoEstado,updated_at:new Date().toISOString()}).eq('id',prodId);
+  if(error){toast('Error: '+error.message,true);return;}
+  p.activo = nuevoEstado;
+  toast(nuevoEstado ? '✓ '+p.nombre+' activado' : '✓ '+p.nombre+' desactivado');
+  var modal = document.getElementById('lc-detail-modal');
+  if(modal) modal.remove();
+  lcRenderCatalogo();
 }

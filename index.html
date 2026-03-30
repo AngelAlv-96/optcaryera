@@ -3715,6 +3715,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option>Soluci&oacute;n</option><option>Accesorio</option><option>Servicio</option><option>Cobertura</option>
             </select>
           </div>
+          <div id="prod-inactivos-wrap" style="display:none;margin-bottom:8px"><label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer"><input type="checkbox" id="prod-show-inactivos" onchange="filtrarProductos()"> Mostrar productos no disponibles</label></div>
           <!-- Stats bar -->
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="prod-stats"></div>
           <div id="prod-list" style="display:grid;gap:6px"></div>
@@ -3745,6 +3746,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               </div>
               <div id="prod-lc-params" style="display:none;background:var(--surface2);border:1px solid rgba(226,198,166,0.12);border-radius:8px;padding:10px 14px;margin-bottom:8px"></div>
               <div class="fg"><label>Notas</label><textarea id="prod-notas" style="min-height:40px"></textarea></div>
+              <div id="prod-activo-wrap" style="margin-bottom:8px;display:none"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--white);cursor:pointer"><input type="checkbox" id="prod-activo" checked> Disponible (activo en catálogo y POS)</label></div>
               <div class="m-actions"><button class="btn btn-g" onclick="cerrarFormProducto()">Cancelar</button><button class="btn btn-p" onclick="guardarProducto()">Guardar</button></div>
             </div>
           </div>
@@ -18721,9 +18723,14 @@ async function cargarProductos() {
   var _amBtn = document.getElementById('btn-alta-masiva');
   if (_amBtn) _amBtn.style.display = currentUser?.rol === 'admin' ? '' : 'none';
   productosCache = [];
+  var isAdm = currentUser?.rol==='admin'||currentUser?.rol==='gerencia';
+  var inactivosWrap=document.getElementById('prod-inactivos-wrap');
+  if(inactivosWrap) inactivosWrap.style.display=isAdm?'':'none';
   var page = 0, chunk = 1000;
   while (true) {
-    var { data } = await db.from('productos').select('*').eq('activo',true).order('nombre').range(page * chunk, (page + 1) * chunk - 1);
+    var q = db.from('productos').select('*').order('nombre');
+    if (!isAdm) q = q.eq('activo',true);
+    var { data } = await q.range(page * chunk, (page + 1) * chunk - 1);
     if (!data || !data.length) break;
     productosCache = productosCache.concat(data);
     if (data.length < chunk) break;
@@ -18736,7 +18743,10 @@ function filtrarProductos(keepPage) {
   const q=(document.getElementById('prod-search')?.value||'').toLowerCase().trim();
   const cat=document.getElementById('prod-cat-filter')?.value||'';
   const depto=document.getElementById('prod-depto-filter')?.value||'';
+  var isAdm=currentUser?.rol==='admin'||currentUser?.rol==='gerencia';
+  var showInactivos=isAdm&&document.getElementById('prod-show-inactivos')?.checked;
   let f=productosCache.filter(p=>p.categoria!=='Lente de contacto');
+  if(!showInactivos) f=f.filter(p=>p.activo!==false);
   if (cat) f=f.filter(p=>p.categoria===cat);
   if (depto) f=f.filter(p=>p.departamento===depto);
   if (q) f=f.filter(p=>`${p.nombre} ${p.marca||''} ${p.modelo||''} ${p.codigo_barras||''} ${p.subcategoria||''}`.toLowerCase().includes(q));
@@ -18792,8 +18802,10 @@ function filtrarProductos(keepPage) {
     html+='<div style="font-size:10px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:10px">'+items.length+'</div>';
     html+='</div>';
 
-    html+='<div style="display:grid;grid-template-columns:1fr 100px 60px;gap:0;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 12px;background:var(--surface2);border-radius:8px 8px 0 0;border:1px solid rgba(255,255,255,0.04)">';
+    var gridCols=isAdm?'1fr 100px 60px 70px':'1fr 100px 60px';
+    html+='<div style="display:grid;grid-template-columns:'+gridCols+';gap:0;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 12px;background:var(--surface2);border-radius:8px 8px 0 0;border:1px solid rgba(255,255,255,0.04)">';
     html+='<div>Producto</div><div style="text-align:right">Precio</div><div style="text-align:center">Stock</div>';
+    if(isAdm) html+='<div style="text-align:center">Acciones</div>';
     html+='</div>';
 
     items.forEach(function(p,i){
@@ -18801,11 +18813,13 @@ function filtrarProductos(keepPage) {
       var sc=p.es_servicio?'var(--muted)':p.stock<=0?'var(--muted)':p.stock<=p.stock_minimo?'#d4b84a':'#72c47e';
       var bg=i%2===0?'var(--surface)':'rgba(255,255,255,0.015)';
       var borderR=i===items.length-1?'0 0 8px 8px':'0';
+      var inactivo=p.activo===false;
 
-      html+='<div style="display:grid;grid-template-columns:1fr 100px 60px;gap:0;padding:9px 12px;background:'+bg+';border-left:1px solid rgba(255,255,255,0.04);border-right:1px solid rgba(255,255,255,0.04);'+(i===items.length-1?'border-bottom:1px solid rgba(255,255,255,0.04);border-radius:'+borderR+';':'')+';cursor:pointer;transition:background .1s" onmouseover="this.style.background=\'rgba(226,198,166,0.04)\'" onmouseout="this.style.background=\''+bg+'\'" onclick="editarProducto(\''+p.id+'\')">';
-      html+='<div style="min-width:0"><div style="font-size:12px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.nombre+'</div><div style="font-size:10px;color:var(--muted);margin-top:1px">'+(p.marca||'')+(p.codigo_barras?' · '+p.codigo_barras:'')+'</div></div>';
+      html+='<div style="display:grid;grid-template-columns:'+gridCols+';gap:0;padding:9px 12px;background:'+bg+';border-left:1px solid rgba(255,255,255,0.04);border-right:1px solid rgba(255,255,255,0.04);'+(i===items.length-1?'border-bottom:1px solid rgba(255,255,255,0.04);border-radius:'+borderR+';':'')+(inactivo?'opacity:.5;':'')+'cursor:pointer;transition:background .1s" onmouseover="this.style.background=\'rgba(226,198,166,0.04)\'" onmouseout="this.style.background=\''+bg+'\'" onclick="editarProducto(\''+p.id+'\')">';
+      html+='<div style="min-width:0"><div style="font-size:12px;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p.nombre+(inactivo?' <span style="font-size:9px;color:#e74c3c;background:rgba(231,76,60,0.15);padding:1px 5px;border-radius:4px;margin-left:4px">No disponible</span>':'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:1px">'+(p.marca||'')+(p.codigo_barras?' · '+p.codigo_barras:'')+'</div></div>';
       html+='<div style="text-align:right;font-size:13px;font-weight:700;color:var(--beige);align-self:center">$'+precio.toLocaleString('es-MX')+'</div>';
       html+='<div style="text-align:center;align-self:center">'+(p.es_servicio?'<span style="font-size:10px;color:var(--muted)">SVC</span>':'<span style="font-size:13px;font-weight:700;color:'+sc+'">'+p.stock+'</span>')+'</div>';
+      if(isAdm) html+='<div style="text-align:center;align-self:center;display:flex;gap:2px;justify-content:center"><button onclick="event.stopPropagation();editarPrecioRapido(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px" title="Editar precio">💲</button><button onclick="event.stopPropagation();toggleActivoProducto(\''+p.id+'\','+(!inactivo)+')" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px" title="'+(inactivo?'Activar':'Desactivar')+'">'+(inactivo?'✅':'🚫')+'</button></div>';
       html+='</div>';
     });
 
@@ -18839,6 +18853,9 @@ function mostrarFormProducto(prod=null) {
   document.getElementById('prod-stock').value=prod?.stock??0;
   document.getElementById('prod-stock-min').value=prod?.stock_minimo??2;
   document.getElementById('prod-notas').value=prod?.notas||'';
+  var activoWrap=document.getElementById('prod-activo-wrap');
+  var activoChk=document.getElementById('prod-activo');
+  if(activoWrap&&activoChk){activoWrap.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none';activoChk.checked=prod?prod.activo!==false:true;}
   document.getElementById('prod-form-overlay').classList.add('open');
   calcIVAProducto();
   // Show duracion field for LC
@@ -18912,7 +18929,7 @@ async function guardarProducto() {
   const precio=parseFloat(document.getElementById('prod-precio').value);
   if (!nombre) { toast('Nombre obligatorio',true); return; }
   if (!precio||precio<=0) { toast('Precio obligatorio',true); return; }
-  const payload={nombre,categoria:document.getElementById('prod-categoria').value,departamento:document.getElementById('prod-departamento').value||null,subcategoria:document.getElementById('prod-subcategoria').value.trim()||null,marca:document.getElementById('prod-marca').value.trim()||null,modelo:document.getElementById('prod-modelo').value.trim()||null,codigo_barras:document.getElementById('prod-codigo').value.trim()||null,precio_venta:precio,costo:parseFloat(document.getElementById('prod-costo').value)||0,stock:parseInt(document.getElementById('prod-stock').value)||0,stock_minimo:parseInt(document.getElementById('prod-stock-min').value)||2,notas:document.getElementById('prod-notas').value.trim()||null,iva_rate:0.08,updated_at:new Date().toISOString()};
+  const payload={nombre,categoria:document.getElementById('prod-categoria').value,departamento:document.getElementById('prod-departamento').value||null,subcategoria:document.getElementById('prod-subcategoria').value.trim()||null,marca:document.getElementById('prod-marca').value.trim()||null,modelo:document.getElementById('prod-modelo').value.trim()||null,codigo_barras:document.getElementById('prod-codigo').value.trim()||null,precio_venta:precio,costo:parseFloat(document.getElementById('prod-costo').value)||0,stock:parseInt(document.getElementById('prod-stock').value)||0,stock_minimo:parseInt(document.getElementById('prod-stock-min').value)||2,notas:document.getElementById('prod-notas').value.trim()||null,iva_rate:0.08,updated_at:new Date().toISOString(),activo:document.getElementById('prod-activo')?.checked!==false};
   if (payload.categoria === 'Lente de contacto') {
     payload.pares_por_caja = parseInt(document.getElementById('prod-pares-caja')?.value) || 3;
     payload.frecuencia_cambio_dias = parseInt(document.getElementById('prod-freq-dias')?.value) || 30;
@@ -18932,6 +18949,31 @@ async function guardarProducto() {
     _actionBusy['guardarProducto'] = false;
     if (_prodBtn) { _prodBtn.disabled = false; _prodBtn.textContent = 'Guardar'; }
   }
+}
+
+async function editarPrecioRapido(id) {
+  var p=productosCache.find(x=>x.id===id);
+  if(!p) return;
+  var nuevo=prompt('Nuevo precio para:\n'+p.nombre+'\n\nPrecio actual: $'+Number(p.precio_venta).toLocaleString('es-MX'), p.precio_venta);
+  if(nuevo===null) return;
+  nuevo=parseFloat(nuevo);
+  if(!nuevo||nuevo<=0){toast('Precio inválido',true);return;}
+  var {error}=await db.from('productos').update({precio_venta:nuevo,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  p.precio_venta=nuevo;
+  toast('✓ Precio actualizado a $'+nuevo.toLocaleString('es-MX'));
+  filtrarProductos(true);
+}
+async function toggleActivoProducto(id,desactivar) {
+  var p=productosCache.find(x=>x.id===id);
+  if(!p) return;
+  var nuevoEstado=!desactivar;
+  if(desactivar&&!confirm('¿Desactivar "'+p.nombre+'"?\nNo aparecerá en POS ni tienda.')){return;}
+  var {error}=await db.from('productos').update({activo:nuevoEstado,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast('Error: '+error.message,true);return;}
+  p.activo=nuevoEstado;
+  toast(nuevoEstado?'✓ '+p.nombre+' activado':'✓ '+p.nombre+' desactivado');
+  filtrarProductos(true);
 }
 
 var _hvSearchTimer = null;
