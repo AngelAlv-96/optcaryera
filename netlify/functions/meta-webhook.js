@@ -428,23 +428,24 @@ No se necesita cita`,
   return '¡Hola! 👓 Te mandamos un mensaje directo con más info ✨';
 }
 
-async function replyToComment(commentId, text) {
+async function replyToComment(commentId, text, channel) {
   if (!META_PAGE_TOKEN) return false;
   try {
-    // Meta requires form-encoded (not JSON) for posting comment replies
+    // Instagram uses /replies, Facebook uses /comments
+    var subpath = channel === 'instagram' ? '/replies' : '/comments';
     var params = new URLSearchParams({ message: text, access_token: META_PAGE_TOKEN });
-    var url = GRAPH_API + '/' + commentId + '/comments';
-    console.log('[Meta Reply] POST to ' + url.replace(META_PAGE_TOKEN, '***'));
+    var url = GRAPH_API + '/' + commentId + subpath;
+    console.log('[Meta Reply] POST ' + channel + ' to ' + url.replace(META_PAGE_TOKEN, '***'));
     var res = await fetch(url, {
       method: 'POST',
       body: params
     });
     if (res.ok) {
-      console.log('[Meta Reply] Success for comment ' + commentId);
+      console.log('[Meta Reply] Success for ' + channel + ' comment ' + commentId);
       return true;
     }
     var err = await res.text();
-    console.error('[Meta Reply Error]', res.status, err.substring(0, 400));
+    console.error('[Meta Reply Error]', channel, res.status, err.substring(0, 400));
     return false;
   } catch(e) { console.error('[Meta Comment Reply Exception]', e.message); return false; }
 }
@@ -493,8 +494,8 @@ async function handleComment(commentData, channel) {
 
   // 1. Generate smart brief public reply based on comment
   var publicReply = await generatePublicReply(commentText);
-  var replied = await replyToComment(commentId, publicReply);
-  console.log('[Meta] Public reply to comment ' + commentId + ': ' + (replied ? 'OK' : 'FAILED'));
+  var replied = await replyToComment(commentId, publicReply, channel);
+  console.log('[Meta] Public reply to ' + channel + ' comment ' + commentId + ': ' + (replied ? 'OK' : 'FAILED'));
 
   // 2. Track this comment as replied (only if reply succeeded)
   if (replied) {
@@ -505,51 +506,83 @@ async function handleComment(commentData, channel) {
   // The DM response is handled by the messaging webhook handler automatically
 }
 
-// ── POLL FOR UNANSWERED COMMENTS ──
+// ── POLL FOR UNANSWERED COMMENTS (FB feed + IG media) ──
 async function checkRecentComments() {
   if (!META_PAGE_TOKEN) { console.log('[Meta Comments] No PAGE_TOKEN — skipping'); return; }
   var startTime = Date.now();
   var replied = 0;
   var MAX_REPLIES_PER_RUN = 5;
   var ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
-  try {
-    // Single query: /feed with inline comments (requires pages_read_user_content)
-    // NOTE: removed 'from' field — unverified apps can't access user data, requesting it may cause errors
-    var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(25){id,message,created_time}&limit=30&access_token=' + META_PAGE_TOKEN;
-    console.log('[Meta Comments] Fetching feed...');
-    var postsRes = await fetch(feedUrl);
-    if (!postsRes.ok) {
-      var errText = await postsRes.text();
-      console.error('[Meta Comments] Feed failed:', postsRes.status, errText.substring(0, 300));
-      return;
-    }
-    var postsData = await postsRes.json();
-    if (!postsData.data || !postsData.data.length) {
-      console.log('[Meta Comments] No posts in feed');
-      return;
-    }
+  var skippedDedup = 0, skippedShort = 0, skippedOld = 0;
 
-    // Collect all comments from all posts in one pass
-    var allComments = [];
-    var postsWithComments = 0;
-    for (var p = 0; p < postsData.data.length; p++) {
-      var post = postsData.data[p];
-      if (Date.now() - new Date(post.created_time).getTime() > ONE_WEEK) continue;
-      if (!post.comments || !post.comments.data) continue;
-      postsWithComments++;
-      for (var c = 0; c < post.comments.data.length; c++) {
-        allComments.push(post.comments.data[c]);
+  try {
+    // ── 1. Facebook organic posts ──
+    var allComments = []; // { id, message, created_time, channel }
+    try {
+      var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(25){id,message,created_time}&limit=30&access_token=' + META_PAGE_TOKEN;
+      var postsRes = await fetch(feedUrl);
+      if (postsRes.ok) {
+        var postsData = await postsRes.json();
+        var fbPosts = 0;
+        for (var p = 0; p < (postsData.data || []).length; p++) {
+          var post = postsData.data[p];
+          if (Date.now() - new Date(post.created_time).getTime() > ONE_WEEK) continue;
+          if (!post.comments || !post.comments.data) continue;
+          fbPosts++;
+          for (var c = 0; c < post.comments.data.length; c++) {
+            var fc = post.comments.data[c];
+            fc.channel = 'messenger';
+            allComments.push(fc);
+          }
+        }
+        console.log('[Meta Comments] FB: ' + allComments.length + ' comments from ' + fbPosts + ' posts');
+      } else {
+        console.error('[Meta Comments] FB feed failed:', postsRes.status);
       }
-    }
-    console.log('[Meta Comments] ' + allComments.length + ' comments across ' + postsWithComments + ' posts (of ' + postsData.data.length + ' in feed)');
+    } catch(e) { console.error('[Meta Comments] FB error:', e.message); }
+
+    // ── 2. Instagram media comments ──
+    try {
+      var igUrl = GRAPH_API + '/' + IG_ACCOUNT_ID + '/media?fields=id,timestamp,comments_count&limit=15&access_token=' + META_PAGE_TOKEN;
+      var igRes = await fetch(igUrl);
+      if (igRes.ok) {
+        var igData = await igRes.json();
+        var igPosts = 0;
+        for (var ip = 0; ip < (igData.data || []).length; ip++) {
+          if (Date.now() - startTime > 5000) break; // time guard
+          var igPost = igData.data[ip];
+          if (Date.now() - new Date(igPost.timestamp).getTime() > ONE_WEEK) continue;
+          if (!igPost.comments_count || igPost.comments_count === 0) continue;
+          // Fetch comments for this IG post
+          var igCommUrl = GRAPH_API + '/' + igPost.id + '/comments?fields=id,text,username,timestamp&limit=25&access_token=' + META_PAGE_TOKEN;
+          var igCommRes = await fetch(igCommUrl);
+          if (igCommRes.ok) {
+            var igCommData = await igCommRes.json();
+            igPosts++;
+            for (var ic = 0; ic < (igCommData.data || []).length; ic++) {
+              var igc = igCommData.data[ic];
+              // Normalize IG fields to match FB structure
+              allComments.push({
+                id: igc.id,
+                message: igc.text,
+                created_time: igc.timestamp,
+                channel: 'instagram',
+                username: igc.username
+              });
+            }
+          }
+        }
+        console.log('[Meta Comments] IG: ' + (allComments.length - allComments.filter(function(x){return x.channel==='messenger';}).length) + ' comments from ' + igPosts + ' posts');
+      } else {
+        console.error('[Meta Comments] IG media failed:', igRes.status);
+      }
+    } catch(e) { console.error('[Meta Comments] IG error:', e.message); }
+
+    console.log('[Meta Comments] Total: ' + allComments.length + ' comments to process');
     if (!allComments.length) return;
 
-    var skippedDedup = 0;
-    var skippedShort = 0;
-    var skippedOld = 0;
-
+    // ── 3. Process all comments ──
     for (var i = 0; i < allComments.length && replied < MAX_REPLIES_PER_RUN; i++) {
-      // Guard against Netlify timeout (leave 3s buffer)
       if (Date.now() - startTime > 7000) {
         console.log('[Meta Comments] Timeout guard — stopping after ' + replied + ' replies');
         break;
@@ -561,19 +594,20 @@ async function checkRecentComments() {
       // Skip old comments
       if (Date.now() - new Date(comment.created_time).getTime() > ONE_WEEK) { skippedOld++; continue; }
 
-      // Skip very short comments (emojis only, etc.)
+      // Skip very short comments
       if (comment.message.replace(/[\s\p{Emoji}]/gu, '').length < 2 && comment.message.length < 5) { skippedShort++; continue; }
 
-      // Supabase dedup only (no extra Graph API calls per comment)
+      // Dedup
       var existing = await supaFetch('clari_conversations?content=eq.[FB-Comment:' + comment.id + ']&select=id&limit=1');
       if (existing && existing.length > 0) { skippedDedup++; continue; }
 
-      console.log('[Meta Comments] Replying to: "' + comment.message.substring(0, 60) + '" (id:' + comment.id + ')');
+      var ch = comment.channel || 'messenger';
+      console.log('[Meta Comments] Replying to ' + ch + ': "' + comment.message.substring(0, 60) + '" (id:' + comment.id + ')');
       await handleComment({
         id: comment.id,
         message: comment.message,
-        from: null  // not available for unverified apps
-      }, 'messenger');
+        from: comment.username ? { username: comment.username } : null
+      }, ch);
       replied++;
     }
     console.log('[Meta Comments] Done: ' + replied + ' new, ' + skippedDedup + ' dedup, ' + skippedShort + ' short, ' + skippedOld + ' old (' + (Date.now() - startTime) + 'ms)');
