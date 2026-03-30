@@ -2352,6 +2352,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-left"><h2>Compras Lab</h2><p>Registro de compras de materiales</p></div>
           <div class="topbar-right">
             <button class="btn btn-g btn-sm" onclick="clbCargarHistorial()">↻ Actualizar</button>
+            <button class="btn btn-g" onclick="clbAbrirRapida()" style="font-size:12px">📝 Compra rápida</button>
             <button class="btn btn-p" onclick="clbAbrirNueva()">📸 Nueva compra</button>
           </div>
         </div>
@@ -2435,6 +2436,29 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end">
                 <button class="btn btn-p" onclick="clbGuardarCompra()">💾 Guardar compra</button>
               </div>
+            </div>
+          </div>
+
+          <!-- COMPRA RÁPIDA (sin detalle por item) -->
+          <div id="clb-rapida" style="display:none;margin-bottom:16px;background:var(--surface2);border:1px solid rgba(200,240,74,0.3);border-radius:10px;padding:14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:12px;font-weight:700;color:var(--accent)">📝 Compra rápida (solo total)</div>
+              <button class="btn btn-g btn-sm" onclick="clbCerrarRapida()" style="font-size:10px;padding:3px 8px">✕ Cerrar</button>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Registra la nota completa sin desglosar materiales. Ideal para notas ya revisadas.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+              <div class="fg"><label>Proveedor</label>
+                <select id="clbr-proveedor" style="width:100%">
+                  <option value="">— Seleccionar —</option>
+                </select>
+              </div>
+              <div class="fg"><label>Folio nota</label><input type="text" id="clbr-folio" placeholder="Ej: 12345"></div>
+              <div class="fg"><label>Total $</label><input type="number" id="clbr-total" step="0.01" min="0" placeholder="0.00" style="font-weight:700;color:var(--accent)"></div>
+              <div class="fg"><label>Fecha</label><input type="date" id="clbr-fecha" style="color-scheme:dark"></div>
+            </div>
+            <div class="fg" style="margin-bottom:12px"><label>Nota / observación (opcional)</label><input type="text" id="clbr-nota" placeholder="Ej: Nota de SALES, materiales varios"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-p" id="clbr-guardar-btn" onclick="clbGuardarRapida()">💾 Guardar compra</button>
             </div>
           </div>
 
@@ -22571,7 +22595,7 @@ async function calcularComisiones() {
 <script src="js/mod-creditos.js?v=125"></script>
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=169"></script>
-<script src="js/mod-contabilidad.js?v=177"></script>
+<script src="js/mod-contabilidad.js?v=178"></script>
 <script src="js/mod-estrategia.js?v=181"></script>
 
 
@@ -22705,6 +22729,23 @@ async function clbInit() {
   clbCargarProveedores();
   clbCargarLabsPrecios();
   clbCargarPrecioIndex();
+
+  // Auto-procesar foto pendiente de Contabilidad
+  if (window._contPendingLabFile) {
+    var pendingFile = window._contPendingLabFile;
+    window._contPendingLabFile = null;
+    setTimeout(function() {
+      try {
+        var fileInput = document.getElementById('clb-file');
+        if (fileInput) {
+          var dt = new DataTransfer();
+          dt.items.add(pendingFile);
+          fileInput.files = dt.files;
+          clbProcesarFoto(fileInput);
+        }
+      } catch(e) { console.warn('Auto-procesar foto pendiente:', e); }
+    }, 500);
+  }
 }
 
 // Load all price lists into flat index + saved mappings
@@ -23215,6 +23256,81 @@ function clbCerrarNueva() {
   var f = document.getElementById('clb-file'); if(f) f.value = '';
   document.getElementById('clb-file-label').textContent = 'Toca para subir foto de la nota de compra';
   _clbItems = [];
+}
+
+function clbAbrirRapida() {
+  document.getElementById('clb-rapida').style.display = '';
+  document.getElementById('clb-nueva').style.display = 'none';
+  var fechaEl = document.getElementById('clbr-fecha');
+  if (fechaEl && !fechaEl.value) fechaEl.value = hoyLocal();
+  // Cargar proveedores en el select de compra rápida
+  var sel = document.getElementById('clbr-proveedor');
+  if (sel && sel.options.length <= 1) {
+    var selOrig = document.getElementById('clb-proveedor');
+    if (selOrig) {
+      for (var i = 1; i < selOrig.options.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = selOrig.options[i].value;
+        opt.textContent = selOrig.options[i].textContent;
+        sel.appendChild(opt);
+      }
+    }
+  }
+}
+function clbCerrarRapida() {
+  document.getElementById('clb-rapida').style.display = 'none';
+}
+
+async function clbGuardarRapida() {
+  if (window._actionBusy && window._actionBusy['clbGuardarRapida']) return;
+  if (!window._actionBusy) window._actionBusy = {};
+  window._actionBusy['clbGuardarRapida'] = true;
+  var btn = document.getElementById('clbr-guardar-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+
+  try {
+    var proveedor = document.getElementById('clbr-proveedor').value;
+    var folio = document.getElementById('clbr-folio').value.trim();
+    var total = parseFloat(document.getElementById('clbr-total').value);
+    var fecha = document.getElementById('clbr-fecha').value || hoyLocal();
+    var nota = (document.getElementById('clbr-nota').value || '').trim();
+
+    if (!total || total <= 0) { toast('Ingresa el total de la nota', true); return; }
+
+    var items = [{ material: nota || ('Compra ' + (proveedor || 'general')), serie: null, cantidad: 1, precio_unitario: total, subtotal: total }];
+
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'insert', table: 'compras_lab',
+        auth: { id: currentUser?.id, pass: currentUser?.pass },
+        data: {
+          fecha: fecha,
+          proveedor: proveedor || null,
+          folio_nota: folio || null,
+          items: JSON.stringify(items),
+          total: total,
+          total_items: total,
+          sucursal: currentUser?.sucursal || 'Todas',
+          usuario: currentUser?.nombre || currentUser?.id || 'admin'
+        }
+      })
+    });
+
+    if (!res.ok) throw new Error('Error guardando');
+    toast('Compra registrada: $' + total.toLocaleString('es-MX'));
+    clbCerrarRapida();
+    document.getElementById('clbr-total').value = '';
+    document.getElementById('clbr-folio').value = '';
+    document.getElementById('clbr-nota').value = '';
+    clbCargarHistorial();
+    clbCargarResumen();
+  } catch(err) {
+    toast('Error: ' + err.message, true);
+  } finally {
+    window._actionBusy['clbGuardarRapida'] = false;
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar compra'; }
+  }
 }
 
 async function clbProcesarFoto(input) {

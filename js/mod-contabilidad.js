@@ -434,6 +434,12 @@ function contCerrarFormGasto() {
   _contEditId = null;
 }
 
+function contRestaurarFormGasto() {
+  // Restaura el form normal de gasto (usuario decidió NO ir a Compras Lab)
+  window._contPendingLabFile = null;
+  contMostrarFormGasto();
+}
+
 function contUpdateSubcats() {
   var cat = document.getElementById('cont-cat').value;
   var sel = document.getElementById('cont-subcat');
@@ -513,6 +519,24 @@ async function contProcesarFoto(input) {
     var text = (data.content && data.content[0] && data.content[0].text) || data.text || '';
     text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     var parsed = JSON.parse(text);
+
+    // Detectar compra de materiales ópticos → redirigir a Compras Lab
+    if (parsed.categoria === 'Proveedores/materiales') {
+      window._contPendingLabFile = file;
+      st.innerHTML = '';
+      var banner = document.getElementById('cont-form-gasto');
+      if (banner) {
+        banner.innerHTML = '<div style="background:rgba(74,160,240,.08);border:1px solid rgba(74,160,240,.25);border-radius:12px;padding:20px;text-align:center">' +
+          '<div style="font-size:28px;margin-bottom:8px">📦</div>' +
+          '<div style="font-size:14px;font-weight:700;color:#4aa0f0;margin-bottom:6px">Esta parece una compra de materiales ópticos</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.5">Regístrala en <b>Compras Lab</b> para tener detalle por item,<br>validación de precios y poder editar cada material.</div>' +
+          '<div style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap">' +
+          '<button class="btn btn-p" onclick="contCerrarFormGasto();go(\'compras-lab\')" style="font-size:13px;padding:10px 24px">Ir a Compras Lab →</button>' +
+          '<button class="btn btn-g" onclick="contRestaurarFormGasto()" style="font-size:11px;color:var(--muted)">Registrar como gasto genérico</button>' +
+          '</div></div>';
+      }
+      return;
+    }
 
     if (parsed.concepto) document.getElementById('cont-concepto').value = parsed.concepto;
     if (parsed.monto) document.getElementById('cont-monto').value = parsed.monto;
