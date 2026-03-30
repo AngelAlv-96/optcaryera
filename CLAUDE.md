@@ -590,7 +590,7 @@ Cambios v138: fix lista usuarios config, checkbox Compras Lab en permisos, auth_
 6. Mapear materiales existentes (CR-39 · Blue Light → 1.56 BLITA BLUE AR, etc.) en el sistema
 7. Optimizar probador virtual LC en tienda.html (detección de ojos necesita más trabajo)
 8. **Conekta**: ⛔ ABANDONADO (v204) — requisitos excesivos, cuenta nunca aprobada. Código en conekta-subscribe.js y conekta-webhook.js marcado DEPRECATED. Env vars `CONEKTA_PRIVATE_KEY`, `CONEKTA_WEBHOOK_KEY`, `GOOGLE_CLIENT_ID` pueden eliminarse de Netlify
-9. **Google Sign-In**: ✅ RESTAURADO (v230) — tienda LC usa GIS para cuenta cliente (pedidos, suscripciones, perfil). **⬜ PENDIENTE**: crear credencial OAuth en Google Cloud Console y configurar `GOOGLE_CLIENT_ID` en Netlify env vars + constante en tienda.html
+9. **Google Sign-In**: ✅ RESTAURADO (v230) — tienda LC usa GIS para cuenta cliente (pedidos, suscripciones, perfil). ✅ Credencial OAuth configurada (`961220697987-...`) en tienda.html
 10. **Facturación**: ✅ Facturapi cancelado (v171), ✅ CSD eliminados, ✅ flujo simplificado, ✅ env vars limpiadas (FACTURAPI_KEY + STRIPE_* eliminadas de Netlify), ⬜ considerar envío por correo desde sistema (requiere Gmail App Password con 2FA)
 11. **SEGURIDAD menor**: innerHTML sin sanitizar (XSS bajo), Rate limiting, RBAC en dbwrite.js
 12. **Lottie animations**: ✅ COMPLETADO (v182). CDN `dotlottie-wc@0.9.2`, 7 stages con URLs reales `.lottie` de `assets-v2.lottiefiles.com`, web component `<dotlottie-wc>` con canvas WebAssembly, fallback emoji CSS, auto-refresh compatible. URLs restantes del catálogo (179 total, 7 usadas) guardadas en sesión Claude Code para futuras variaciones.

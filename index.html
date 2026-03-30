@@ -20260,7 +20260,7 @@ async function realizarCorte() {
     total_abonos: totalAbonos,
     total_cancelaciones: totalCancel,
     num_ventas: cajaDayData.ventas.length,
-    num_abonos: pagosAbonos.length,
+    num_abonos: pagosAbonos.length + cajaDayData.creditoAbonos.length,
     num_cancelaciones: cajaDayData.canceladas.length,
     desglose_metodos: desglose,
     total_retiros: cajaDayData.retiros.reduce((s, r) => s + Number(r.monto), 0),
@@ -20569,8 +20569,8 @@ function cajaTab(tab) {
   if (tab === 'historial') verHistorialCortes();
 }
 
-function verDetalleCorte(corteId) {
-  db.from('cortes_caja').select('*').eq('id', corteId).single().then(function(res) {
+async function verDetalleCorte(corteId) {
+  var res = await db.from('cortes_caja').select('*').eq('id', corteId).single();
     var c = res.data;
     if (!c) { toast('Corte no encontrado', true); return; }
     var dNeta = _corteDiffNeta(c);
@@ -20590,6 +20590,27 @@ function verDetalleCorte(corteId) {
     var dolar = Number(desglose['Dólar'] || 0);
     var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
     var isAdmin = currentUser?.rol === 'admin';
+
+    // Fetch day movements in parallel
+    var corteFecha = c.fecha; // YYYY-MM-DD
+    var utcS = new Date(corteFecha+'T00:00:00-06:00').toISOString();
+    var utcE = new Date(corteFecha+'T23:59:59-06:00').toISOString();
+    var suc = c.sucursal;
+    var [mvVentas, mvPagos, mvCreditos, mvRetiros] = await Promise.all([
+      db.from('ventas').select('folio,total,pagado,saldo,estado,created_at,pacientes(nombre,apellidos)').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
+      db.from('venta_pagos').select('venta_folio,metodo_pago,monto,referencia,created_at').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
+      db.from('creditos_abonos').select('monto,metodo_pago,referencia,created_at,creditos_clientes(folio_sicar,pacientes(nombre,apellidos))').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
+      db.from('retiros_caja').select('monto,observaciones,registrado_por,created_at').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at')
+    ]);
+    var ventas = mvVentas.data || [];
+    var pagos = mvPagos.data || [];
+    var creditos = mvCreditos.data || [];
+    var retiros = mvRetiros.data || [];
+    var _fmtHora = function(ts) { if (!ts) return ''; return new Date(ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'America/Chihuahua'}); };
+    var _fmtMonto = function(n) { return '$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+    var _metodoBg = function(m) { var map = {Efectivo:'rgba(114,196,126,0.12)',Tarjeta:'rgba(96,165,250,0.12)',MSI:'rgba(147,130,220,0.12)','Dólar':'rgba(45,212,191,0.12)',Aplazo:'rgba(251,146,60,0.12)','Link de pago':'rgba(56,189,248,0.12)'}; return map[m]||'rgba(255,255,255,0.06)'; };
+    var _metodoColor = function(m) { var map = {Efectivo:'#72c47e',Tarjeta:'#60a5fa',MSI:'#9382dc','Dólar':'#2dd4bf',Aplazo:'#fb923c','Link de pago':'#38bdf8'}; return map[m]||'var(--muted)'; };
+
     // Build modal HTML
     var h = '';
     h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
@@ -20684,6 +20705,92 @@ function verDetalleCorte(corteId) {
     if (c.observaciones) {
       h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:var(--muted);font-style:italic">📝 '+c.observaciones+'</div>';
     }
+    // === MOVIMIENTOS DEL DÍA (collapsible) ===
+    var totalMovs = ventas.length + pagos.length + creditos.length + retiros.length;
+    h += '<div style="background:rgba(255,255,255,0.03);border-radius:8px;margin-bottom:10px;overflow:hidden">';
+    h += '<div onclick="this.parentElement.querySelector(\'._cdMovBody\').style.display=this.parentElement.querySelector(\'._cdMovBody\').style.display===\'none\'?\'block\':\'none\';this.querySelector(\'._cdArr\').textContent=this.parentElement.querySelector(\'._cdMovBody\').style.display===\'none\'?\'▸\':\'▾\'" style="padding:10px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">';
+    h += '<div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em">📋 Movimientos del día ('+totalMovs+')</div>';
+    h += '<span class="_cdArr" style="color:var(--muted);font-size:12px">▸</span></div>';
+    h += '<div class="_cdMovBody" style="display:none;padding:0 12px 10px">';
+    // -- Sub: Ventas --
+    if (ventas.length > 0) {
+      h += '<div onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'" style="font-size:10px;font-weight:600;color:var(--white);padding:6px 0 4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)">Ventas ('+ventas.length+') ▾</div>';
+      h += '<div style="overflow-x:auto;margin-bottom:8px">';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:380px">';
+      h += '<tr style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em"><th style="text-align:left;padding:4px 4px;font-weight:600">Hora</th><th style="text-align:left;padding:4px">Folio</th><th style="text-align:left;padding:4px">Paciente</th><th style="text-align:right;padding:4px">Total</th><th style="text-align:right;padding:4px">Pagado</th><th style="text-align:right;padding:4px">Saldo</th><th style="text-align:center;padding:4px">Estado</th></tr>';
+      ventas.forEach(function(v) {
+        var pac = v.pacientes ? (v.pacientes.nombre||'')+' '+(v.pacientes.apellidos||'') : '';
+        var isCancelled = v.estado === 'Cancelada';
+        var rowStyle = isCancelled ? 'color:#e08080;text-decoration:line-through;opacity:0.6' : 'color:var(--white)';
+        var saldoColor = Number(v.saldo) > 0 ? '#d4b84a' : '#72c47e';
+        var estadoColor = v.estado === 'Liquidada' ? '#72c47e' : v.estado === 'Apartado' ? '#d4b84a' : '#e08080';
+        h += '<tr style="'+rowStyle+';border-bottom:1px solid rgba(255,255,255,0.02)">';
+        h += '<td style="padding:3px 4px;white-space:nowrap">'+_fmtHora(v.created_at)+'</td>';
+        h += '<td style="padding:3px 4px;font-weight:600">'+v.folio+'</td>';
+        h += '<td style="padding:3px 4px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+pac.trim()+'</td>';
+        h += '<td style="padding:3px 4px;text-align:right;font-weight:600">'+_fmtMonto(v.total)+'</td>';
+        h += '<td style="padding:3px 4px;text-align:right">'+_fmtMonto(v.pagado)+'</td>';
+        h += '<td style="padding:3px 4px;text-align:right;color:'+(isCancelled?'#e08080':saldoColor)+'">'+_fmtMonto(v.saldo)+'</td>';
+        h += '<td style="padding:3px 4px;text-align:center"><span style="font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,0.05);color:'+estadoColor+'">'+v.estado+'</span></td>';
+        h += '</tr>';
+      });
+      h += '</table></div>';
+    }
+    // -- Sub: Pagos recibidos (venta_pagos + creditos_abonos merged) --
+    var allPagos = [];
+    pagos.forEach(function(p) { allPagos.push({hora:p.created_at, folio:p.venta_folio, metodo:p.metodo_pago, monto:p.monto, ref:p.referencia||'', tipo:'venta'}); });
+    creditos.forEach(function(cr) {
+      var folioSicar = cr.creditos_clientes ? cr.creditos_clientes.folio_sicar : '';
+      var pacCr = cr.creditos_clientes && cr.creditos_clientes.pacientes ? (cr.creditos_clientes.pacientes.nombre||'')+' '+(cr.creditos_clientes.pacientes.apellidos||'') : '';
+      allPagos.push({hora:cr.created_at, folio:folioSicar, metodo:cr.metodo_pago, monto:cr.monto, ref:pacCr.trim(), tipo:'sicar'});
+    });
+    allPagos.sort(function(a,b) { return new Date(a.hora) - new Date(b.hora); });
+    if (allPagos.length > 0) {
+      h += '<div onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'" style="font-size:10px;font-weight:600;color:var(--white);padding:6px 0 4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)">Pagos recibidos ('+allPagos.length+') ▾</div>';
+      h += '<div style="overflow-x:auto;margin-bottom:8px">';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:360px">';
+      h += '<tr style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em"><th style="text-align:left;padding:4px">Hora</th><th style="text-align:left;padding:4px">Folio</th><th style="text-align:center;padding:4px">Método</th><th style="text-align:right;padding:4px">Monto</th><th style="text-align:left;padding:4px">Ref</th></tr>';
+      allPagos.forEach(function(p) {
+        var badge = p.tipo === 'sicar' ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(251,146,60,0.15);color:#fb923c;margin-left:3px">SICAR</span>' : '';
+        h += '<tr style="color:var(--white);border-bottom:1px solid rgba(255,255,255,0.02)">';
+        h += '<td style="padding:3px 4px;white-space:nowrap">'+_fmtHora(p.hora)+'</td>';
+        h += '<td style="padding:3px 4px;font-weight:600">'+p.folio+badge+'</td>';
+        h += '<td style="padding:3px 4px;text-align:center"><span style="font-size:9px;padding:1px 5px;border-radius:4px;background:'+_metodoBg(p.metodo)+';color:'+_metodoColor(p.metodo)+'">'+p.metodo+'</span></td>';
+        h += '<td style="padding:3px 4px;text-align:right;font-weight:600">'+_fmtMonto(p.monto)+'</td>';
+        h += '<td style="padding:3px 4px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px">'+p.ref+'</td>';
+        h += '</tr>';
+      });
+      h += '</table></div>';
+    }
+    // -- Sub: Retiros --
+    if (retiros.length > 0) {
+      h += '<div onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'" style="font-size:10px;font-weight:600;color:var(--white);padding:6px 0 4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)">Retiros ('+retiros.length+') ▾</div>';
+      h += '<div style="overflow-x:auto;margin-bottom:8px">';
+      h += '<table style="width:100%;border-collapse:collapse;font-size:11px">';
+      h += '<tr style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em"><th style="text-align:left;padding:4px">Hora</th><th style="text-align:right;padding:4px">Monto</th><th style="text-align:left;padding:4px">Observación</th><th style="text-align:left;padding:4px">Realizó</th></tr>';
+      retiros.forEach(function(r) {
+        var isUSD = (r.observaciones||'').startsWith('Retiro USD');
+        var usdBadge = isUSD ? ' <span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(45,212,191,0.15);color:#2dd4bf">dólar</span>' : '';
+        h += '<tr style="color:var(--white);border-bottom:1px solid rgba(255,255,255,0.02)">';
+        h += '<td style="padding:3px 4px;white-space:nowrap">'+_fmtHora(r.created_at)+'</td>';
+        h += '<td style="padding:3px 4px;text-align:right;font-weight:600">'+_fmtMonto(r.monto)+usdBadge+'</td>';
+        h += '<td style="padding:3px 4px;color:var(--muted);font-size:10px">'+(r.observaciones||'')+'</td>';
+        h += '<td style="padding:3px 4px;color:var(--muted);font-size:10px">'+(r.registrado_por||'')+'</td>';
+        h += '</tr>';
+      });
+      h += '</table></div>';
+    }
+    // -- Resumen rápido --
+    var ventasActivas = ventas.filter(function(v){return v.estado !== 'Cancelada'});
+    var saldosPend = ventasActivas.filter(function(v){return Number(v.saldo) > 0});
+    var totalSaldos = saldosPend.reduce(function(s,v){return s+Number(v.saldo)},0);
+    h += '<div style="margin-top:8px;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;font-size:10px;color:var(--muted);line-height:1.6">';
+    h += 'Total ventas: '+_fmtMonto(ventasActivas.reduce(function(s,v){return s+Number(v.total)},0))+' ('+ventasActivas.length+' ventas)';
+    h += '<br>Total cobrado: '+_fmtMonto(allPagos.reduce(function(s,p){return s+Number(p.monto)},0))+' ('+allPagos.length+' pagos)';
+    if (retiros.length > 0) h += '<br>Total retiros: '+_fmtMonto(retiros.reduce(function(s,r){return s+Number(r.monto)},0))+' ('+retiros.length+' retiros)';
+    if (saldosPend.length > 0) h += '<br><span style="color:#d4b84a">Saldos pendientes: '+_fmtMonto(totalSaldos)+' ('+saldosPend.length+' ventas)</span>';
+    h += '</div>';
+    h += '</div></div>'; // close _cdMovBody + container
     // Buttons
     h += '<div style="display:flex;gap:8px;margin-top:12px">';
     if (isAdmin) h += '<button onclick="event.stopPropagation();cerrarModalCorteDetalle();reenviarCorte(\''+c.id+'\')" style="flex:1;padding:8px;background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.2);border-radius:8px;color:#25D366;font-size:11px;font-weight:600;cursor:pointer;font-family:\'Outfit\',sans-serif">📲 Reenviar WA</button>';
@@ -20698,7 +20805,6 @@ function verDetalleCorte(corteId) {
     overlay.onclick = function(e) { if (e.target === overlay) cerrarModalCorteDetalle(); };
     overlay.innerHTML = '<div class="m-box" style="max-width:420px;max-height:90vh;overflow-y:auto">'+h+'</div>';
     document.body.appendChild(overlay);
-  });
 }
 function cerrarModalCorteDetalle() { var m = document.getElementById('m-corte-detalle'); if (m) m.remove(); }
 
