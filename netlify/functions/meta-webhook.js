@@ -542,6 +542,8 @@ async function checkRecentComments() {
     } catch(e) { console.error('[Meta Comments] FB error:', e.message); }
 
     // ── 2. Instagram media comments ──
+    // IG posts can be old but have recent comments — use 30 days for posts, filter comments by 1 week
+    var ONE_MONTH = 30 * 24 * 60 * 60 * 1000;
     try {
       var igUrl = GRAPH_API + '/' + IG_ACCOUNT_ID + '/media?fields=id,timestamp,comments_count&limit=15&access_token=' + META_PAGE_TOKEN;
       var igRes = await fetch(igUrl);
@@ -551,7 +553,7 @@ async function checkRecentComments() {
         for (var ip = 0; ip < (igData.data || []).length; ip++) {
           if (Date.now() - startTime > 5000) break; // time guard
           var igPost = igData.data[ip];
-          if (Date.now() - new Date(igPost.timestamp).getTime() > ONE_WEEK) continue;
+          if (Date.now() - new Date(igPost.timestamp).getTime() > ONE_MONTH) continue;
           if (!igPost.comments_count || igPost.comments_count === 0) continue;
           // Fetch comments for this IG post
           var igCommUrl = GRAPH_API + '/' + igPost.id + '/comments?fields=id,text,username,timestamp&limit=25&access_token=' + META_PAGE_TOKEN;
