@@ -582,17 +582,43 @@ async function checkRecentComments() {
 
 // ── DIAGNOSTIC: test comment checking manually ──
 // GET /meta-webhook?diag=comments&token=clari_caryera_2026
-async function diagComments() {
+// GET /meta-webhook?diag=full&token=clari_caryera_2026  (complete diagnostic)
+async function diagComments(mode) {
   if (!META_PAGE_TOKEN) return { error: 'No META_PAGE_TOKEN' };
   var result = {};
   try {
-    // 1. Check token permissions
-    var permRes = await fetch(GRAPH_API + '/me/permissions?access_token=' + META_PAGE_TOKEN);
-    if (permRes.ok) {
-      var permData = await permRes.json();
-      result.permissions = (permData.data || []).filter(function(p) { return p.status === 'granted'; }).map(function(p) { return p.permission; });
-      result.declined_permissions = (permData.data || []).filter(function(p) { return p.status !== 'granted'; }).map(function(p) { return p.permission + ':' + p.status; });
-    }
+    // 1. Check token permissions (use page-level debug)
+    try {
+      var permRes = await fetch(GRAPH_API + '/me/permissions?access_token=' + META_PAGE_TOKEN);
+      var permText = await permRes.text();
+      try {
+        var permData = JSON.parse(permText);
+        if (permData.data) {
+          result.permissions = (permData.data || []).filter(function(p) { return p.status === 'granted'; }).map(function(p) { return p.permission; });
+          result.declined_permissions = (permData.data || []).filter(function(p) { return p.status !== 'granted'; }).map(function(p) { return p.permission + ':' + p.status; });
+        } else {
+          result.permissions_error = permText.substring(0, 300);
+        }
+      } catch(pe) { result.permissions_error = permText.substring(0, 300); }
+    } catch(e) { result.permissions_error = e.message; }
+
+    // 1b. Check token info via debug endpoint
+    try {
+      var debugRes = await fetch(GRAPH_API + '/debug_token?input_token=' + META_PAGE_TOKEN + '&access_token=' + META_PAGE_TOKEN);
+      if (debugRes.ok) {
+        var debugData = await debugRes.json();
+        if (debugData.data) {
+          result.token_info = {
+            type: debugData.data.type,
+            app_id: debugData.data.app_id,
+            is_valid: debugData.data.is_valid,
+            expires_at: debugData.data.expires_at === 0 ? 'never' : new Date(debugData.data.expires_at * 1000).toISOString(),
+            scopes: debugData.data.scopes,
+            granular_scopes: (debugData.data.granular_scopes || []).map(function(s) { return s.scope; })
+          };
+        }
+      }
+    } catch(e) { result.token_debug_error = e.message; }
 
     // 2. Feed with inline comments
     var feedUrl = GRAPH_API + '/' + FB_PAGE_ID + '/feed?fields=id,created_time,comments.summary(true).limit(10){id,message,created_time}&limit=5&access_token=' + META_PAGE_TOKEN;
@@ -600,52 +626,88 @@ async function diagComments() {
     if (!postsRes.ok) {
       var errText = await postsRes.text();
       result.feed_error = { status: postsRes.status, detail: errText.substring(0, 300) };
-      return result;
-    }
-    var postsData = await postsRes.json();
-    result.posts_in_feed = postsData.data ? postsData.data.length : 0;
+    } else {
+      var postsData = await postsRes.json();
+      result.posts_in_feed = postsData.data ? postsData.data.length : 0;
 
-    // 3. Show raw first post structure (to see if comments field exists at all)
-    if (postsData.data && postsData.data.length > 0) {
-      var firstPost = postsData.data[0];
-      result.first_post = {
-        id: firstPost.id,
-        created_time: firstPost.created_time,
-        has_comments_field: !!firstPost.comments,
-        comments_count: firstPost.comments ? (firstPost.comments.summary ? firstPost.comments.summary.total_count : 'no summary') : 'no comments field',
-        comments_data_length: firstPost.comments && firstPost.comments.data ? firstPost.comments.data.length : 0
-      };
-    }
-
-    // 4. Try fetching comments directly on first post
-    if (postsData.data && postsData.data.length > 0) {
-      var postId = postsData.data[0].id;
-      var directUrl = GRAPH_API + '/' + postId + '/comments?fields=id,message,created_time&limit=5&access_token=' + META_PAGE_TOKEN;
-      var directRes = await fetch(directUrl);
-      if (directRes.ok) {
-        var directData = await directRes.json();
-        result.direct_comments_on_first_post = {
-          count: directData.data ? directData.data.length : 0,
-          comments: (directData.data || []).map(function(c) { return { id: c.id, message: (c.message || '').substring(0, 80), date: c.created_time }; })
+      if (postsData.data && postsData.data.length > 0) {
+        var firstPost = postsData.data[0];
+        result.first_post = {
+          id: firstPost.id,
+          created_time: firstPost.created_time,
+          has_comments_field: !!firstPost.comments,
+          comments_count: firstPost.comments ? (firstPost.comments.summary ? firstPost.comments.summary.total_count : 'no summary') : 'no comments field',
+          comments_data_length: firstPost.comments && firstPost.comments.data ? firstPost.comments.data.length : 0
         };
+      }
+
+      // Count inline comments
+      var comments = [];
+      for (var p = 0; p < (postsData.data || []).length; p++) {
+        var post = postsData.data[p];
+        if (!post.comments || !post.comments.data) continue;
+        for (var c = 0; c < post.comments.data.length; c++) {
+          comments.push({ id: post.comments.data[c].id, message: (post.comments.data[c].message || '').substring(0, 80) });
+        }
+      }
+      result.inline_comments = comments.length;
+    }
+
+    // 3. Instagram media + comments
+    try {
+      var igMediaUrl = GRAPH_API + '/' + IG_ACCOUNT_ID + '/media?fields=id,caption,timestamp,comments_count,like_count&limit=5&access_token=' + META_PAGE_TOKEN;
+      var igRes = await fetch(igMediaUrl);
+      if (igRes.ok) {
+        var igData = await igRes.json();
+        result.ig_media = (igData.data || []).map(function(m) {
+          return { id: m.id, comments: m.comments_count, likes: m.like_count, date: m.timestamp, caption: (m.caption || '').substring(0, 60) };
+        });
+        // Get comments on first IG post with comments
+        var igPostWithComments = (igData.data || []).find(function(m) { return m.comments_count > 0; });
+        if (igPostWithComments) {
+          var igCommUrl = GRAPH_API + '/' + igPostWithComments.id + '/comments?fields=id,text,username,timestamp&limit=10&access_token=' + META_PAGE_TOKEN;
+          var igCommRes = await fetch(igCommUrl);
+          if (igCommRes.ok) {
+            var igCommData = await igCommRes.json();
+            result.ig_comments_sample = (igCommData.data || []).map(function(c) {
+              return { id: c.id, text: (c.text || '').substring(0, 80), user: c.username, date: c.timestamp };
+            });
+          } else {
+            result.ig_comments_error = (await igCommRes.text()).substring(0, 300);
+          }
+        }
       } else {
-        var directErr = await directRes.text();
-        result.direct_comments_error = { status: directRes.status, detail: directErr.substring(0, 300) };
+        result.ig_media_error = (await igRes.text()).substring(0, 300);
       }
-    }
+    } catch(e) { result.ig_error = e.message; }
 
-    // 5. Collect inline comments from all posts
-    var comments = [];
-    for (var p = 0; p < (postsData.data || []).length; p++) {
-      var post = postsData.data[p];
-      if (!post.comments || !post.comments.data) continue;
-      for (var c = 0; c < post.comments.data.length; c++) {
-        comments.push({ id: post.comments.data[c].id, message: (post.comments.data[c].message || '').substring(0, 80) });
+    // 4. Check webhook subscriptions on page
+    try {
+      var subsRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/subscribed_apps?access_token=' + META_PAGE_TOKEN);
+      if (subsRes.ok) {
+        var subsData = await subsRes.json();
+        result.webhook_subscriptions = (subsData.data || []).map(function(a) {
+          return { id: a.id, name: a.name, subscribed_fields: a.subscribed_fields };
+        });
+      } else {
+        result.webhook_subs_error = (await subsRes.text()).substring(0, 300);
       }
-    }
-    result.inline_comments = comments.length;
+    } catch(e) { result.webhook_subs_error = e.message; }
+
+    // 5. Recent Messenger conversations
+    try {
+      var convRes = await fetch(GRAPH_API + '/' + FB_PAGE_ID + '/conversations?fields=id,updated_time,participants,message_count&platform=instagram&limit=5&access_token=' + META_PAGE_TOKEN);
+      if (convRes.ok) {
+        var convData = await convRes.json();
+        result.ig_conversations = (convData.data || []).map(function(c) {
+          return { id: c.id, messages: c.message_count, updated: c.updated_time };
+        });
+      } else {
+        result.ig_conversations_error = (await convRes.text()).substring(0, 300);
+      }
+    } catch(e) { result.ig_conversations_error = e.message; }
+
     result.api_version = GRAPH_API;
-
     return result;
   } catch(e) { result.error = e.message; return result; }
 }
@@ -657,8 +719,8 @@ exports.handler = async function(event) {
     var qs = event.queryStringParameters || {};
 
     // Diagnostic endpoint
-    if (qs.diag === 'comments' && qs.token === META_VERIFY_TOKEN) {
-      var result = await diagComments();
+    if ((qs.diag === 'comments' || qs.diag === 'full') && qs.token === META_VERIFY_TOKEN) {
+      var result = await diagComments(qs.diag);
       return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result, null, 2) };
     }
 
