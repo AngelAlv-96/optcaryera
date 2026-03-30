@@ -54,6 +54,26 @@ async function sendWA(to, text) {
   } catch (e) { console.warn('WA send failed:', e.message); }
 }
 
+async function sendWATemplate(to, contentSid, vars) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) return;
+  try {
+    const toNum = normalizePhone(to);
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('From', TWILIO_WA);
+    params.append('To', `whatsapp:+${toNum}`);
+    params.append('ContentSid', contentSid);
+    params.append('ContentVariables', JSON.stringify(vars));
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await res.json();
+    if (data.error_code) console.warn('WA template send error:', data.message);
+  } catch (e) { console.warn('WA template send failed:', e.message); }
+}
+
 async function getWhatsAppConfig() {
   try {
     const res = await supaREST('GET', 'app_config?id=eq.whatsapp_config&select=value');
@@ -180,6 +200,24 @@ exports.handler = async (event) => {
       const promises = [...notifyPhones].map(phone => sendWA(phone, msg));
       await Promise.allSettled(promises);
       console.log(`Clip webhook: WA notifications sent to ${notifyPhones.size} recipients`);
+
+      // --- Send receipt to customer via template ---
+      // Extract phone from venta notas (format: "Tel: 6561234567")
+      const notasRes = await supaREST('GET', `ventas?id=eq.${venta.id}&select=notas,sucursal_entrega`);
+      const ventaNotas = notasRes.ok && notasRes.data?.[0] || {};
+      const telMatch = (ventaNotas.notas || '').match(/Tel:\s*(\+?\d[\d\s\-]{6,})/);
+      if (telMatch) {
+        const clientPhone = telMatch[1].replace(/[\s\-]/g, '');
+        const sucEntrega = ventaNotas.sucursal_entrega || sucursal;
+        await sendWATemplate(clientPhone, 'HXa41211eb4bdec7a116dc43712be73ad8', {
+          '1': reference,
+          '2': amount.toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+          '3': sucEntrega
+        });
+        console.log(`Clip webhook: customer receipt sent to ${clientPhone}`);
+      } else {
+        console.log('Clip webhook: no customer phone found in notas, skipping receipt');
+      }
     } catch (waErr) {
       console.warn('Clip webhook: WA notification failed:', waErr.message);
     }
