@@ -100,14 +100,24 @@ exports.handler = async (event) => {
   if (CLIP_WEBHOOK_TOKEN) {
     const params = event.queryStringParameters || {};
     if (params.token !== CLIP_WEBHOOK_TOKEN) {
-      console.warn('Clip webhook: invalid token');
+      console.warn('Clip webhook: invalid token, got:', params.token || '(none)', 'expected:', CLIP_WEBHOOK_TOKEN.slice(0, 4) + '...');
       return { statusCode: 401, headers, body: '{"error":"Unauthorized"}' };
     }
   }
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    console.log('Clip webhook received: status=' + (payload.status || payload.resource_status) + ', ref=' + (payload.metadata?.me_reference_id || ''));
+    // Log full payload keys for debugging (no sensitive data)
+    console.log('Clip webhook received:', JSON.stringify({
+      status: payload.status,
+      resource_status: payload.resource_status,
+      amount: payload.amount,
+      payment_request_id: payload.payment_request_id,
+      receipt_no: payload.receipt_no,
+      ref: payload.metadata?.me_reference_id,
+      ext_ref: payload.metadata?.external_reference,
+      keys: Object.keys(payload)
+    }));
 
     const status = payload.status || payload.resource_status || '';
     const paymentId = payload.payment_request_id || '';

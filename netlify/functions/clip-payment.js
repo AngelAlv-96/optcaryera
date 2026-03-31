@@ -89,7 +89,7 @@ exports.handler = async (event) => {
           name: paciente_nombre || 'Cliente'
         }
       },
-      webhook_url: `${SITE_URL}/.netlify/functions/clip-webhook`
+      webhook_url: `${SITE_URL}/.netlify/functions/clip-webhook${process.env.CLIP_WEBHOOK_TOKEN ? '?token=' + process.env.CLIP_WEBHOOK_TOKEN : ''}`
     };
 
     // Call Clip API
