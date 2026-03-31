@@ -8369,17 +8369,22 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
   // Per-branch cards
   h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">';
   sucs.forEach(function(s) {
-    var corte = cortesHoy.find(c => c.sucursal === s);
+    // Aggregate ALL cortes for this sucursal (supports multiple cortes per day)
+    var cortesForSuc = cortesHoy.filter(c => c.sucursal === s);
     var sv = ventasHoy.filter(v => v.sucursal === s);
     var sg = garantiasHoy.filter(g => g.sucursal === s);
-    var numVentas = corte ? (corte.num_ventas||sv.length) : sv.length;
-    var totalVentas = corte ? Number(corte.total_ventas) : sv.reduce((a,v)=>a+Number(v.total),0);
-    var desglose = corte?.desglose_metodos || {};
-    var numAbonos = corte ? (corte.num_abonos||0) : 0;
-    var totalAbonos = corte ? Number(corte.total_abonos||0) : 0;
-    var dEfvo = corte ? Number(corte.diferencia) : 0;
-    var dTerm = corte ? Number(corte.diferencia_terminal||0) : 0;
-    var dDolar = corte ? Number(corte.diferencia_dolar||0) : 0;
+    var numVentas = cortesForSuc.length ? cortesForSuc.reduce((a,c)=>a+(c.num_ventas||0),0) : sv.length;
+    var totalVentas = cortesForSuc.length ? cortesForSuc.reduce((a,c)=>a+Number(c.total_ventas||0),0) : sv.reduce((a,v)=>a+Number(v.total),0);
+    var desglose = {};
+    cortesForSuc.forEach(function(c) {
+      var dm = c.desglose_metodos || {};
+      Object.entries(dm).forEach(function(e) { desglose[e[0]] = (desglose[e[0]]||0) + Number(e[1]); });
+    });
+    var numAbonos = cortesForSuc.reduce((a,c)=>a+(c.num_abonos||0),0);
+    var totalAbonos = cortesForSuc.reduce((a,c)=>a+Number(c.total_abonos||0),0);
+    var dEfvo = cortesForSuc.reduce((a,c)=>a+Number(c.diferencia||0),0);
+    var dTerm = cortesForSuc.reduce((a,c)=>a+Number(c.diferencia_terminal||0),0);
+    var dDolar = cortesForSuc.reduce((a,c)=>a+Number(c.diferencia_dolar||0),0);
     var d = Math.round((dEfvo + dTerm + dDolar) * 100) / 100;
     var dColor = Math.abs(d) < 0.01 ? '#72c47e' : d > 0 ? '#d4b84a' : '#e08080';
     var dIcon = Math.abs(d) < 0.01 ? '✅' : d > 0 ? '⚠️' : '🚨';
