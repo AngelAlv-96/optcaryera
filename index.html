@@ -14786,7 +14786,7 @@ function renderClariConversations() {
   // Ocultar conversaciones de campañas masivas (magnolia-reactivate, etc.) donde el cliente NO ha respondido
   convos = convos.filter(function(c) {
     var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
-    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3' || m.user_name === 'pin-lc-reactivacion' || m.user_name === 'pin-vip-reactivacion' || m.user_name === 'pin-fase3'; });
+    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3' || m.user_name === 'pin-lc-reactivacion' || m.user_name === 'pin-vip-reactivacion' || m.user_name === 'pin-fase3' || m.user_name === 'promo-followup'; });
     return !isCampaignOnly;
   });
   if (search) convos = convos.filter(function(c) { return c.name.toLowerCase().includes(search) || c.phone.includes(search); });
@@ -15037,7 +15037,7 @@ async function cargarWaCrm() {
     });
 
     // Step 2b: Filter out campaign-only conversations (no client reply) — huge performance boost
-    var campaignUserNames = { 'magnolia-reactivate':1, 'review-cron':1, 'lc-cron':1, 'lc-reactivacion':1, 'vip-reactivacion':1, 'ame-fase3':1, 'pin-lc-reactivacion':1, 'pin-vip-reactivacion':1, 'pin-fase3':1 };
+    var campaignUserNames = { 'magnolia-reactivate':1, 'review-cron':1, 'lc-cron':1, 'lc-reactivacion':1, 'vip-reactivacion':1, 'ame-fase3':1, 'pin-lc-reactivacion':1, 'pin-vip-reactivacion':1, 'pin-fase3':1, 'promo-followup':1 };
     Object.keys(grouped).forEach(function(phone) {
       var conv = grouped[phone];
       var hasUserReply = conv.messages.some(function(m) { return m.role === 'user'; });
