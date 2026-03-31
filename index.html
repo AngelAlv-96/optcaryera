@@ -23367,14 +23367,16 @@ async function clbGuardarRapida() {
           folio_nota: folio || null,
           items: JSON.stringify(items),
           total: total,
-          total_items: total,
           sucursal: currentUser?.sucursal || 'Todas',
           usuario: currentUser?.nombre || currentUser?.id || 'admin'
-        }
+        },
+        options: { select: true }
       })
     });
 
-    if (!res.ok) throw new Error('Error guardando');
+    var json = await res.json();
+    if (json.error) throw new Error(json.error);
+    if (!json.data) throw new Error('No se confirmó el guardado — intenta de nuevo');
     toast('Compra registrada: $' + total.toLocaleString('es-MX'));
     clbCerrarRapida();
     document.getElementById('clbr-total').value = '';
@@ -23717,16 +23719,16 @@ async function clbGuardarCompra() {
           folio_nota: folio || null,
           items: JSON.stringify(items),
           total: total,
-          total_items: totalItems,
           sucursal: currentUser?.sucursal || 'Todas',
           usuario: currentUser?.nombre || currentUser?.id || 'admin'
-        }
+        },
+        options: { select: true }
       })
     });
 
-    if (!res.ok) throw new Error('Error guardando');
-    var result = await res.json();
-    var compraId = result && result[0] ? result[0].id : null;
+    var json = await res.json();
+    if (json.error) throw new Error(json.error);
+    var compraId = json.data && json.data[0] ? json.data[0].id : null;
 
     // Guardar historial de precios — usar nombre mapeado si existe
     for (var i = 0; i < items.length; i++) {
@@ -23989,13 +23991,12 @@ async function clbVerDetalle(idx) {
           action:'update', table:'compras_lab',
           auth:{id:currentUser?.id,pass:currentUser?.pass},
           filters:[{col:'id',op:'eq',val:c.id}],
-          data:{ items: JSON.stringify(cleanItems), total: newTotal, total_items: cleanItems.length, updated_at: new Date().toISOString() }
+          data:{ items: JSON.stringify(cleanItems), total: newTotal, updated_at: new Date().toISOString() }
         })
       });
       // Update local cache
       c.items = JSON.stringify(cleanItems);
       c.total = newTotal;
-      c.total_items = cleanItems.length;
       toast('\u2713 Compra actualizada');
       _clbDetDirty = false;
       guardarBtn.style.display = 'none';
