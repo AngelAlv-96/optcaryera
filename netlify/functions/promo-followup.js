@@ -121,12 +121,14 @@ async function getAdminPhones() {
 }
 
 exports.handler = async function(event) {
+  // Scheduled (cron) invocations bypass key check
+  const isCron = !!(event.headers && event.headers['x-nf-event'] === 'schedule');
   const qs = event.queryStringParameters || {};
-  if (qs.key !== BLAST_KEY) {
+  if (!isCron && qs.key !== BLAST_KEY) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Key inválida. Usa ?key=TU_CLAVE' }) };
   }
 
-  const dryRun = qs.dry === '1';
+  const dryRun = !isCron && qs.dry === '1';
   console.log(`[PROMO-FOLLOWUP] Inicio${dryRun ? ' (DRY RUN)' : ''}`);
 
   // Guard horario 10am-8pm Chihuahua
