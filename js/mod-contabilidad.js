@@ -611,13 +611,15 @@ async function contGuardarGasto() {
     };
 
     if (_contEditId) {
-      var res = await db.from('gastos').update(row).eq('id', _contEditId);
+      var res = await db.from('gastos').update(row).eq('id', _contEditId).select('id').single();
       if (res.error) throw new Error(res.error.message || 'Error al actualizar');
+      if (!res.data || !res.data.id) throw new Error('No se confirmó la actualización — intenta de nuevo');
       toast('Gasto actualizado', 'ok');
     } else {
-      var res = await db.from('gastos').insert(row);
+      var res = await db.from('gastos').insert(row).select('id').single();
       if (res.error) throw new Error(res.error.message || 'Error al guardar');
-      toast('Gasto registrado', 'ok');
+      if (!res.data || !res.data.id) throw new Error('El gasto no se guardó — intenta de nuevo');
+      toast('Gasto registrado (ID: ' + res.data.id + ')', 'ok');
     }
 
     window._contComprobanteUrl = null;
