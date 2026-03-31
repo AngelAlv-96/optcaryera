@@ -19999,21 +19999,31 @@ async function cargarDatosCaja() {
   const today = hoyLocal();
   const utcStart = new Date(today + 'T00:00:00').toISOString();
   const utcEnd = new Date(today + 'T23:59:59.999').toISOString();
-  let qVentas = db.from('ventas').select('*, pacientes(nombre, apellidos)').gte('created_at', utcStart).lte('created_at', utcEnd);
+  // Post-cutoff: si hay cortes anteriores hoy, solo cargar datos posteriores al último corte
+  var _cajaFromTime = utcStart;
+  try {
+    var _pcQ = db.from('cortes_caja').select('hora_corte').eq('fecha', today).eq('estado', 'cortada');
+    if (suc !== 'Todas') _pcQ = _pcQ.eq('sucursal', suc);
+    var { data: _prevCortes } = await _pcQ.order('hora_corte', { ascending: false }).limit(1);
+    if (_prevCortes?.length && _prevCortes[0].hora_corte) {
+      _cajaFromTime = _prevCortes[0].hora_corte;
+    }
+  } catch(e) {}
+  let qVentas = db.from('ventas').select('*, pacientes(nombre, apellidos)').gte('created_at', _cajaFromTime).lte('created_at', utcEnd);
   if (suc !== 'Todas') qVentas = qVentas.eq('sucursal', suc);
   const { data: ventas } = await qVentas.order('created_at');
   // Also load Online ventas assigned to this branch
   let onlineVentas = [];
   if (suc !== 'Todas') {
     try {
-      const { data: ov } = await db.from('ventas').select('*, pacientes(nombre, apellidos)').eq('sucursal','Online').eq('sucursal_entrega',suc).gte('created_at', utcStart).lte('created_at', utcEnd).order('created_at');
+      const { data: ov } = await db.from('ventas').select('*, pacientes(nombre, apellidos)').eq('sucursal','Online').eq('sucursal_entrega',suc).gte('created_at', _cajaFromTime).lte('created_at', utcEnd).order('created_at');
       onlineVentas = ov || [];
     } catch(e) {}
   }
   const allVentas = [...(ventas||[])];
   const onlineIds = new Set();
   onlineVentas.forEach(v => { if (!allVentas.find(x=>x.id===v.id)) { allVentas.push(v); onlineIds.add(v.id); } });
-  const { data: pagos } = await db.from('venta_pagos').select('*, ventas(folio, sucursal, sucursal_entrega, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd).order('created_at');
+  const { data: pagos } = await db.from('venta_pagos').select('*, ventas(folio, sucursal, sucursal_entrega, paciente_id, pacientes(nombre, apellidos))').gte('created_at', _cajaFromTime).lte('created_at', utcEnd).order('created_at');
   const pagosFiltered = (suc === 'Todas') ? (pagos || []) : (pagos || []).filter(p => {
     const vs = p.ventas?.sucursal;
     if (!vs || vs === suc) return true;
@@ -20021,20 +20031,20 @@ async function cargarDatosCaja() {
     if (vs === 'Online' && p.ventas?.sucursal_entrega === suc) return true;
     return false;
   });
-  let qRetiros = db.from('retiros_caja').select('*').eq('fecha', today);
+  let qRetiros = db.from('retiros_caja').select('*').eq('fecha', today).gte('created_at', _cajaFromTime);
   if (suc !== 'Todas') qRetiros = qRetiros.eq('sucursal', suc);
   const { data: retiros } = await qRetiros.order('created_at');
   const ventasActivas = allVentas.filter(v => v.estado !== 'Cancelada');
   const canceladas = allVentas.filter(v => v.estado === 'Cancelada');
   let credAbonos = [];
   try {
-    const { data: ca } = await db.from('creditos_abonos').select('*, creditos_clientes(folio_sicar, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd).order('created_at');
+    const { data: ca } = await db.from('creditos_abonos').select('*, creditos_clientes(folio_sicar, paciente_id, pacientes(nombre, apellidos))').gte('created_at', _cajaFromTime).lte('created_at', utcEnd).order('created_at');
     credAbonos = (suc !== 'Todas') ? (ca || []).filter(a => !a.sucursal || a.sucursal === suc) : (ca || []);
   } catch(e) { console.warn('Error cargando abonos crédito:', e.message); }
   // Count ordenes lab del día para corte WA (filtrado por sucursal)
   var _olCount = 0;
   try {
-    var olQuery = db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
+    var olQuery = db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', _cajaFromTime).lte('created_at', utcEnd);
     if (suc !== 'Todas') olQuery = olQuery.eq('sucursal', suc);
     var { count: olc } = await olQuery;
     _olCount = olc || 0;
