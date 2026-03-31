@@ -36,6 +36,44 @@ const STATUS_MAP = {
   'Entregado': { emoji: '✨', msg: 'Tus lentes ya fueron entregados. Esperamos que los disfrutes. Recuerda que tienes garantía incluida.' }
 };
 
+// ── PROMOS POR FECHA (America/Chihuahua) ──
+function getActivePromos() {
+  var now = new Date();
+  var mx = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+  var day = mx.getDate();
+  var month = mx.getMonth() + 1; // 1-based
+  var year = mx.getFullYear();
+
+  // Abril 1-14, 2026
+  if (year === 2026 && month === 4 && day <= 14) {
+    return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
+      '🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
+      '💳 Meses sin intereses.\n' +
+      'Las promociones deben ser aprovechadas por la misma persona.\n' +
+      'REGLA: Solo existe esta promoción. NO menciones 2x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
+  }
+
+  // Abril 15-30, 2026
+  if (year === 2026 && month === 4 && day >= 15) {
+    return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
+      '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). Válida hasta el 30 de abril.\n' +
+      '☀️ Lente solar graduado adicional por $249 (combinable con la promo).\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
+      '💳 Meses sin intereses.\n' +
+      'Las promociones deben ser aprovechadas por la misma persona.\n' +
+      'REGLA: Solo existe esta promoción. NO menciones 3x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
+  }
+
+  // Fallback (fuera de abril 2026 o antes del deploy)
+  return 'PROMOCIÓN VIGENTE:\n' +
+    '🎁 3x1 en lentes completos desde $1,200. Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
+    '💳 Meses sin intereses.\n' +
+    'Las promociones deben ser aprovechadas por la misma persona.';
+}
+
 // ── DEFAULT PROMPTS ──
 const DEFAULT_PERSONALITY = `Eres Clari, la asistente virtual de Ópticas Car & Era en Ciudad Juárez, Chihuahua. Respondes por WhatsApp.
 
@@ -72,23 +110,14 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
 
-PROMOCIONES VIGENTES (MARZO):
-🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta 31 de marzo.
-✨ Armazón con antirreflejante Blue o Hi AR por $1,200: Incluye 1 armazón con antirreflejante incluido. NO es combinable con la promo 3x1, es una promoción aparte.
-💫 30% descuento en bifocales y progresivos | 20% en armazones
-☀️ Lente solar graduado adicional por $249 (combinable con cualquier promo)
-🎁 Estuches y soluciones GRATIS
-💳 Meses sin intereses
-💰 5% de reembolso en Opti Coins
-🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio)
-Las promociones deben ser aprovechadas por la misma persona.
+{{PROMOS_PLACEHOLDER}}
 
 CÓMO FUNCIONAN LOS PRECIOS:
 - El precio de los lentes depende de: armazón elegido + tipo de graduación (visión sencilla, bifocal, progresivo) + material/tratamiento de las micas (básico CR-39, antirreflejante, blue light, transitions, etc.)
 - Los tratamientos como antirreflejante, filtro azul, transitions, etc. tienen costo adicional sobre el precio base
-- La promo 3x1 desde $1,200 es con material básico (CR-39 visión sencilla). Si el cliente elige un tratamiento superior (AR, blue light, etc.), el precio sube según el tratamiento elegido
 - NUNCA digas que algo "cuesta de más" o que "le cobraron mal" — cada combinación de armazón + graduación + material tiene su precio correcto
 - Si un cliente pregunta por precio exacto, dile que depende de lo que elija y que en sucursal le dan su cotización personalizada con todas las opciones
+- NUNCA inventes promociones que no estén listadas arriba. Solo comunica la promoción vigente actual, tal como aparece. No menciones promos pasadas ni futuras.
 
 PRODUCTOS Y SERVICIOS:
 👓 Armazones (desde $300)
@@ -200,10 +229,10 @@ async function getClariConfig() {
     var data = await supaFetch('app_config?id=eq.clari_config&select=value');
     if (data && data[0] && data[0].value) {
       var v = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
-      return { personality: v.personality || DEFAULT_PERSONALITY, knowledge: v.knowledge || DEFAULT_KNOWLEDGE };
+      return { personality: v.personality || DEFAULT_PERSONALITY, knowledge: v.knowledge || DEFAULT_KNOWLEDGE, promo_override: v.promo_override || '' };
     }
   } catch(e) { console.error('[Config Error]', e); }
-  return { personality: DEFAULT_PERSONALITY, knowledge: DEFAULT_KNOWLEDGE };
+  return { personality: DEFAULT_PERSONALITY, knowledge: DEFAULT_KNOWLEDGE, promo_override: '' };
 }
 
 // ── ORDER STATUS LOOKUP ──
@@ -417,7 +446,10 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   var config = await getClariConfig();
   // Fecha y hora actual en Cd. Juárez para contexto
   var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
+  // Inject dynamic promos into knowledge (promo_override from cmdPromo takes priority)
+  var promoText = config.promo_override || getActivePromos();
+  var knowledgeWithPromos = config.knowledge.replace('{{PROMOS_PLACEHOLDER}}', promoText);
+  var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Get conversation history early (needed for order follow-up detection)
   var history = await getConversationHistory(phone);
@@ -498,7 +530,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- AHORA estamos en Plaza Magnolia, sobre Av. Manuel J. Clouthier (Jilotepec)\n' +
       '- REFERENCIA PARA LLEGAR: está casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
       '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
-      '- Promo vigente: 3x1 en Lentes Completos\n' +
+      '- Promo vigente: usa la promoción actual del negocio (la que aparece en PROMOCIÓN VIGENTE arriba)\n' +
       '- Examen de vista incluido al comprar lentes\n' +
       '- Lentes listos en 35 minutos (laboratorio propio)\n' +
       '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
@@ -592,7 +624,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'PASOS (solo si el cliente NO hace una pregunta específica):\n' +
       'PASO 1: Saludo corto (1 línea) + pregunta: "¿Cuándo fue la última vez que te revisaron la graduación?"\n' +
       'PASO 2: Si necesita revisión → pregunta cuál sucursal le queda mejor. Si ve bien → pregunta si necesita lentes nuevos.\n' +
-      'PASO 3: Confirmar sucursal + horarios + promo 3x1 + examen incluido.\n\n' +
+      'PASO 3: Confirmar sucursal + horarios + la promo vigente actual (la que aparece en PROMOCIÓN VIGENTE) + examen incluido.\n\n' +
       'REGLAS:\n' +
       '- DESINTERESADO: agradece y no insistas\n' +
       '- MOLESTO: discúlpate y deja de responder\n' +
@@ -1112,23 +1144,28 @@ async function cmdPromo(newPromoText, userName) {
   if (configData && configData[0] && configData[0].value) {
     config = typeof configData[0].value === 'string' ? JSON.parse(configData[0].value) : configData[0].value;
   }
-  var knowledge = config.knowledge || '';
-  // Replace the PROMOCIONES section
-  var promoRegex = /PROMOCIONES VIGENTES[^]*?(?=\n[A-ZÁÉÍÓÚÑ]{3,}|\n$)/;
-  if (promoRegex.test(knowledge)) {
-    knowledge = knowledge.replace(promoRegex, 'PROMOCIONES VIGENTES:\n' + newPromoText + '\n');
-  } else {
-    // Append if no section found
-    knowledge += '\n\nPROMOCIONES VIGENTES:\n' + newPromoText + '\n';
+  // Save as promo_override — takes priority over date-based auto promos
+  // Send "Promo auto" to clear override and return to automatic date-based promos
+  if (newPromoText.toLowerCase().trim() === 'auto') {
+    config.promo_override = '';
+    config.updated_at = new Date().toISOString();
+    var result = await supaFetch('app_config?id=eq.clari_config', {
+      method: 'PATCH',
+      body: JSON.stringify({ value: JSON.stringify(config) }),
+      prefer: 'return=representation'
+    });
+    if (result) return '✅ Promos regresadas a modo AUTOMÁTICO por fecha.\n\n📅 Promo activa ahora:\n' + getActivePromos() + '\n\n👤 Por: ' + (userName || 'Admin');
+    return '❌ Error. Intenta de nuevo.';
   }
-  config.knowledge = knowledge;
+  config.promo_override = 'PROMOCIÓN VIGENTE (MANUAL):\n' + newPromoText;
+  config.updated_at = new Date().toISOString();
   var result = await supaFetch('app_config?id=eq.clari_config', {
     method: 'PATCH',
     body: JSON.stringify({ value: JSON.stringify(config) }),
     prefer: 'return=representation'
   });
   if (result) {
-    return '✅ Promociones actualizadas en Clari.\n\n📝 Nuevo texto:\n' + newPromoText + '\n\n👤 Por: ' + (userName || 'Admin');
+    return '✅ Promos actualizadas (override manual).\n\n📝 Nuevo texto:\n' + newPromoText + '\n\n⚠️ Esto sobreescribe las promos automáticas. Envía "Promo auto" para volver al modo automático.\n\n👤 Por: ' + (userName || 'Admin');
   }
   return '❌ Error al actualizar promociones. Intenta de nuevo.';
 }
@@ -1893,14 +1930,14 @@ exports.handler = async function(event) {
           // VER PROMO command (read current)
           if (!cmdHandled && /^ver\s*promo$/i.test(lowerText)) {
             var vpConfig = await supaFetch('app_config?id=eq.clari_config&select=value');
-            var vpText = '(No configurada)';
+            var vpOverride = '';
             if (vpConfig && vpConfig[0] && vpConfig[0].value) {
               var vpVal = typeof vpConfig[0].value === 'string' ? JSON.parse(vpConfig[0].value) : vpConfig[0].value;
-              var vpKnow = vpVal.knowledge || '';
-              var vpMatch = vpKnow.match(/PROMOCIONES VIGENTES[^]*?(?=\n[A-ZÁÉÍÓÚÑ]{3,}|\n$)/);
-              if (vpMatch) vpText = vpMatch[0].replace('PROMOCIONES VIGENTES', '').replace(/^[:\s]+/, '').trim();
+              vpOverride = vpVal.promo_override || '';
             }
-            var vpReply = '📢 *PROMOCIONES ACTUALES EN CLARI:*\n\n' + vpText;
+            var vpMode = vpOverride ? '⚙️ Modo: MANUAL (override)\nEnvía "Promo auto" para volver a automático\n\n' : '⚙️ Modo: AUTOMÁTICO por fecha\n\n';
+            var vpText = vpOverride || getActivePromos();
+            var vpReply = '📢 *PROMO ACTIVA EN CLARI:*\n\n' + vpMode + vpText;
             await sendWhatsAppReply(from, vpReply);
             await saveMessage(from, 'user', userText, userName);
             await saveMessage(from, 'assistant', vpReply);

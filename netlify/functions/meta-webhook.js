@@ -33,6 +33,41 @@ const STATUS_MAP = {
   'Entregado': { emoji: '✨', msg: 'Tus lentes ya fueron entregados. Esperamos que los disfrutes. Recuerda que tienes garantía incluida.' }
 };
 
+// ── PROMOS POR FECHA (America/Chihuahua) ──
+function getActivePromos() {
+  var now = new Date();
+  var mx = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
+  var day = mx.getDate();
+  var month = mx.getMonth() + 1;
+  var year = mx.getFullYear();
+
+  if (year === 2026 && month === 4 && day <= 14) {
+    return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
+      '🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
+      '💳 Meses sin intereses.\n' +
+      'Las promociones deben ser aprovechadas por la misma persona.\n' +
+      'REGLA: Solo existe esta promoción. NO menciones 2x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
+  }
+
+  if (year === 2026 && month === 4 && day >= 15) {
+    return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
+      '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). Válida hasta el 30 de abril.\n' +
+      '☀️ Lente solar graduado adicional por $249 (combinable con la promo).\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
+      '💳 Meses sin intereses.\n' +
+      'Las promociones deben ser aprovechadas por la misma persona.\n' +
+      'REGLA: Solo existe esta promoción. NO menciones 3x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
+  }
+
+  return 'PROMOCIÓN VIGENTE:\n' +
+    '🎁 3x1 en lentes completos desde $1,200. Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
+    '💳 Meses sin intereses.\n' +
+    'Las promociones deben ser aprovechadas por la misma persona.';
+}
+
 // ── DEFAULT PROMPTS (same as wa-webhook, adapted for Messenger/Instagram) ──
 const DEFAULT_PERSONALITY = `Eres Clari, la asistente virtual de Ópticas Car & Era en Ciudad Juárez, Chihuahua.
 
@@ -70,23 +105,14 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
 
-PROMOCIONES VIGENTES (MARZO):
-🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta 31 de marzo.
-✨ Armazón con antirreflejante Blue o Hi AR por $1,200: Incluye 1 armazón con antirreflejante incluido. NO es combinable con la promo 3x1, es una promoción aparte.
-💫 30% descuento en bifocales y progresivos | 20% en armazones
-☀️ Lente solar graduado adicional por $249 (combinable con cualquier promo)
-🎁 Estuches y soluciones GRATIS
-💳 Meses sin intereses
-💰 5% de reembolso en Opti Coins
-🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio)
-Las promociones deben ser aprovechadas por la misma persona.
+{{PROMOS_PLACEHOLDER}}
 
 CÓMO FUNCIONAN LOS PRECIOS:
 - El precio de los lentes depende de: armazón elegido + tipo de graduación (visión sencilla, bifocal, progresivo) + material/tratamiento de las micas (básico CR-39, antirreflejante, blue light, transitions, etc.)
 - Los tratamientos como antirreflejante, filtro azul, transitions, etc. tienen costo adicional sobre el precio base
-- La promo 3x1 desde $1,200 es con material básico (CR-39 visión sencilla). Si el cliente elige un tratamiento superior (AR, blue light, etc.), el precio sube según el tratamiento elegido
 - NUNCA digas que algo "cuesta de más" o que "le cobraron mal" — cada combinación de armazón + graduación + material tiene su precio correcto
 - Si un cliente pregunta por precio exacto, dile que depende de lo que elija y que en sucursal le dan su cotización personalizada con todas las opciones
+- NUNCA inventes promociones que no estén listadas arriba. Solo comunica la promoción vigente actual, tal como aparece. No menciones promos pasadas ni futuras.
 
 PRODUCTOS Y SERVICIOS:
 👓 Armazones (desde $300)
@@ -133,10 +159,10 @@ async function getClariConfig() {
     var data = await supaFetch('app_config?id=eq.clari_config&select=value');
     if (data && data[0] && data[0].value) {
       var v = typeof data[0].value === 'string' ? JSON.parse(data[0].value) : data[0].value;
-      return { personality: v.personality || DEFAULT_PERSONALITY, knowledge: v.knowledge || DEFAULT_KNOWLEDGE };
+      return { personality: v.personality || DEFAULT_PERSONALITY, knowledge: v.knowledge || DEFAULT_KNOWLEDGE, promo_override: v.promo_override || '' };
     }
   } catch(e) { console.error('[Meta Config Error]', e); }
-  return { personality: DEFAULT_PERSONALITY, knowledge: DEFAULT_KNOWLEDGE };
+  return { personality: DEFAULT_PERSONALITY, knowledge: DEFAULT_KNOWLEDGE, promo_override: '' };
 }
 
 // ── ORDER STATUS LOOKUP ──
@@ -214,7 +240,10 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   var config = await getClariConfig();
   var channelNote = channel === 'instagram' ? 'Respondes por Instagram DM.' : 'Respondes por Facebook Messenger.';
   var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + config.knowledge;
+  // Inject dynamic promos into knowledge (promo_override takes priority)
+  var promoText = config.promo_override || getActivePromos();
+  var knowledgeWithPromos = config.knowledge.replace('{{PROMOS_PLACEHOLDER}}', promoText);
+  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Order lookup (by text only — no phone number available from Messenger/IG)
   var orderContext = '';
@@ -242,7 +271,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
     '- Frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
     '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
     '- SIEMPRE envía el link de Google Maps cuando pregunten ubicación de Magnolia\n' +
-    '- Promo: 3x1 en Lentes Completos + Examen de vista incluido\n' +
+    '- Promo: usa la promoción vigente actual (la que aparece en PROMOCIÓN VIGENTE arriba) + Examen de vista incluido\n' +
     '- Lentes listos en 35 minutos\n' +
     '- Tel: (656) 174-8866\n' +
     '- Si el cliente se muestra desinteresado o molesto, agradece amablemente y no insistas';
