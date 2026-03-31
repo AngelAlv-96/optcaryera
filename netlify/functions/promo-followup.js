@@ -11,7 +11,7 @@ const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
 // Template SID — se llena después de crear en Twilio Console
-const TEMPLATE_SID = process.env.PROMO_FOLLOWUP_TEMPLATE_SID || '';
+const TEMPLATE_SID = process.env.PROMO_FOLLOWUP_TEMPLATE_SID || 'HXa4f1d07c41ebb02e5a4639afbf1cbede';
 
 const MAX_PER_RUN = 50;
 const DEDUP_TAG = '[Promo-Followup-Abril]';
