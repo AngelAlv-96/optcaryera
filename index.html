@@ -25214,16 +25214,42 @@ async function amConfirmar(idx) {
     row._existe   = true;
     row._bd_id    = existente.id;
     row.precio    = existente.precio_venta || row.precio;
-    row.codigo    = existente.codigo_barras || row.codigo;
+    // Mantener código del proveedor si tiene prefijo conocido
+    if (!amDetectPrefix(row.modelo)) {
+      row.codigo = existente.codigo_barras || row.codigo;
+    }
     row._estado   = 'existe';
   } else {
     row._existe   = false;
     row._estado   = 'nuevo';
+    // Auto-guardar producto nuevo a DB inmediatamente
+    try {
+      var ts = new Date().toISOString();
+      var res = await fetch('/.netlify/functions/dbwrite', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          action:'insert', table:'productos',
+          auth:{id:currentUser?.id, pass:currentUser?.pass},
+          data:{
+            nombre: row.nombre || (row.marca+' '+row.modelo),
+            marca: row.marca, modelo: row.modelo,
+            categoria: row.categoria||'Armazón',
+            codigo_barras: row.codigo,
+            precio_venta: parseFloat(row.precio)||0,
+            costo: parseFloat(row.costo)||0,
+            stock: parseInt(row.stock)||1,
+            stock_minimo: 1, activo: true, updated_at: ts
+          }
+        })
+      });
+      var json = await res.json();
+      if (json.error) { console.warn('Auto-save error:', json.error); }
+      else { row._guardado = true; row._estado = 'guardado'; }
+    } catch(e) { console.error('Auto-save error', e); }
   }
 
   amRows.unshift(row);  // agregar al inicio para que aparezca arriba
   amRenderTabla();
-  document.getElementById('am-btn-guardar').style.display = '';
   document.getElementById('am-empty').style.display = 'none';
 
   // Auto print label
@@ -26143,7 +26169,19 @@ async function amRqBuscarPrecio() {
       var marcaBase = marca.split(' ')[0];
       var modeloLimpio = modelo.replace(/[-\s]/g,'');
 
-      // 0. Búsqueda directa por codigo_barras (proveedor con barcode = modelo)
+      // 0a. Buscar en items confirmados de esta sesión (amRows)
+      if (modelo.length >= 3) {
+        var sesionMatch = amRows.find(function(r) { return r.modelo === modelo || r.codigo === modelo; });
+        if (sesionMatch && sesionMatch.precio > 0) {
+          document.getElementById('am-rq-precio').value = sesionMatch.precio;
+          st.innerHTML = '🔁 Precio de sesión <b>' + (sesionMatch.nombre || modelo) + '</b>: <b style="color:var(--accent)">$' + sesionMatch.precio.toLocaleString('es-MX') + '</b>' +
+            ' <span style="color:rgba(255,255,255,.25)">— ya escaneado antes</span>';
+          st.style.color = 'var(--accent)';
+          return;
+        }
+      }
+
+      // 0b. Búsqueda directa por codigo_barras (proveedor con barcode = modelo)
       if (modelo.length >= 4 && amDetectPrefix(modelo)) {
         var qCod = await db.from('productos')
           .select('precio_venta,modelo,costo,nombre,codigo_barras')
