@@ -19052,17 +19052,17 @@ async function cargarHistorialVentas() {
     // Sin búsqueda: paginación normal con filtro de fecha
     let qBase = db.from('ventas').select('*, pacientes(nombre, apellidos, telefono)',{count:'exact'}).order('created_at',{ascending:false}).range(hvPage*HV_PAGE_SIZE,(hvPage+1)*HV_PAGE_SIZE-1);
     if (hvSuc !== 'Todas') qBase = qBase.eq('sucursal', hvSuc);
-    if (desde) qBase=qBase.gte('created_at',desde+'T00:00:00-06:00');
+    if (desde) qBase=qBase.gte('created_at',new Date(desde+'T00:00:00-06:00').toISOString());
     if (hasta) {
-      qBase = qBase.lte('created_at', hasta+'T23:59:59-06:00');
+      qBase = qBase.lte('created_at', new Date(hasta+'T23:59:59-06:00').toISOString());
     }
     ({ data, count, error } = await qBase);
     // Also load Online ventas assigned to this branch
     if (hvSuc !== 'Todas') {
       try {
         let qOnl = db.from('ventas').select('*, pacientes(nombre, apellidos, telefono)').eq('sucursal','Online').eq('sucursal_entrega',hvSuc).order('created_at',{ascending:false}).range(0,49);
-        if (desde) qOnl=qOnl.gte('created_at',desde+'T00:00:00-06:00');
-        if (hasta) qOnl=qOnl.lte('created_at',hasta+'T23:59:59-06:00');
+        if (desde) qOnl=qOnl.gte('created_at',new Date(desde+'T00:00:00-06:00').toISOString());
+        if (hasta) qOnl=qOnl.lte('created_at',new Date(hasta+'T23:59:59-06:00').toISOString());
         const {data:onlData}=await qOnl;
         if (onlData?.length) {
           const seen2={};
@@ -19112,14 +19112,14 @@ async function cargarHistorialVentas() {
     try {
       var qSt=db.from('ventas').select('estado,total,saldo');
       if (hvSuc!=='Todas') qSt=qSt.eq('sucursal',hvSuc);
-      if (desde) qSt=qSt.gte('created_at',desde+'T00:00:00');
-      if (hasta){var hSt=new Date(hasta+'T23:59:59');hSt.setHours(hSt.getHours()+8);qSt=qSt.lte('created_at',hSt.toISOString());}
+      if (desde) qSt=qSt.gte('created_at',new Date(desde+'T00:00:00-06:00').toISOString());
+      if (hasta) qSt=qSt.lte('created_at',new Date(hasta+'T23:59:59-06:00').toISOString());
       var {data:stData}=await qSt;
       // También incluir Online asignadas a esta sucursal
       if (hvSuc!=='Todas'){
         var qStOnl=db.from('ventas').select('estado,total,saldo').eq('sucursal','Online').eq('sucursal_entrega',hvSuc);
-        if (desde) qStOnl=qStOnl.gte('created_at',desde+'T00:00:00');
-        if (hasta){var hSt2=new Date(hasta+'T23:59:59');hSt2.setHours(hSt2.getHours()+8);qStOnl=qStOnl.lte('created_at',hSt2.toISOString());}
+        if (desde) qStOnl=qStOnl.gte('created_at',new Date(desde+'T00:00:00-06:00').toISOString());
+        if (hasta) qStOnl=qStOnl.lte('created_at',new Date(hasta+'T23:59:59-06:00').toISOString());
         var {data:stOnl}=await qStOnl;
         if (stOnl?.length) stData=(stData||[]).concat(stOnl);
       }

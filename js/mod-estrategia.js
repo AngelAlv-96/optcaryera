@@ -208,9 +208,10 @@ function estSwitchTab(tab) {
 // ── Fetch ventas del periodo actual ──
 // Helper: convert local Chihuahua date string to UTC ISO (Chihuahua = UTC-6 always, no DST)
 function _estLocalToUTC(dateStr, endOfDay) {
-  // dateStr = "YYYY-MM-DD", endOfDay = true adds 23:59:59
-  if (endOfDay) return dateStr + 'T23:59:59-06:00';
-  return dateStr + 'T00:00:00-06:00';
+  // dateStr = "YYYY-MM-DD" in Chihuahua time (UTC-6, no DST)
+  // Convert to UTC ISO string for Supabase queries
+  if (endOfDay) return new Date(dateStr + 'T23:59:59-06:00').toISOString();
+  return new Date(dateStr + 'T00:00:00-06:00').toISOString();
 }
 async function _estFetchVentas() {
   var now = new Date();
