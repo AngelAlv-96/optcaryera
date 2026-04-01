@@ -174,13 +174,16 @@ async function lookupOrdersByText(text) {
     var byFolio = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + folio + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
     if (byFolio && byFolio.length > 0) return byFolio;
   }
-  // Try by name
-  var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) { return w.length >= 3; });
+  // Try by name (filter stopwords to find actual name words)
+  var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo'];
+  var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) {
+    return w.length >= 3 && _stopwords.indexOf(w.toLowerCase()) === -1;
+  });
   if (nameWords.length >= 1) {
     for (var i = 0; i < Math.min(nameWords.length, 2); i++) {
       var word = nameWords[i];
-      var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=5');
-      if (byName && byName.length > 0 && byName.length <= 3) {
+      var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=10');
+      if (byName && byName.length > 0 && byName.length <= 8) {
         var nameIds = byName.map(function(p) { return p.id; });
         var nameOrders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + nameIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
         if (nameOrders && nameOrders.length > 0) return nameOrders;
