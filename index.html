@@ -11635,6 +11635,7 @@ async function selVentaEnOrden(ventaId) {
 }
 
 async function guardarEImprimir() {
+  if (_actionBusy['guardarEImprimir']) return;
   const pid = document.getElementById('ord-pid').value || document.getElementById('hc-pid').value;
   if (!pid) { toast('Selecciona un paciente primero', true); return; }
 
@@ -11704,22 +11705,23 @@ async function guardarEImprimir() {
 
   if (folioRaw) {
     const folioBase = folioRaw.replace(/-\d+$/, '');
+    // Search for EXACT folio match (with word boundary via ' |' or end of notes)
     const { data: existentes } = await db.from('ordenes_laboratorio')
-      .select('id').ilike('notas_laboratorio', `%Folio: ${folioRaw}%`);
+      .select('id, notas_laboratorio').ilike('notas_laboratorio', `%Folio: ${folioRaw}%`);
+    // Filter to exact matches only (avoid 10548 matching 10548-2)
+    const exactas = (existentes||[]).filter(e => {
+      const m = e.notas_laboratorio?.match(/Folio:\s*(\S+)/);
+      return m && m[1] === folioRaw;
+    });
 
-    if (existentes && existentes.length > 0) {
-      const nextNum = existentes.length + 1;
-      const sugerido = `${folioBase}-${nextNum}`;
+    if (exactas.length > 0) {
       const accion = confirm(
-        `⚠️ Ya existe una orden con el folio "${folioRaw}".\n\n` +
-        `¿Deseas crear una nueva orden con folio "${sugerido}"?\n\n` +
-        `• Aceptar → Se creará con folio ${sugerido}\n` +
-        `• Cancelar → No se guarda nada`
+        `⚠️ Ya existe una orden con el folio "${folioRaw}" (${exactas.length} registro${exactas.length>1?'s':''}).\n\n` +
+        `Esto es probablemente un DUPLICADO.\n\n` +
+        `• Cancelar → No se guarda (recomendado)\n` +
+        `• Aceptar → Crear de todas formas`
       );
       if (!accion) return;
-      folioFinal = sugerido;
-      document.getElementById('ord-folio').value = folioFinal;
-      syncTicket();
     }
   }
 
@@ -11789,6 +11791,8 @@ async function guardarEImprimir() {
   };
   } // end else (armazon)
 
+  _actionBusy['guardarEImprimir'] = true;
+  try {
   let { error } = await db.from('ordenes_laboratorio').insert(orderPayload);
 
   if (error && error.message && (error.message.includes('column') || error.code === '42703')) {
@@ -11799,9 +11803,11 @@ async function guardarEImprimir() {
   }
 
   if (error) { toast('Error al guardar: ' + error.message, true); return; }
+  _rtSuppressUntil = Date.now() + 5000;
   await marcarFolioUsado(folioFinal);
   toast('✓ Orden guardada — imprimiendo ticket...');
   setTimeout(() => printTicket(), 300);
+  } finally { _actionBusy['guardarEImprimir'] = false; }
 }
 
 let labOrders = [];
@@ -19437,6 +19443,12 @@ async function _procesarCompletarPar() {
     var par = pares[i];
     var pend = pendientes[i];
     var subFolio = pend.fd.folio || (folio + '-' + (i + 2));
+
+    // Check for duplicate before creating
+    var { data: dupCheck } = await db.from('ordenes_laboratorio')
+      .select('id').ilike('notas_laboratorio', '%Folio: ' + subFolio + '%');
+    var dupExact = (dupCheck||[]).length > 0;
+    if (dupExact) { toast('⚠️ Folio ' + subFolio + ' ya existe — saltando duplicado'); continue; }
 
     // Create orden lab
     var orderPayload = {
