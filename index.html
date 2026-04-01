@@ -8591,10 +8591,11 @@ function buildSmartFilter(q) {
   if (words.length === 1) {
     const w = words[0];
     const wna = _quitarAcentos(w);
-    if (wna !== w) {
-      return { filter: `nombre.ilike.%${w}%,apellidos.ilike.%${w}%,telefono.ilike.%${w}%,nombre.ilike.%${wna}%,apellidos.ilike.%${wna}%` };
-    }
-    return { filter: `nombre.ilike.%${w}%,apellidos.ilike.%${w}%,telefono.ilike.%${w}%` };
+    const wsz = _swapSZ(wna);
+    var parts = ['nombre.ilike.%' + w + '%,apellidos.ilike.%' + w + '%,telefono.ilike.%' + w + '%'];
+    if (wna !== w) parts.push('nombre.ilike.%' + wna + '%,apellidos.ilike.%' + wna + '%');
+    if (wsz !== wna && wsz !== w) parts.push('nombre.ilike.%' + wsz + '%,apellidos.ilike.%' + wsz + '%');
+    return { filter: parts.join(',') };
   }
 
   return { words };
@@ -8602,6 +8603,9 @@ function buildSmartFilter(q) {
 
 function _quitarAcentos(s) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function _swapSZ(s) {
+  return s.replace(/[sz]/g, function(c) { return c === 's' ? 'z' : 's'; });
 }
 
 function applySmartFilter(query, sf, q) {
@@ -8621,12 +8625,19 @@ function applySmartFilter(query, sf, q) {
     // nombre~w0 + apellidos~rest
     conditions.push('and(nombre.ilike.%' + w0 + '%,apellidos.ilike.%' + wRest + '%)');
     if (w0na !== w0 || wRestna !== wRest) conditions.push('and(nombre.ilike.%' + w0na + '%,apellidos.ilike.%' + wRestna + '%)');
+    var w0sz = _swapSZ(w0na); var wRestsz = _swapSZ(wRestna);
+    if (w0sz !== w0na || wRestsz !== wRestna) conditions.push('and(nombre.ilike.%' + w0sz + '%,apellidos.ilike.%' + wRestsz + '%)');
     // full string in nombre or apellidos
     conditions.push('nombre.ilike.%' + allWords + '%');
     conditions.push('apellidos.ilike.%' + allWords + '%');
     if (allWordsNA !== allWords) {
       conditions.push('nombre.ilike.%' + allWordsNA + '%');
       conditions.push('apellidos.ilike.%' + allWordsNA + '%');
+    }
+    var allWordsSZ = _swapSZ(allWordsNA);
+    if (allWordsSZ !== allWordsNA) {
+      conditions.push('nombre.ilike.%' + allWordsSZ + '%');
+      conditions.push('apellidos.ilike.%' + allWordsSZ + '%');
     }
     return query.or(conditions.join(','));
   }
