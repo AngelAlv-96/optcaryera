@@ -5183,7 +5183,7 @@ function setupApp(u) {
     initRealtimeSubscriptions();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
-    setTimeout(function(){ try { _checkEntregasPendientes(); } catch(e) { console.warn('Entregas pend init:', e.message); } }, 5000);
+    // Entregas pendientes se cargan en dashboard sucursal (no banner flotante)
     if (isTrainingMode()) {
       var demoBanner = document.createElement('div');
       demoBanner.id = 'training-banner';
@@ -7009,13 +7009,15 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
     if (porRevisar > 0) h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer" onclick="go(\'laboratorio\')"><span style="font-size:16px">👁</span><span style="flex:1;font-size:13px;color:var(--white)">' + porRevisar + ' lentes por revisar</span><span style="font-size:11px;color:var(--beige)">Ir →</span></div>';
     if (listos > 0) h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer" onclick="go(\'laboratorio\')"><span style="font-size:16px">✅</span><span style="flex:1;font-size:13px;color:var(--white)">' + listos + ' lentes listos para entregar</span><span style="font-size:11px;color:var(--beige)">Ir →</span></div>';
     h += '<div id="dash-suc-pendientes-cobro"></div>';
+    h += '<div id="dash-entregas-vencidas"></div>';
     h += '</div></div>';
   } else {
     h += '<div id="dash-suc-pendientes-cobro-wrap"></div>';
   }
 
-  // Deferred: cargar pendientes de cobro + meta del mes
+  // Deferred: cargar pendientes de cobro + entregas vencidas + meta del mes
   setTimeout(function(){ _loadDashSucPendientes(suc, porRevisar > 0 || listos > 0); }, 50);
+  setTimeout(function(){ _loadDashEntregasVencidas(porRevisar > 0 || listos > 0); }, 80);
   setTimeout(function(){ _loadDashMetaWidget(suc); }, 100);
 
   // Urgentes
@@ -7058,6 +7060,36 @@ async function _loadDashSucPendientes(suc, cardExists) {
       }
     }
   } catch(e) { console.warn('Pendientes load:', e); }
+}
+
+async function _loadDashEntregasVencidas(cardExists) {
+  try {
+    await _checkEntregasPendientes();
+    if (_entregaPendData.length === 0) return;
+    var count = _entregaPendData.length;
+    var maxDias = _entregaPendData[0]?.dias || 0;
+    var row = '<div id="dash-entregas-vencidas" style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer" onclick="_abrirEntregaPendModal()">'
+      + '<span style="font-size:16px">📦</span>'
+      + '<span style="flex:1;font-size:13px;color:#f59e0b;font-weight:600">' + count + ' entrega' + (count > 1 ? 's' : '') + ' vencida' + (count > 1 ? 's' : '') + ' <span style="font-size:11px;font-weight:400;color:var(--muted)">(más antiguo: ' + maxDias + 'd)</span></span>'
+      + '<span style="font-size:11px;color:var(--beige)">Revisar →</span>'
+      + '</div>';
+    if (cardExists) {
+      var el = document.getElementById('dash-entregas-vencidas');
+      if (el) { el.outerHTML = row; }
+    } else {
+      // Si no había card de tareas, crearla
+      var wrap = document.getElementById('dash-suc-pendientes-cobro-wrap');
+      if (wrap) {
+        if (wrap.innerHTML.includes('Tareas pendientes')) {
+          // Ya existe card por pendientes de cobro, agregar row adentro
+          var inner = wrap.querySelector('div[style*="padding:8px 16px"]');
+          if (inner) inner.insertAdjacentHTML('beforeend', row);
+        } else {
+          wrap.innerHTML = '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>📋 Tareas pendientes</h3></div><div style="padding:8px 16px">' + row + '</div></div>';
+        }
+      }
+    }
+  } catch(e) { console.warn('Entregas vencidas load:', e); }
 }
 
 async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol) {
@@ -21273,29 +21305,26 @@ setInterval(function() {
 
 // ── ALERTA ENTREGAS PENDIENTES (pedidos con fecha vencida sin entregar) ──
 var _entregaPendData = [];
-var _entregaPendAllDone = false; // Flag: ya revisó todos hoy, no re-mostrar
-// localStorage: revisados hoy (no ha venido) — key: entrega_pend_revisados_{fecha}
-function _epGetRevisados() {
-  var key = 'entrega_pend_revisados_' + hoyLocal();
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
-}
-function _epAddRevisado(ordenId) {
-  var key = 'entrega_pend_revisados_' + hoyLocal();
-  var arr = _epGetRevisados();
-  if (!arr.includes(ordenId)) arr.push(ordenId);
-  localStorage.setItem(key, JSON.stringify(arr));
-  // Clean old keys (keep only today)
-  for (var i = 0; i < localStorage.length; i++) {
-    var k = localStorage.key(i);
-    if (k && k.startsWith('entrega_pend_revisados_') && k !== key) localStorage.removeItem(k);
-  }
+var _entregaPendAllDone = false; // Flag: ya revisó todos en esta sesión
+
+// Parsea la última fecha de "No ha venido" en notas_laboratorio
+function _epUltimoNoHaVenido(notas) {
+  if (!notas) return null;
+  // Formato: "No ha venido — Asesor (01 abr 2026, 10:35)"
+  var matches = notas.match(/No ha venido[^(]*\(([^)]+)\)/g);
+  if (!matches || matches.length === 0) return null;
+  var ultimo = matches[matches.length - 1];
+  var fechaMatch = ultimo.match(/\(([^)]+)\)/);
+  if (!fechaMatch) return null;
+  try { return new Date(fechaMatch[1].replace(/(\d+)\s+(\w+)\s+(\d+)/, '$2 $1, $3')); } catch(e) { return null; }
 }
 
 async function _checkEntregasPendientes() {
-  if (_entregaPendAllDone) return; // Ya revisó todos hoy
+  if (_entregaPendAllDone) return;
   if (currentUser?.rol !== 'sucursal') return;
   var suc = currentUser?.sucursal;
   var hoy = hoyLocal();
+  var hoyDate = new Date(hoy);
   try {
     var query = db.from('ordenes_laboratorio')
       .select('id, fecha_entrega, estado_lab, sucursal, notas_laboratorio, pacientes(nombre, apellidos, telefono)')
@@ -21304,56 +21333,26 @@ async function _checkEntregasPendientes() {
       .not('fecha_entrega', 'is', null);
     if (suc && suc !== 'Todas') query = query.eq('sucursal', suc);
     var { data } = await query;
-    if (!data || data.length === 0) { _removeEntregaPendBanner(); _entregaPendData = []; return; }
-    // Filter out already reviewed today
-    var revisados = _epGetRevisados();
-    data = data.filter(function(o) { return !revisados.includes(o.id); });
-    if (data.length === 0) { _removeEntregaPendBanner(); _entregaPendData = []; return; }
-    // Enrich with folio and days overdue
+    if (!data || data.length === 0) { _entregaPendData = []; return; }
+    // Filtrar: excluir órdenes con "No ha venido" en los últimos 7 días
+    data = data.filter(function(o) {
+      var ultimaFecha = _epUltimoNoHaVenido(o.notas_laboratorio);
+      if (!ultimaFecha || isNaN(ultimaFecha.getTime())) return true; // sin marca → mostrar
+      var diasDesde = Math.floor((hoyDate - ultimaFecha) / 86400000);
+      return diasDesde >= 7; // solo mostrar si pasaron 7+ días desde último "No ha venido"
+    });
+    if (data.length === 0) { _entregaPendData = []; return; }
     _entregaPendData = data.map(function(o) {
       var folioMatch = (o.notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/);
       var pac = o.pacientes || {};
       var nombre = ((pac.nombre || '') + ' ' + (pac.apellidos || '')).trim();
-      var dias = Math.floor((new Date(hoy) - new Date(o.fecha_entrega)) / 86400000);
+      var dias = Math.floor((hoyDate - new Date(o.fecha_entrega)) / 86400000);
       return { id: o.id, folio: folioMatch?.[1] || '?', nombre: nombre, tel: pac.telefono || '', sucursal: o.sucursal, dias: dias, estado: o.estado_lab, fecha_entrega: o.fecha_entrega };
     }).sort(function(a, b) { return b.dias - a.dias; });
-    _showEntregaPendBanner();
   } catch(e) { console.warn('[EntregaPend] Error:', e); }
 }
 
-function _showEntregaPendBanner() {
-  if (_entregaPendData.length === 0) return;
-  var existing = document.getElementById('alerta-entrega-pend');
-  if (existing) existing.remove();
-  var count = _entregaPendData.length;
-  var maxDias = _entregaPendData[0]?.dias || 0;
-  var isAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
-  var resumen = '';
-  if (isAdmin) {
-    var porSuc = {};
-    _entregaPendData.forEach(function(o) { porSuc[o.sucursal] = (porSuc[o.sucursal] || 0) + 1; });
-    resumen = Object.keys(porSuc).map(function(s) { return s + ': ' + porSuc[s]; }).join(' · ');
-  }
-  var div = document.createElement('div');
-  div.id = 'alerta-entrega-pend';
-  div.style.cssText = 'position:fixed;bottom:' + (document.getElementById('alerta-efectivo-flotante') ? '90px' : '20px') + ';left:50%;transform:translateX(-50%);z-index:99998;background:linear-gradient(135deg,#d97706,#f59e0b);border:2px solid #fde68a;border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(217,119,6,0.4);max-width:440px;width:92%;cursor:pointer';
-  var h = '<div style="display:flex;align-items:center;gap:10px">';
-  h += '<div style="font-size:24px;line-height:1">📦</div>';
-  h += '<div style="flex:1">';
-  h += '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:2px">' + count + ' pedido' + (count > 1 ? 's' : '') + ' con fecha vencida — ¿ya se entregaron?</div>';
-  h += '<div style="font-size:10px;color:#fef3c7">' + (isAdmin ? resumen : 'Más antiguo: ' + maxDias + ' día' + (maxDias > 1 ? 's' : '') + ' de retraso') + '</div>';
-  h += '</div>';
-  h += '<button onclick="event.stopPropagation();_abrirEntregaPendModal()" style="padding:6px 14px;background:#fff;color:#d97706;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap">Revisar</button>';
-  h += '</div>';
-  div.innerHTML = h;
-  div.onclick = function() { _abrirEntregaPendModal(); };
-  document.body.appendChild(div);
-}
-
-function _removeEntregaPendBanner() {
-  var el = document.getElementById('alerta-entrega-pend');
-  if (el) el.remove();
-}
+// Banner flotante eliminado (v246) — entregas pendientes ahora en dashboard sucursal
 
 function _abrirEntregaPendModal() {
   var ov = document.getElementById('entrega-pend-overlay');
@@ -21416,36 +21415,30 @@ async function _marcarNoHaVenido(ordenId, tel, nombre, btn) {
     _rtSuppressUntil = Date.now() + 3000;
     await db.from('ordenes_laboratorio').update({ notas_laboratorio: notas }).eq('id', ordenId);
   } catch(e) { console.warn('[NoHaVenido] DB error:', e); }
-  // Save as reviewed today — won't show in banner again until tomorrow
-  _epAddRevisado(ordenId);
-  _epRemoveRow(ordenId, '📞 Marcado como "no ha venido"');
+  _epRemoveRow(ordenId, '📞 Marcado como "no ha venido" — no reaparece por 7 días');
 }
 
 function _epRemoveRow(ordenId, toastMsg) {
-  // Animate row out
   var row = document.getElementById('ep-row-' + ordenId);
   if (row) { row.style.opacity = '0.3'; row.style.transition = 'opacity 0.3s'; }
   setTimeout(function() {
     _entregaPendData = _entregaPendData.filter(function(o) { return o.id !== ordenId; });
     if (_entregaPendData.length === 0) {
-      _entregaPendAllDone = true; // No re-mostrar en esta sesión
-      _removeEntregaPendBanner();
+      _entregaPendAllDone = true;
       var ov = document.getElementById('entrega-pend-overlay');
       if (ov) ov.remove();
-      toast('✅ Todos los pedidos revisados — banner desaparece hasta mañana');
+      toast('✅ Todos los pedidos revisados');
+      // Actualizar dashboard
+      var dashEl = document.getElementById('dash-entregas-vencidas');
+      if (dashEl) dashEl.remove();
     } else {
-      _showEntregaPendBanner();
-      // Re-render only the rows area
       var ov = document.getElementById('entrega-pend-overlay');
       if (ov) _abrirEntregaPendModal();
     }
     if (toastMsg) toast(toastMsg);
   }, 400);
 }
-
-// Check entregas pendientes al arrancar (se inicia desde setupApp via setTimeout)
-// No interval — banner sale una vez al día, se va cuando revisan todos o al día siguiente
-// ── Fin alerta entregas pendientes ──
+// ── Fin entregas pendientes (movido a dashboard sucursal v246) ──
 
 async function eliminarRetiro(retiroId, montoStr) {
   if (currentUser?.rol !== 'admin') { toast('Solo administradores pueden eliminar retiros', true); return; }
