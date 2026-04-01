@@ -26138,12 +26138,13 @@ function amRqAutoDetect(val) {
   var code = val.toUpperCase().trim();
   var marca = amDetectPrefix(code);
   if (marca) {
+    // SIEMPRE sobreescribir marca al detectar prefijo (fix: antes dejaba la marca del escaneo anterior)
     var marcaEl = document.getElementById('am-rq-marca');
-    if (marcaEl && !marcaEl.value.trim()) marcaEl.value = marca;
+    if (marcaEl) marcaEl.value = marca;
     // Auto-llenar costo del ticket precargado
     if (_amTicketCostos[code]) {
       var costoEl = document.getElementById('am-rq-costo');
-      if (costoEl && !parseFloat(costoEl.value)) costoEl.value = _amTicketCostos[code];
+      if (costoEl) costoEl.value = _amTicketCostos[code];
     }
   }
 }
