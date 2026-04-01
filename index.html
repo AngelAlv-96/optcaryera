@@ -3696,7 +3696,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-right">
             <button class="btn btn-g btn-sm" onclick="cargarProductos()">🔄</button>
             <button class="btn btn-g btn-sm" onclick="go('alta-masiva')" id="btn-alta-masiva" style="display:none">📷 Alta masiva</button>
-            <button class="btn btn-p btn-sm" onclick="mostrarFormProducto()">+ Nuevo</button>
+            <button class="btn btn-p btn-sm" onclick="mostrarFormProducto()" id="btn-prod-nuevo">+ Nuevo</button>
           </div>
         </div>
         <div class="body" style="padding:12px">
@@ -5377,7 +5377,7 @@ function go(id) {
   if (id === 'ventas')              { if (!vtaItems || !vtaItems.length) { initVenta(); } cargarVtaPendientes(); setTimeout(()=>document.getElementById('vta-pac-search')?.focus(),150); }
   if (id === 'promociones')          { cargarPromociones(); }
   if (id === 'caja')                 { initCaja(); }
-  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; }
+  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _npBtn=document.getElementById('btn-prod-nuevo'); if(_npBtn) _npBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; }
   if (id === 'alta-masiva')         { amInit(); }
   if (id === 'compras-lab')         { clbInit(); }
   if (id === 'historial-ventas')    { hvPage=0; initHistorialFechas(); cargarHistorialVentas(); }
@@ -18900,6 +18900,7 @@ function filtrarProductos(keepPage) {
   list.innerHTML=html;
 }
 function mostrarFormProducto(prod=null) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { toast('Solo admin/gerencia puede editar productos', true); return; }
   document.getElementById('prod-form-title').textContent=prod?'Editar producto':'Nuevo producto';
   document.getElementById('prod-edit-id').value=prod?.id||'';
   document.getElementById('prod-nombre').value=prod?.nombre||'';
@@ -18983,8 +18984,13 @@ function calcIVAProducto() {
   }
 }
 function cerrarFormProducto() { document.getElementById('prod-form-overlay').classList.remove('open'); }
-async function editarProducto(id) { const p=productosCache.find(x=>x.id===id); if(p) mostrarFormProducto(p); }
+async function editarProducto(id) {
+  const p=productosCache.find(x=>x.id===id); if(!p) return;
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') return; // Solo lectura para sucursal/lab
+  mostrarFormProducto(p);
+}
 async function guardarProducto() {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { toast('Sin permisos', true); return; }
   if (_actionBusy['guardarProducto']) { toast('Ya se está guardando...', true); return; }
   const nombre=document.getElementById('prod-nombre').value.trim();
   const precio=parseFloat(document.getElementById('prod-precio').value);
@@ -19013,6 +19019,7 @@ async function guardarProducto() {
 }
 
 async function editarPrecioRapido(id) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { toast('Sin permisos', true); return; }
   var p=productosCache.find(x=>x.id===id);
   if(!p) return;
   var nuevo=prompt('Nuevo precio para:\n'+p.nombre+'\n\nPrecio actual: $'+Number(p.precio_venta).toLocaleString('es-MX'), p.precio_venta);
@@ -19026,6 +19033,7 @@ async function editarPrecioRapido(id) {
   filtrarProductos(true);
 }
 async function toggleActivoProducto(id,desactivar) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { toast('Sin permisos', true); return; }
   var p=productosCache.find(x=>x.id===id);
   if(!p) return;
   var nuevoEstado=!desactivar;
