@@ -4157,16 +4157,40 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div id="am-entrada-rapida" style="margin-bottom:12px;background:var(--surface2);border:1px solid rgba(200,240,74,0.2);border-radius:10px;padding:12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
               <div style="font-size:11px;font-weight:700;color:var(--accent)">⌨ Entrada rápida — Tab Tab Tab Enter</div>
-              <button class="btn btn-g btn-sm" onclick="amAbrirOCR()" style="font-size:10px;padding:4px 10px" title="Subir foto de factura para leer automáticamente">📸 Foto factura</button>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-g btn-sm" onclick="amTicketAbrir()" style="font-size:10px;padding:4px 10px;background:rgba(74,160,240,.1);border-color:rgba(74,160,240,.3);color:#4aa0f0" title="Subir foto del ticket del proveedor para precargar costos">📋 Ticket proveedor</button>
+                <span id="am-ticket-badge" style="display:none;font-size:9px;background:rgba(74,160,240,.15);color:#4aa0f0;padding:2px 8px;border-radius:10px;font-weight:700"></span>
+                <button class="btn btn-g btn-sm" onclick="amAbrirOCR()" style="font-size:10px;padding:4px 10px" title="Subir foto de factura para leer automáticamente">📸 Foto factura</button>
+              </div>
             </div>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
               <div class="fg" style="flex:1.2;min-width:140px"><label>Marca</label><input type="text" id="am-rq-marca" placeholder="Funky Fred" style="text-transform:uppercase" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="1"></div>
-              <div class="fg" style="flex:1.2;min-width:140px"><label>Modelo</label><input type="text" id="am-rq-modelo" placeholder="MA2501" style="text-transform:uppercase" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="2"></div>
+              <div class="fg" style="flex:1.2;min-width:140px"><label>Modelo</label><input type="text" id="am-rq-modelo" placeholder="SM1515 / MA2501" style="text-transform:uppercase" oninput="amRqAutoDetect(this.value); amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="2"></div>
               <div class="fg" style="min-width:90px"><label>Costo $</label><input type="number" id="am-rq-costo" placeholder="0" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="3"></div>
               <div class="fg" style="min-width:100px"><label>Precio $ <span style="font-size:9px;color:var(--accent)">(sugerido)</span></label><input type="number" id="am-rq-precio" placeholder="0" onkeydown="amRqKeydown(event)" tabindex="4"></div>
               <button class="btn btn-p" onclick="amRqConfirmar()" style="padding:8px 16px;font-size:12px" tabindex="5">✓ Enter</button>
             </div>
             <div id="am-rq-status" style="font-size:10px;color:var(--muted);margin-top:6px;font-family:Outfit,sans-serif"></div>
+          </div>
+
+          <!-- TICKET PROVEEDOR (precarga costos) -->
+          <div id="am-ticket-section" style="display:none;margin-bottom:12px;background:var(--surface2);border:1px solid rgba(74,160,240,0.3);border-radius:10px;padding:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#4aa0f0">📋 Ticket proveedor — sube foto(s) para precargar costos</div>
+              <button class="btn btn-g btn-sm" onclick="amTicketCerrar()" style="font-size:10px;padding:3px 8px">✕ Cerrar</button>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+              <div style="flex:1;min-width:200px">
+                <label for="am-ticket-file" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;border:2px dashed rgba(74,160,240,0.3);border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .2s" onmouseover="this.style.borderColor='rgba(74,160,240,0.6)';this.style.background='rgba(74,160,240,0.05)'" onmouseout="this.style.borderColor='rgba(74,160,240,0.3)';this.style.background='transparent'">
+                  <span style="font-size:22px">📷</span>
+                  <span id="am-ticket-label">Toca para seleccionar foto(s) del ticket</span>
+                </label>
+                <input type="file" id="am-ticket-file" accept="image/*" multiple onchange="amTicketProcesar(this)" style="display:none">
+              </div>
+              <div id="am-ticket-preview" style="display:none;max-width:120px"><img id="am-ticket-img" style="width:100%;border-radius:6px;border:1px solid rgba(255,255,255,.1)"></div>
+            </div>
+            <div id="am-ticket-status" style="font-size:11px;margin-top:8px"></div>
+            <div id="am-ticket-resumen" style="display:none;margin-top:8px;background:rgba(74,160,240,.08);border:1px solid rgba(74,160,240,.2);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto"></div>
           </div>
 
           <!-- OCR FACTURA MODAL -->
@@ -5298,7 +5322,7 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search','conteo-input'];
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search','conteo-input','am-rq-modelo'];
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -24832,6 +24856,15 @@ var amSesionId   = null;
 var amSesionPollId = null;
 var amMarcas     = [];   // predictive brands declared by user
 var amPrinter    = null; // BrowserPrint device
+var _amTicketCostos = {}; // {SM1515: 80, ZB2274: 60} — precargados del ticket
+
+// ── PREFIJO→MARCA (proveedor con barcode en armazones) ──
+var AM_PREFIX_MAP = { 'SM':'SEIMA', 'ZB':'ZABDI', 'HA':'HASHTAG', 'HP':'HP' };
+function amDetectPrefix(code) {
+  if (!code || code.length < 4) return null;
+  var prefix = code.substring(0,2).toUpperCase();
+  return AM_PREFIX_MAP[prefix] || null;
+}
 
 // ── INIT ──
 function amInit() {
@@ -25213,11 +25246,13 @@ async function amBuscarEnBD(modelo, marca) {
       .ilike('modelo', '%' + (modelo||'') + '%')
       .limit(3);
     if (res.data && res.data.length) return res.data[0];
-    // Try by codigo
+    // Try by codigo (generated or direct barcode from provider)
+    var codigoGen = amGenCodigo(marca, modelo);
+    var codigoDirect = amDetectPrefix(modelo) ? modelo : '';
     var res2 = await db.from('productos')
       .select('id, nombre, precio_venta, codigo_barras, stock')
       .eq('activo', true)
-      .ilike('codigo_barras', '%' + amGenCodigo(marca, modelo) + '%')
+      .or('codigo_barras.ilike.%' + codigoGen + '%' + (codigoDirect ? ',codigo_barras.eq.' + codigoDirect : ''))
       .limit(1);
     if (res2.data && res2.data.length) return res2.data[0];
   } catch(e) {}
@@ -25919,12 +25954,172 @@ async function amMarinaAplicar() {
 
 var amRqPrecioTimer = null;
 
+// ── TICKET PROVEEDOR (precarga costos) ──
+function amTicketAbrir() {
+  document.getElementById('am-ticket-section').style.display = '';
+  document.getElementById('am-ticket-file').value = '';
+  document.getElementById('am-ticket-label').textContent = 'Toca para seleccionar foto(s) del ticket';
+  document.getElementById('am-ticket-status').textContent = '';
+  document.getElementById('am-ticket-resumen').style.display = 'none';
+  document.getElementById('am-ticket-preview').style.display = 'none';
+}
+function amTicketCerrar() {
+  document.getElementById('am-ticket-section').style.display = 'none';
+}
+
+async function amTicketProcesar(input) {
+  var files = input.files;
+  if (!files || !files.length) return;
+  var st = document.getElementById('am-ticket-status');
+  var totalItems = 0;
+
+  for (var fi = 0; fi < files.length; fi++) {
+    var file = files[fi];
+    st.innerHTML = '<span style="color:var(--accent)">⏳ Leyendo imagen ' + (fi+1) + ' de ' + files.length + '… (10-20 seg)</span>';
+
+    // Preview primera imagen
+    if (fi === 0) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        document.getElementById('am-ticket-img').src = e.target.result;
+        document.getElementById('am-ticket-preview').style.display = '';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Convert to base64
+    var base64 = await new Promise(function(res, rej) {
+      var r = new FileReader();
+      r.onload = function() { res(r.result.split(',')[1]); };
+      r.onerror = function() { rej(new Error('Error leyendo archivo')); };
+      r.readAsDataURL(file);
+    });
+
+    var mediaType = file.type || 'image/jpeg';
+
+    try {
+      var resp = await fetch('/.netlify/functions/ia-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          max_tokens: 4096,
+          system: 'Eres un asistente que extrae datos de tickets de proveedores de armazones ópticos.\n' +
+            'El ticket tiene columnas: Cant, Unit, Codigo, Pre.Unit, Monto.\n' +
+            'El Codigo es el modelo del armazón (ej: SM1515, ZB2274, HP1027).\n' +
+            'El Pre.Unit o Monto es el precio de COMPRA (costo).\n' +
+            'Extrae TODOS los items. Para cada uno identifica:\n' +
+            '- codigo: el código/modelo exacto como aparece (ej: SM1515)\n' +
+            '- costo: el precio unitario (Pre.Unit)\n' +
+            'RESPONDE ÚNICAMENTE con un JSON array, sin markdown ni explicación:\n' +
+            '[{"codigo":"SM1515","costo":80},{"codigo":"ZB2274","costo":60}]\n' +
+            'Si un mismo codigo aparece varias veces con el mismo precio, inclúyelo UNA sola vez.\n' +
+            'Si aparece con precios diferentes, inclúyelo con cada precio diferente.',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: 'Extrae los códigos y precios de compra de este ticket. Responde solo JSON.' }
+            ]
+          }],
+          auth: { id: currentUser?.id, pass: currentUser?.pass }
+        })
+      });
+
+      if (!resp.ok) {
+        var err = await resp.json();
+        st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + (err.error || 'Error desconocido') + '</span>';
+        return;
+      }
+
+      var data = await resp.json();
+      var text = '';
+      if (data.content) {
+        data.content.forEach(function(c) { if (c.type === 'text') text += c.text; });
+      }
+
+      // Clean markdown fences
+      text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+      var jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        st.innerHTML = '<span style="color:#f04a6a">❌ No se pudo leer el ticket. Intenta con foto más clara.</span>';
+        return;
+      }
+
+      var items = JSON.parse(jsonMatch[0]);
+      items.forEach(function(item) {
+        if (item.codigo && item.costo > 0) {
+          var cod = item.codigo.toUpperCase().trim();
+          _amTicketCostos[cod] = parseFloat(item.costo);
+          totalItems++;
+        }
+      });
+
+    } catch(e) {
+      st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + e.message + '</span>';
+      console.error(e);
+      return;
+    }
+  }
+
+  // Mostrar resumen
+  var keys = Object.keys(_amTicketCostos);
+  st.innerHTML = '<span style="color:var(--accent)">✓ ' + keys.length + ' modelos precargados — ahora escanea los armazones</span>';
+  document.getElementById('am-ticket-label').textContent = '✓ ' + files.length + ' foto(s) procesada(s)';
+
+  // Badge
+  var badge = document.getElementById('am-ticket-badge');
+  if (badge) { badge.style.display = ''; badge.textContent = keys.length + ' precargados'; }
+
+  // Resumen colapsable
+  var resDiv = document.getElementById('am-ticket-resumen');
+  resDiv.style.display = '';
+  var grouped = {};
+  keys.forEach(function(k) {
+    var prefix = k.substring(0,2);
+    var marca = AM_PREFIX_MAP[prefix] || prefix;
+    if (!grouped[marca]) grouped[marca] = [];
+    grouped[marca].push({ codigo: k, costo: _amTicketCostos[k] });
+  });
+  var html = '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">RESUMEN TICKET</div>';
+  Object.keys(grouped).sort().forEach(function(marca) {
+    var items = grouped[marca];
+    html += '<div style="margin-bottom:4px"><span style="font-weight:600;color:#4aa0f0;font-size:11px">' + marca + '</span> <span style="color:var(--muted);font-size:10px">(' + items.length + ')</span></div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">';
+    items.forEach(function(it) {
+      html += '<span style="font-size:9px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:4px;padding:2px 6px;font-family:Outfit,sans-serif">' + it.codigo + ' $' + it.costo + '</span>';
+    });
+    html += '</div>';
+  });
+  resDiv.innerHTML = html;
+}
+
+// Auto-detect marca from barcode prefix (SM→SEIMA, ZB→ZABDI, etc.) + costo del ticket
+function amRqAutoDetect(val) {
+  if (!val || val.length < 4) return;
+  var code = val.toUpperCase().trim();
+  var marca = amDetectPrefix(code);
+  if (marca) {
+    var marcaEl = document.getElementById('am-rq-marca');
+    if (marcaEl && !marcaEl.value.trim()) marcaEl.value = marca;
+    // Auto-llenar costo del ticket precargado
+    if (_amTicketCostos[code]) {
+      var costoEl = document.getElementById('am-rq-costo');
+      if (costoEl && !parseFloat(costoEl.value)) costoEl.value = _amTicketCostos[code];
+    }
+  }
+}
+
 async function amRqBuscarPrecio() {
   clearTimeout(amRqPrecioTimer);
   var marca  = (document.getElementById('am-rq-marca').value  || '').trim().toUpperCase();
   var modelo = (document.getElementById('am-rq-modelo').value || '').trim().toUpperCase();
   var costoEl = document.getElementById('am-rq-costo');
   var costo  = costoEl ? (parseFloat(costoEl.value)||0) : 0;
+  // Si tiene prefijo de proveedor pero marca aún no se llenó, auto-llenar
+  if (marca.length < 2 && modelo.length >= 4) {
+    var _detMarca = amDetectPrefix(modelo);
+    if (_detMarca) { marca = _detMarca; document.getElementById('am-rq-marca').value = _detMarca; }
+  }
   if (marca.length < 2) return;
   var st = document.getElementById('am-rq-status');
   st.textContent = 'Buscando...';
@@ -25934,6 +26129,28 @@ async function amRqBuscarPrecio() {
     try {
       var marcaBase = marca.split(' ')[0];
       var modeloLimpio = modelo.replace(/[-\s]/g,'');
+
+      // 0. Búsqueda directa por codigo_barras (proveedor con barcode = modelo)
+      if (modelo.length >= 4 && amDetectPrefix(modelo)) {
+        var qCod = await db.from('productos')
+          .select('precio_venta,modelo,costo,nombre,codigo_barras')
+          .eq('activo', true)
+          .or('codigo_barras.eq.' + modelo + ',modelo.ilike.%' + modelo + '%')
+          .limit(5);
+        if (qCod.data && qCod.data.length) {
+          var ref = qCod.data[0];
+          var precioModelo = parseFloat(ref.precio_venta) || 0;
+          if (precioModelo > 0) {
+            document.getElementById('am-rq-precio').value = precioModelo;
+            var costoAnterior = parseFloat(ref.costo) || 0;
+            st.innerHTML = '📌 Encontrado <b>' + (ref.nombre || modelo) + '</b>: <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
+              (costoAnterior > 0 ? ' · costo anterior: $' + costoAnterior.toLocaleString('es-MX') : '') +
+              ' <span style="color:rgba(255,255,255,.25)">— escanea siguiente</span>';
+            st.style.color = 'var(--accent)';
+            return;
+          }
+        }
+      }
 
       // 1. Precio EXACTO por modelo — si ya existe, usar ESE precio (no el máximo)
       if (modelo.length >= 2) {
@@ -26071,7 +26288,8 @@ async function amRqConfirmar() {
   if (!precio) { st.textContent = '⚠ Ingresa el precio'; st.style.color='var(--warn)'; return; }
 
   var cfg = amGetConfig();
-  var codigo = amGenCodigo(marca, modelo);
+  // Si el modelo matchea un prefijo de proveedor (SM1515, ZB2274), usar como código directo
+  var codigo = amDetectPrefix(modelo) ? modelo : amGenCodigo(marca, modelo);
   var row = {
     marca: marca,
     modelo: modelo,
