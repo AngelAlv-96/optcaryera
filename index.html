@@ -5230,7 +5230,7 @@ function doLogout() {
 }
 
 function hoyLocal() {
-  return new Date().toLocaleDateString('en-CA');
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
 }
 
 function getLocalOffsetMs() {
@@ -5240,9 +5240,10 @@ function getLocalOffsetMs() {
   return utc - local; // positive = local is behind UTC (e.g. 7h * 3600000)
 }
 
+// Convert Chihuahua local date to UTC range for Supabase queries (UTC-6, no DST)
 function localDateToUTC(dateStr) {
-  const start = new Date(dateStr + 'T00:00:00');
-  const end = new Date(dateStr + 'T23:59:59.999');
+  const start = new Date(dateStr + 'T00:00:00-06:00');
+  const end = new Date(dateStr + 'T23:59:59.999-06:00');
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
@@ -6809,8 +6810,8 @@ async function loadDash() {
     dashDate = hoyLocal();
   }
   var today = dashDate;
-  var utcStart = new Date(today + 'T00:00:00').toISOString();
-  var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+  var utcStart = new Date(today + 'T00:00:00-06:00').toISOString();
+  var utcEnd = new Date(today + 'T23:59:59.999-06:00').toISOString();
 
   // Common data
   var ordQuery = db.from('ordenes_laboratorio').select('id,estado_lab,notas_laboratorio,sucursal,tipo_lente,material,created_at,pacientes(nombre,apellidos,telefono)').neq('estado_lab','Entregado');
@@ -20020,8 +20021,8 @@ async function cargarDatosCaja() {
   const isAdm = currentUser?.sucursal === 'Todas';
   const suc = isAdm ? (document.getElementById('caja-suc-selector')?.value || 'Américas') : (currentUser?.sucursal || 'Todas');
   const today = hoyLocal();
-  const utcStart = new Date(today + 'T00:00:00').toISOString();
-  const utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+  const utcStart = new Date(today + 'T00:00:00-06:00').toISOString();
+  const utcEnd = new Date(today + 'T23:59:59.999-06:00').toISOString();
   // Post-cutoff: si hay cortes anteriores hoy, solo cargar datos posteriores al último corte
   var _cajaFromTime = utcStart;
   try {
@@ -20923,8 +20924,8 @@ async function reenviarCorte(corteId) {
   // Count ordenes lab for that date and sucursal
   var ordenesCount = 0;
   try {
-    var utcStart = new Date(c.fecha + 'T00:00:00').toISOString();
-    var utcEnd = new Date(c.fecha + 'T23:59:59.999').toISOString();
+    var utcStart = new Date(c.fecha + 'T00:00:00-06:00').toISOString();
+    var utcEnd = new Date(c.fecha + 'T23:59:59.999-06:00').toISOString();
     var olQuery = db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at', utcStart).lte('created_at', utcEnd);
     if (c.sucursal) olQuery = olQuery.eq('sucursal', c.sucursal);
     var { count } = await olQuery;
@@ -21239,8 +21240,8 @@ async function _initAlertaEfectivoGlobal() {
     if (!caja?.length) return;
     cajaData = cajaData || caja[0]; // set global if not set yet
     var fondo = Number(caja[0].fondo_inicial) || 0;
-    var utcStart = new Date(today + 'T00:00:00').toISOString();
-    var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
+    var utcStart = new Date(today + 'T00:00:00-06:00').toISOString();
+    var utcEnd = new Date(today + 'T23:59:59.999-06:00').toISOString();
     var { data: pagos } = await db.from('venta_pagos').select('monto,metodo_pago').gte('created_at', utcStart).lte('created_at', utcEnd);
     var efvo = (pagos||[]).filter(function(p){return p.metodo_pago==='Efectivo'||p.metodo_pago==='Dólar'}).reduce(function(s,p){return s+Number(p.monto)},0);
     var { data: abonos } = await db.from('creditos_abonos').select('monto,metodo_pago').gte('created_at', utcStart).lte('created_at', utcEnd);
@@ -22548,8 +22549,8 @@ async function calcularComisiones() {
   var desde, hasta;
   if (q === 'Q1') { desde = y + '-' + String(m).padStart(2,'0') + '-01'; hasta = y + '-' + String(m).padStart(2,'0') + '-15'; }
   else { desde = y + '-' + String(m).padStart(2,'0') + '-16'; hasta = y + '-' + String(m).padStart(2,'0') + '-' + lastDay; }
-  var utcStart = new Date(desde + 'T00:00:00').toISOString();
-  var utcEnd = new Date(hasta + 'T23:59:59.999').toISOString();
+  var utcStart = new Date(desde + 'T00:00:00-06:00').toISOString();
+  var utcEnd = new Date(hasta + 'T23:59:59.999-06:00').toISOString();
 
   document.getElementById('com-table').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Calculando...</div>';
 
