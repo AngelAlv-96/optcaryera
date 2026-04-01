@@ -206,16 +206,23 @@ function estSwitchTab(tab) {
 }
 
 // ── Fetch ventas del periodo actual ──
+// Helper: convert local Chihuahua date string to UTC ISO (Chihuahua = UTC-6 always, no DST)
+function _estLocalToUTC(dateStr, endOfDay) {
+  // dateStr = "YYYY-MM-DD", endOfDay = true adds 23:59:59
+  if (endOfDay) return dateStr + 'T23:59:59-06:00';
+  return dateStr + 'T00:00:00-06:00';
+}
 async function _estFetchVentas() {
   var now = new Date();
   var y = now.getFullYear();
   var m = String(now.getMonth() + 1).padStart(2, '0');
   var inicio = y + '-' + m + '-01';
-  var fin = y + '-' + m + '-' + String(new Date(y, now.getMonth() + 1, 0).getDate()).padStart(2, '0');
+  var endDay = String(new Date(y, now.getMonth() + 1, 0).getDate()).padStart(2, '0');
+  var fin = y + '-' + m + '-' + endDay;
 
   var { data: ventas, error } = await db.from('ventas')
     .select('id,created_at,total,subtotal,sucursal,estado,folio,descuento')
-    .gte('created_at', inicio).lte('created_at', fin + 'T23:59:59')
+    .gte('created_at', _estLocalToUTC(inicio, false)).lte('created_at', _estLocalToUTC(fin, true))
     .neq('estado', 'Cancelada')
     .order('created_at', { ascending: false });
 
@@ -362,9 +369,11 @@ async function _estLoadHistDB() {
       var vs = (v.sucursal || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (!sucMap[vs] && vs === 'todas') vs = 'americas';
       if (!sucMap[vs]) return;
-      var d = new Date(v.created_at);
-      var y = d.getFullYear();
-      var m = d.getMonth(); // 0-based
+      // Use Chihuahua timezone for month grouping (not UTC)
+      var localDate = new Date(v.created_at).toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+      var parts = localDate.split('-');
+      var y = parseInt(parts[0]);
+      var m = parseInt(parts[1]) - 1; // 0-based
       if (!_estHistDB[vs]) _estHistDB[vs] = {};
       if (!_estHistDB[vs][y]) _estHistDB[vs][y] = [0,0,0,0,0,0,0,0,0,0,0,0];
       _estHistDB[vs][y][m] += (v.total || 0);
@@ -454,9 +463,9 @@ function _estRenderMeta() {
 
   // Current month by sucursal
   var sucDefs = [
-    { label: 'Américas', key: 'americas', color: '#4fc3f7' },
-    { label: 'Pinocelli', key: 'pinocelli', color: '#ffa726' },
-    { label: 'Magnolia', key: 'magnolia', color: '#ce93d8' }
+    { label: 'Américas', key: 'americas', color: '#ce93d8' },
+    { label: 'Pinocelli', key: 'pinocelli', color: '#4fc3f7' },
+    { label: 'Magnolia', key: 'magnolia', color: '#ffa726' }
   ];
   var actual = {}; var actualCount = {};
   sucDefs.forEach(function(s) { actual[s.key] = 0; actualCount[s.key] = 0; });
@@ -1371,12 +1380,12 @@ async function _loadDashMetaWidget(sucursal) {
 
     if (!meta || meta <= 0) return;
 
-    // Get current month ventas for this sucursal
+    // Get current month ventas for this sucursal (timezone-aware: Chihuahua UTC-6)
     var inicio = anio + '-' + String(mesIdx + 1).padStart(2, '0') + '-01';
-    var fin = inicio.slice(0, 8) + String(diasEnMes).padStart(2, '0') + 'T23:59:59';
+    var finDay = inicio.slice(0, 8) + String(diasEnMes).padStart(2, '0');
     var { data: ventas } = await db.from('ventas')
       .select('total,sucursal,created_at')
-      .gte('created_at', inicio).lte('created_at', fin)
+      .gte('created_at', _estLocalToUTC(inicio, false)).lte('created_at', _estLocalToUTC(finDay, true))
       .eq('sucursal', sucursal)
       .neq('estado', 'Cancelada');
 
@@ -1432,7 +1441,7 @@ async function _loadDashMetaWidget(sucursal) {
     // Yesterday's sales for comparison (local Chihuahua)
     var ayerDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
     ayerDate.setDate(ayerDate.getDate() - 1);
-    var ayerStr = ayerDate.toISOString().slice(0, 10);
+    var ayerStr = ayerDate.toLocaleDateString('en-CA');
     var ventasAyer = diasConVenta[ayerStr] || 0;
     var beatingYesterday = ventasHoy > ventasAyer && ventasAyer > 0;
 

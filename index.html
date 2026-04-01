@@ -5358,7 +5358,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, configuracion:24, clari:25, landings:26, estrategia:27, 'auditoria-pedidos':28, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, estrategia:24, 'auditoria-pedidos':25, configuracion:26, clari:27, landings:28, 'lc-crm':19, 'alta-masiva':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -7103,7 +7103,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   // Ventas por sucursal
   h += '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>🏪 Ventas por sucursal hoy</h3></div>';
   h += '<div style="padding:12px 16px">';
-  var sucColors = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4','Online':'#38bdf8'};
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Online':'#38bdf8'};
   sucs.forEach(function(s) {
     var sv = ventasHoy.filter(function(v){return v.sucursal===s});
     var st = sv.reduce(function(a,v){return a+Number(v.total)},0);
@@ -7210,7 +7210,7 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
 
     ch += '<details><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--beige);padding:4px 0">📋 Últimos movimientos ('+movimientos.length+')</summary>';
     ch += '<div style="max-height:300px;overflow-y:auto;margin-top:8px">';
-    var sucC2 = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4'};
+    var sucC2 = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
     movimientos.slice(0,25).forEach(function(m) {
       ch += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px">';
       ch += '<span style="color:var(--muted);min-width:36px">'+m.hora+'</span>';
@@ -8097,7 +8097,7 @@ async function _audRenderResumen() {
       var porRevisar = items.filter(function(o) { return o.estado_lab === 'Recibido en óptica'; }).length;
       var listos = items.filter(function(o) { return o.estado_lab === 'Listo para entrega'; }).length;
       var mayores3 = items.filter(function(o) { return Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000) > 3; }).length;
-      var sucC = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4'};
+      var sucC = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
       h += '<div class="est-card">';
       h += '<div style="font-size:14px;font-weight:700;color:'+(sucC[suc]||'#888')+';margin-bottom:8px">'+suc+'</div>';
       h += '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">👁 '+porRevisar+' por revisar · ✅ '+listos+' listos</div>';
@@ -8358,7 +8358,7 @@ async function _audResolverFolio(conteoId, folio, estado) {
 
 function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, today, orders, urgentes, demorados, rol) {
   var sucs = ['Américas','Pinocelli','Magnolia'];
-  var sucColors = {'Américas':'#8ab0e8','Pinocelli':'#d4b84a','Magnolia':'#b48ad4','Online':'#38bdf8'};
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Online':'#38bdf8'};
   var PAY_ICONS = {'Efectivo':'💵','Tarjeta':'💳','MSI':'⏰','Transferencia':'🔄','Dólar':'💲','Aplazo':'📱','Link de pago':'🔗','Monedero':'🪙'};
   var PAY_CLR = {'Efectivo':'#4ade80','Tarjeta':'#60a5fa','MSI':'#fbbf24','Transferencia':'#a78bfa','Dólar':'#34d399','Aplazo':'#f472b6','Link de pago':'#38bdf8','Monedero':'#34d399'};
   var totalGeneral = 0, totalVentasCount = 0, totalGarantias = garantiasHoy.length, totalAbonosGeneral = 0;
@@ -15869,7 +15869,7 @@ async function renderAsesoresConfig() {
   var el = document.getElementById('cfg-asesores-list');
   if (!el) return;
   var html = '';
-  var sucColors = { 'Américas':'#8ab0e8', 'Pinocelli':'#d4b84a', 'Magnolia':'#b48ad4' };
+  var sucColors = { 'Américas':'#b48ad4', 'Pinocelli':'#8ab0e8', 'Magnolia':'#d4b84a' };
   Object.entries(sucs).forEach(function(entry) {
     var suc = entry[0], names = entry[1];
     var c = sucColors[suc] || '#888';
@@ -17884,6 +17884,12 @@ function initHistorialFechas() {
   var hasta = document.getElementById('hv-fecha-hasta');
   if (desde && !desde.value) {
     var d = new Date(hoy + 'T12:00:00');
+    var diaHoy = d.getDate();
+    // Si estamos en los primeros 3 días del mes, mostrar desde el 1ro del mes anterior
+    // para que el historial no aparezca vacío al cambiar de mes
+    if (diaHoy <= 3) {
+      d.setMonth(d.getMonth() - 1);
+    }
     desde.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
   }
   if (hasta && !hasta.value) hasta.value = hoy;
@@ -19046,19 +19052,17 @@ async function cargarHistorialVentas() {
     // Sin búsqueda: paginación normal con filtro de fecha
     let qBase = db.from('ventas').select('*, pacientes(nombre, apellidos, telefono)',{count:'exact'}).order('created_at',{ascending:false}).range(hvPage*HV_PAGE_SIZE,(hvPage+1)*HV_PAGE_SIZE-1);
     if (hvSuc !== 'Todas') qBase = qBase.eq('sucursal', hvSuc);
-    if (desde) qBase=qBase.gte('created_at',desde+'T00:00:00');
+    if (desde) qBase=qBase.gte('created_at',desde+'T00:00:00-06:00');
     if (hasta) {
-      var hastaD = new Date(hasta + 'T23:59:59');
-      hastaD.setHours(hastaD.getHours() + 8);
-      qBase = qBase.lte('created_at', hastaD.toISOString());
+      qBase = qBase.lte('created_at', hasta+'T23:59:59-06:00');
     }
     ({ data, count, error } = await qBase);
     // Also load Online ventas assigned to this branch
     if (hvSuc !== 'Todas') {
       try {
         let qOnl = db.from('ventas').select('*, pacientes(nombre, apellidos, telefono)').eq('sucursal','Online').eq('sucursal_entrega',hvSuc).order('created_at',{ascending:false}).range(0,49);
-        if (desde) qOnl=qOnl.gte('created_at',desde+'T00:00:00');
-        if (hasta) { var hD2=new Date(hasta+'T23:59:59'); hD2.setHours(hD2.getHours()+8); qOnl=qOnl.lte('created_at',hD2.toISOString()); }
+        if (desde) qOnl=qOnl.gte('created_at',desde+'T00:00:00-06:00');
+        if (hasta) qOnl=qOnl.lte('created_at',hasta+'T23:59:59-06:00');
         const {data:onlData}=await qOnl;
         if (onlData?.length) {
           const seen2={};
@@ -19180,6 +19184,9 @@ function filtrarHistVentas() {
     const c=EC[v.estado]||'#888';const sp=Number(v.saldo)>0;
     const isSicar = v._is_sicar;
     const isOnline = v.sucursal === 'Online';
+    const _sucColors = {'Américas':'206,147,216','Americas':'206,147,216','Pinocelli':'79,195,247','Magnolia':'255,167,38'};
+    const _sucShort = (v.sucursal||'').replace('Américas','AME').replace('Americas','AME').replace('Pinocelli','PIN').replace('Magnolia','MAG').replace('Online','ONL');
+    const sucTag = v.sucursal && !isSicar ? '<span style="font-size:8px;padding:1px 5px;background:rgba('+(_sucColors[v.sucursal]||'255,255,255')+',0.12);color:rgb('+(_sucColors[v.sucursal]||'180,180,180')+');border-radius:4px;font-weight:700;margin-left:4px">'+_sucShort+'</span>' : '';
     const sicarTag = isSicar ? '<span style="font-size:8px;padding:1px 5px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:4px;font-weight:700;margin-left:4px">SICAR</span>' : '';
     const onlineTag = isOnline ? '<span style="font-size:8px;padding:1px 5px;background:rgba(56,189,248,0.15);color:#38bdf8;border-radius:4px;font-weight:700;margin-left:4px">🌐 ONLINE</span>' : '';
     const canalTag = isOnline && v.canal_venta ? '<span style="font-size:8px;padding:1px 5px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px;margin-left:2px">'+v.canal_venta+'</span>' : '';
@@ -19188,7 +19195,7 @@ function filtrarHistVentas() {
     const onlineEntrega = isOnline && v.sucursal_entrega ? ' · 🏪 '+v.sucursal_entrega : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid ${borderColor};border-radius:10px;cursor:pointer;transition:border-color .12s" onmouseover="this.style.borderColor='rgba(226,198,166,0.2)'" onmouseout="this.style.borderColor='${borderColor}'" onclick="${clickAction}">
       <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">${v.folio}</span><span style="font-size:9px;padding:2px 6px;background:${c}15;color:${c};border-radius:5px;font-weight:600">${v.estado}</span>${sicarTag}${onlineTag}${canalTag}${Number(v.monedero_usado)>0?'<span style="font-size:9px;padding:2px 5px;background:rgba(114,196,126,0.1);color:#72c47e;border-radius:5px">🪙</span>':''}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">${v.folio}</span><span style="font-size:9px;padding:2px 6px;background:${c}15;color:${c};border-radius:5px;font-weight:600">${v.estado}</span>${sucTag}${sicarTag}${onlineTag}${canalTag}${Number(v.monedero_usado)>0?'<span style="font-size:9px;padding:2px 5px;background:rgba(114,196,126,0.1);color:#72c47e;border-radius:5px">🪙</span>':''}</div>
         <div style="font-size:11px;color:var(--white);margin-top:1px">${pac}</div>
         <div style="font-size:10px;color:var(--muted)">${fecha}${isSicar?' · '+v.sucursal:' · '+(v.asesor||'—')}${onlineEntrega}</div>
       </div>
@@ -20515,7 +20522,7 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
 async function verHistorialCortes() {
   var isAdmin = currentUser?.rol === 'admin';
   var isGerencia = currentUser?.rol === 'gerencia';
-  var sucColors = {'Américas':'#72c47e','Pinocelli':'#8bb4f0','Magnolia':'#d4b84a'};
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
   // Init date pickers on first load (default: last 7 days)
   var elDesde = document.getElementById('caja-hist-desde');
   var elHasta = document.getElementById('caja-hist-hasta');
@@ -22664,7 +22671,7 @@ async function calcularComisiones() {
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=169"></script>
 <script src="js/mod-contabilidad.js?v=179"></script>
-<script src="js/mod-estrategia.js?v=181"></script>
+<script src="js/mod-estrategia.js?v=182"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->
