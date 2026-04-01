@@ -4181,13 +4181,14 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             </div>
             <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
               <div style="flex:1;min-width:200px">
-                <label for="am-ticket-file" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;border:2px dashed rgba(74,160,240,0.3);border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .2s" onmouseover="this.style.borderColor='rgba(74,160,240,0.6)';this.style.background='rgba(74,160,240,0.05)'" onmouseout="this.style.borderColor='rgba(74,160,240,0.3)';this.style.background='transparent'">
+                <label for="am-ticket-file" id="am-ticket-drop" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;border:2px dashed rgba(74,160,240,0.3);border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px;transition:all .2s" onmouseover="this.style.borderColor='rgba(74,160,240,0.6)';this.style.background='rgba(74,160,240,0.05)'" onmouseout="this.style.borderColor='rgba(74,160,240,0.3)';this.style.background='transparent'">
                   <span style="font-size:22px">📷</span>
-                  <span id="am-ticket-label">Toca para seleccionar foto(s) del ticket</span>
+                  <span id="am-ticket-label">Toca para seleccionar foto del ticket</span>
                 </label>
-                <input type="file" id="am-ticket-file" accept="image/*" multiple onchange="amTicketProcesar(this)" style="display:none">
+                <input type="file" id="am-ticket-file" accept="image/*" onchange="amTicketProcesar(this)" style="display:none">
+                <button id="am-ticket-otra" class="btn btn-p btn-sm" onclick="document.getElementById('am-ticket-file').value='';document.getElementById('am-ticket-file').click()" style="display:none;margin-top:8px;font-size:11px;width:100%">+ Agregar otra foto del ticket</button>
               </div>
-              <div id="am-ticket-preview" style="display:none;max-width:120px"><img id="am-ticket-img" style="width:100%;border-radius:6px;border:1px solid rgba(255,255,255,.1)"></div>
+              <div id="am-ticket-thumbs" style="display:flex;gap:6px;flex-wrap:wrap;max-width:300px"></div>
             </div>
             <div id="am-ticket-status" style="font-size:11px;margin-top:8px"></div>
             <div id="am-ticket-resumen" style="display:none;margin-top:8px;background:rgba(74,160,240,.08);border:1px solid rgba(74,160,240,.2);border-radius:8px;padding:10px;max-height:200px;overflow-y:auto"></div>
@@ -25958,119 +25959,131 @@ var amRqPrecioTimer = null;
 function amTicketAbrir() {
   document.getElementById('am-ticket-section').style.display = '';
   document.getElementById('am-ticket-file').value = '';
-  document.getElementById('am-ticket-label').textContent = 'Toca para seleccionar foto(s) del ticket';
+  document.getElementById('am-ticket-label').textContent = 'Toca para seleccionar foto del ticket';
   document.getElementById('am-ticket-status').textContent = '';
   document.getElementById('am-ticket-resumen').style.display = 'none';
-  document.getElementById('am-ticket-preview').style.display = 'none';
+  document.getElementById('am-ticket-drop').style.display = '';
+  document.getElementById('am-ticket-otra').style.display = _amTicketFotoCount > 0 ? '' : 'none';
+  // Si ya hay fotos previas, mostrar resumen
+  if (Object.keys(_amTicketCostos).length) amTicketRenderResumen();
 }
 function amTicketCerrar() {
   document.getElementById('am-ticket-section').style.display = 'none';
 }
 
+var _amTicketFotoCount = 0;
+
 async function amTicketProcesar(input) {
-  var files = input.files;
-  if (!files || !files.length) return;
+  var file = input.files && input.files[0];
+  if (!file) return;
   var st = document.getElementById('am-ticket-status');
-  var totalItems = 0;
+  st.innerHTML = '<span style="color:var(--accent)">⏳ Leyendo ticket… (10-20 seg)</span>';
 
-  for (var fi = 0; fi < files.length; fi++) {
-    var file = files[fi];
-    st.innerHTML = '<span style="color:var(--accent)">⏳ Leyendo imagen ' + (fi+1) + ' de ' + files.length + '… (10-20 seg)</span>';
+  // Thumbnail
+  var thumbs = document.getElementById('am-ticket-thumbs');
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = document.createElement('img');
+    img.src = e.target.result;
+    img.style.cssText = 'width:60px;height:80px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,.1)';
+    thumbs.appendChild(img);
+  };
+  reader.readAsDataURL(file);
 
-    // Preview primera imagen
-    if (fi === 0) {
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('am-ticket-img').src = e.target.result;
-        document.getElementById('am-ticket-preview').style.display = '';
-      };
-      reader.readAsDataURL(file);
-    }
+  // Convert to base64
+  var base64 = await new Promise(function(res, rej) {
+    var r = new FileReader();
+    r.onload = function() { res(r.result.split(',')[1]); };
+    r.onerror = function() { rej(new Error('Error leyendo archivo')); };
+    r.readAsDataURL(file);
+  });
 
-    // Convert to base64
-    var base64 = await new Promise(function(res, rej) {
-      var r = new FileReader();
-      r.onload = function() { res(r.result.split(',')[1]); };
-      r.onerror = function() { rej(new Error('Error leyendo archivo')); };
-      r.readAsDataURL(file);
+  var mediaType = file.type || 'image/jpeg';
+
+  try {
+    var resp = await fetch('/.netlify/functions/ia-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        max_tokens: 4096,
+        system: 'Eres un asistente que extrae datos de tickets de proveedores de armazones ópticos.\n' +
+          'El ticket tiene columnas: Cant, Unit, Codigo, Pre.Unit, Monto.\n' +
+          'El Codigo es el modelo del armazón (ej: SM1515, ZB2274, HP1027).\n' +
+          'El Pre.Unit o Monto es el precio de COMPRA (costo).\n' +
+          'Extrae TODOS los items. Para cada uno identifica:\n' +
+          '- codigo: el código/modelo exacto como aparece (ej: SM1515)\n' +
+          '- costo: el precio unitario (Pre.Unit)\n' +
+          'RESPONDE ÚNICAMENTE con un JSON array, sin markdown ni explicación:\n' +
+          '[{"codigo":"SM1515","costo":80},{"codigo":"ZB2274","costo":60}]\n' +
+          'Si un mismo codigo aparece varias veces con el mismo precio, inclúyelo UNA sola vez.\n' +
+          'Si aparece con precios diferentes, inclúyelo con cada precio diferente.',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: 'Extrae los códigos y precios de compra de este ticket. Responde solo JSON.' }
+          ]
+        }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
     });
 
-    var mediaType = file.type || 'image/jpeg';
-
-    try {
-      var resp = await fetch('/.netlify/functions/ia-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          max_tokens: 4096,
-          system: 'Eres un asistente que extrae datos de tickets de proveedores de armazones ópticos.\n' +
-            'El ticket tiene columnas: Cant, Unit, Codigo, Pre.Unit, Monto.\n' +
-            'El Codigo es el modelo del armazón (ej: SM1515, ZB2274, HP1027).\n' +
-            'El Pre.Unit o Monto es el precio de COMPRA (costo).\n' +
-            'Extrae TODOS los items. Para cada uno identifica:\n' +
-            '- codigo: el código/modelo exacto como aparece (ej: SM1515)\n' +
-            '- costo: el precio unitario (Pre.Unit)\n' +
-            'RESPONDE ÚNICAMENTE con un JSON array, sin markdown ni explicación:\n' +
-            '[{"codigo":"SM1515","costo":80},{"codigo":"ZB2274","costo":60}]\n' +
-            'Si un mismo codigo aparece varias veces con el mismo precio, inclúyelo UNA sola vez.\n' +
-            'Si aparece con precios diferentes, inclúyelo con cada precio diferente.',
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              { type: 'text', text: 'Extrae los códigos y precios de compra de este ticket. Responde solo JSON.' }
-            ]
-          }],
-          auth: { id: currentUser?.id, pass: currentUser?.pass }
-        })
-      });
-
-      if (!resp.ok) {
-        var err = await resp.json();
-        st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + (err.error || 'Error desconocido') + '</span>';
-        return;
-      }
-
-      var data = await resp.json();
-      var text = '';
-      if (data.content) {
-        data.content.forEach(function(c) { if (c.type === 'text') text += c.text; });
-      }
-
-      // Clean markdown fences
-      text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
-      var jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) {
-        st.innerHTML = '<span style="color:#f04a6a">❌ No se pudo leer el ticket. Intenta con foto más clara.</span>';
-        return;
-      }
-
-      var items = JSON.parse(jsonMatch[0]);
-      items.forEach(function(item) {
-        if (item.codigo && item.costo > 0) {
-          var cod = item.codigo.toUpperCase().trim();
-          _amTicketCostos[cod] = parseFloat(item.costo);
-          totalItems++;
-        }
-      });
-
-    } catch(e) {
-      st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + e.message + '</span>';
-      console.error(e);
+    if (!resp.ok) {
+      var err = await resp.json();
+      st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + (err.error || 'Error desconocido') + '</span>';
       return;
     }
+
+    var data = await resp.json();
+    var text = '';
+    if (data.content) {
+      data.content.forEach(function(c) { if (c.type === 'text') text += c.text; });
+    }
+
+    // Clean markdown fences
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      st.innerHTML = '<span style="color:#f04a6a">❌ No se pudo leer el ticket. Intenta con foto más clara.</span>';
+      return;
+    }
+
+    var items = JSON.parse(jsonMatch[0]);
+    var nuevos = 0;
+    items.forEach(function(item) {
+      if (item.codigo && item.costo > 0) {
+        var cod = item.codigo.toUpperCase().trim();
+        if (!_amTicketCostos[cod]) nuevos++;
+        _amTicketCostos[cod] = parseFloat(item.costo);
+      }
+    });
+
+    _amTicketFotoCount++;
+
+  } catch(e) {
+    st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + e.message + '</span>';
+    console.error(e);
+    return;
   }
 
-  // Mostrar resumen
+  // Actualizar UI
+  amTicketRenderResumen();
+
+  // Mostrar botón "+ Agregar otra foto"
+  document.getElementById('am-ticket-otra').style.display = '';
+  document.getElementById('am-ticket-drop').style.display = 'none';
+}
+
+function amTicketRenderResumen() {
   var keys = Object.keys(_amTicketCostos);
-  st.innerHTML = '<span style="color:var(--accent)">✓ ' + keys.length + ' modelos precargados — ahora escanea los armazones</span>';
-  document.getElementById('am-ticket-label').textContent = '✓ ' + files.length + ' foto(s) procesada(s)';
+  var st = document.getElementById('am-ticket-status');
+  st.innerHTML = '<span style="color:var(--accent)">✓ ' + keys.length + ' modelos de ' + _amTicketFotoCount + ' foto(s) — sube más o empieza a escanear</span>';
 
   // Badge
   var badge = document.getElementById('am-ticket-badge');
   if (badge) { badge.style.display = ''; badge.textContent = keys.length + ' precargados'; }
 
-  // Resumen colapsable
+  // Resumen
   var resDiv = document.getElementById('am-ticket-resumen');
   resDiv.style.display = '';
   var grouped = {};
@@ -26080,7 +26093,7 @@ async function amTicketProcesar(input) {
     if (!grouped[marca]) grouped[marca] = [];
     grouped[marca].push({ codigo: k, costo: _amTicketCostos[k] });
   });
-  var html = '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">RESUMEN TICKET</div>';
+  var html = '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">RESUMEN TICKET (' + keys.length + ' modelos)</div>';
   Object.keys(grouped).sort().forEach(function(marca) {
     var items = grouped[marca];
     html += '<div style="margin-bottom:4px"><span style="font-weight:600;color:#4aa0f0;font-size:11px">' + marca + '</span> <span style="color:var(--muted);font-size:10px">(' + items.length + ')</span></div>';
