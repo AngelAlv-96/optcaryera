@@ -269,14 +269,18 @@ async function lookupOrders(phone, text) {
 
   // 3. Try by name if message has a name-like text (only if no results yet)
   if (results.length === 0) {
-    var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) { return w.length >= 3; });
+    // Skip common Spanish stopwords to find actual name words
+    var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo'];
+    var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) {
+      return w.length >= 3 && _stopwords.indexOf(w.toLowerCase()) === -1;
+    });
     console.log('[OrderLookup] trying name search, words: ' + nameWords.join(', '));
     if (nameWords.length >= 1) {
       for (var i = 0; i < Math.min(nameWords.length, 2); i++) {
         var word = nameWords[i];
-        var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=5');
+        var byName = await supaFetch('pacientes?or=(nombre.ilike.*' + word + '*,apellidos.ilike.*' + word + '*)&select=id,nombre,apellidos&limit=10');
         console.log('[OrderLookup] name "' + word + '": ' + (byName ? byName.length : 'null') + ' patients');
-        if (byName && byName.length > 0 && byName.length <= 3) {
+        if (byName && byName.length > 0 && byName.length <= 8) {
           var nameIds = byName.map(function(p) { return p.id; });
           var nameOrders = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + nameIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
           console.log('[OrderLookup] orders by name: ' + (nameOrders ? nameOrders.length : 'null'));
@@ -493,7 +497,14 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         '- Incluye el folio para referencia del cliente.\n' +
         '- Si hay múltiples folios del mismo paciente (ej: 15698, 15698-2, 15698-3), son parte de la misma compra (promo 3x1). Resume el estado general en vez de repetir cada uno.';
     } else {
-      orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos activos para este número de teléfono ni con la información proporcionada. Pide amablemente al cliente su número de folio (aparece en su ticket de compra) o su nombre completo para buscarlo. Si ya proporcionó datos y no hay resultados, dile que no encontraste pedidos activos y que visite la sucursal más cercana para más información. NUNCA menciones el número 657-299-1038.';
+      orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos activos para este número de teléfono ni con la información proporcionada.\n' +
+        'INSTRUCCIONES (seguir en orden):\n' +
+        '1. Si el cliente dio solo nombre: pide su NÚMERO DE FOLIO (aparece en su ticket de compra) o su NÚMERO DE TELÉFONO registrado en la compra para buscarlo mejor.\n' +
+        '2. Si ya dio nombre Y folio/teléfono y no hay resultados: dile que no encontraste pedidos con esos datos, puede que esté registrado con otro nombre o teléfono. Pregunta si tiene su ticket de compra a la mano.\n' +
+        '3. Solo como ÚLTIMO RECURSO (después de 2+ intentos fallidos): invítalo a pasar a sucursal para verificar en persona.\n' +
+        '4. NUNCA redirigir a sucursal en el primer intento sin haber pedido folio Y teléfono primero.\n' +
+        '5. Si el cliente dice que ya recibió un mensaje/WhatsApp avisando que sus lentes están listos: confirmar que SÍ somos nosotros (Ópticas Car & Era) y que el mensaje es válido. Pero aún así pide folio o teléfono para confirmar el estado exacto en el sistema.\n' +
+        'NUNCA menciones el número 657-299-1038.';
     }
     systemPrompt += orderContext;
   }
