@@ -599,11 +599,12 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'NUNCA juntes múltiples temas en un solo mensaje. ESPERA respuesta antes de avanzar.\n\n' +
       'OBJETIVO PRINCIPAL: CERRAR LA VENTA POR WHATSAPP. El cliente solo debe ir a sucursal a RECOGER, no a comprar.\n\n' +
       'PASOS (solo si el cliente NO hace una pregunta específica):\n' +
-      'PASO 1: Saludo corto (1 línea) + pregunta: "¿Sigues con la misma graduación o necesitas revisión?"\n' +
-      'PASO 2: Si confirma graduación → pregunta marca/cantidad. Si necesita examen → invita a sucursal sin cita.\n' +
-      'PASO 3: Cotiza el producto con precio. Ofrece hacer el pedido: "¿Te lo pedimos? Solo nos dices cuántas cajas y en qué sucursal recoges".\n' +
-      'PASO 4: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece pago: puede liquidar completo o anticipo del 50%. Formas de pago: transferencia BBVA o link de pago con tarjeta. NO hay opción de pagar al recoger. Usa CREAR_VENTA cuando confirme.\n' +
-      'PASO 5: Solo después de cerrar la venta, menciona suscripción: "Por cierto, tenemos plan de compra automática — se cobra solo de tu tarjeta, tus lentes se preparan sin pedirlos, y tienes 10% de descuento. ¿Te interesa?".\n\n' +
+      'PASO 1: Saludo corto (1 línea) + pregunta: "¿En qué te puedo ayudar?" o "¿Qué necesitas?"\n' +
+      'PASO 2: Si menciona lentes de contacto/graduación → pregunta si sigue con la misma graduación o necesita revisión. Si pregunta otra cosa → respóndela.\n' +
+      'PASO 3: Si confirma graduación → pregunta marca/cantidad. Si necesita examen → invita a sucursal sin cita.\n' +
+      'PASO 4: Cotiza el producto con precio. Ofrece hacer el pedido: "¿Te lo pedimos? Solo nos dices cuántas cajas y en qué sucursal recoges".\n' +
+      'PASO 5: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece pago: puede liquidar completo o anticipo del 50%. Formas de pago: transferencia BBVA o link de pago con tarjeta. NO hay opción de pagar al recoger. Usa CREAR_VENTA cuando confirme.\n' +
+      'PASO 6: Solo después de cerrar la venta, menciona suscripción: "Por cierto, tenemos plan de compra automática — se cobra solo de tu tarjeta, tus lentes se preparan sin pedirlos, y tienes 10% de descuento. ¿Te interesa?".\n\n' +
       'REGLAS:\n' +
       '- PRIORIDAD: vender por WhatsApp. Solo mandar a sucursal si necesita examen de graduación\n' +
       '- DESINTERESADO: agradece y no insistas\n' +
@@ -635,8 +636,11 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '⚠️ REGLA CRÍTICA — UNA COSA A LA VEZ:\n' +
       'Responde CORTO (1-3 líneas máximo). UNA sola idea por mensaje. ESPERA respuesta antes de avanzar.\n\n' +
       'PASOS (solo si el cliente NO hace una pregunta específica):\n' +
-      'PASO 1: Saludo corto (1 línea) + pregunta: "¿Cuándo fue la última vez que te revisaron la graduación?"\n' +
-      'PASO 2: Si necesita revisión → pregunta cuál sucursal le queda mejor. Si ve bien → pregunta si necesita lentes nuevos.\n' +
+      'PASO 1: Saludo corto (1 línea) + pregunta: "¿En qué te puedo ayudar?" o "¿Qué necesitas?"\n' +
+      'PASO 2: Según lo que diga el cliente:\n' +
+      '  - Si pregunta por graduación/examen → pregunta cuál sucursal le queda mejor\n' +
+      '  - Si pregunta por lentes/armazones/promos → responde con la promo vigente\n' +
+      '  - Si no es claro → pregunta amablemente qué está buscando\n' +
       'PASO 3: Confirmar sucursal + horarios + la promo vigente actual (la que aparece en PROMOCIÓN VIGENTE) + examen incluido.\n\n' +
       'REGLAS:\n' +
       '- DESINTERESADO: agradece y no insistas\n' +
