@@ -25657,7 +25657,7 @@ function amLimpiarTodo() {
 // ── ENTRADA RÁPIDA ───────────────────────────────
 // ── ENTRADA RÁPIDA (siempre visible, ya no toggle) ─────
 function amFocusEntrada() {
-  setTimeout(function(){ var el = document.getElementById('am-rq-marca'); if(el) { el.focus(); el.select(); } }, 50);
+  setTimeout(function(){ var el = document.getElementById('am-rq-modelo'); if(el) { el.focus(); el.select(); } }, 50);
 }
 
 // ── OCR FACTURA ───────────────────────────────
@@ -26395,7 +26395,7 @@ async function amRqConfirmar() {
   if (document.getElementById('am-rq-costo')) document.getElementById('am-rq-costo').value = '';
   st.textContent = '✓ Guardado e impreso — listo para el siguiente';
   st.style.color = 'var(--accent)';
-  document.getElementById('am-rq-marca').focus();
+  document.getElementById('am-rq-modelo').focus();
 }
 
 function amAgregarManual() {
