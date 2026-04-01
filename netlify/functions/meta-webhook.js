@@ -260,9 +260,22 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         orderContext += '   Estado: ' + o.emoji + ' ' + o.mensaje_cliente + '\n';
         orderContext += '   Sucursal: ' + o.sucursal + ' | Fecha: ' + o.fecha + '\n';
       });
-      orderContext += '\nUSA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega". No uses markdown.';
+      orderContext += '\nINSTRUCCIONES PEDIDOS:\n' +
+        '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
+        '- Si están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
+        '- El cliente YA ES CLIENTE — NO dar direcciones, referencias, horarios ni teléfonos. Ya sabe dónde queda.\n' +
+        '- Si la venta está Liquidada y lentes listos, confirma que puede pasar a recogerlos.\n' +
+        '- PROHIBIDO decir "contacta a la sucursal" o "llama". TÚ tienes la información.\n' +
+        '- Si el cliente dice que recibió un mensaje avisando que están listos, confirma que somos nosotros (Ópticas Car & Era).\n' +
+        '- No uses markdown. Sé breve (1-3 líneas).';
     } else {
-      orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos con esa información. Pide al cliente su número de folio (aparece en su ticket de compra) o su nombre completo. Si no hay resultados, sugiere visitar la sucursal más cercana.';
+      orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos con esa información.\n' +
+        'INSTRUCCIONES (seguir en orden):\n' +
+        '1. Si dio solo nombre: pide NÚMERO DE FOLIO (en su ticket) o TELÉFONO registrado en la compra.\n' +
+        '2. Si ya dio nombre Y folio/teléfono sin resultados: puede estar registrado con otro dato. Pregunta si tiene su ticket.\n' +
+        '3. ÚLTIMO RECURSO (2+ intentos fallidos): invítalo a pasar a sucursal (solo el nombre, sin direcciones — ya es cliente).\n' +
+        '4. Si dice que recibió mensaje de lentes listos: confirma que SÍ somos nosotros (Ópticas Car & Era). Pide folio para verificar.\n' +
+        '5. NUNCA dar direcciones ni referencias a quien pregunta por su pedido — ya es cliente.';
     }
     systemPrompt += orderContext;
   }
