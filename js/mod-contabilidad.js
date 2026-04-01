@@ -820,6 +820,24 @@ async function contRenderFacturacion() {
     var pendientes = allFacturas.filter(function(f) { return f.status === 'pending'; });
     _factEmitidas = allFacturas.filter(function(f) { return f.status !== 'pending'; });
 
+    // Enrich emitidas with patient fiscal data for detail view
+    var emitFolios = _factEmitidas.map(function(f) { return f.venta_folio; }).filter(Boolean);
+    var _factEmitPacMap = {};
+    if (emitFolios.length > 0) {
+      var { data: emitVentas } = await db.from('ventas').select('folio,paciente_id,pacientes(nombre,apellidos,datos_fiscales,telefono)').in('folio', emitFolios);
+      (emitVentas || []).forEach(function(v) { _factEmitPacMap[v.folio] = v; });
+    }
+    // Attach to each emitida
+    _factEmitidas.forEach(function(f) {
+      var v = _factEmitPacMap[f.venta_folio] || {};
+      var pac = v.pacientes || {};
+      f._pacNombre = pac.nombre ? (pac.nombre + ' ' + (pac.apellidos || '')).trim() : '';
+      f._pacTel = pac.telefono || '';
+      var df = pac.datos_fiscales || {};
+      if (typeof df === 'string') try { df = JSON.parse(df); } catch(e) { df = {}; }
+      f._df = df;
+    });
+
     // Update sidebar badge
     _contActualizarBadgeFacturas(pendientes.length);
 
@@ -962,9 +980,10 @@ function contFiltrarEmitidas() {
   html += '<th style="padding:8px;text-align:left;color:var(--muted);font-size:10px">FECHA</th>';
   html += '<th style="padding:8px;text-align:center;color:var(--muted);font-size:10px">STATUS</th>';
   html += '</tr></thead><tbody>';
-  filtered.forEach(function(f) {
+  filtered.forEach(function(f, idx) {
     var isCancelled = f.status === 'cancelled';
-    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);' + (isCancelled ? 'opacity:0.5' : '') + '">';
+    var rowId = 'fact-emit-' + idx;
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;' + (isCancelled ? 'opacity:0.5' : '') + '" onclick="var d=document.getElementById(\'' + rowId + '\');d.style.display=d.style.display===\'none\'?\'\':\'none\'">';
     html += '<td style="padding:8px;font-weight:600">' + f.venta_folio + '</td>';
     html += '<td style="padding:8px">' + (f.rfc_cliente || '—') + '</td>';
     html += '<td style="padding:8px;color:var(--muted)">' + (f.razon_social || '—') + '</td>';
@@ -972,6 +991,30 @@ function contFiltrarEmitidas() {
     html += '<td style="padding:8px;color:var(--muted)">' + _contFechaCorta(f.created_at?.substring(0, 10)) + '</td>';
     html += '<td style="padding:8px;text-align:center"><span style="font-size:9px;padding:2px 6px;border-radius:4px;font-weight:600;' + (isCancelled ? 'background:rgba(248,113,113,0.15);color:#f87171' : 'background:rgba(74,222,128,0.15);color:#4ade80') + '">' + (isCancelled ? 'Cancelada' : 'Emitida') + '</span></td>';
     html += '</tr>';
+    // Expandable detail row with fiscal data
+    var df = f._df || {};
+    var regLabel = '';
+    if (df.regimen_fiscal) {
+      var found = (_factCatalogos.regimen || []).find(function(r) { return r.v === df.regimen_fiscal; });
+      regLabel = found ? df.regimen_fiscal + ' - ' + found.t : df.regimen_fiscal;
+    }
+    var usoLabel = '';
+    if (df.uso_cfdi) {
+      var foundU = (_factCatalogos.uso || []).find(function(r) { return r.v === df.uso_cfdi; });
+      usoLabel = foundU ? df.uso_cfdi + ' - ' + foundU.t : df.uso_cfdi;
+    }
+    html += '<tr id="' + rowId + '" style="display:none"><td colspan="6" style="padding:8px 12px;background:var(--surface2);border-bottom:1px solid rgba(255,255,255,0.06)">';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;font-size:11px">';
+    if (f._pacNombre) html += '<div><span style="color:var(--muted);font-size:9px;display:block">PACIENTE</span>' + f._pacNombre + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">RFC</span>' + (f.rfc_cliente || '—') + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">RAZÓN SOCIAL</span>' + (f.razon_social || '—') + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">RÉGIMEN</span>' + (regLabel || '—') + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">CP FISCAL</span>' + (df.cp_fiscal || '—') + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">USO CFDI</span>' + (usoLabel || '—') + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">EMAIL</span>' + (df.email || '—') + '</div>';
+    if (f._pacTel) html += '<div><span style="color:var(--muted);font-size:9px;display:block">TELÉFONO</span>' + f._pacTel + '</div>';
+    html += '<div><span style="color:var(--muted);font-size:9px;display:block">TOTAL</span>' + _contMoney(f.total) + '</div>';
+    html += '</div></td></tr>';
   });
   html += '</tbody></table></div>';
   container.innerHTML = html;
