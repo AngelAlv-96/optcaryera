@@ -17162,7 +17162,7 @@ async function seleccionarOrdenGarantia(ordenId) {
       <tr><td style="padding:3px 6px;color:var(--beige);font-weight:700">OD</td><td style="text-align:center">${o.od_esfera||''}</td><td style="text-align:center">${o.od_cilindro||''}</td><td style="text-align:center">${o.od_eje||''}</td><td style="text-align:center">${o.od_add||''}</td></tr>
       <tr><td style="padding:3px 6px;color:var(--beige);font-weight:700">OI</td><td style="text-align:center">${o.oi_esfera||''}</td><td style="text-align:center">${o.oi_cilindro||''}</td><td style="text-align:center">${o.oi_eje||''}</td><td style="text-align:center">${o.oi_add||''}</td></tr>
     </table>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">DIP: ${o.dip||'—'} · ALT: ${o.altura||'—'}</div>`;
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">DIP: ${o.dip || (o.notas_laboratorio||'').match(/DIP:\\s*(\\S+)/)?.[1] || '—'} · ALT: ${o.altura || (o.notas_laboratorio||'').match(/ALT:\\s*(\\S+)/)?.[1] || '—'}</div>`;
 
   document.getElementById('gta-tipo').value = '';
   document.getElementById('gta-motivo').value = '';
@@ -17309,8 +17309,8 @@ function setModoRx(modo) {
     document.getElementById('gta-oi-cil').value = o.oi_cilindro || '';
     document.getElementById('gta-oi-eje').value = o.oi_eje || '';
     document.getElementById('gta-oi-add').value = o.oi_add || '';
-    document.getElementById('gta-dip').value = o.dip || '';
-    document.getElementById('gta-alt').value = o.altura || '';
+    document.getElementById('gta-dip').value = o.dip || (o.notas_laboratorio||'').match(/DIP:\s*(\S+)/)?.[1] || '';
+    document.getElementById('gta-alt').value = o.altura || (o.notas_laboratorio||'').match(/ALT:\s*(\S+)/)?.[1] || '';
   }
 }
 
@@ -17385,11 +17385,17 @@ async function procesarGarantia() {
       notas_laboratorio: notasOrig
     }).eq('id', o.id);
 
+    // DIP and altura are NOT columns in ordenes_laboratorio — they go in notas_laboratorio
+    const origNotasRaw = o.notas_laboratorio || '';
+    const origDip = o.dip || origNotasRaw.match(/DIP:\s*(\S+)/)?.[1] || '';
+    const origAltura = o.altura || origNotasRaw.match(/ALT:\s*(\S+)/)?.[1] || '';
+
     let newRx = {
       od_esfera: o.od_esfera, od_cilindro: o.od_cilindro, od_eje: o.od_eje, od_add: o.od_add,
-      oi_esfera: o.oi_esfera, oi_cilindro: o.oi_cilindro, oi_eje: o.oi_eje, oi_add: o.oi_add,
-      dip: o.dip, altura: o.altura
+      oi_esfera: o.oi_esfera, oi_cilindro: o.oi_cilindro, oi_eje: o.oi_eje, oi_add: o.oi_add
     };
+    let gtaDip = origDip;
+    let gtaAltura = origAltura;
 
     if (tipo === 'rx' && document.getElementById('gta-rx-modo').value === 'rapida') {
       newRx = {
@@ -17400,10 +17406,10 @@ async function procesarGarantia() {
         oi_esfera: document.getElementById('gta-oi-esf').value || o.oi_esfera,
         oi_cilindro: document.getElementById('gta-oi-cil').value || o.oi_cilindro,
         oi_eje: document.getElementById('gta-oi-eje').value || o.oi_eje,
-        oi_add: document.getElementById('gta-oi-add').value || o.oi_add,
-        dip: document.getElementById('gta-dip').value || o.dip,
-        altura: document.getElementById('gta-alt').value || o.altura
+        oi_add: document.getElementById('gta-oi-add').value || o.oi_add
       };
+      gtaDip = document.getElementById('gta-dip').value || origDip;
+      gtaAltura = document.getElementById('gta-alt').value || origAltura;
 
       if (document.getElementById('gta-actualizar-hc').checked && pac?.id) {
         const rxTipo = document.getElementById('gta-rx-tipo')?.value || 'final';
@@ -17427,14 +17433,14 @@ async function procesarGarantia() {
           hcPayload.od_eje = newRx.od_eje; hcPayload.od_add = newRx.od_add;
           hcPayload.oi_esfera = newRx.oi_esfera; hcPayload.oi_cilindro = newRx.oi_cilindro;
           hcPayload.oi_eje = newRx.oi_eje; hcPayload.oi_add = newRx.oi_add;
-          hcPayload.dip = newRx.dip; hcPayload.altura_montaje = newRx.altura;
+          hcPayload.dip = gtaDip; hcPayload.altura_montaje = gtaAltura;
         }
         const { error: hcErr } = await db.from('historias_clinicas').insert(hcPayload);
         if (hcErr) console.error('Error creando HC de garantía:', hcErr);
       }
     }
 
-    const gtaNotas = `Folio: ${nuevoFolio} | Urgencia: Normal | GARANTÍA: ${tipoLabel} | Motivo: ${motivo} | Responsable: ${responsable} | Autoriza: ${autoriza} | Orden original: ${folio}${notas ? ' | Notas GTA: ' + notas : ''}`;
+    const gtaNotas = `Folio: ${nuevoFolio} | Urgencia: Normal | GARANTÍA: ${tipoLabel} | Motivo: ${motivo} | Responsable: ${responsable} | Autoriza: ${autoriza} | Orden original: ${folio}${notas ? ' | Notas GTA: ' + notas : ''}${gtaDip ? ' | DIP: ' + gtaDip : ''}${gtaAltura ? ' | ALT: ' + gtaAltura : ''}`;
 
     const newOrder = {
       paciente_id: o.paciente_id,
