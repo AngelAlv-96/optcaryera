@@ -125,9 +125,9 @@ exports.handler = async (event) => {
     const amount = Number(payload.amount) || 0;
     const reference = payload.metadata?.me_reference_id || payload.metadata?.external_reference || '';
 
-    // Only process completed payments
-    if (status !== 'COMPLETED' && status !== 'CHECKOUT_COMPLETED') {
-      console.log(`Clip webhook: status=${status}, skipping (not completed)`);
+    // Only process completed payments — Clip sends "PAID" for postback webhooks, "CHECKOUT_COMPLETED" for checkout webhooks
+    if (status !== 'COMPLETED' && status !== 'CHECKOUT_COMPLETED' && status !== 'PAID') {
+      console.log(`Clip webhook: status=${status}, skipping (not completed/paid)`);
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', status }) };
     }
 
