@@ -107,23 +107,20 @@ exports.handler = async (event) => {
 
   try {
     const payload = JSON.parse(event.body || '{}');
-    // Log full payload keys for debugging (no sensitive data)
-    console.log('Clip webhook received:', JSON.stringify({
-      status: payload.status,
-      resource_status: payload.resource_status,
-      amount: payload.amount,
-      payment_request_id: payload.payment_request_id,
-      receipt_no: payload.receipt_no,
-      ref: payload.metadata?.me_reference_id,
-      ext_ref: payload.metadata?.external_reference,
-      keys: Object.keys(payload)
-    }));
 
-    const status = payload.status || payload.resource_status || '';
-    const paymentId = payload.payment_request_id || '';
-    const receiptNo = payload.receipt_no || '';
-    const amount = Number(payload.amount) || 0;
-    const reference = payload.metadata?.me_reference_id || payload.metadata?.external_reference || '';
+    // Clip sends nested payloads — extract from payment_detail or payment_request_detail
+    const pd = payload.payment_detail || {};
+    const prd = payload.payment_request_detail || {};
+
+    // Log full payload for debugging
+    console.log('Clip webhook FULL payload:', JSON.stringify(payload).slice(0, 1500));
+
+    const status = payload.status || payload.resource_status || pd.status || prd.status || '';
+    const paymentId = payload.payment_request_id || prd.payment_request_id || pd.payment_request_id || '';
+    const receiptNo = payload.receipt_no || pd.receipt_no || '';
+    const amount = Number(payload.amount) || Number(pd.amount) || Number(prd.amount) || 0;
+    const reference = payload.metadata?.me_reference_id || payload.metadata?.external_reference
+      || prd.metadata?.me_reference_id || prd.metadata?.external_reference || '';
 
     // Only process completed payments — Clip sends "PAID" for postback webhooks, "CHECKOUT_COMPLETED" for checkout webhooks
     if (status !== 'COMPLETED' && status !== 'CHECKOUT_COMPLETED' && status !== 'PAID') {
