@@ -115,35 +115,53 @@ exports.handler = async (event) => {
     // Log full payload for debugging
     console.log('Clip webhook FULL payload:', JSON.stringify(payload).slice(0, 1500));
 
-    const status = payload.status || payload.resource_status || pd.status || prd.status || '';
+    // Extract fields from all possible Clip payload structures
+    const statusRaw = payload.status || pd.status_description || prd.status_description || payload.resource_status || '';
+    const status = statusRaw.toUpperCase();
     const paymentId = payload.payment_request_id || prd.payment_request_id || pd.payment_request_id || '';
     const receiptNo = payload.receipt_no || pd.receipt_no || '';
     const amount = Number(payload.amount) || Number(pd.amount) || Number(prd.amount) || 0;
     const reference = payload.metadata?.me_reference_id || payload.metadata?.external_reference
       || prd.metadata?.me_reference_id || prd.metadata?.external_reference || '';
+    // Clip checkout API returns payment_request_id, postback webhook may include payment_request_code
+    const prid = paymentId || prd.payment_request_code || '';
 
-    // Only process completed payments — Clip sends "PAID" for postback webhooks, "CHECKOUT_COMPLETED" for checkout webhooks
-    if (status !== 'COMPLETED' && status !== 'CHECKOUT_COMPLETED' && status !== 'PAID') {
+    console.log(`Clip webhook parsed: status=${status}, amount=${amount}, ref=${reference}, prid=${prid}, receipt=${receiptNo}`);
+
+    // Only process completed payments — Clip sends different status strings across webhook types
+    const COMPLETED_STATUSES = ['COMPLETED', 'CHECKOUT_COMPLETED', 'PAID'];
+    if (!COMPLETED_STATUSES.includes(status)) {
       console.log(`Clip webhook: status=${status}, skipping (not completed/paid)`);
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', status }) };
     }
 
-    if (!reference || !amount) {
-      console.log('Clip webhook: missing reference or amount');
-      return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no reference or amount' }) };
+    if (!amount) {
+      console.log('Clip webhook: missing amount');
+      return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no amount' }) };
     }
 
-    // Find the venta by folio — include sucursal and paciente for notifications
-    const ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=id,total,pagado,saldo,sucursal,pacientes(nombre,apellidos)`);
-    if (!ventaRes.ok || !ventaRes.data?.length) {
-      console.error('Clip webhook: venta not found for folio', reference);
+    // Find the venta — try by folio first, then by clip_prid in notas
+    let ventaRes;
+    if (reference) {
+      ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)`);
+    }
+    if ((!ventaRes?.ok || !ventaRes?.data?.length) && prid) {
+      // Search by payment_request_id saved in notas by clip-payment.js
+      ventaRes = await supaREST('GET', `ventas?notas=like.*clip_prid:${encodeURIComponent(prid)}*&select=id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)`);
+      if (ventaRes?.ok && ventaRes?.data?.length) {
+        console.log(`Clip webhook: found venta by prid=${prid}, folio=${ventaRes.data[0].folio}`);
+      }
+    }
+    if (!ventaRes?.ok || !ventaRes?.data?.length) {
+      console.error('Clip webhook: venta not found for ref=', reference, 'prid=', prid);
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'error', reason: 'venta not found' }) };
     }
 
     const venta = ventaRes.data[0];
 
-    // Check for duplicate — avoid registering the same payment twice
-    const dupCheck = await supaREST('GET', `venta_pagos?venta_id=eq.${venta.id}&referencia=eq.clip_${paymentId}&select=id`);
+    // Check for duplicate by receipt_no (stable across all Clip webhook types)
+    const dupKey = receiptNo ? `clip_${receiptNo}` : `clip_${prid || paymentId}`;
+    const dupCheck = await supaREST('GET', `venta_pagos?venta_id=eq.${venta.id}&referencia=eq.${encodeURIComponent(dupKey)}&select=id`);
     if (dupCheck.ok && dupCheck.data?.length > 0) {
       console.log('Clip webhook: duplicate payment, already registered');
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'duplicate' }) };
@@ -154,8 +172,8 @@ exports.handler = async (event) => {
       venta_id: venta.id,
       monto: amount,
       metodo_pago: 'Link de pago',
-      referencia: `clip_${paymentId}`,
-      notas: `Pago en línea Clip · Recibo: ${receiptNo}`
+      referencia: dupKey,
+      notas: `Pago en línea Clip · Recibo: ${receiptNo || 'N/A'}`
     };
 
     const pagoRes = await supaREST('POST', 'venta_pagos', pagoBody, { 'Prefer': 'return=representation' });
@@ -179,7 +197,7 @@ exports.handler = async (event) => {
       console.error('Clip webhook: failed to update venta', updateRes.data);
     }
 
-    console.log(`Clip webhook: payment registered — folio=${reference}, amount=$${amount}, new_saldo=$${Math.max(0, newSaldo)}`);
+    console.log(`Clip webhook: payment registered — folio=${venta.folio}, amount=$${amount}, new_saldo=$${Math.max(0, newSaldo)}, ref=${dupKey}`);
 
     // --- Send WhatsApp notifications ---
     const pacNombre = venta.pacientes ? `${venta.pacientes.nombre || ''} ${venta.pacientes.apellidos || ''}`.trim() : 'Cliente';

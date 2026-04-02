@@ -109,6 +109,27 @@ exports.handler = async (event) => {
       return { statusCode: resp.status, headers, body: JSON.stringify({ error: 'Clip API error', details: data }) };
     }
 
+    // Save mapping payment_request_id → venta for webhook lookup
+    // Clip webhooks don't include folio/metadata, only payment_request_id
+    if (data.payment_request_id) {
+      const existing = await fetch(
+        `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}&select=notas`,
+        { headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` } }
+      ).then(r => r.json());
+      const prevNotas = (existing?.[0]?.notas || '').replace(/\s*\| clip_prid:[^\s|]*/g, '');
+      await fetch(
+        `${SUPA_URL}/rest/v1/ventas?id=eq.${encodeURIComponent(venta_id)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`,
+            'Content-Type': 'application/json', 'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ notas: (prevNotas ? prevNotas + ' | ' : '') + 'clip_prid:' + data.payment_request_id })
+        }
+      );
+    }
+
     // Return the payment URL to the frontend
     return {
       statusCode: 200,
