@@ -566,13 +566,10 @@ async function verificarPagoClip() {
   if (!box) return;
   const paymentId = localStorage.getItem('clip_payment_id');
   if (!paymentId) {
-    box.style.background = 'rgba(251,191,36,0.12)';
-    box.style.borderColor = 'rgba(251,191,36,0.3)';
-    box.style.color = '#fbbf24';
-    box.textContent = '⚠️ No pudimos verificar tu pago. Si se realizó un cargo, se reflejará en unos minutos. Si no, intenta de nuevo.';
+    // No payment ID — check DB directly as fallback (webhook may have already registered it)
+    await verificarPagoDB(box);
     return;
   }
-  localStorage.removeItem('clip_payment_id');
   try {
     const resp = await fetch('/.netlify/functions/clip-verify', {
       method: 'POST',
@@ -581,39 +578,57 @@ async function verificarPagoClip() {
     });
     const data = await resp.json();
     if (data.status === 'CHECKOUT_COMPLETED') {
-      box.style.background = 'rgba(74,222,128,0.12)';
-      box.style.borderColor = 'rgba(74,222,128,0.3)';
-      box.style.color = '#4ade80';
-      box.textContent = '✅ ¡Pago exitoso! Tu saldo se actualizará en unos momentos.';
-      // Reload after 3s to show updated balance
+      localStorage.removeItem('clip_payment_id');
+      setBoxSuccess(box, '✅ ¡Pago exitoso por $' + (data.amount ? Number(data.amount).toFixed(2) : '') + '! Tu saldo se actualizará en unos momentos.');
       setTimeout(() => { window.location.href = window.location.pathname + '?t=' + token; }, 3000);
     } else if (data.status === 'CHECKOUT_CANCELLED') {
-      box.style.background = 'rgba(248,113,113,0.12)';
-      box.style.borderColor = 'rgba(248,113,113,0.3)';
-      box.style.color = '#f87171';
-      box.textContent = '❌ El pago fue rechazado por el banco. No se realizó ningún cargo a tu tarjeta. Intenta de nuevo o usa otro método de pago.';
+      localStorage.removeItem('clip_payment_id');
+      setBoxError(box, '❌ El pago fue rechazado por el banco. No se realizó ningún cargo a tu tarjeta. Intenta de nuevo o usa otro método de pago.');
     } else if (data.status === 'CHECKOUT_EXPIRED') {
-      box.style.background = 'rgba(248,113,113,0.12)';
-      box.style.borderColor = 'rgba(248,113,113,0.3)';
-      box.style.color = '#f87171';
-      box.textContent = '❌ El link de pago expiró. No se realizó ningún cargo. Intenta de nuevo.';
-    } else if (data.status === 'CHECKOUT_PENDING') {
-      box.style.background = 'rgba(251,191,36,0.12)';
-      box.style.borderColor = 'rgba(251,191,36,0.3)';
-      box.style.color = '#fbbf24';
-      box.textContent = '⏳ Tu pago está siendo procesado por el banco. Si se aprueba, se reflejará en unos minutos.';
+      localStorage.removeItem('clip_payment_id');
+      setBoxError(box, '❌ El link de pago expiró. No se realizó ningún cargo. Intenta de nuevo.');
+    } else if (data.status === 'CHECKOUT_PENDING' || data.status === 'CHECKOUT_CREATED') {
+      setBoxWarn(box, '⏳ Tu pago está siendo procesado por el banco. Si se aprueba, se reflejará en unos minutos. Puedes actualizar esta página.');
     } else {
-      box.style.background = 'rgba(251,191,36,0.12)';
-      box.style.borderColor = 'rgba(251,191,36,0.3)';
-      box.style.color = '#fbbf24';
-      box.textContent = '⏳ Verificando pago... Si se realizó un cargo, se reflejará en tu saldo pronto.';
+      // Unknown status or API error — fall back to DB check
+      await verificarPagoDB(box);
     }
   } catch (e) {
-    box.style.background = 'rgba(251,191,36,0.12)';
-    box.style.borderColor = 'rgba(251,191,36,0.3)';
-    box.style.color = '#fbbf24';
-    box.textContent = '⚠️ No pudimos verificar el estado del pago. Si se realizó un cargo, se reflejará en unos minutos.';
+    // Network error — fall back to DB check
+    await verificarPagoDB(box);
   }
+}
+
+// Fallback: check if webhook already registered the payment in DB
+async function verificarPagoDB(box) {
+  try {
+    if (!_portalVenta) { setBoxWarn(box, '⚠️ No pudimos verificar tu pago. Si se realizó un cargo, se reflejará en unos minutos.'); return; }
+    const { data } = await db.from('venta_pagos').select('id,monto,created_at').eq('venta_id', _portalVenta.id).order('created_at', { ascending: false }).limit(1);
+    if (data && data.length > 0) {
+      const lastPago = data[0];
+      const pagoAge = Date.now() - new Date(lastPago.created_at).getTime();
+      // If there's a payment registered in last 5 minutes, it's likely the one we just made
+      if (pagoAge < 5 * 60 * 1000) {
+        localStorage.removeItem('clip_payment_id');
+        setBoxSuccess(box, '✅ ¡Pago de $' + Number(lastPago.monto).toFixed(2) + ' registrado exitosamente!');
+        setTimeout(() => { window.location.href = window.location.pathname + '?t=' + token; }, 3000);
+        return;
+      }
+    }
+    setBoxWarn(box, '⚠️ No pudimos confirmar tu pago aún. Si se realizó un cargo a tu tarjeta, se reflejará en unos minutos. Puedes actualizar esta página para verificar.');
+  } catch (e) {
+    setBoxWarn(box, '⚠️ No pudimos verificar tu pago. Si se realizó un cargo, se reflejará en unos minutos.');
+  }
+}
+
+function setBoxSuccess(box, msg) {
+  box.style.background = 'rgba(74,222,128,0.12)'; box.style.borderColor = 'rgba(74,222,128,0.3)'; box.style.color = '#4ade80'; box.textContent = msg;
+}
+function setBoxError(box, msg) {
+  box.style.background = 'rgba(248,113,113,0.12)'; box.style.borderColor = 'rgba(248,113,113,0.3)'; box.style.color = '#f87171'; box.textContent = msg;
+}
+function setBoxWarn(box, msg) {
+  box.style.background = 'rgba(251,191,36,0.12)'; box.style.borderColor = 'rgba(251,191,36,0.3)'; box.style.color = '#fbbf24'; box.textContent = msg;
 }
 
 // Auto-verify when returning from Clip
