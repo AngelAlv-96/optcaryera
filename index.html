@@ -17566,12 +17566,35 @@ async function eliminarGarantia(ordenId, folio) {
   _ejecutarEliminarGarantia(ordenId, folio);
 }
 async function _ejecutarEliminarGarantia(ordenId, folio) {
-  if (!confirm(`¿Eliminar la garantía ${folio}?\n\nEsto eliminará la orden de garantía del sistema. La orden original NO se modificará.`)) return;
+  if (!confirm(`¿Eliminar la garantía ${folio}?\n\nEsto eliminará la orden de garantía y limpiará el marcador de la orden original.`)) return;
   if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
 
   try {
+    // Leer la orden GTA para extraer el folio original
+    const { data: gtaOrder } = await db.from('ordenes_laboratorio').select('notas_laboratorio').eq('id', ordenId).single();
+    const folioOriginal = (gtaOrder?.notas_laboratorio || '').match(/Orden original:\s*([^\s|]+)/)?.[1];
+
+    // Borrar la orden GTA
     const { error } = await db.from('ordenes_laboratorio').delete().eq('id', ordenId);
     if (error) throw error;
+
+    // Limpiar marcadores GTA_FOLIO y GARANTÍA de la orden original
+    if (folioOriginal) {
+      const { data: origenes } = await db.from('ordenes_laboratorio')
+        .select('id, notas_laboratorio')
+        .ilike('notas_laboratorio', '%Folio: ' + folioOriginal + '%');
+      const orig = (origenes || []).find(o => {
+        const f = (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1];
+        return f === folioOriginal;
+      });
+      if (orig && (orig.notas_laboratorio || '').includes('GTA_FOLIO: ' + folio)) {
+        const notasLimpias = (orig.notas_laboratorio || '')
+          .replace(/ \| GARANTÍA:[^|]*\| GTA_FOLIO: [^\s|]+/, '')
+          .replace(/ \| GTA_FOLIO: [^\s|]+/, '');
+        await db.from('ordenes_laboratorio').update({ notas_laboratorio: notasLimpias }).eq('id', orig.id);
+      }
+    }
+
     toast('✓ Garantía eliminada: ' + folio);
     cargarHistorialGarantias();
   } catch (e) {
