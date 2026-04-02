@@ -28,10 +28,9 @@
 # [functions."review-followup"]
 #   schedule = "0 17 * * 3"
 
-# Promo Follow-up Abril — 2 runs para cubrir 82 contactos (50/run), dedup automático
-# Desactivar después de abril 1
-[functions."promo-followup"]
-  schedule = "0,30 17 * * *"
+# Promo Follow-up Abril — COMPLETADO (82 contactos enviados 2026-04-01)
+# [functions."promo-followup"]
+#   schedule = "0,30 17 * * *"
 
 # Audit Cron — inventory audit every ~5 days at 11:00 AM CST (17:00 UTC)
 [functions."audit-cron"]
