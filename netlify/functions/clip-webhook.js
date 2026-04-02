@@ -123,10 +123,12 @@ exports.handler = async (event) => {
     const amount = Number(payload.amount) || Number(pd.amount) || Number(prd.amount) || 0;
     const reference = payload.metadata?.me_reference_id || payload.metadata?.external_reference
       || prd.metadata?.me_reference_id || prd.metadata?.external_reference || '';
-    // Clip checkout API returns payment_request_id, postback webhook may include payment_request_code
+    // Clip checkout API returns payment_request_id (UUID), postback webhook has payment_request_code (short code)
+    // The event webhooks have the UUID as payload.id — we need all of them to search
     const prid = paymentId || prd.payment_request_code || '';
+    const eventId = payload.id || ''; // UUID from INSERT/UPDATE events and also present in nested payloads
 
-    console.log(`Clip webhook parsed: status=${status}, amount=${amount}, ref=${reference}, prid=${prid}, receipt=${receiptNo}`);
+    console.log(`Clip webhook parsed: status=${status}, amount=${amount}, ref=${reference}, prid=${prid}, eventId=${eventId}, receipt=${receiptNo}`);
 
     // Only process completed payments — Clip sends different status strings across webhook types
     const COMPLETED_STATUSES = ['COMPLETED', 'CHECKOUT_COMPLETED', 'PAID'];
@@ -140,20 +142,41 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no amount' }) };
     }
 
-    // Find the venta — try by folio first, then by clip_prid in notas
+    // Find the venta — try by folio, then by any ID in clip_prid, then by amount match
+    const ventaSelect = 'id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)';
     let ventaRes;
     if (reference) {
-      ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)`);
+      ventaRes = await supaREST('GET', `ventas?folio=eq.${encodeURIComponent(reference)}&select=${ventaSelect}`);
     }
-    if ((!ventaRes?.ok || !ventaRes?.data?.length) && prid) {
-      // Search by payment_request_id saved in notas by clip-payment.js
-      ventaRes = await supaREST('GET', `ventas?notas=like.*clip_prid:${encodeURIComponent(prid)}*&select=id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)`);
+    // Try all possible IDs to match clip_prid in notas (UUID from events, short code from payment_request_detail)
+    const idsToTry = [prid, eventId].filter(Boolean);
+    for (const tryId of idsToTry) {
+      if (ventaRes?.ok && ventaRes?.data?.length) break;
+      ventaRes = await supaREST('GET', `ventas?notas=like.*clip_prid:${encodeURIComponent(tryId)}*&select=${ventaSelect}`);
       if (ventaRes?.ok && ventaRes?.data?.length) {
-        console.log(`Clip webhook: found venta by prid=${prid}, folio=${ventaRes.data[0].folio}`);
+        console.log(`Clip webhook: found venta by id=${tryId}, folio=${ventaRes.data[0].folio}`);
+      }
+    }
+    // Last resort: find any venta with clip_prid in notas that has matching saldo and is pending
+    if ((!ventaRes?.ok || !ventaRes?.data?.length) && amount) {
+      ventaRes = await supaREST('GET', `ventas?notas=like.*clip_prid:*&saldo=gte.${amount}&estado=eq.Apartado&order=created_at.desc&limit=5&select=${ventaSelect}`);
+      if (ventaRes?.ok && ventaRes?.data?.length) {
+        // If only one match, use it. If multiple, try to match by amount
+        const exact = ventaRes.data.filter(v => Number(v.saldo) === amount);
+        if (exact.length === 1) {
+          ventaRes.data = exact;
+          console.log(`Clip webhook: found venta by amount match, folio=${exact[0].folio}`);
+        } else if (ventaRes.data.length === 1) {
+          console.log(`Clip webhook: found single pending venta with clip_prid, folio=${ventaRes.data[0].folio}`);
+        } else {
+          // Multiple matches, can't determine which one — don't process
+          console.error('Clip webhook: multiple pending ventas with clip_prid, cannot determine which one. Amount=', amount);
+          ventaRes = { ok: false, data: [] };
+        }
       }
     }
     if (!ventaRes?.ok || !ventaRes?.data?.length) {
-      console.error('Clip webhook: venta not found for ref=', reference, 'prid=', prid);
+      console.error('Clip webhook: venta not found for ref=', reference, 'prid=', prid, 'eventId=', eventId);
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'error', reason: 'venta not found' }) };
     }
 
