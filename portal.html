@@ -505,6 +505,11 @@ function render(v, items, pagos, labOrders, monBalance, promos) {
 
   // Update page title
   document.title = `${v.folio} · Ópticas Car & Era`;
+
+  // Verify payment status after render is complete
+  if (pagoStatus === 'ok') {
+    verificarPagoClip();
+  }
 }
 
 async function iniciarPagoClip() {
@@ -629,11 +634,6 @@ function setBoxError(box, msg) {
 }
 function setBoxWarn(box, msg) {
   box.style.background = 'rgba(251,191,36,0.12)'; box.style.borderColor = 'rgba(251,191,36,0.3)'; box.style.color = '#fbbf24'; box.textContent = msg;
-}
-
-// Auto-verify when returning from Clip
-if (pagoStatus === 'ok') {
-  setTimeout(verificarPagoClip, 500);
 }
 
 function showError(title, msg) {
