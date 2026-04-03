@@ -21350,9 +21350,9 @@ async function _initAlertaEfectivoGlobal() {
     var fondo = Number(caja[0].fondo_inicial) || 0;
     var utcStart = new Date(today + 'T00:00:00-06:00').toISOString();
     var utcEnd = new Date(today + 'T23:59:59.999-06:00').toISOString();
-    var { data: pagos } = await db.from('venta_pagos').select('monto,metodo_pago').gte('created_at', utcStart).lte('created_at', utcEnd);
-    var efvo = (pagos||[]).filter(function(p){return p.metodo_pago==='Efectivo'||p.metodo_pago==='Dólar'}).reduce(function(s,p){return s+Number(p.monto)},0);
-    var { data: abonos } = await db.from('creditos_abonos').select('monto,metodo_pago').gte('created_at', utcStart).lte('created_at', utcEnd);
+    var { data: pagos } = await db.from('venta_pagos').select('monto,metodo_pago,ventas(sucursal)').gte('created_at', utcStart).lte('created_at', utcEnd);
+    var efvo = (pagos||[]).filter(function(p){return (p.metodo_pago==='Efectivo'||p.metodo_pago==='Dólar')&&p.ventas&&p.ventas.sucursal===suc}).reduce(function(s,p){return s+Number(p.monto)},0);
+    var { data: abonos } = await db.from('creditos_abonos').select('monto,metodo_pago,sucursal').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
     var efvoCreditos = (abonos||[]).filter(function(a){var m=(a.metodo_pago||'').toLowerCase();return m==='efectivo'||m==='dólar'||m==='dolar'}).reduce(function(s,a){return s+Number(a.monto)},0);
     var { data: retiros } = await db.from('retiros_caja').select('monto,observaciones').eq('fecha', today).eq('sucursal', suc);
     // Solo retiros de efectivo (no dólar) para alerta de efectivo en caja
