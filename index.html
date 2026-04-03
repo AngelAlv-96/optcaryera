@@ -5482,13 +5482,25 @@ function initRealtimeSubscriptions() {
     historias_clinicas:     { views: ['dashboard','pacientes'], fn: { dashboard: 'loadDash', pacientes: 'loadPac' } },
     pacientes:              { views: ['pacientes'], fn: { pacientes: 'loadPac' } },
     compras_lab:            { views: ['compras-lab','contabilidad'], fn: { 'compras-lab': 'clbInit', contabilidad: 'initContabilidad' } },
-    gastos:                 { views: ['contabilidad'], fn: { contabilidad: 'initContabilidad' } }
+    gastos:                 { views: ['contabilidad'], fn: { contabilidad: 'initContabilidad' } },
+    retiros_caja:           { views: ['caja'], fn: { caja: 'initCaja' } }
   };
+  // Tablas que recalculan la alerta de efectivo en tiempo real
+  var _rtCashTables = { venta_pagos: true, retiros_caja: true, creditos_abonos: true };
+  var _rtCashDebounce = null;
   var tables = Object.keys(_rtRefreshMap);
+  // Agregar creditos_abonos al listener aunque no esté en refreshMap (solo para alerta)
+  var allTables = tables.slice();
+  if (allTables.indexOf('creditos_abonos') === -1) allTables.push('creditos_abonos');
   _rtSubs = db.channel('app-realtime');
-  tables.forEach(function(t) {
+  allTables.forEach(function(t) {
     _rtSubs = _rtSubs.on('postgres_changes', { event: '*', schema: 'public', table: t }, function() {
       _rtHandleChange(t);
+      // Recalcular alerta de efectivo en tiempo real
+      if (_rtCashTables[t]) {
+        if (_rtCashDebounce) clearTimeout(_rtCashDebounce);
+        _rtCashDebounce = setTimeout(function() { _rtCashDebounce = null; try { _initAlertaEfectivoGlobal(); } catch(e){} }, 2000);
+      }
     });
   });
   _rtSubs.subscribe(function(status) {
@@ -21361,11 +21373,10 @@ async function _initAlertaEfectivoGlobal() {
     _checkAlertaEfectivoFlotante();
   } catch(e) { console.warn('Error checking cash alert:', e); }
 }
-// Re-check cada 5 min
+// Fallback re-check cada 10 min (Realtime es la fuente principal ahora)
 setInterval(function() {
-  if (_cajaEfectivoActual > 5000) _checkAlertaEfectivoFlotante();
-  else if (cajaData && cajaData.estado === 'abierta') _initAlertaEfectivoGlobal(); // re-calc in background
-}, 5 * 60 * 1000);
+  if (cajaData && cajaData.estado === 'abierta') _initAlertaEfectivoGlobal();
+}, 10 * 60 * 1000);
 
 // ── ALERTA ENTREGAS PENDIENTES (pedidos con fecha vencida sin entregar) ──
 var _entregaPendData = [];
