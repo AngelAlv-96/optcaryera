@@ -820,6 +820,14 @@ exports.handler = async function(event) {
       return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result, null, 2) };
     }
 
+    // Manual send endpoint: GET ?action=send&to=RECIPIENT_ID&msg=TEXT&channel=messenger&token=VERIFY_TOKEN
+    if (qs.action === 'send' && qs.to && qs.msg && qs.token === META_VERIFY_TOKEN) {
+      var ch = qs.channel || 'messenger';
+      var ok = await sendMetaReply(qs.to, decodeURIComponent(qs.msg), ch);
+      if (ok) await saveMessage(qs.to, 'assistant', qs.msg, null, 'clari-' + ch);
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sent: ok }) };
+    }
+
     if (qs['hub.mode'] === 'subscribe' && qs['hub.verify_token'] === META_VERIFY_TOKEN) {
       console.log('[Meta] Webhook verified');
       return { statusCode: 200, body: qs['hub.challenge'] };
