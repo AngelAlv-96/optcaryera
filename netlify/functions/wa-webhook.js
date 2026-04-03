@@ -191,6 +191,15 @@ FOTOS DE LC: Si un cliente envía foto, el sistema la procesa automáticamente y
 Si ves "[LC-OCR]" en el historial, significa que se extrajo graduación de una foto. Usa esos datos para hacer recomendaciones precisas.
 Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana y explica por qué es similar.
 
+CONVERSIÓN RX OFTÁLMICA → LENTES DE CONTACTO:
+La graduación de una receta oftálmica (armazón) NO es igual a la de LC. Reglas:
+1. Los LC tóricos vienen en pasos de CYL: la mayoría en -0.75, -1.25, -1.75, -2.25, -2.75. Algunas marcas ofrecen -0.50 a -0.50 steps.
+2. Si el CYL del paciente es -1.50, el LC tórico más cercano es -1.25 o -1.75 — AMBOS son opciones válidas (el optometrista decide cuál).
+3. La esfera también se redondea al paso más cercano de 0.25 disponible en el producto.
+4. NUNCA digas que una graduación "no está disponible" si cae dentro del rango del producto (PWR min a max, CYL disponibles). Ejemplo: si un tórico cubre CYL de -0.75 a -2.75, una Rx de CYL -1.50 SÍ es compatible — se ajusta al step más cercano en sucursal.
+5. Si la Rx cae fuera del rango del producto (ej: esfera -10.00 cuando el máximo es -8.00), ENTONCES sí di que esa marca no cubre esa graduación y sugiere Biofinity XR u otra opción de rango extendido.
+6. SIEMPRE di "en sucursal te hacen el ajuste fino de graduación para LC" — tú solo das opciones de precio y marca.
+
 INVENTARIO Y DISPONIBILIDAD:
 NUNCA confirmes que hay producto en stock ni digas "probablemente tenemos" o "lo más probable es que tengamos". NO tienes acceso al inventario real.
 Si preguntan si hay disponibilidad → "Pásate a la sucursal y ahí te confirman disponibilidad" o "Puedes llamar a la sucursal para confirmar".
@@ -1314,12 +1323,18 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
         '- color: si es LC de color (ej: Sterling Gray, Blue, Green)\n' +
         '- cantidad_cajas: si se ve la cantidad (si no, usa 1)\n' +
         '- frecuencia: diario, quincenal, mensual (si se puede inferir del producto)\n' +
-        'Si es una RECETA, extrae los datos de graduación para OD y OI.\n' +
+        'Si es una RECETA OFTÁLMICA (no una caja de LC), extrae la graduación para OD y OI. En recetas manuscritas:\n' +
+        '- OD = ojo derecho, OS/OI = ojo izquierdo\n' +
+        '- Formato típico: -3.25 = -1.25 x 180 significa esfera -3.25, cilindro -1.25, eje 180\n' +
+        '- ADD = adición para progresivos/multifocales\n' +
+        '- DP/DIP = distancia interpupilar\n' +
+        '- Para recetas, usa marca="RECETA" y tipo según lo indicado (si dice LC/lentes de contacto usa "torico" o "esferico" según tenga CYL o no)\n' +
         'Si no puedes leer un campo, usa null.\n' +
         'RESPONDE ÚNICAMENTE con JSON:\n' +
         '{"marca":"Air Optix","modelo":"Hydraglyde","tipo":"esferico","ojos":[{"ojo":"OD","pwr":"-2.50","cyl":null,"axis":null,"add":null,"bc":"8.6","dia":"14.2"}],"color":null,"frecuencia":"mensual","cantidad_cajas":1}\n' +
         'Si hay datos para ambos ojos, incluye ambos en el array "ojos".\n' +
-        'Si es un producto de color, incluye el nombre del color.',
+        'Si es un producto de color, incluye el nombre del color.\n' +
+        'Para recetas oftálmicas: marca="RECETA", modelo=null, tipo según CYL (torico si tiene CYL, esferico si no).',
       messages: [{
         role: 'user',
         content: [
@@ -1350,17 +1365,23 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
 // Build human-readable LC summary + match with catalog
 async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
   var ocr = await lcPhotoOCR(mediaUrl, mediaType);
-  if (!ocr || !ocr.marca) {
+  if (!ocr || (!ocr.marca && (!ocr.ojos || !ocr.ojos.length))) {
     return { reply: '🔍 No pude identificar los datos del lente en esta foto.\n\nPor favor envía una foto más clara de:\n📦 La caja del lente de contacto (donde aparecen marca, graduación y parámetros)\n📋 O tu receta/prescripción de lentes de contacto\n\n¡Intenta de nuevo! 😊' };
   }
+  var isReceta = ocr.marca === 'RECETA' || !ocr.marca;
 
   // Build summary
-  var summary = '👁️ *Datos detectados:*\n';
-  summary += '🏷️ ' + ocr.marca;
-  if (ocr.modelo) summary += ' ' + ocr.modelo;
-  if (ocr.tipo) summary += ' (' + ocr.tipo + ')';
-  if (ocr.color) summary += ' — Color: ' + ocr.color;
-  summary += '\n';
+  var summary = '';
+  if (isReceta) {
+    summary += '📋 *Receta detectada:*\n';
+  } else {
+    summary += '👁️ *Datos detectados:*\n';
+    summary += '🏷️ ' + ocr.marca;
+    if (ocr.modelo) summary += ' ' + ocr.modelo;
+    if (ocr.tipo) summary += ' (' + ocr.tipo + ')';
+    if (ocr.color) summary += ' — Color: ' + ocr.color;
+    summary += '\n';
+  }
 
   if (ocr.ojos && ocr.ojos.length) {
     ocr.ojos.forEach(function(o) {
@@ -1378,14 +1399,20 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
   if (ocr.frecuencia) summary += '⏱️ Frecuencia: ' + ocr.frecuencia + '\n';
 
   // Search catalog for matching products
-  var searchTerm = ocr.marca;
-  if (ocr.modelo) searchTerm += ' ' + ocr.modelo;
-  if (ocr.tipo === 'color' && ocr.color) searchTerm += ' ' + ocr.color;
-  var matches = await lookupLCCatalog(searchTerm);
-
-  // If no exact match, try just brand
-  if ((!matches || !matches.length) && ocr.marca) {
-    matches = await lookupLCCatalog(ocr.marca);
+  var matches;
+  if (isReceta) {
+    // For prescriptions, search by type (torico/esferico/multifocal)
+    var searchType = ocr.tipo || 'contacto';
+    matches = await lookupLCCatalog(searchType);
+  } else {
+    var searchTerm = ocr.marca;
+    if (ocr.modelo) searchTerm += ' ' + ocr.modelo;
+    if (ocr.tipo === 'color' && ocr.color) searchTerm += ' ' + ocr.color;
+    matches = await lookupLCCatalog(searchTerm);
+    // If no exact match, try just brand
+    if ((!matches || !matches.length) && ocr.marca) {
+      matches = await lookupLCCatalog(ocr.marca);
+    }
   }
 
   // Store OCR data in conversation context for Clari to use
@@ -1393,15 +1420,25 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
   await saveMessage(phone, 'user', ocrContext, userName);
 
   if (matches && matches.length > 0) {
-    summary += '\n✅ *Encontré en nuestro catálogo:*\n';
-    matches.forEach(function(p, i) {
-      summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja';
-      if (p.pares_por_caja) summary += ' (' + p.pares_por_caja + ' pares)';
-      if (p.stock > 0) summary += ' ✅';
-      summary += '\n';
-    });
-    summary += '\n¿Te gustaría ordenar? Dime cuántas cajas necesitas y en qué sucursal quieres recoger 😊\n';
-    summary += '\n💳 Aceptamos transferencia BBVA o link de pago Clip';
+    if (isReceta) {
+      var hasCyl = ocr.ojos && ocr.ojos.some(function(o) { return o.cyl && parseFloat(o.cyl) !== 0; });
+      summary += '\n✅ *Opciones de LC ' + (hasCyl ? 'tóricos' : 'esféricos') + ' disponibles:*\n';
+      matches.slice(0, 6).forEach(function(p, i) {
+        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja\n';
+      });
+      summary += '\nTu graduación es compatible con estas opciones. En sucursal te hacen el ajuste fino para LC 😊\n';
+      summary += '¿Cuál te interesa o quieres que te recomiende?';
+    } else {
+      summary += '\n✅ *Encontré en nuestro catálogo:*\n';
+      matches.forEach(function(p, i) {
+        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja';
+        if (p.pares_por_caja) summary += ' (' + p.pares_por_caja + ' pares)';
+        if (p.stock > 0) summary += ' ✅';
+        summary += '\n';
+      });
+      summary += '\n¿Te gustaría ordenar? Dime cuántas cajas necesitas y en qué sucursal quieres recoger 😊\n';
+      summary += '\n💳 Aceptamos transferencia BBVA o link de pago Clip';
+    }
   } else {
     summary += '\n⚠️ No encontré ese producto exacto en nuestro catálogo actual.\n';
     summary += 'Pero tenemos opciones similares. ¿Quieres que te muestre alternativas? 👓';
