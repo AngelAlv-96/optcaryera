@@ -12025,6 +12025,7 @@ function renderLabTablero() {
   if (openSections.has('maquinas')) renderMaquinasTab();
   if (openSections.has('tallando')) renderTallandoTab();
   if (openSections.has('enviar')) renderEnviarTab();
+  if (openSections.has('historial')) renderHistorial();
 }
 
 function prodRow(o, actions, extra) {
@@ -12274,12 +12275,22 @@ function renderEnviarTab() {
 async function renderHistorial() {
   const list = document.getElementById('lp-historial-list');
   if (!list) return;
-  list.innerHTML = '<div class="lp-empty">Cargando historial...</div>';
-  const { data } = await db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos)')
-    .order('created_at', { ascending: false })
-    .limit(100);
-  if (!data || !data.length) { list.innerHTML = '<div class="lp-empty">Sin historial</div>'; return; }
+  // Show search prompt if no search term
+  if (!labSearchTerm) {
+    list.innerHTML = '<div class="lp-empty" style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:8px">🔍</div><div style="font-size:13px;color:var(--muted)">Escribe un folio o nombre en el buscador de arriba para ver el historial</div></div>';
+    return;
+  }
+  list.innerHTML = '<div class="lp-empty">Buscando...</div>';
+  var term = labSearchTerm;
+  var query = db.from('ordenes_laboratorio').select('*, pacientes(nombre, apellidos)').order('created_at', { ascending: false });
+  // Search by folio in notas or by patient name
+  if (/^\d[\d-]*$/.test(term)) {
+    query = query.ilike('notas_laboratorio', '%Folio: ' + term + '%');
+  } else {
+    query = query.or('pacientes.nombre.ilike.*' + term + '*,pacientes.apellidos.ilike.*' + term + '*');
+  }
+  const { data } = await query.limit(50);
+  if (!data || !data.length) { list.innerHTML = '<div class="lp-empty">Sin resultados para "' + term + '"</div>'; return; }
   list.innerHTML = data.map(o => {
     const st = LAB_ESTADOS[o.estado_lab] || LAB_ESTADOS['Enviado al lab'];
     return prodRow(o,
