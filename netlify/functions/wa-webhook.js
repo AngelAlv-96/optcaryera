@@ -1909,7 +1909,7 @@ exports.handler = async function(event) {
         }
 
         var asistAction = _detectAsistCmd(lowerText);
-        if (asistAction) {
+        if (asistAction && isEmployeePhone) {
           var asistResult = await cmdAsistencia(from, asistAction, userName);
           await sendWhatsAppReply(from, asistResult.reply);
           await saveMessage(from, 'user', userText, userName);
