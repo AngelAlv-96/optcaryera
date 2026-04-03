@@ -11894,7 +11894,8 @@ async function loadLabTablero() {
 
   const { data, error } = await query;
   if (error) { console.error('Producción query error:', error); toast('Error cargando producción: ' + error.message, true); return; }
-  labOrders = (data || []).filter(o => o.estado_lab !== 'Entregado');
+  var _postLabStates = ['Entregado','En camino a sucursal','Recibido en óptica','Listo para entrega','Cancelado'];
+  labOrders = (data || []).filter(o => !_postLabStates.includes(o.estado_lab));
   renderLabTablero();
   startLabTimers();
 }
@@ -11977,7 +11978,7 @@ function renderLabTablero() {
   const surtidoCount = counts['Surtido']||0;
   const faltanteCount = counts['Faltante']||0;
   const maqCount = (counts['En proceso Máquina 1']||0)+(counts['En proceso Máquina 2']||0);
-  const enviarCount = counts['En camino a sucursal']||0;
+  const enviarCount = (counts['Biselado completado']||0) + (counts['Control de calidad']||0);
   const devCount = counts['Devuelto al lab']||0;
   const procesadoCount = counts['Biselado completado']||0;
   const tallandoCount = counts['Tallando en lab externo']||0;
@@ -12258,18 +12259,14 @@ function renderTallandoTab() {
 
 function renderEnviarTab() {
   var ENVIO_CHECKBOX = ['Biselado completado', 'Control de calidad'];
-  var ENVIO_REF = ['En camino a sucursal', 'Recibido en óptica', 'Listo para entrega'];
-  const listos = labOrders.filter(o => [...ENVIO_CHECKBOX, ...ENVIO_REF].includes(o.estado_lab) && matchesLabSearch(o));
+  // Only show orders ready to send — already-sent orders go to historial
+  const listos = labOrders.filter(o => ENVIO_CHECKBOX.includes(o.estado_lab) && matchesLabSearch(o));
   const list = document.getElementById('lp-enviar-list');
   if (!list) return;
   if (!listos.length) { list.innerHTML = '<div class="lp-empty">Sin órdenes listas para enviar</div>'; return; }
   list.innerHTML = listos.map(o => {
-    var canCheck = ENVIO_CHECKBOX.includes(o.estado_lab);
-    var refLabel = o.estado_lab === 'En camino a sucursal' ? 'En camino' : o.estado_lab === 'Recibido en óptica' ? 'Recibido' : o.estado_lab === 'Listo para entrega' ? 'Listo' : o.estado_lab;
     return prodRow(o,
-      canCheck
-        ? `<input type="checkbox" data-id="${o.id}" data-sucursal="${o.sucursal||''}" onchange="toggleEnvio('${o.id}',this.checked)" style="accent-color:var(--beige);width:16px;height:16px;cursor:pointer">`
-        : `<span class="lp-badge" style="background:rgba(114,184,196,0.1);color:#72b8c4;border:1px solid rgba(114,184,196,0.2);font-size:9px">${refLabel}</span>`,
+      `<input type="checkbox" data-id="${o.id}" data-sucursal="${o.sucursal||''}" onchange="toggleEnvio('${o.id}',this.checked)" style="accent-color:var(--beige);width:16px;height:16px;cursor:pointer">`,
     );
   }).join('');
 }
