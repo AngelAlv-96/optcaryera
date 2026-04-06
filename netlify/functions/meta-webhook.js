@@ -43,7 +43,7 @@ function getActivePromos() {
 
   if (year === 2026 && month === 4 && day <= 14) {
     return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
-      '🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
+      '🎁 3x1 en lentes completos desde $1,200: Dos lentes graduados + un solar graduado (armazón + micas con material básico CR-39, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. El solar puede ser con tinte solar o graduado. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
