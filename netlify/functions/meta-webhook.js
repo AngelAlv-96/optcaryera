@@ -44,7 +44,7 @@ function getActivePromos() {
   if (year === 2026 && month === 4 && day <= 14) {
     return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
       '🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
-      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Las promociones deben ser aprovechadas por la misma persona.\n' +
@@ -55,7 +55,7 @@ function getActivePromos() {
     return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
       '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). Válida hasta el 30 de abril.\n' +
       '☀️ Lente solar graduado adicional por $249 (combinable con la promo).\n' +
-      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Las promociones deben ser aprovechadas por la misma persona.\n' +
@@ -126,7 +126,7 @@ Esféricos: O2 Optix $799 | Dailies AquaComfort Plus $859 | Lenticon Anual $880 
 Multifocales: Dailies AquaComfort Plus $1,879 | Acuvue Oasys $2,500 | Dailies Total 1 $2,500 | B+L Ultra $2,960 | Air Optix Hydraglyde $2,999 | Biofinity $3,175 | Total30 $3,200
 Color: Start Colors $380 | Air Optix Colors $699
 REGLA: usa SOLO estos precios. Si no encuentras el producto exacto, di "te cotizo en sucursal" — NUNCA inventes un precio.
-👨‍⚕️ Examen de la vista GRATUITO (incluido al comprar lentes)
+👨‍⚕️ Examen de la vista GRATUITO (incluido al comprar lentes con armazón o lentes de contacto)
 ⏱️ Tiempo de entrega: desde 35 minutos hasta 48 horas según el tipo de lente
 ⚠️ DOMINGOS: el laboratorio NO trabaja. Si preguntan si sus lentes pueden estar el mismo día domingo, NO lo afirmes. Sugiere que lo más pronto sería el lunes, sin prometer. Esto aplica tanto para armazones con graduación como para lentes de contacto sobre pedido.
 NUNCA prometas tiempos de entrega exactos — sugiere estimados sin afirmar ("lo más pronto podría ser el lunes", "normalmente están listos en X tiempo")
@@ -159,7 +159,7 @@ IMPORTANTE para Clari: si alguien pregunta por Aplazo o por pagar a plazos/quinc
 GARANTÍA: Todas las compras incluyen garantía. Examen de vista con garantía hasta 40 días.
 
 REGLAS IMPORTANTES:
-1. EXAMEN DE VISTA: Gratuito SOLO al comprar lentes. NO ofrezcas examen solo ni receta sin compra.
+1. EXAMEN DE VISTA: Gratuito al comprar lentes (con armazón O lentes de contacto). NO ofrezcas examen solo ni receta sin compra.
 2. SERVICIO A DOMICILIO: No lo ofrecemos. El servicio a domicilio no es una práctica ética en optometría.
 3. CURRÍCULUM: admon.caryera@gmail.com (solo optometristas certificados)
 4. HORARIO Y ESPERAR AL CLIENTE: NUNCA digas "te esperamos", "date prisa", "alcanzas a llegar", ni prometas que el personal esperará al cliente. Si preguntan si alcanzan cerca de la hora de cierre, di: "El horario es hasta las 7pm (o 5pm domingos). Te recomiendo llegar con tiempo suficiente." NUNCA asegures que "sí alcanza".`;
@@ -317,7 +317,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
     '- Frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
     '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
     '- SIEMPRE envía el link de Google Maps cuando pregunten ubicación de Magnolia\n' +
-    '- Promo: usa la promoción vigente actual (la que aparece en PROMOCIÓN VIGENTE arriba) + Examen de vista incluido\n' +
+    '- Promo: usa la promoción vigente actual (la que aparece en PROMOCIÓN VIGENTE arriba) + Examen de vista incluido al comprar lentes (armazón o LC)\n' +
     '- Lentes listos en 35 minutos\n' +
     '- Tel: (656) 174-8866\n' +
     '- Si el cliente se muestra desinteresado o molesto, agradece amablemente y no insistas';
@@ -489,7 +489,7 @@ REGLAS ESTRICTAS:
 DATOS BÁSICOS:
 Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
 Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly) — Ciudad Juárez
-Examen de vista incluido al comprar lentes
+Examen de vista incluido al comprar lentes (armazón o lentes de contacto)
 Lentes listos desde 35 min
 No se necesita cita`,
         messages: [{ role: 'user', content: 'Comentario: "' + commentText + '"' }]

@@ -48,7 +48,7 @@ function getActivePromos() {
   if (year === 2026 && month === 4 && day <= 14) {
     return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
       '🎁 3x1 en lentes completos desde $1,200: Tres lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
-      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Las promociones deben ser aprovechadas por la misma persona.\n' +
@@ -60,7 +60,7 @@ function getActivePromos() {
     return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
       '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). Válida hasta el 30 de abril.\n' +
       '☀️ Lente solar graduado adicional por $249 (combinable con la promo).\n' +
-      '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
+      '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Las promociones deben ser aprovechadas por la misma persona.\n' +
@@ -131,7 +131,7 @@ Esféricos: O2 Optix $799 | Dailies AquaComfort Plus $859 | Lenticon Anual $880 
 Multifocales: Dailies AquaComfort Plus $1,879 | Acuvue Oasys $2,500 | Dailies Total 1 $2,500 | B+L Ultra $2,960 | Air Optix Hydraglyde $2,999 | Biofinity $3,175 | Total30 $3,200
 Color: Start Colors $380 | Air Optix Colors $699
 REGLA: usa SOLO estos precios. Si no encuentras el producto exacto, di "te cotizo en sucursal" — NUNCA inventes un precio.
-👨‍⚕️ Examen de la vista GRATUITO (incluido al comprar lentes)
+👨‍⚕️ Examen de la vista GRATUITO (incluido al comprar lentes con armazón o lentes de contacto)
 ⏱️ Tiempo de entrega: desde 35 minutos hasta 48 horas según el tipo de lente
 ⚠️ DOMINGOS: el laboratorio NO trabaja. Si preguntan si sus lentes pueden estar el mismo día domingo, NO lo afirmes. Sugiere que lo más pronto sería el lunes, sin prometer. Esto aplica tanto para armazones con graduación como para lentes de contacto sobre pedido.
 NUNCA prometas tiempos de entrega exactos — sugiere estimados sin afirmar ("lo más pronto podría ser el lunes", "normalmente están listos en X tiempo")
@@ -166,7 +166,7 @@ VISIÓN SEGURA (protección extra):
 Precio especial solo válido el día de compra o recogida.
 
 REGLAS IMPORTANTES:
-1. EXAMEN DE VISTA: Gratuito SOLO al comprar lentes. NO ofrezcas examen solo ni receta sin compra.
+1. EXAMEN DE VISTA: Gratuito al comprar lentes (con armazón O lentes de contacto). NO ofrezcas examen solo ni receta sin compra.
 2. SERVICIO A DOMICILIO: No lo ofrecemos. El servicio a domicilio no es una práctica ética en optometría ya que se requiere equipo especializado.
 3. CURRÍCULUM: admon.caryera@gmail.com (solo optometristas certificados)
 4. HORARIO Y ESPERAR AL CLIENTE: NUNCA digas "te esperamos", "date prisa", "alcanzas a llegar", ni prometas que el personal esperará al cliente. Tú NO controlas al personal de la sucursal. Si un cliente pregunta si alcanza a llegar cerca de la hora de cierre, di: "El horario es hasta las 7pm (o 5pm domingos). Te recomiendo llegar con tiempo suficiente para que te atiendan bien." NUNCA asegures que "sí alcanza" ni que "lo esperan". Si llega y está cerrado, es peor que haberle dicho que viniera otro día.
@@ -227,7 +227,7 @@ Si ves "[LC-Recompra]" en el historial reciente, significa que el sistema envió
 Cuando el cliente responda:
 - "SI" / "sí" / "ok" / "quiero" / "mándame" → Procede como venta: confirma el producto, cantidad (misma que antes o pregunta), sucursal de entrega, y da total con formas de pago. Usa CREAR_VENTA cuando confirme.
 - Pregunta por precio / cotización → Muestra precio del producto y ofrece ordenar.
-- Dice que necesita nueva graduación / ve borroso / cambió su vista → Invítalo a sucursal para examen de vista GRATUITO (incluido al comprar lentes). Ofrece tener los lentes listos el mismo día del examen si la graduación es la misma.
+- Dice que necesita nueva graduación / ve borroso / cambió su vista → Invítalo a sucursal para examen de vista GRATUITO (incluido al comprar lentes con armazón o lentes de contacto). Ofrece tener los lentes listos el mismo día del examen si la graduación es la misma.
 - Dice que no / todavía tiene → Responde amablemente, pregunta cuándo le gustaría que le recordemos.
 SIEMPRE prioriza la venta primero. La sucursal es el plan B.`;
 
@@ -571,7 +571,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- REFERENCIA PARA LLEGAR: está casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly\n' +
       '- Link Google Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697\n' +
       '- Promo vigente: usa la promoción actual del negocio (la que aparece en PROMOCIÓN VIGENTE arriba)\n' +
-      '- Examen de vista incluido al comprar lentes\n' +
+      '- Examen de vista incluido al comprar lentes (armazón o lentes de contacto)\n' +
       '- Lentes listos en 35 minutos (laboratorio propio)\n' +
       '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
       '- Si quiere agendar, toma nota de su nombre y horario preferido y confirma que le avisamos\n' +
