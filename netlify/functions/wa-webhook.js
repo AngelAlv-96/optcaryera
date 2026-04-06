@@ -905,7 +905,8 @@ async function cmdAsistencia(phone, action, profileName) {
         var schedMin = parseInt(schedParts[0]) * 60 + parseInt(schedParts[1]);
         var actualMin = nowLocal.getHours() * 60 + nowLocal.getMinutes();
         var tolerancia = horarios.tolerancia_min || 10;
-        retardoMin = Math.max(0, actualMin - (schedMin + tolerancia));
+        var minTarde = actualMin - schedMin;
+        retardoMin = minTarde > tolerancia ? minTarde : 0;
       }
       // UPSERT
       var payload = { uid: uid, fecha: fechaLocal, entrada: nowISO, retardo_min: retardoMin, sucursal: empSuc };
