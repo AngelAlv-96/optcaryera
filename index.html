@@ -22648,7 +22648,8 @@ async function calcularComisiones() {
   var globales = cfg.globales || [];
   var comPcts = cfg.comisiones || {};
   var comDefault = cfg.comision_default || 2;
-  var numAsesores = asesoresSuc.length;
+  var divisoresFijos = cfg.divisores || {};
+  var numAsesores = divisoresFijos[suc] || asesoresSuc.length;
 
   // Fetch pagos de ventas de esta sucursal en el período
   var { data: pagos } = await db.from('venta_pagos').select('*, ventas(folio, sucursal, estado, asesor, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd);
@@ -22668,7 +22669,7 @@ async function calcularComisiones() {
     { lbl: 'Ingreso ventas', val: '$' + totalPagos.toLocaleString('es-MX', {minimumFractionDigits:2}), color: 'var(--beige)' },
     { lbl: 'Abonos créditos', val: '$' + totalCredAb.toLocaleString('es-MX', {minimumFractionDigits:2}), color: '#72c47e' },
     { lbl: 'Total ingreso', val: '$' + totalIngreso.toLocaleString('es-MX', {minimumFractionDigits:2}), color: '#d4b84a' },
-    { lbl: 'Asesores', val: numAsesores, color: '#8ab0e8' },
+    { lbl: 'Asesores', val: numAsesores + (divisoresFijos[suc] ? ' (fijo)' : ''), color: '#8ab0e8' },
     { lbl: 'Base / asesor', val: '$' + basePorAsesor.toLocaleString('es-MX', {minimumFractionDigits:2}), color: 'var(--beige)' }
   ].map(function(s) { return '<div class="stat"><div class="stat-lbl">' + s.lbl + '</div><div class="stat-val" style="color:' + s.color + '">' + s.val + '</div></div>'; }).join('');
 
