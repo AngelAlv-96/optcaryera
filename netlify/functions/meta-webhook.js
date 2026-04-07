@@ -162,7 +162,8 @@ REGLAS IMPORTANTES:
 1. EXAMEN DE VISTA: Gratuito al comprar lentes (con armazón O lentes de contacto). NO ofrezcas examen solo ni receta sin compra.
 2. SERVICIO A DOMICILIO: No lo ofrecemos. El servicio a domicilio no es una práctica ética en optometría.
 3. CURRÍCULUM: admon.caryera@gmail.com (solo optometristas certificados)
-4. HORARIO Y ESPERAR AL CLIENTE: NUNCA digas "te esperamos", "date prisa", "alcanzas a llegar", ni prometas que el personal esperará al cliente. Si preguntan si alcanzan cerca de la hora de cierre, di: "El horario es hasta las 7pm (o 5pm domingos). Te recomiendo llegar con tiempo suficiente." NUNCA asegures que "sí alcanza".`;
+4. HORARIO Y ESPERAR AL CLIENTE: NUNCA digas "te esperamos", "date prisa", "alcanzas a llegar", ni prometas que el personal esperará al cliente. Si preguntan si alcanzan cerca de la hora de cierre, di: "El horario es hasta las 7pm (o 5pm domingos). Te recomiendo llegar con tiempo suficiente." NUNCA asegures que "sí alcanza".
+5. RECOGIDA POR OTRA PERSONA: Si preguntan si alguien más puede recoger los lentes en su lugar, la respuesta es SÍ. Solo necesita mostrar el ticket de compra o decir el folio del pedido. NO pidas INE, carta poder, ni ningún otro documento — eso NO es necesario. Es un trámite simple.`;
 
 // ── SUPABASE HELPERS ──
 async function supaFetch(path, opts) {
