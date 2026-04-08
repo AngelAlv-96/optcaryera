@@ -14817,10 +14817,14 @@ async function _clariLoadPurchaseInfo() {
     if (!norm10s.length) return;
     // Batch query pacientes by phone
     var pacByN10 = {};
+    var pacInfoById = {};
     for (var i = 0; i < norm10s.length; i += 80) {
       var batch = norm10s.slice(i, i + 80);
-      var { data: pacs } = await db.from('pacientes').select('id,telefono').in('telefono', batch);
-      if (pacs) pacs.forEach(function(p) { pacByN10[_wcrmNorm10(p.telefono)] = p.id; });
+      var { data: pacs } = await db.from('pacientes').select('id,telefono,nombre,apellidos').in('telefono', batch);
+      if (pacs) pacs.forEach(function(p) {
+        pacByN10[_wcrmNorm10(p.telefono)] = p.id;
+        pacInfoById[p.id] = { nombre: p.nombre || '', apellidos: p.apellidos || '' };
+      });
     }
     var pacIds = Object.values(pacByN10);
     if (!pacIds.length) return;
@@ -14833,11 +14837,20 @@ async function _clariLoadPurchaseInfo() {
         if (!ventasByPac[v.paciente_id]) ventasByPac[v.paciente_id] = { folio: v.folio, sucursal: v.sucursal };
       });
     }
-    // Build phone → purchase map
+    // Build phone → purchase map (always include patient name if registered, even without sales)
     _clariPurchaseMap = {};
     Object.keys(pacByN10).forEach(function(n10) {
       var pacId = pacByN10[n10];
-      if (ventasByPac[pacId]) _clariPurchaseMap[n10] = ventasByPac[pacId];
+      var pacInfo = pacInfoById[pacId] || {};
+      var fullName = (pacInfo.nombre + ' ' + pacInfo.apellidos).trim();
+      var venta = ventasByPac[pacId];
+      if (venta || fullName) {
+        _clariPurchaseMap[n10] = {
+          folio: venta ? venta.folio : null,
+          sucursal: venta ? venta.sucursal : null,
+          pacienteName: fullName
+        };
+      }
     });
   } catch (e) { console.warn('[Clari] purchase info error:', e.message); }
 }
@@ -14926,7 +14939,8 @@ function renderClariConversations() {
   if (search) convos = convos.filter(function(c) {
     var purch = _clariPurchaseMap[_wcrmNorm10(c.phone)];
     var folioMatch = purch && String(purch.folio || '').toLowerCase().includes(search);
-    return c.name.toLowerCase().includes(search) || c.phone.includes(search) || folioMatch;
+    var pacNameMatch = purch && (purch.pacienteName || '').toLowerCase().includes(search);
+    return c.name.toLowerCase().includes(search) || c.phone.includes(search) || folioMatch || pacNameMatch;
   });
   if (lineFilter) convos = convos.filter(function(c) { return getLineLbl(c.via_phone_id).key === lineFilter; });
   if (!convos.length) { list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px">Sin resultados.</div>'; return; }
@@ -14947,13 +14961,19 @@ function renderClariConversations() {
     var hasLCReactivacion = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
     var hasVIPReactivacion = c.messages.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1); });
     var campaignBadge = hasMagReact ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b33;margin-left:4px;white-space:nowrap">🏪 Magnolia</span>' : hasLCReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444418;color:#ef4444;border:1px solid #ef444433;margin-left:4px;white-space:nowrap">👁 LC Reactivación</span>' : hasVIPReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#3b82f618;color:#3b82f6;border:1px solid #3b82f633;margin-left:4px;white-space:nowrap">⭐ VIP Reactivación</span>' : hasLCRecompra ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b5cf618;color:#8b5cf6;border:1px solid #8b5cf633;margin-left:4px;white-space:nowrap">🔄 LC Recompra</span>' : hasReview ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#10b98118;color:#10b981;border:1px solid #10b98133;margin-left:4px;white-space:nowrap">⭐ Encuesta</span>' : '';
-    // Purchase badge: last folio + sucursal (Américas=morado, Pinocelli=azul, Magnolia=naranja)
+    // Purchase badge: paciente registrado + última compra (sucursal+folio)
     var purchInfo = _clariPurchaseMap[_wcrmNorm10(c.phone)];
     var purchBadge = '';
     if (purchInfo) {
-      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : '#888';
-      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : (purchInfo.sucursal || '').slice(0,3).toUpperCase();
-      purchBadge = '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + sucColor + '18;color:' + sucColor + ';border:1px solid ' + sucColor + '33;margin-left:4px;white-space:nowrap" title="Última compra: folio ' + purchInfo.folio + ' en ' + purchInfo.sucursal + '">🧾 ' + sucShort + ' #' + purchInfo.folio + '</span>';
+      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : '#72b8c4';
+      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : '';
+      var badgeContent = '';
+      if (purchInfo.pacienteName) badgeContent += escH(purchInfo.pacienteName);
+      if (sucShort && purchInfo.folio) badgeContent += (badgeContent ? ' · ' : '') + sucShort + ' #' + purchInfo.folio;
+      var titleAttr = purchInfo.folio ? 'Paciente registrado · Última compra: folio ' + purchInfo.folio + ' en ' + purchInfo.sucursal : 'Paciente registrado (sin compras)';
+      if (badgeContent) {
+        purchBadge = '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + sucColor + '18;color:' + sucColor + ';border:1px solid ' + sucColor + '33;margin-left:4px;white-space:nowrap" title="' + titleAttr + '">🧾 ' + badgeContent + '</span>';
+      }
     }
     var replyPhoneId = c.via_phone_id || '';
     html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px">';
