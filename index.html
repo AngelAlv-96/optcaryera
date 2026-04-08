@@ -10241,30 +10241,62 @@ async function buscarPacienteOrden() {
   if (q.length < 2) { res.style.display='none'; return; }
   clearTimeout(ordSearchTimer);
   ordSearchTimer = setTimeout(async () => {
-    // Check if query looks like a folio number
+    // Check if query looks like a folio number (including sub-folios -2, -3)
     if (/^\d{3,}(-\d+)?$/.test(q)) {
-      // Search ventas by folio
+      var folioBase = q.replace(/-\d+$/, '');
+      var isSubFolio = q !== folioBase;
+      // Search ventas by folio base
       const { data: ventas } = await db.from('ventas')
         .select('id, folio, paciente_id, fecha_entrega, total, estado, pacientes(id, nombre, apellidos, telefono), venta_promociones(id, nombre_promo, folios_detalle)')
-        .or(`folio.eq.${q},folio.ilike.${q}%`)
+        .or(`folio.eq.${folioBase},folio.ilike.${folioBase}%`)
         .order('created_at', { ascending: false }).limit(5);
       if (ventas?.length) {
-        res.style.display = 'block';
-        res.innerHTML = '<div style="padding:6px 12px;font-size:9px;color:var(--beige);font-weight:600;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.04)">VENTAS ENCONTRADAS</div>' +
-          ventas.map(vt => {
-            const p = vt.pacientes;
-            const nom = p ? `${p.nombre} ${p.apellidos||''}`.trim() : 'Sin paciente';
-            const esc = s => (s||'').replace(/'/g, "\\'");
-            const promoFolios = (vt.venta_promociones||[]).flatMap(vp => (vp.folios_detalle||[]).map(fd => fd.folio)).filter(Boolean);
-            return `<div onclick="selVentaEnOrden('${vt.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background .13s" onmouseover="this.style.background='rgba(226,198,166,0.07)'" onmouseout="this.style.background='transparent'">
-              <div style="width:32px;height:32px;background:rgba(212,184,74,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📋</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:600;color:var(--white)">Folio ${vt.folio} · ${nom}</div>
-                <div style="font-size:11px;color:var(--muted);margin-top:2px">$${Number(vt.total).toFixed(2)} · ${vt.estado}${promoFolios.length ? ' · Folios: '+promoFolios.join(', ') : ''}</div>
-              </div>
-            </div>`;
-          }).join('');
-        return;
+        // Construir resultados: si es sub-folio, mostrar solo el slot que matchea (con su paciente real)
+        var rows = [];
+        for (var vt of ventas) {
+          var promos = vt.venta_promociones || [];
+          var allFds = [];
+          for (var vp of promos) {
+            var fdArr = vp.folios_detalle;
+            if (typeof fdArr === 'string') { try { fdArr = JSON.parse(fdArr); } catch(e){} }
+            if (Array.isArray(fdArr)) allFds = allFds.concat(fdArr);
+          }
+          if (isSubFolio) {
+            // Sub-folio: buscar slot exacto y mostrar con su paciente real
+            var hit = allFds.find(function(fd){ return fd.folio === q; });
+            if (hit) {
+              var hitNom = hit.paciente_nombre || '—';
+              var pacId = hit.paciente_id || vt.paciente_id;
+              rows.push({ vt: vt, sub: q, nom: hitNom, pacId: pacId, fd: hit });
+            }
+          } else {
+            // Folio base: mostrar venta con sus folios disponibles
+            var p = vt.pacientes;
+            var nom = p ? (p.nombre + ' ' + (p.apellidos||'')).trim() : 'Sin paciente';
+            var promoFolios = allFds.map(function(fd){ return fd.folio; }).filter(Boolean);
+            rows.push({ vt: vt, sub: vt.folio, nom: nom, pacId: vt.paciente_id, isMain: true, promoFolios: promoFolios });
+          }
+        }
+        if (rows.length) {
+          res.style.display = 'block';
+          res.innerHTML = '<div style="padding:6px 12px;font-size:9px;color:var(--beige);font-weight:600;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,0.04)">' +
+            (isSubFolio ? 'SUB-FOLIO DE PROMOCIÓN' : 'VENTAS ENCONTRADAS') + '</div>' +
+            rows.map(function(r){
+              var label = r.isMain
+                ? '$' + Number(r.vt.total).toFixed(2) + ' · ' + r.vt.estado + (r.promoFolios && r.promoFolios.length ? ' · Folios: ' + r.promoFolios.join(', ') : '')
+                : 'Folio ' + r.sub + ' · slot ' + (r.fd?.slot_label || '') + (r.fd?.armazon ? ' · 🔲 ' + r.fd.armazon.substring(0,18) : '') + (r.fd?.usado ? ' · ✓ ya creado' : '');
+              var clickHandler = r.isMain
+                ? "selVentaEnOrden('" + r.vt.id + "')"
+                : "selSubFolioEnOrden('" + r.vt.id + "','" + r.sub + "','" + r.pacId + "')";
+              return '<div onclick="' + clickHandler + '" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);transition:background .13s" onmouseover="this.style.background=\'rgba(226,198,166,0.07)\'" onmouseout="this.style.background=\'transparent\'">' +
+                '<div style="width:32px;height:32px;background:rgba(212,184,74,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">📋</div>' +
+                '<div style="flex:1;min-width:0">' +
+                  '<div style="font-size:13px;font-weight:600;color:var(--white)">Folio ' + r.sub + ' · ' + r.nom + '</div>' +
+                  '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + label + '</div>' +
+                '</div></div>';
+            }).join('');
+          return;
+        }
       }
     }
     const sf = buildSmartFilter(q);
@@ -11819,6 +11851,25 @@ function aplicarFolioConsecutivo(folio) {
   syncTicket();
   document.getElementById('folio-promo-banner').style.display = 'none';
   toast(`Folio asignado: ${folio}`);
+}
+
+// Selecciona un sub-folio de promo (15766-2): carga al paciente real del slot + precarga datos
+async function selSubFolioEnOrden(ventaId, subFolio, pacienteId) {
+  document.getElementById('ord-search-res').style.display = 'none';
+  document.getElementById('ord-search').value = '';
+  if (!pacienteId) { toast('Sin paciente para este sub-folio', true); return; }
+  // Cargar paciente real del slot
+  var { data: p } = await db.from('pacientes').select('id, nombre, apellidos, telefono').eq('id', pacienteId).single();
+  if (!p) { toast('Paciente no encontrado', true); return; }
+  var nom = (p.nombre + ' ' + (p.apellidos||'')).trim();
+  await selPacienteOrden(p.id, nom, p.telefono||'', '');
+  document.getElementById('ord-folio').value = subFolio;
+  // Cargar fecha/hora de entrega de la venta
+  var { data: vt } = await db.from('ventas').select('fecha_entrega, hora_entrega').eq('id', ventaId).single();
+  if (vt?.fecha_entrega) document.getElementById('ord-entrega').value = vt.fecha_entrega;
+  if (vt?.hora_entrega) document.getElementById('ord-hora-entrega').value = vt.hora_entrega;
+  syncTicket();
+  await _prefillOrderFromVenta(subFolio);
 }
 
 async function selVentaEnOrden(ventaId) {
