@@ -14200,7 +14200,13 @@ async function loadReporteMateriales() {
     let totalParesTipo = 0;
     let tipoContent = '';
 
-    for (const [mat, grads] of Object.entries(mats)) {
+    // Ordenar materiales: Blue Light siempre al final (mantiene resto del orden)
+    const matEntries = Object.entries(mats).sort((a, b) => {
+      const aBL = /blue\s*light/i.test(a[0]) ? 1 : 0;
+      const bBL = /blue\s*light/i.test(b[0]) ? 1 : 0;
+      return aBL - bBL;
+    });
+    for (const [mat, grads] of matEntries) {
       const sorted = Object.values(grads).sort((a, b) => {
         const aHas = a.add ? 1 : 0; const bHas = b.add ? 1 : 0;
         if (aHas !== bHas) return aHas - bHas;
