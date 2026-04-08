@@ -11585,75 +11585,137 @@ async function marcarFolioUsado(folioStr) {
   return false;
 }
 
-// Precarga armazón + material desde venta_items para folios sin promo formal
+// Precarga armazón + material + tinte en orden lab desde venta o sub-folio promo
 async function _prefillOrderFromVenta(folio) {
   if (!folio) return;
   try {
-    var query = db.from('ventas').select('id, sucursal').eq('folio', folio);
+    // Soportar sub-folios (-2, -3): busca por folio base
+    var folioBase = folio.replace(/-\d+$/, '');
+    var query = db.from('ventas')
+      .select('id, sucursal, venta_promociones(folios_detalle)')
+      .eq('folio', folioBase);
     var suc = currentUser?.sucursal;
     if (suc && suc !== 'Todas' && suc !== 'Laboratorio') query = query.eq('sucursal', suc);
     var { data: ventas } = await query;
     if (!ventas?.length) return;
     var venta = ventas[0];
-    var { data: items } = await db.from('venta_items').select('descripcion, producto_id').eq('venta_id', venta.id);
-    if (!items?.length) return;
 
-    // Identificar armazón vs material por patrón "(S<n>)" en descripción
-    var armazonItem = null, materialItem = null;
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      if (/\(S\d\)/.test(it.descripcion || '')) materialItem = it;
-      else if (it.producto_id) armazonItem = it;
+    // Buscar entrada en folios_detalle del sub-folio (tiene meta estructurada)
+    var slotMeta = null, slotArmazon = null, slotMaterialDesc = null;
+    var promos = venta.venta_promociones || [];
+    for (var p of promos) {
+      var fdArr = p.folios_detalle;
+      if (typeof fdArr === 'string') { try { fdArr = JSON.parse(fdArr); } catch(e){} }
+      if (!Array.isArray(fdArr)) continue;
+      var hit = fdArr.find(function(fd){ return fd.folio === folio; });
+      if (hit) {
+        slotMeta = hit.material_meta || null;
+        slotArmazon = hit.armazon || null;
+        slotMaterialDesc = hit.material || null;
+        break;
+      }
+    }
+
+    // Si no es sub-folio, usar venta_items por descripcion/folio_asignado
+    var armazonDesc = slotArmazon, materialDesc = slotMaterialDesc;
+    if (!armazonDesc && !materialDesc) {
+      var { data: items } = await db.from('venta_items').select('descripcion, producto_id, folio_asignado').eq('venta_id', venta.id);
+      if (!items?.length) return;
+      // Si folio == folioBase (no sub-folio), usar items sin folio_asignado o con folio_asignado=folio
+      var relevant = items.filter(function(it){
+        if (folio !== folioBase) return it.folio_asignado === folio;
+        return !it.folio_asignado || it.folio_asignado === folio;
+      });
+      if (!relevant.length) relevant = items; // fallback
+      for (var i = 0; i < relevant.length; i++) {
+        var it = relevant[i];
+        if (/\(S\d\)/.test(it.descripcion || '')) materialDesc = it.descripcion;
+        else if (it.producto_id) armazonDesc = it.descripcion;
+      }
     }
 
     var prefilled = false;
 
-    // Armazón: solo si campo vacío
+    // Armazón
     var armEl = document.getElementById('o-armazon');
-    if (armazonItem && armEl && !armEl.value.trim()) {
-      armEl.value = armazonItem.descripcion;
+    if (armazonDesc && armEl && !armEl.value.trim()) {
+      armEl.value = armazonDesc;
       prefilled = true;
     }
 
-    // Material: parse usando reglas_materiales — solo si tipo de lente vacío
+    // Material: usar slotMeta si existe (estructurado), si no parsear descripción
     var tipSel = document.getElementById('o-tip');
-    if (materialItem && tipSel && !tipSel.value) {
-      var { data: reglas } = await db.from('reglas_materiales').select('*').eq('activo', true);
-      if (reglas?.length) {
-        var match = null, bestLen = 0;
-        for (var r of reglas) {
-          var prefix = r.material + ' ' + r.tratamiento + ' (S' + r.serie + ') ' + r.tipo_vision;
-          if ((materialItem.descripcion || '').startsWith(prefix) && prefix.length > bestLen) {
-            match = r;
-            bestLen = prefix.length;
+    if (tipSel && !tipSel.value) {
+      var meta = slotMeta;
+      if (!meta && materialDesc) {
+        // Parse descripción contra reglas_materiales
+        var { data: reglas } = await db.from('reglas_materiales').select('*').eq('activo', true);
+        if (reglas?.length) {
+          var match = null, bestLen = 0;
+          for (var r of reglas) {
+            var prefix = r.material + ' ' + r.tratamiento + ' (S' + r.serie + ') ' + r.tipo_vision;
+            if (materialDesc.startsWith(prefix) && prefix.length > bestLen) {
+              match = r;
+              bestLen = prefix.length;
+            }
+          }
+          if (match) {
+            // Detectar tinte en sufijo "+ Tinte Color Tono"
+            var tinteColor = null, tinteTono = null;
+            var tinteMatch = materialDesc.match(/\+\s*Tinte\s+(\S+)(?:\s+(\S+))?/i);
+            if (tinteMatch) { tinteColor = tinteMatch[1]; tinteTono = tinteMatch[2] || null; }
+            meta = {
+              tipo_vision: match.tipo_vision,
+              material: match.material,
+              tratamiento: match.tratamiento,
+              serie: match.serie,
+              tinte_color: tinteColor,
+              tinte_tono: tinteTono
+            };
           }
         }
-        if (match) {
-          var REV_MAP = {'VS':'VS','Bif F/T':'Bifocal F/T','Bif Semi-invisible':'Bifocal Blended','Progresivo':'Progresivo'};
-          var labTipo = REV_MAP[match.tipo_vision] || match.tipo_vision || '';
-          if (labTipo) {
-            tipSel.value = labTipo;
-            await cascadeMaterial();
+      }
+
+      if (meta) {
+        var REV_MAP = {'VS':'VS','Bif F/T':'Bifocal F/T','Bif Semi-invisible':'Bifocal Blended','Progresivo':'Progresivo'};
+        var labTipo = REV_MAP[meta.tipo_vision] || meta.tipo_vision || '';
+        if (labTipo) {
+          tipSel.value = labTipo;
+          await cascadeMaterial();
+          await new Promise(r => setTimeout(r, 50));
+          var matSel = document.getElementById('o-mat');
+          if (matSel && meta.material) {
+            var matOpt = [...matSel.options].find(o => o.value === meta.material);
+            if (matOpt) matSel.value = meta.material;
+            else { matSel.innerHTML += '<option value="'+meta.material+'">'+meta.material+'</option>'; matSel.value = meta.material; }
+            await cascadeTratamiento();
             await new Promise(r => setTimeout(r, 50));
-            var matSel = document.getElementById('o-mat');
-            if (matSel) {
-              var matOpt = [...matSel.options].find(o => o.value === match.material);
-              if (matOpt) matSel.value = match.material;
-              else { matSel.innerHTML += '<option value="'+match.material+'">'+match.material+'</option>'; matSel.value = match.material; }
-              await cascadeTratamiento();
+            var traSel = document.getElementById('o-tra');
+            if (traSel && meta.tratamiento) {
+              var traOpt = [...traSel.options].find(o => o.value === meta.tratamiento);
+              if (traOpt) traSel.value = meta.tratamiento;
+              else { traSel.innerHTML += '<option value="'+meta.tratamiento+'">'+meta.tratamiento+'</option>'; traSel.value = meta.tratamiento; }
+              await cascadeSerie();
               await new Promise(r => setTimeout(r, 50));
-              var traSel = document.getElementById('o-tra');
-              if (traSel) {
-                var traOpt = [...traSel.options].find(o => o.value === match.tratamiento);
-                if (traOpt) traSel.value = match.tratamiento;
-                else { traSel.innerHTML += '<option value="'+match.tratamiento+'">'+match.tratamiento+'</option>'; traSel.value = match.tratamiento; }
-                await cascadeSerie();
-                await new Promise(r => setTimeout(r, 50));
-                var serieSel = document.getElementById('o-serie');
-                if (serieSel) serieSel.value = String(match.serie);
-                await mostrarPrecioMaterial();
-                prefilled = true;
+              var serieSel = document.getElementById('o-serie');
+              if (serieSel && meta.serie) serieSel.value = String(meta.serie);
+              await mostrarPrecioMaterial();
+              prefilled = true;
+            }
+          }
+          // Tinte (solar)
+          if (meta.tinte_color) {
+            await new Promise(r => setTimeout(r, 50));
+            var tinColEl = document.getElementById('o-tin-color');
+            if (tinColEl && !tinColEl.value) {
+              tinColEl.value = meta.tinte_color;
+              if (typeof syncTinte === 'function') syncTinte();
+              await new Promise(r => setTimeout(r, 30));
+              if (meta.tinte_tono) {
+                var tinTonoEl = document.getElementById('o-tin-tono');
+                if (tinTonoEl) { tinTonoEl.value = meta.tinte_tono; if (typeof syncTinte === 'function') syncTinte(); }
               }
+              prefilled = true;
             }
           }
         }
