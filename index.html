@@ -11754,7 +11754,10 @@ async function _prefillOrderFromVenta(folio) {
       }
     }
 
-    if (prefilled) toast('✓ Datos de venta ' + folio + ' precargados');
+    if (prefilled) {
+      if (typeof syncTicket === 'function') syncTicket();
+      toast('✓ Datos de venta ' + folio + ' precargados');
+    }
   } catch(e) { console.warn('[PrefillFolio]', e.message); }
 }
 
