@@ -11707,6 +11707,8 @@ async function selVentaEnOrden(ventaId) {
 
 async function guardarEImprimir() {
   if (_actionBusy['guardarEImprimir']) return;
+  _actionBusy['guardarEImprimir'] = true;
+  try {
   const pid = document.getElementById('ord-pid').value || document.getElementById('hc-pid').value;
   if (!pid) { toast('Selecciona un paciente primero', true); return; }
 
@@ -11862,8 +11864,6 @@ async function guardarEImprimir() {
   };
   } // end else (armazon)
 
-  _actionBusy['guardarEImprimir'] = true;
-  try {
   let { error } = await db.from('ordenes_laboratorio').insert(orderPayload);
 
   if (error && error.message && (error.message.includes('column') || error.code === '42703')) {
@@ -19607,6 +19607,9 @@ async function _ejecutarCompletarPar(ventaId, numPares, maxArm, maxMat, overlay)
 }
 
 async function _procesarCompletarPar() {
+  if (_actionBusy['completarPar']) return;
+  _actionBusy['completarPar'] = true;
+  try {
   var data = window._cppData;
   if (!data) return;
   var { ventaId, pares, overlay, totalDiferencia } = data;
@@ -19673,6 +19676,7 @@ async function _procesarCompletarPar() {
   toast('✅ Pares completados — órdenes enviadas al lab');
   // Refresh detail
   verDetalleVenta(ventaId);
+  } finally { _actionBusy['completarPar'] = false; }
 }
 
 async function verDetalleSicar(creditoId) {
