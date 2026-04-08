@@ -10677,6 +10677,7 @@ function limpiarOrden() {
   setTipoOrden('armazon');
   document.getElementById('ord-pid').value = '';
   document.getElementById('ord-pac-name').textContent = 'Selecciona un paciente';
+  var _pacCard = document.getElementById('ord-pac-card'); if (_pacCard) _pacCard.style.display = 'none';
   document.getElementById('ord-search-res').style.display = 'none';
   const fpb = document.getElementById('folio-promo-banner'); if (fpb) fpb.style.display = 'none';
   _pendingPromoFolios = [];
@@ -12076,7 +12077,7 @@ async function guardarEImprimir() {
   _rtSuppressUntil = Date.now() + 5000;
   await marcarFolioUsado(folioFinal);
   toast('✓ Orden guardada — imprimiendo ticket...');
-  setTimeout(() => printTicket(), 300);
+  setTimeout(() => { printTicket(); setTimeout(() => limpiarOrden(), 800); }, 300);
   } finally { _actionBusy['guardarEImprimir'] = false; }
 }
 
