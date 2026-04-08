@@ -47,11 +47,10 @@ function getActivePromos() {
   // Abril 1-14, 2026
   if (year === 2026 && month === 4 && day <= 14) {
     return 'PROMOCIÓN VIGENTE (ABRIL 1-14):\n' +
-      '🎁 3x1 en lentes completos desde $1,200: Dos lentes graduados + un solar graduado (armazón + micas con material básico CR-39, visión sencilla). En armazones seleccionados de hasta $1,200. Hasta 2 graduaciones diferentes. El solar puede ser con tinte solar o graduado. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
+      '🎁 3x1 en lentes completos desde $1,200: Dos lentes graduados + un solar graduado (armazón + micas con material básico CR-39, visión sencilla). En armazones seleccionados de hasta $1,200. La promo SE PUEDE COMPARTIR entre 2 personas (por eso permite hasta 2 graduaciones diferentes — máximo 2 personas, no más). El solar puede ser con tinte solar o graduado. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 14 de abril.\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'Las promociones deben ser aprovechadas por la misma persona.\n' +
       'REGLA: Solo existe esta promoción. NO menciones 2x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
   }
 
