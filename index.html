@@ -11585,6 +11585,85 @@ async function marcarFolioUsado(folioStr) {
   return false;
 }
 
+// Precarga armazón + material desde venta_items para folios sin promo formal
+async function _prefillOrderFromVenta(folio) {
+  if (!folio) return;
+  try {
+    var query = db.from('ventas').select('id, sucursal').eq('folio', folio);
+    var suc = currentUser?.sucursal;
+    if (suc && suc !== 'Todas' && suc !== 'Laboratorio') query = query.eq('sucursal', suc);
+    var { data: ventas } = await query;
+    if (!ventas?.length) return;
+    var venta = ventas[0];
+    var { data: items } = await db.from('venta_items').select('descripcion, producto_id').eq('venta_id', venta.id);
+    if (!items?.length) return;
+
+    // Identificar armazón vs material por patrón "(S<n>)" en descripción
+    var armazonItem = null, materialItem = null;
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (/\(S\d\)/.test(it.descripcion || '')) materialItem = it;
+      else if (it.producto_id) armazonItem = it;
+    }
+
+    var prefilled = false;
+
+    // Armazón: solo si campo vacío
+    var armEl = document.getElementById('o-armazon');
+    if (armazonItem && armEl && !armEl.value.trim()) {
+      armEl.value = armazonItem.descripcion;
+      prefilled = true;
+    }
+
+    // Material: parse usando reglas_materiales — solo si tipo de lente vacío
+    var tipSel = document.getElementById('o-tip');
+    if (materialItem && tipSel && !tipSel.value) {
+      var { data: reglas } = await db.from('reglas_materiales').select('*').eq('activo', true);
+      if (reglas?.length) {
+        var match = null, bestLen = 0;
+        for (var r of reglas) {
+          var prefix = r.material + ' ' + r.tratamiento + ' (S' + r.serie + ') ' + r.tipo_vision;
+          if ((materialItem.descripcion || '').startsWith(prefix) && prefix.length > bestLen) {
+            match = r;
+            bestLen = prefix.length;
+          }
+        }
+        if (match) {
+          var REV_MAP = {'VS':'VS','Bif F/T':'Bifocal F/T','Bif Semi-invisible':'Bifocal Blended','Progresivo':'Progresivo'};
+          var labTipo = REV_MAP[match.tipo_vision] || match.tipo_vision || '';
+          if (labTipo) {
+            tipSel.value = labTipo;
+            await cascadeMaterial();
+            await new Promise(r => setTimeout(r, 50));
+            var matSel = document.getElementById('o-mat');
+            if (matSel) {
+              var matOpt = [...matSel.options].find(o => o.value === match.material);
+              if (matOpt) matSel.value = match.material;
+              else { matSel.innerHTML += '<option value="'+match.material+'">'+match.material+'</option>'; matSel.value = match.material; }
+              await cascadeTratamiento();
+              await new Promise(r => setTimeout(r, 50));
+              var traSel = document.getElementById('o-tra');
+              if (traSel) {
+                var traOpt = [...traSel.options].find(o => o.value === match.tratamiento);
+                if (traOpt) traSel.value = match.tratamiento;
+                else { traSel.innerHTML += '<option value="'+match.tratamiento+'">'+match.tratamiento+'</option>'; traSel.value = match.tratamiento; }
+                await cascadeSerie();
+                await new Promise(r => setTimeout(r, 50));
+                var serieSel = document.getElementById('o-serie');
+                if (serieSel) serieSel.value = String(match.serie);
+                await mostrarPrecioMaterial();
+                prefilled = true;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (prefilled) toast('✓ Datos de venta ' + folio + ' precargados');
+  } catch(e) { console.warn('[PrefillFolio]', e.message); }
+}
+
 async function verificarFolio() {
   const folioInput = document.getElementById('ord-folio');
   const banner = document.getElementById('folio-promo-banner');
@@ -11616,7 +11695,10 @@ async function verificarFolio() {
     return;
   }
 
-  // 2. Check base folio for promo sequence
+  // 2. Precargar armazón/material desde la venta (si existe)
+  await _prefillOrderFromVenta(folio);
+
+  // 3. Check base folio for promo sequence
   const folioBase = folio.replace(/-\d+$/, '');
   const { data } = await db.from('ordenes_laboratorio')
     .select('id, notas_laboratorio, pacientes(nombre, apellidos)')
@@ -11691,6 +11773,7 @@ async function selVentaEnOrden(ventaId) {
   if (vt.fecha_entrega) document.getElementById('ord-entrega').value = vt.fecha_entrega;
   if (vt.hora_entrega) document.getElementById('ord-hora-entrega').value = vt.hora_entrega;
   syncTicket();
+  await _prefillOrderFromVenta(vt.folio);
   const promoFolios = (vt.venta_promociones||[]).flatMap(vp => (vp.folios_detalle||[]).filter(fd => !fd.usado));
   if (promoFolios.length) {
     await checkPendingPromoFolios(p.id, nom);
