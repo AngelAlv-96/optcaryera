@@ -92,11 +92,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-ap
 
   <div id="bottom">
     <div id="last-scan">
-      <div id="last-modelo">Apunta a la varilla</div>
+      <div id="last-modelo">Apunta al modelo</div>
       <div id="last-marca"></div>
       <div id="last-count"></div>
     </div>
-    <div id="status-bar"><span id="status-text">Toca el boton para capturar</span></div>
+    <div id="status-bar"><span id="status-text">Apunta a varilla, etiqueta o mica</span></div>
     <div id="btn-row">
       <button id="btn-undo" onclick="undoLast()" title="Deshacer ultimo">↩</button>
       <button id="btn-capture" onclick="capturar()">📷</button>
@@ -169,13 +169,9 @@ async function startCamera() {
 function detener() {
   active = false; processing = false;
   if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
-  if (confirm('Salir del scanner? La sesion sigue activa, puedes volver.')) {
-    // Regresar al sistema — history.back si vino de ahí, si no ir al home
-    if (document.referrer && document.referrer.includes(location.origin)) {
-      history.back();
-    } else {
-      location.href = location.origin + '/#compra-scanner';
-    }
+  if (confirm('Salir del scanner? Tus escaneos estan guardados, puedes volver.')) {
+    // Siempre regresar al sistema
+    location.href = location.origin + '/index.html';
   } else {
     startCamera();
   }
@@ -220,7 +216,9 @@ async function capturar() {
       var m = data.modelos[0];
       flash('#c8f04a');
       vibrate([50]);
-      showDetected(m.modelo, m.marca, m.id);
+      var displayMarca = m.marca || '';
+      var extraInfo = [m.color, m.medidas].filter(Boolean).join(' · ');
+      showDetected(m.modelo, displayMarca, m.id, extraInfo);
       lastUndoId = m.id;
       document.getElementById('btn-undo').style.display = '';
     } else {
@@ -242,7 +240,7 @@ async function capturar() {
   }
 }
 
-function showDetected(modelo, marca, id) {
+function showDetected(modelo, marca, id, extraInfo) {
   // Actualizar historial local
   var existing = scanHistory.find(function(s){ return s.modelo === modelo; });
   if (existing) {
@@ -251,12 +249,12 @@ function showDetected(modelo, marca, id) {
     document.getElementById('last-count').textContent = 'x' + existing.count;
     document.getElementById('last-count').style.display = '';
   } else {
-    scanHistory.unshift({ modelo: modelo, marca: marca, count: 1, ids: [id] });
+    scanHistory.unshift({ modelo: modelo, marca: marca, count: 1, ids: [id], extra: extraInfo || '' });
     document.getElementById('last-count').style.display = 'none';
   }
   document.getElementById('last-modelo').textContent = modelo;
   document.getElementById('last-modelo').style.color = '#c8f04a';
-  document.getElementById('last-marca').textContent = marca || '';
+  document.getElementById('last-marca').textContent = (marca || '') + (extraInfo ? ' · ' + extraInfo : '');
   setStatus('Guardado');
   renderScanList();
 }

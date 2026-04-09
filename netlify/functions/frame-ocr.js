@@ -78,20 +78,29 @@ exports.handler = async (event) => {
               },
               {
                 type: 'text',
-                text: `Extract the eyeglass frame model number from this photo. The model code is usually printed/engraved on:
-- The inside of the temple arm (varilla)
-- A cardboard hang tag
+                text: `Extract eyeglass frame information from this photo. The info may be on:
+- A cardboard hang tag (usually says MODEL:, SIZE:, COLOR:)
+- The inside of the temple arm (engraved/printed text)
 - A sticker on the demo lens
+- Printed on the frame itself
 
-Return ONLY a JSON object: {"modelos":["MODEL1"],"confianza":"alta|media|baja"}
+Return ONLY a JSON object:
+{"modelos":[{"codigo":"CHLUX113","marca":"OLIVE PREMIUM","color":"BLK-WHI","medidas":"54-42-16-140"}],"confianza":"alta|media|baja"}
+
+CRITICAL — how to distinguish what is what:
+- MODEL/CODIGO: the unique identifier of the frame design (e.g. CHLUX113, SM1515, ZB2274, ET801, TR-040, H83029). Usually letters+numbers or a short alphanumeric code.
+- MARCA/BRAND: the brand name (e.g. OLIVE PREMIUM, SEIMA, ZABDI, HUMARS, GEMMA, ZOHAR, CAFFDY, ETON BRIDGE, RIVALTO). Usually written larger or as a logo.
+- SIZE/MEDIDAS: lens-bridge-temple measurements like 54-42-16 140 or 52□18-140. These are NOT model numbers — they follow a pattern of 2-3 numbers separated by dashes, typically 48-58 for lens, 14-22 for bridge, 130-150 for temple.
+- COLOR: color code like C1, C2, C3, BLK-WHI, BROWN, DEMI, TORT, etc. These are NOT model numbers.
 
 Rules:
-- Model codes are typically 2-4 letters followed by numbers (e.g. SM1515, ZB2274, HA5023, ET801, RI082)
-- Include any size/color suffix if visible (e.g. SM1515-C2, ZB2274 52)
-- If you see multiple distinct model numbers, list all of them
-- If you can partially read it, include your best guess with confianza "baja"
-- If nothing is readable, return {"modelos":[],"confianza":"baja"}
-- Do NOT include brand names, prices, or other text — ONLY model codes`
+- Extract the MODEL CODE (codigo) separately from the brand name
+- If brand is visible, include it in "marca"
+- If you see SIZE measurements (XX-XX-XX), put in "medidas" NOT in codigo
+- If you see color codes (C1, BLK, BROWN), put in "color" NOT in codigo
+- If multiple frames visible, list each one
+- If partially readable, include best guess with confianza "baja"
+- If nothing readable, return {"modelos":[],"confianza":"baja"}`
               }
             ]
           }]
@@ -107,15 +116,22 @@ Rules:
       const visionData = await visionRes.json();
       const text = visionData.content?.[0]?.text || '';
 
-      // Parse JSON response
+      // Parse JSON response (new format with marca/color/medidas)
       try {
         const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
         const parsed = JSON.parse(cleaned);
         if (Array.isArray(parsed.modelos)) {
-          modelos = parsed.modelos.map(m => ({
-            modelo: String(m).trim().toUpperCase(),
-            confianza: parsed.confianza || 'media'
-          }));
+          modelos = parsed.modelos.map(m => {
+            // Handle both old format (string) and new format (object with codigo/marca/color/medidas)
+            if (typeof m === 'string') return { modelo: m.trim().toUpperCase(), confianza: parsed.confianza || 'media' };
+            return {
+              modelo: String(m.codigo || m.modelo || '').trim().toUpperCase(),
+              marca_detectada: (m.marca || '').trim().toUpperCase(),
+              color: (m.color || '').trim(),
+              medidas: (m.medidas || '').trim(),
+              confianza: m.confianza || parsed.confianza || 'media'
+            };
+          });
         }
       } catch (parseErr) {
         // Fallback: try to extract model-like strings from text
@@ -134,7 +150,8 @@ Rules:
     // Guardar cada modelo detectado en compra_scans
     const saved = [];
     for (const m of modelos) {
-      const marca = detectBrand(m.modelo);
+      // Marca: primero por prefijo, luego por IA, fallback vacío
+      var marca = detectBrand(m.modelo) || m.marca_detectada || '';
       const row = {
         sesion_id,
         modelo: m.modelo,
@@ -143,7 +160,7 @@ Rules:
         scanned_by: scanned_by || ''
       };
       const inserted = await supaREST('POST', 'compra_scans', row);
-      saved.push({ modelo: m.modelo, marca, confianza: m.confianza, id: inserted?.[0]?.id });
+      saved.push({ modelo: m.modelo, marca, color: m.color || '', medidas: m.medidas || '', confianza: m.confianza, id: inserted?.[0]?.id });
     }
 
     // Stats de la sesión completa
