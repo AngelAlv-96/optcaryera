@@ -297,7 +297,7 @@ async function lookupOrders(phone, text) {
   // 3. Try by name if message has a name-like text (only if no results yet)
   if (results.length === 0) {
     // Skip common Spanish stopwords to find actual name words
-    var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo'];
+    var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo','pendiente','pagar','debo','saldo','adeudo','abono','cobro','liquidar','cuánto','cuanto','queda','tengo','quería','querría','comunico'];
     var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) {
       return w.length >= 3 && _stopwords.indexOf(w.toLowerCase()) === -1;
     });
@@ -318,7 +318,60 @@ async function lookupOrders(phone, text) {
     }
   }
 
-  if (results.length === 0) { console.log('[OrderLookup] no results found'); return null; }
+  // 4. Scan conversation history for folios (e.g. from review surveys)
+  if (results.length === 0) {
+    try {
+      var histMsgs = await supaFetch('clari_conversations?phone=eq.' + phone + '&select=content&order=created_at.desc&limit=20');
+      if (histMsgs && histMsgs.length > 0) {
+        var histFolios = {};
+        histMsgs.forEach(function(m) {
+          var matches = (m.content || '').match(/Folio:\s*(\d{4,6}(?:-\d+)?)/g);
+          if (matches) matches.forEach(function(fm) {
+            var f = fm.replace(/Folio:\s*/, '').replace(/-\d+$/, '');
+            histFolios[f] = true;
+          });
+        });
+        var hfKeys = Object.keys(histFolios);
+        console.log('[OrderLookup] history folios: ' + hfKeys.join(', '));
+        for (var hi = 0; hi < hfKeys.length && results.length === 0; hi++) {
+          var hf = hfKeys[hi];
+          var histOrders = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + hf + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
+          if (histOrders && histOrders.length > 0) results = results.concat(histOrders);
+        }
+      }
+    } catch(e) { console.error('[OrderLookup] history scan error:', e); }
+  }
+
+  // 5. Lookup SICAR credits (creditos_clientes) by patient IDs
+  var sicarCredits = [];
+  try {
+    // Collect patient IDs from orders found so far
+    var creditPatIds = {};
+    results.forEach(function(o) { if (o.paciente_id) creditPatIds[o.paciente_id] = true; });
+    // Also search by phone directly
+    if (cleanPhone.length === 10) {
+      var phonePats = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id&limit=5');
+      if (phonePats) phonePats.forEach(function(p) { creditPatIds[p.id] = true; });
+    }
+    var cpIds = Object.keys(creditPatIds);
+    if (cpIds.length > 0) {
+      var credits = await supaFetch('creditos_clientes?paciente_id=in.(' + cpIds.join(',') + ')&saldo=gt.0&select=folio_sicar,total,total_abonos,saldo,sucursal,fecha_vencimiento,paciente_id,pacientes(nombre,apellidos)&order=created_at.desc&limit=5');
+      if (credits && credits.length > 0) {
+        sicarCredits = credits;
+        console.log('[OrderLookup] SICAR credits found: ' + credits.length);
+      }
+    }
+    // Also search by phone in notas field of creditos_clientes
+    if (sicarCredits.length === 0 && cleanPhone.length === 10) {
+      var creditsByPhone = await supaFetch('creditos_clientes?notas=ilike.*' + cleanPhone + '*&saldo=gt.0&select=folio_sicar,total,total_abonos,saldo,sucursal,fecha_vencimiento,paciente_id,pacientes(nombre,apellidos)&limit=5');
+      if (creditsByPhone && creditsByPhone.length > 0) {
+        sicarCredits = creditsByPhone;
+        console.log('[OrderLookup] SICAR credits by phone in notas: ' + creditsByPhone.length);
+      }
+    }
+  } catch(e) { console.error('[OrderLookup] SICAR credit lookup error:', e); }
+
+  if (results.length === 0 && sicarCredits.length === 0) { console.log('[OrderLookup] no results found'); return null; }
 
   // Deduplicate
   var seen = {};
@@ -344,10 +397,22 @@ async function lookupOrders(phone, text) {
       if (ventas && ventas.length > 0) ventasMap[vf] = ventas[0];
     }
   }
-  console.log('[OrderLookup] enriched with ' + Object.keys(ventasMap).length + ' ventas');
+  // Also check creditos_clientes for base folios not found in ventas
+  if (baseKeys.length > 0) {
+    for (var ci = 0; ci < baseKeys.length; ci++) {
+      var cf = baseKeys[ci];
+      if (!ventasMap[cf]) {
+        var creditByFolio = await supaFetch('creditos_clientes?folio_sicar=eq.' + cf + '&saldo=gt.0&select=folio_sicar,total,total_abonos,saldo,sucursal,fecha_vencimiento&limit=1');
+        if (creditByFolio && creditByFolio.length > 0) {
+          ventasMap[cf] = { folio: cf, total: creditByFolio[0].total, pagado: creditByFolio[0].total_abonos || 0, saldo: creditByFolio[0].saldo, estado: 'Crédito SICAR pendiente', es_sicar: true };
+        }
+      }
+    }
+  }
+  console.log('[OrderLookup] enriched with ' + Object.keys(ventasMap).length + ' ventas/creditos');
 
-  // Format for AI context
-  return results.map(function(o) {
+  // Format for AI context — orders
+  var formatted = results.map(function(o) {
     var nombre = o.pacientes ? (o.pacientes.nombre + ' ' + (o.pacientes.apellidos || '')).trim() : 'Cliente';
     var notas = o.notas_laboratorio || '';
     var folio = (notas.match(/Folio: ([^\s|]+)/) || [])[1] || 'S/N';
@@ -374,11 +439,35 @@ async function lookupOrders(phone, text) {
     }
     return result;
   });
+
+  // Add SICAR credits not already covered by order folios
+  var coveredFolios = {};
+  formatted.forEach(function(o) { coveredFolios[o.folio.replace(/-\d+$/, '')] = true; });
+  sicarCredits.forEach(function(sc) {
+    if (!coveredFolios[sc.folio_sicar]) {
+      var nombre = sc.pacientes ? (sc.pacientes.nombre + ' ' + (sc.pacientes.apellidos || '')).trim() : 'Cliente';
+      formatted.push({
+        nombre: nombre,
+        folio: 'SICAR-' + sc.folio_sicar,
+        estado: 'Crédito SICAR',
+        emoji: '💳',
+        mensaje_cliente: 'Tienes un saldo pendiente de este crédito.',
+        sucursal: sc.sucursal || '',
+        fecha: sc.fecha_vencimiento ? 'Vence: ' + new Date(sc.fecha_vencimiento).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : '',
+        total_venta: sc.total,
+        pagado: sc.total_abonos || 0,
+        saldo: sc.saldo,
+        estado_pago: 'Crédito SICAR pendiente'
+      });
+    }
+  });
+
+  return formatted;
 }
 
 function isAskingAboutOrder(text) {
   var lower = text.toLowerCase();
-  var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo'];
+  var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo', 'pagar', 'debo', 'pendiente', 'saldo', 'adeudo', 'abono', 'cobro', 'cuánto debo', 'cuanto debo', 'liquidar'];
   return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
 }
 

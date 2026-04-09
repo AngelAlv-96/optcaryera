@@ -205,7 +205,7 @@ async function lookupOrdersByText(text) {
     if (byFolio && byFolio.length > 0) return byFolio;
   }
   // Try by name (filter stopwords to find actual name words)
-  var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo'];
+  var _stopwords = ['esta','estan','están','nombre','llamo','soy','hola','buenos','buenas','dias','días','tardes','noches','mis','lentes','pedido','orden','folio','quiero','saber','confirmar','recoger','para','que','los','las','por','favor','con','del','una','unos','como','donde','dónde','cuando','cuándo','tiene','tienen','puede','solo','solo','gracias','sobre','bajo','pendiente','pagar','debo','saldo','adeudo','abono','cobro','liquidar','cuánto','cuanto','queda','tengo','quería','querría','comunico'];
   var nameWords = text.replace(/[^\wáéíóúñü\s]/gi, '').split(/\s+/).filter(function(w) {
     return w.length >= 3 && _stopwords.indexOf(w.toLowerCase()) === -1;
   });
@@ -232,13 +232,53 @@ function formatOrders(orders) {
     var statusInfo = STATUS_MAP[estado] || { emoji: '📋', msg: 'Tu pedido está siendo procesado.' };
     var sucursal = o.sucursal || '';
     var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
-    return { nombre, folio, estado, emoji: statusInfo.emoji, mensaje_cliente: statusInfo.msg, sucursal, fecha };
+    // Enrich with venta or SICAR credit data
+    var baseFolio = folio.replace(/-\d+$/, '');
+    var result = { nombre, folio, estado, emoji: statusInfo.emoji, mensaje_cliente: statusInfo.msg, sucursal, fecha };
+    if (o._ventaData) {
+      result.total_venta = o._ventaData.total;
+      result.pagado = o._ventaData.pagado;
+      result.saldo = o._ventaData.saldo;
+      result.estado_pago = o._ventaData.estado;
+    }
+    return result;
   });
+}
+
+// Enrich orders with venta/credit data and return SICAR credits
+async function enrichOrdersWithSales(orders) {
+  if (!orders || orders.length === 0) return { orders: orders, sicarCredits: [] };
+  var folios = orders.map(function(o) {
+    return (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/);
+  }).filter(Boolean).map(function(m) { return m[1]; });
+  var baseFolios = {};
+  folios.forEach(function(f) { baseFolios[f.replace(/-\d+$/, '')] = true; });
+  var baseKeys = Object.keys(baseFolios);
+  for (var i = 0; i < baseKeys.length; i++) {
+    var bf = baseKeys[i];
+    var ventas = await supaFetch('ventas?folio=eq.' + bf + '&select=folio,total,pagado,saldo,estado&limit=1');
+    if (ventas && ventas.length > 0) {
+      orders.forEach(function(o) {
+        var f = ((o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/) || [])[1] || '';
+        if (f.replace(/-\d+$/, '') === bf) o._ventaData = ventas[0];
+      });
+    } else {
+      // Check SICAR credits
+      var credit = await supaFetch('creditos_clientes?folio_sicar=eq.' + bf + '&saldo=gt.0&select=folio_sicar,total,total_abonos,saldo,sucursal,fecha_vencimiento&limit=1');
+      if (credit && credit.length > 0) {
+        orders.forEach(function(o) {
+          var f = ((o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/) || [])[1] || '';
+          if (f.replace(/-\d+$/, '') === bf) o._ventaData = { total: credit[0].total, pagado: credit[0].total_abonos || 0, saldo: credit[0].saldo, estado: 'Crédito SICAR pendiente' };
+        });
+      }
+    }
+  }
+  return { orders: orders, sicarCredits: [] };
 }
 
 function isAskingAboutOrder(text) {
   var lower = text.toLowerCase();
-  var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo'];
+  var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo', 'pagar', 'debo', 'pendiente', 'saldo', 'adeudo', 'abono', 'cobro', 'cuánto debo', 'cuanto debo', 'liquidar'];
   return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
 }
 
@@ -283,12 +323,19 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   if (isAskingAboutOrder(userMessage)) {
     var orders = await lookupOrdersByText(userMessage);
     if (orders && orders.length > 0) {
+      await enrichOrdersWithSales(orders);
       var formatted = formatOrders(orders);
       orderContext = '\n\nPEDIDOS ENCONTRADOS:\n';
+      var shownSale = {};
       formatted.forEach(function(o, i) {
         orderContext += (i + 1) + '. ' + o.nombre + ' — Folio: ' + o.folio + '\n';
         orderContext += '   Estado: ' + o.emoji + ' ' + o.mensaje_cliente + '\n';
         orderContext += '   Sucursal: ' + o.sucursal + ' | Fecha: ' + o.fecha + '\n';
+        var baseFolio = o.folio.replace(/-\d+$/, '');
+        if (o.total_venta && !shownSale[baseFolio]) {
+          shownSale[baseFolio] = true;
+          orderContext += '   Venta folio ' + baseFolio + ': Total $' + Number(o.total_venta).toLocaleString('es-MX') + ' | Pagado $' + Number(o.pagado).toLocaleString('es-MX') + ' | Saldo $' + Number(o.saldo).toLocaleString('es-MX') + ' | ' + o.estado_pago + '\n';
+        }
       });
       orderContext += '\nINSTRUCCIONES PEDIDOS:\n' +
         '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
@@ -297,6 +344,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         '- Si la venta está Liquidada y lentes listos, confirma que puede pasar a recogerlos.\n' +
         '- PROHIBIDO decir "contacta a la sucursal" o "llama". TÚ tienes la información.\n' +
         '- Si el cliente dice que recibió un mensaje avisando que están listos, confirma que somos nosotros (Ópticas Car & Era).\n' +
+        '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
         '- No uses markdown. Sé breve (1-3 líneas).';
     } else {
       orderContext = '\n\nBÚSQUEDA DE PEDIDO: No se encontraron pedidos con esa información.\n' +
