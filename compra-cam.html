@@ -170,8 +170,12 @@ function detener() {
   active = false; processing = false;
   if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
   if (confirm('Salir del scanner? La sesion sigue activa, puedes volver.')) {
-    window.close();
-    location.href = 'about:blank';
+    // Regresar al sistema — history.back si vino de ahí, si no ir al home
+    if (document.referrer && document.referrer.includes(location.origin)) {
+      history.back();
+    } else {
+      location.href = location.origin + '/#compra-scanner';
+    }
   } else {
     startCamera();
   }
