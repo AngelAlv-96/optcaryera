@@ -6785,11 +6785,13 @@ async function _marcarEntregados(ids, asesor) {
     }
   } catch(e) { console.log('review_queue insert error:', e); }
 
-  // Cerrar modal y refrescar
+  // Cerrar modal y refrescar todas las vistas que muestran órdenes
   if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; }
   _entregaVentaData = null;
   if (typeof loadDash === 'function') loadDash();
   if (typeof loadLab === 'function') loadLab();
+  if (typeof loadLabTablero === 'function') loadLabTablero();
+  if (typeof renderLabTablero === 'function') renderLabTablero();
 }
 
 async function _promptEntregaLentes(folio) {
