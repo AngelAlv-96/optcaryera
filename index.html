@@ -26983,6 +26983,32 @@ async function csAbrirSesion(sesionId) {
   // Lista por marca
   h += '<div id="cs-scan-list" style="margin-bottom:16px"></div>';
 
+  // ── Fase 2: Review & Price Assignment ──
+  h += '<div id="cs-review-section" style="display:none;margin-bottom:16px">'
+    + '<div style="font-size:15px;font-weight:700;color:var(--beige);margin-bottom:12px">📋 Revisar y asignar precios</div>'
+    + '<div id="cs-review-list"></div>'
+    + '<div id="cs-review-actions" style="display:none;margin-top:12px;gap:8px;flex-wrap:wrap">'
+    + '<button class="btn btn-p" id="cs-btn-crear" onclick="csCrearProductos()" style="padding:10px 20px;font-size:13px;font-weight:700">✅ Crear productos</button>'
+    + '<button class="btn btn-g" onclick="csImprimirTodas()" style="padding:10px 16px;font-size:13px">🏷 Imprimir todas las etiquetas</button>'
+    + '</div></div>';
+
+  // ── Fase 2: OCR Nota proveedor ──
+  h += '<div id="cs-ocr-section" style="margin-bottom:16px">'
+    + '<details><summary style="cursor:pointer;font-size:13px;font-weight:700;color:#4aa0f0">📋 Subir nota del proveedor (OCR costos)</summary>'
+    + '<div style="background:rgba(74,160,240,.04);border:1px solid rgba(74,160,240,.15);border-radius:12px;padding:16px;margin-top:8px">'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Sube foto(s) de la nota del proveedor para extraer costos automaticamente</div>'
+    + '<div id="cs-ocr-drop" style="text-align:center">'
+    + '<input type="file" id="cs-ocr-file" accept="image/*" capture="environment" style="display:none" onchange="csOcrProcesar(this)">'
+    + '<button class="btn btn-g" onclick="document.getElementById(\'cs-ocr-file\').click()" style="padding:10px 20px;font-size:13px">📷 Tomar foto de la nota</button>'
+    + '</div>'
+    + '<div id="cs-ocr-otra" style="display:none;text-align:center;margin-top:8px">'
+    + '<button class="btn btn-g btn-sm" onclick="document.getElementById(\'cs-ocr-file\').value=\'\';document.getElementById(\'cs-ocr-file\').click()" style="font-size:11px">+ Agregar otra foto</button>'
+    + '</div>'
+    + '<div id="cs-ocr-preview" style="display:none;margin-top:10px;text-align:center"><img id="cs-ocr-img" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid rgba(255,255,255,.1)"></div>'
+    + '<div id="cs-ocr-status" style="margin-top:8px;font-size:12px"></div>'
+    + '<div id="cs-ocr-resumen" style="display:none;margin-top:10px"></div>'
+    + '</div></details></div>';
+
   content.innerHTML = h;
 
   // Generar QR
@@ -27001,6 +27027,9 @@ async function csAbrirSesion(sesionId) {
   if (isActive) {
     _csPollId = setInterval(function() { csLoadScans(sesionId); }, 3000);
   }
+
+  // Cargar review section (Fase 2)
+  await csLoadReview(sesionId);
 }
 
 async function csLoadScans(sesionId) {
@@ -27071,6 +27100,580 @@ async function csCerrarSesion(sesionId) {
   if (_csPollId) { clearInterval(_csPollId); _csPollId = null; }
   toast('Sesion cerrada');
   csAbrirSesion(sesionId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPRA SCANNER — FASE 2: Review, OCR, Create, Print
+// ═══════════════════════════════════════════════════════════
+var _csReviewData = null; // { byBrand: { MARCA: { models: { MODELO: { qty, exists, prodId, precio, costo } }, precioMarca, costoMarca, priceSuggestions } } }
+var _csOcrCostos = {};    // { MODELO: costo } — extracted from supplier note OCR
+var _csOcrFotoCount = 0;
+var _csCreating = false;
+
+async function csLoadReview(sesionId) {
+  var section = document.getElementById('cs-review-section');
+  if (!section) return;
+
+  // Get scans for this session
+  var { data: scans } = await db.from('compra_scans').select('modelo,marca').eq('sesion_id', sesionId);
+  if (!scans || !scans.length) { section.style.display = 'none'; return; }
+
+  // Group by brand → model → qty
+  var byBrand = {};
+  scans.forEach(function(s) {
+    var b = (s.marca || 'SIN MARCA').toUpperCase().trim();
+    var m = (s.modelo || '').toUpperCase().trim();
+    if (!m) return;
+    if (!byBrand[b]) byBrand[b] = { models: {}, precioMarca: '', costoMarca: '', priceSuggestions: [] };
+    if (!byBrand[b].models[m]) byBrand[b].models[m] = { qty: 0, exists: false, prodId: null, precio: '', costo: '' };
+    byBrand[b].models[m].qty++;
+  });
+
+  // Cross-reference with productos table — check existence + get price suggestions
+  var allModelos = [];
+  var brandNames = Object.keys(byBrand);
+  for (var b of brandNames) {
+    for (var m of Object.keys(byBrand[b].models)) allModelos.push(m);
+  }
+
+  // Check which models already exist in productos (by codigo_barras match)
+  if (allModelos.length) {
+    try {
+      // Batch in groups of 50 to avoid URL length issues
+      var existing = [];
+      for (var ci = 0; ci < allModelos.length; ci += 50) {
+        var batch = allModelos.slice(ci, ci + 50);
+        var { data: batchRes } = await db.from('productos').select('id,nombre,marca,codigo_barras,precio_venta,costo,stock').in('codigo_barras', batch).limit(200);
+        if (batchRes) existing = existing.concat(batchRes);
+      }
+      if (existing.length) {
+        existing.forEach(function(p) {
+          var code = (p.codigo_barras || '').toUpperCase().trim();
+          for (var b of brandNames) {
+            if (byBrand[b].models[code]) {
+              byBrand[b].models[code].exists = true;
+              byBrand[b].models[code].prodId = p.id;
+              byBrand[b].models[code].currentPrecio = p.precio_venta;
+              byBrand[b].models[code].currentStock = p.stock || 0;
+            }
+          }
+        });
+      }
+    } catch(e) { console.warn('[CS] Existence check error:', e); }
+  }
+
+  // Get price suggestions per brand
+  for (var b of brandNames) {
+    try {
+      var { data: prods } = await db.from('productos').select('precio_venta').ilike('marca', '%' + b.split(' ')[0] + '%').eq('activo', true).eq('categoria', 'Armazón').limit(500);
+      if (prods && prods.length) {
+        var pmap = {};
+        prods.forEach(function(p) {
+          var pv = Math.round(parseFloat(p.precio_venta) || 0);
+          if (pv > 0) pmap[pv] = (pmap[pv] || 0) + 1;
+        });
+        byBrand[b].priceSuggestions = Object.keys(pmap).map(function(k) { return { precio: parseInt(k), count: pmap[k] }; });
+        byBrand[b].priceSuggestions.sort(function(a, b2) { return b2.count - a.count; });
+      }
+    } catch(e) { /* ignore */ }
+  }
+
+  // Apply OCR costs if available
+  for (var b of brandNames) {
+    for (var m of Object.keys(byBrand[b].models)) {
+      if (_csOcrCostos[m]) byBrand[b].models[m].costo = _csOcrCostos[m];
+    }
+  }
+
+  _csReviewData = { byBrand: byBrand, sesionId: sesionId };
+  section.style.display = '';
+  csRenderReview();
+}
+
+function csRenderReview() {
+  if (!_csReviewData) return;
+  var byBrand = _csReviewData.byBrand;
+  var listEl = document.getElementById('cs-review-list');
+  if (!listEl) return;
+
+  var brandNames = Object.keys(byBrand).sort();
+  var h = '';
+
+  for (var bi = 0; bi < brandNames.length; bi++) {
+    var brand = brandNames[bi];
+    var bdata = byBrand[brand];
+    var modelKeys = Object.keys(bdata.models).sort();
+    var totalPcs = modelKeys.reduce(function(s, m) { return s + bdata.models[m].qty; }, 0);
+    var newCount = modelKeys.filter(function(m) { return !bdata.models[m].exists; }).length;
+    var existCount = modelKeys.length - newCount;
+
+    h += '<details open style="margin-bottom:10px">'
+      + '<summary style="cursor:pointer;background:var(--surface2);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 14px;list-style:none">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">'
+      + '<div>'
+      + '<span style="font-size:14px;font-weight:700;color:var(--beige)">' + brand + '</span>'
+      + '<span style="font-size:11px;color:var(--muted);margin-left:8px">' + totalPcs + ' pzas · ' + modelKeys.length + ' modelos</span>'
+      + (newCount ? ' <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;background:rgba(74,240,120,.12);color:#4af078">' + newCount + ' nuevos</span>' : '')
+      + (existCount ? ' <span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;background:rgba(138,176,232,.12);color:#8ab0e8">' + existCount + ' existentes</span>' : '')
+      + '</div></div>'
+      + '</summary>';
+
+    // Brand-level controls
+    h += '<div style="padding:10px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04);border-radius:0 0 10px 10px;margin-top:-1px">';
+
+    // Price suggestions chips
+    if (bdata.priceSuggestions.length) {
+      h += '<div style="margin-bottom:8px">'
+        + '<div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:600">Precios existentes de ' + brand + ':</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      bdata.priceSuggestions.slice(0, 8).forEach(function(ps) {
+        h += '<span onclick="csPrecioMarca(\'' + brand + '\',' + ps.precio + ')" style="cursor:pointer;font-size:10px;background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.2);border-radius:6px;padding:3px 8px;font-family:Outfit,sans-serif;transition:background .15s" onmouseover="this.style.background=\'rgba(200,240,74,.2)\'" onmouseout="this.style.background=\'rgba(200,240,74,.08)\'">'
+          + '<span style="font-weight:700;color:var(--accent)">$' + ps.precio.toLocaleString('es-MX') + '</span>'
+          + '<span style="color:var(--muted);margin-left:3px">(' + ps.count + ')</span></span>';
+      });
+      h += '</div></div>';
+    }
+
+    // Brand-level precio + costo
+    h += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">'
+      + '<div style="flex:1;min-width:120px"><label style="font-size:10px;color:var(--muted);font-weight:600">Precio para toda la marca</label>'
+      + '<input type="number" id="cs-precio-marca-' + brand + '" value="' + (bdata.precioMarca || '') + '" placeholder="$0" oninput="csPrecioMarcaInput(\'' + brand + '\',this.value)" style="width:100%;background:var(--surface);border:1px solid rgba(200,240,74,.2);border-radius:6px;padding:6px 10px;color:var(--white);font-size:13px;font-weight:700;font-family:Outfit,sans-serif"></div>'
+      + '<div style="flex:1;min-width:120px"><label style="font-size:10px;color:var(--muted);font-weight:600">Costo proveedor (marca)</label>'
+      + '<input type="number" id="cs-costo-marca-' + brand + '" value="' + (bdata.costoMarca || '') + '" placeholder="$0" oninput="csCostoMarcaInput(\'' + brand + '\',this.value)" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:6px 10px;color:var(--white);font-size:13px;font-family:Outfit,sans-serif"></div>'
+      + '</div>';
+
+    // Model rows
+    h += '<div style="border:1px solid rgba(255,255,255,.04);border-radius:8px;overflow:hidden">';
+    h += '<div style="display:grid;grid-template-columns:1fr 50px 80px 90px 90px;gap:1px;background:rgba(255,255,255,.03);padding:6px 10px;font-size:9px;font-weight:700;color:var(--muted)">'
+      + '<div>MODELO</div><div style="text-align:center">QTY</div><div style="text-align:center">ESTADO</div><div style="text-align:center">PRECIO</div><div style="text-align:center">COSTO</div></div>';
+
+    for (var mi = 0; mi < modelKeys.length; mi++) {
+      var modelo = modelKeys[mi];
+      var mdata = bdata.models[modelo];
+      var isNew = !mdata.exists;
+      var badgeColor = isNew ? 'rgba(74,240,120,.12)' : 'rgba(138,176,232,.12)';
+      var badgeText = isNew ? 'NUEVO' : 'YA EXISTE';
+      var badgeTextColor = isNew ? '#4af078' : '#8ab0e8';
+      var bgColor = mi % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.015)';
+
+      h += '<div style="display:grid;grid-template-columns:1fr 50px 80px 90px 90px;gap:1px;padding:5px 10px;align-items:center;background:' + bgColor + '">'
+        + '<div style="font-size:12px;font-weight:600;color:var(--white);font-family:monospace">' + modelo + '</div>'
+        + '<div style="text-align:center;font-size:12px;font-weight:700;color:#c8f04a">x' + mdata.qty + '</div>'
+        + '<div style="text-align:center"><span style="font-size:8px;font-weight:700;padding:2px 6px;border-radius:6px;background:' + badgeColor + ';color:' + badgeTextColor + '">' + badgeText + '</span></div>'
+        + '<div style="text-align:center"><input type="number" value="' + (mdata.precio || '') + '" placeholder="$" oninput="csModeloPrecio(\'' + brand + '\',\'' + modelo + '\',this.value)" style="width:72px;background:var(--surface);border:1px solid rgba(200,240,74,.15);border-radius:4px;padding:3px 6px;color:var(--white);font-size:11px;text-align:center;font-family:Outfit,sans-serif"></div>'
+        + '<div style="text-align:center"><input type="number" value="' + (mdata.costo || '') + '" placeholder="$" oninput="csModeloCosto(\'' + brand + '\',\'' + modelo + '\',this.value)" style="width:72px;background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:3px 6px;color:var(--white);font-size:11px;text-align:center;font-family:Outfit,sans-serif"></div>'
+        + '</div>';
+    }
+    h += '</div>';
+
+    // Per-brand print button
+    h += '<div style="margin-top:8px;text-align:right">'
+      + '<button class="btn btn-g btn-sm" onclick="csImprimirMarca(\'' + brand + '\')" style="font-size:10px;padding:4px 10px">🏷 Imprimir etiquetas ' + brand + '</button>'
+      + '</div>';
+
+    h += '</div></details>';
+  }
+
+  listEl.innerHTML = h;
+
+  // Show/hide action buttons based on whether any prices are set
+  var actionsEl = document.getElementById('cs-review-actions');
+  if (actionsEl) actionsEl.style.display = csHasAnyPrices() ? 'flex' : 'none';
+}
+
+function csHasAnyPrices() {
+  if (!_csReviewData) return false;
+  var byBrand = _csReviewData.byBrand;
+  for (var b of Object.keys(byBrand)) {
+    for (var m of Object.keys(byBrand[b].models)) {
+      if (parseFloat(byBrand[b].models[m].precio) > 0) return true;
+    }
+    if (parseFloat(byBrand[b].precioMarca) > 0) return true;
+  }
+  return false;
+}
+
+// Set price for ALL models in a brand from chip click
+function csPrecioMarca(brand, precio) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  _csReviewData.byBrand[brand].precioMarca = precio;
+  var input = document.getElementById('cs-precio-marca-' + brand);
+  if (input) input.value = precio;
+  // Fill all model prices
+  var models = _csReviewData.byBrand[brand].models;
+  for (var m of Object.keys(models)) {
+    models[m].precio = precio;
+  }
+  csRenderReview();
+}
+
+// Brand-level precio input change
+function csPrecioMarcaInput(brand, val) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  var precio = parseFloat(val) || 0;
+  _csReviewData.byBrand[brand].precioMarca = precio > 0 ? precio : '';
+  // Fill all models that don't have individual price
+  if (precio > 0) {
+    var models = _csReviewData.byBrand[brand].models;
+    for (var m of Object.keys(models)) {
+      models[m].precio = precio;
+    }
+  }
+  // No full re-render to avoid losing focus, just update action buttons
+  var actionsEl = document.getElementById('cs-review-actions');
+  if (actionsEl) actionsEl.style.display = csHasAnyPrices() ? 'flex' : 'none';
+}
+
+// Brand-level costo input change
+function csCostoMarcaInput(brand, val) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  var costo = parseFloat(val) || 0;
+  _csReviewData.byBrand[brand].costoMarca = costo > 0 ? costo : '';
+  if (costo > 0) {
+    var models = _csReviewData.byBrand[brand].models;
+    for (var m of Object.keys(models)) {
+      models[m].costo = costo;
+    }
+  }
+}
+
+// Individual model precio input
+function csModeloPrecio(brand, modelo, val) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  _csReviewData.byBrand[brand].models[modelo].precio = parseFloat(val) || '';
+  var actionsEl = document.getElementById('cs-review-actions');
+  if (actionsEl) actionsEl.style.display = csHasAnyPrices() ? 'flex' : 'none';
+}
+
+// Individual model costo input
+function csModeloCosto(brand, modelo, val) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  _csReviewData.byBrand[brand].models[modelo].costo = parseFloat(val) || '';
+}
+
+// ── OCR: Supplier Note ──
+async function csOcrProcesar(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var st = document.getElementById('cs-ocr-status');
+  st.innerHTML = '<span style="color:var(--accent)">⏳ Analizando nota del proveedor… 10-20 segundos</span>';
+
+  // Preview
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('cs-ocr-img').src = e.target.result;
+    document.getElementById('cs-ocr-preview').style.display = '';
+  };
+  reader.readAsDataURL(file);
+
+  var base64 = await new Promise(function(res, rej) {
+    var r = new FileReader();
+    r.onload = function() { res(r.result.split(',')[1]); };
+    r.onerror = function() { rej(new Error('Error leyendo archivo')); };
+    r.readAsDataURL(file);
+  });
+
+  var mediaType = file.type || 'image/jpeg';
+
+  // Build context of scanned models
+  var modelosCtx = '';
+  if (_csReviewData) {
+    var allModels = [];
+    for (var b of Object.keys(_csReviewData.byBrand)) {
+      for (var m of Object.keys(_csReviewData.byBrand[b].models)) {
+        allModels.push(m + ' (marca: ' + b + ')');
+      }
+    }
+    if (allModels.length) {
+      modelosCtx = '\n\nMODELOS ESCANEADOS en esta sesion (mapea los codigos de la nota a estos modelos):\n' + allModels.join(', ');
+    }
+  }
+
+  try {
+    var resp = await fetch('/.netlify/functions/ia-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        max_tokens: 4096,
+        system: 'Eres un asistente que extrae datos de notas/tickets de proveedores de armazones opticos.\n' +
+          'El ticket puede tener columnas como: Cant, Unit, Codigo, Pre.Unit, Monto.\n' +
+          'El Codigo es el modelo del armazon (ej: SM1515, ZB2274, HP1027, MA2501).\n' +
+          'El Pre.Unit o Monto/Cant es el precio de COMPRA (costo por unidad).\n\n' +
+          'INSTRUCCIONES PARA NOTAS MANUSCRITAS:\n' +
+          '- Lee con mucho cuidado cada linea. La caligrafia puede ser dificil.\n' +
+          '- Los numeros escritos a mano pueden confundirse: 1/7, 3/8, 4/9, 5/6.\n' +
+          '- Cantidades suelen ser 1-20 piezas. Precios de compra tipicos: $50-$300 por armazon.\n' +
+          '- Si hay tachones o correcciones, usa el ultimo valor visible.\n\n' +
+          'INSTRUCCIONES PARA NOTAS IMPRESAS:\n' +
+          '- Extrae exactamente como aparece el codigo del modelo.\n' +
+          '- Busca encabezados de columnas para identificar que numero es que.\n\n' +
+          'Extrae TODOS los items. Para cada uno identifica:\n' +
+          '- codigo: el codigo/modelo exacto como aparece (ej: SM1515)\n' +
+          '- costo: el precio unitario de COMPRA\n' +
+          'RESPONDE UNICAMENTE con un JSON array, sin markdown ni explicacion:\n' +
+          '[{"codigo":"SM1515","costo":80},{"codigo":"ZB2274","costo":60}]\n' +
+          'Si un mismo codigo aparece varias veces con el mismo precio, incluyelo UNA sola vez.\n' +
+          'Si aparece con precios diferentes, incluyelo con cada precio diferente.' + modelosCtx,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: 'Extrae los codigos y precios de compra de esta nota de proveedor de armazones. Responde solo JSON.' }
+          ]
+        }],
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+
+    if (!resp.ok) {
+      var err = await resp.json();
+      st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + (err.error || 'Error desconocido') + '</span>';
+      return;
+    }
+
+    var data = await resp.json();
+    var text = '';
+    if (data.content) data.content.forEach(function(c) { if (c.type === 'text') text += c.text; });
+
+    // Clean markdown fences
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    var jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      st.innerHTML = '<span style="color:#f04a6a">❌ No se pudo leer la nota. Intenta con foto mas clara.</span>';
+      return;
+    }
+
+    var items = JSON.parse(jsonMatch[0]);
+    var nuevos = 0;
+    items.forEach(function(item) {
+      if (item.codigo && item.costo > 0) {
+        var cod = item.codigo.toUpperCase().trim();
+        if (!_csOcrCostos[cod]) nuevos++;
+        _csOcrCostos[cod] = parseFloat(item.costo);
+      }
+    });
+
+    _csOcrFotoCount++;
+
+    // Apply extracted costs to review data
+    if (_csReviewData) {
+      for (var b of Object.keys(_csReviewData.byBrand)) {
+        for (var m of Object.keys(_csReviewData.byBrand[b].models)) {
+          if (_csOcrCostos[m] && !_csReviewData.byBrand[b].models[m].costo) {
+            _csReviewData.byBrand[b].models[m].costo = _csOcrCostos[m];
+          }
+        }
+      }
+      csRenderReview();
+    }
+
+    // Render OCR summary
+    csOcrRenderResumen();
+    document.getElementById('cs-ocr-otra').style.display = '';
+    document.getElementById('cs-ocr-drop').style.display = 'none';
+
+  } catch(e) {
+    st.innerHTML = '<span style="color:#f04a6a">❌ Error: ' + e.message + '</span>';
+    console.error('[CS OCR]', e);
+  }
+}
+
+function csOcrRenderResumen() {
+  var keys = Object.keys(_csOcrCostos);
+  var st = document.getElementById('cs-ocr-status');
+  st.innerHTML = '<span style="color:var(--accent)">✓ ' + keys.length + ' modelos de ' + _csOcrFotoCount + ' foto(s) — costos aplicados automaticamente</span>';
+
+  var resDiv = document.getElementById('cs-ocr-resumen');
+  resDiv.style.display = '';
+  var html = '<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">COSTOS EXTRAIDOS (' + keys.length + ' modelos)</div>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:4px">';
+  keys.sort().forEach(function(k) {
+    // Highlight if this model matches a scanned model
+    var matched = _csReviewData && Object.keys(_csReviewData.byBrand).some(function(b) { return _csReviewData.byBrand[b].models[k]; });
+    var borderColor = matched ? 'rgba(200,240,74,.3)' : 'rgba(255,255,255,.08)';
+    var bgColor = matched ? 'rgba(200,240,74,.06)' : 'rgba(255,255,255,.05)';
+    html += '<span style="font-size:9px;background:' + bgColor + ';border:1px solid ' + borderColor + ';border-radius:4px;padding:2px 6px;font-family:Outfit,sans-serif">' + k + ' <span style="color:var(--accent);font-weight:700">$' + _csOcrCostos[k] + '</span></span>';
+  });
+  html += '</div>';
+  resDiv.innerHTML = html;
+}
+
+// ── Create Products ──
+async function csCrearProductos() {
+  if (_csCreating) return;
+  if (!_csReviewData) { toast('No hay datos para crear', true); return; }
+
+  var byBrand = _csReviewData.byBrand;
+  var toCreate = []; // { brand, modelo, qty, precio, costo, isNew, prodId }
+  var missing = [];
+
+  for (var b of Object.keys(byBrand)) {
+    var marcaPrecio = parseFloat(byBrand[b].precioMarca) || 0;
+    var marcaCosto = parseFloat(byBrand[b].costoMarca) || 0;
+    for (var m of Object.keys(byBrand[b].models)) {
+      var mdata = byBrand[b].models[m];
+      var precio = parseFloat(mdata.precio) || marcaPrecio;
+      var costo = parseFloat(mdata.costo) || marcaCosto;
+      if (!precio) { missing.push(m); continue; }
+      toCreate.push({
+        brand: b, modelo: m, qty: mdata.qty, precio: precio, costo: costo,
+        isNew: !mdata.exists, prodId: mdata.prodId, currentStock: mdata.currentStock || 0
+      });
+    }
+  }
+
+  if (missing.length) {
+    toast('Faltan precios en ' + missing.length + ' modelos: ' + missing.slice(0, 5).join(', ') + (missing.length > 5 ? '...' : ''), true);
+    return;
+  }
+
+  if (!toCreate.length) { toast('No hay modelos con precios asignados', true); return; }
+
+  var newCount = toCreate.filter(function(t) { return t.isNew; }).length;
+  var updCount = toCreate.filter(function(t) { return !t.isNew; }).length;
+  var msg = 'Se van a procesar ' + toCreate.length + ' modelos:\n';
+  if (newCount) msg += '• ' + newCount + ' NUEVOS (se crean en catalogo)\n';
+  if (updCount) msg += '• ' + updCount + ' EXISTENTES (se actualiza stock)\n';
+  msg += '\nContinuar?';
+  if (!confirm(msg)) return;
+
+  _csCreating = true;
+  var btn = document.getElementById('cs-btn-crear');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Creando...'; }
+
+  var created = 0, updated = 0, errors = 0;
+
+  try {
+    for (var i = 0; i < toCreate.length; i++) {
+      var item = toCreate[i];
+      var ts = new Date().toISOString();
+
+      if (item.isNew) {
+        // INSERT new product
+        var res = await fetch('/.netlify/functions/dbwrite', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'insert', table: 'productos',
+            auth: { id: currentUser?.id, pass: currentUser?.pass },
+            data: {
+              nombre: item.brand + ' ' + item.modelo,
+              marca: item.brand,
+              modelo: item.modelo,
+              categoria: 'Armazón',
+              codigo_barras: item.modelo,
+              precio_venta: item.precio,
+              costo: item.costo,
+              stock: item.qty,
+              stock_minimo: 1,
+              activo: true,
+              updated_at: ts
+            }
+          })
+        });
+        var json = await res.json();
+        if (json.error) { console.warn('[CS] Insert error:', json.error, item.modelo); errors++; }
+        else { created++; }
+      } else {
+        // UPDATE existing product — add stock
+        var newStock = item.currentStock + item.qty;
+        var updateData = { stock: newStock, updated_at: ts };
+        // Only update price if it changed
+        if (item.precio) updateData.precio_venta = item.precio;
+        if (item.costo) updateData.costo = item.costo;
+
+        var res2 = await fetch('/.netlify/functions/dbwrite', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update', table: 'productos',
+            auth: { id: currentUser?.id, pass: currentUser?.pass },
+            data: updateData,
+            filters: [{ column: 'id', op: 'eq', value: item.prodId }]
+          })
+        });
+        var json2 = await res2.json();
+        if (json2.error) { console.warn('[CS] Update error:', json2.error, item.modelo); errors++; }
+        else { updated++; }
+      }
+    }
+
+    // Mark session as cerrada
+    await db.from('compra_sesiones').update({ estado: 'cerrada', updated_at: new Date().toISOString() }).eq('id', _csReviewData.sesionId);
+    if (_csPollId) { clearInterval(_csPollId); _csPollId = null; }
+
+    var resultMsg = '✅ Procesados ' + toCreate.length + ' modelos';
+    if (created) resultMsg += ' · ' + created + ' creados';
+    if (updated) resultMsg += ' · ' + updated + ' actualizados';
+    if (errors) resultMsg += ' · ⚠ ' + errors + ' errores';
+    toast(resultMsg);
+
+    // Clear caches
+    delete _amPrecioCache;
+    _amPrecioCache = {};
+
+    // Reload the session
+    csAbrirSesion(_csReviewData.sesionId);
+
+  } catch(e) {
+    toast('Error creando productos: ' + e.message, true);
+    console.error('[CS]', e);
+  } finally {
+    _csCreating = false;
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Crear productos'; }
+  }
+}
+
+// ── Print Labels ──
+async function csImprimirMarca(brand) {
+  if (!_csReviewData || !_csReviewData.byBrand[brand]) return;
+  if (!_amPrinterConnected || !amPrinter) {
+    toast('⚠ Conecta la impresora de etiquetas primero (seccion Alta Masiva)', true);
+    return;
+  }
+  var models = _csReviewData.byBrand[brand].models;
+  var marcaPrecio = parseFloat(_csReviewData.byBrand[brand].precioMarca) || 0;
+  var count = 0;
+  for (var m of Object.keys(models)) {
+    var mdata = models[m];
+    var precio = parseFloat(mdata.precio) || marcaPrecio;
+    if (!precio) continue;
+    for (var q = 0; q < mdata.qty; q++) {
+      await amImprimirEtiqueta({
+        marca: brand, modelo: m, precio: precio,
+        codigo: m
+      });
+      count++;
+      // Small delay between prints
+      if (count > 1) await new Promise(function(r) { setTimeout(r, 300); });
+    }
+  }
+  toast('🏷 ' + count + ' etiquetas impresas de ' + brand);
+}
+
+async function csImprimirTodas() {
+  if (!_csReviewData) return;
+  if (!_amPrinterConnected || !amPrinter) {
+    toast('⚠ Conecta la impresora de etiquetas primero (seccion Alta Masiva)', true);
+    return;
+  }
+  var totalCount = 0;
+  for (var b of Object.keys(_csReviewData.byBrand)) {
+    var models = _csReviewData.byBrand[b].models;
+    var marcaPrecio = parseFloat(_csReviewData.byBrand[b].precioMarca) || 0;
+    for (var m of Object.keys(models)) {
+      var mdata = models[m];
+      var precio = parseFloat(mdata.precio) || marcaPrecio;
+      if (!precio) continue;
+      for (var q = 0; q < mdata.qty; q++) {
+        await amImprimirEtiqueta({
+          marca: b, modelo: m, precio: precio,
+          codigo: m
+        });
+        totalCount++;
+        if (totalCount > 1) await new Promise(function(r) { setTimeout(r, 300); });
+      }
+    }
+  }
+  toast('🏷 ' + totalCount + ' etiquetas impresas en total');
 }
 </script>
 </body>
