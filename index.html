@@ -4418,19 +4418,17 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
       <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:4px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div>
-            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Disponible en caja</div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Efectivo MXN disponible</div>
             <div style="font-size:22px;font-weight:700;color:var(--beige);margin-top:2px" id="retiro-disponible">$0.00</div>
           </div>
           <div style="font-size:28px">🏦</div>
         </div>
         <div id="retiro-desglose" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-            <span>Efectivo MXN</span><span id="retiro-desg-efvo">$0</span>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Aparte hay en caja:</div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:#34d399;margin-bottom:2px">
+            <span>💵 Dólares</span><span id="retiro-desg-dolar">$0</span>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#34d399;margin-bottom:3px">
-            <span>Dólar</span><span id="retiro-desg-dolar">$0</span>
-          </div>
-          <div id="retiro-desg-usd-row" style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;padding-left:12px">
+          <div id="retiro-desg-usd-row" style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding-left:14px">
             <span id="retiro-desg-usd-detail"></span>
           </div>
         </div>
@@ -21373,26 +21371,29 @@ function abrirRetiro() {
   const efectivoDolar = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s, p) => s + Number(p.monto), 0);
   const efectivoCreditos = (cajaDayData.creditoAbonos||[]).filter(a => (a.metodo_pago||'').toLowerCase() === 'efectivo').reduce((s, a) => s + Number(a.monto), 0);
   const dolarCreditos = (cajaDayData.creditoAbonos||[]).filter(a => (a.metodo_pago||'').toLowerCase() === 'dólar' || (a.metodo_pago||'').toLowerCase() === 'dolar').reduce((s, a) => s + Number(a.monto), 0);
-  const totalRetiros = cajaDayData.retiros.reduce((s, r) => s + Number(r.monto), 0);
-  retiroDisponible = fondo + efectivo + efectivoDolar + efectivoCreditos + dolarCreditos - totalRetiros;
+  // Separar retiros: MXN vs USD (los USD tienen obs "Retiro USD")
+  const retirosMXN = cajaDayData.retiros.filter(r => !(r.observaciones||'').startsWith('Retiro USD')).reduce((s, r) => s + Number(r.monto), 0);
+  const retirosUSD = cajaDayData.retiros.filter(r => (r.observaciones||'').startsWith('Retiro USD')).reduce((s, r) => s + Number(r.monto), 0);
+  // retiroDisponible AHORA representa SOLO efectivo MXN (separado de dólares)
+  retiroDisponible = fondo + efectivo + efectivoCreditos - retirosMXN;
 
-  // Calcular USD disponibles (billetes originales)
+  // Calcular USD disponibles (billetes originales) menos los ya retirados
   const usdVentas = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s, p) => s + Number(p.monto_usd || 0), 0);
   const usdCreditos = (cajaDayData.creditoAbonos||[]).filter(a => (a.metodo_pago||'').toLowerCase() === 'dólar' || (a.metodo_pago||'').toLowerCase() === 'dolar').reduce((s, a) => s + Number(a.monto_usd || 0), 0);
-  _retiroDolarUSDDisp = usdVentas + usdCreditos;
-  _retiroDolarMXNDisp = efectivoDolar + dolarCreditos;
+  var tcRef = _tipoCambio || 17;
+  _retiroDolarMXNDisp = Math.max(0, efectivoDolar + dolarCreditos - retirosUSD);
+  // USD físicos restantes = USD totales - (retiros USD convertidos a USD al TC actual)
+  _retiroDolarUSDDisp = Math.max(0, (usdVentas + usdCreditos) - (retirosUSD / tcRef));
   const hayDolar = _retiroDolarMXNDisp > 0;
-  const efvoSinDolar = fondo + efectivo + efectivoCreditos - totalRetiros;
 
   document.getElementById('retiro-disponible').textContent = '$' + retiroDisponible.toFixed(2);
 
-  // Desglose
+  // Desglose: muestra los DÓLARES disponibles aparte (el MXN ya está arriba)
   const desgEl = document.getElementById('retiro-desglose');
   if (hayDolar) {
     desgEl.style.display = '';
-    document.getElementById('retiro-desg-efvo').textContent = '$' + (fondo + efectivo + efectivoCreditos - totalRetiros).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
-    document.getElementById('retiro-desg-dolar').textContent = '$' + _retiroDolarMXNDisp.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
-    document.getElementById('retiro-desg-usd-detail').textContent = 'USD $' + _retiroDolarUSDDisp.toFixed(2) + ' a TC $' + (_tipoCambio || 17).toFixed(2);
+    document.getElementById('retiro-desg-dolar').textContent = '$' + _retiroDolarMXNDisp.toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' MXN';
+    document.getElementById('retiro-desg-usd-detail').textContent = 'USD $' + _retiroDolarUSDDisp.toFixed(2) + ' a TC $' + tcRef.toFixed(2);
   } else {
     desgEl.style.display = 'none';
   }
@@ -21451,16 +21452,14 @@ async function registrarRetiroDolar() {
   const suc = (currentUser?.sucursal === 'Todas') ? (document.getElementById('caja-suc-selector')?.value || 'Américas') : (currentUser?.sucursal || 'Todas');
   const today = hoyLocal();
   try {
-    const { data: retirosActuales } = await db.from('retiros_caja').select('monto').eq('corte_id', cajaData.id);
-    const totalRetirosActual = (retirosActuales || []).reduce((s, r) => s + Number(r.monto), 0);
-    const fondo = Number(cajaData.fondo_inicial) || 0;
-    const efectivo = cajaDayData.pagos.filter(p => p.metodo_pago === 'Efectivo').reduce((s, p) => s + Number(p.monto), 0);
+    const { data: retirosActuales } = await db.from('retiros_caja').select('monto, observaciones').eq('corte_id', cajaData.id);
+    const retirosUSDActual = (retirosActuales || []).filter(r => (r.observaciones||'').startsWith('Retiro USD')).reduce((s, r) => s + Number(r.monto), 0);
     const efectivoDolar = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s, p) => s + Number(p.monto), 0);
-    const efectivoCreditos = (cajaDayData.creditoAbonos || []).filter(a => (a.metodo_pago || '').toLowerCase() === 'efectivo').reduce((s, a) => s + Number(a.monto), 0);
     const dolarCreditos = (cajaDayData.creditoAbonos||[]).filter(a => (a.metodo_pago||'').toLowerCase() === 'dólar' || (a.metodo_pago||'').toLowerCase() === 'dolar').reduce((s, a) => s + Number(a.monto), 0);
-    const disponibleReal = fondo + efectivo + efectivoDolar + efectivoCreditos + dolarCreditos - totalRetirosActual;
-    if (montoMXN > disponibleReal + 0.01) {
-      toast('❌ Saldo insuficiente. Disponible real: $' + disponibleReal.toFixed(2), true);
+    // Solo se valida contra el pool de DÓLARES (no mezclado con MXN)
+    const dolarDisponible = Math.max(0, efectivoDolar + dolarCreditos - retirosUSDActual);
+    if (montoMXN > dolarDisponible + 0.01) {
+      toast('❌ Solo hay $' + dolarDisponible.toFixed(2) + ' MXN en dólares', true);
       return;
     }
     const obsAuto = 'Retiro USD $' + usd.toFixed(2) + ' a TC $' + tc.toFixed(2);
@@ -21517,17 +21516,15 @@ async function registrarRetiro() {
   const today = hoyLocal();
   try {
     // ── VERIFICACIÓN EN TIEMPO REAL contra la DB ──
-    // Recalcula disponible con retiros actuales (evita doble retiro si otro proceso ya insertó)
-    const { data: retirosActuales } = await db.from('retiros_caja').select('monto').eq('corte_id', cajaData.id);
-    const totalRetirosActual = (retirosActuales || []).reduce((s, r) => s + Number(r.monto), 0);
+    // Solo se valida contra MXN efectivo (los dólares son pool aparte)
+    const { data: retirosActuales } = await db.from('retiros_caja').select('monto, observaciones').eq('corte_id', cajaData.id);
+    const retirosMXNActual = (retirosActuales || []).filter(r => !(r.observaciones||'').startsWith('Retiro USD')).reduce((s, r) => s + Number(r.monto), 0);
     const fondo = Number(cajaData.fondo_inicial) || 0;
     const efectivo = cajaDayData.pagos.filter(p => p.metodo_pago === 'Efectivo').reduce((s, p) => s + Number(p.monto), 0);
-    const efectivoDolar = cajaDayData.pagos.filter(p => p.metodo_pago === 'Dólar').reduce((s, p) => s + Number(p.monto), 0);
     const efectivoCreditos = (cajaDayData.creditoAbonos || []).filter(a => (a.metodo_pago || '').toLowerCase() === 'efectivo').reduce((s, a) => s + Number(a.monto), 0);
-    const dolarCreditos = (cajaDayData.creditoAbonos||[]).filter(a => (a.metodo_pago||'').toLowerCase() === 'dólar' || (a.metodo_pago||'').toLowerCase() === 'dolar').reduce((s, a) => s + Number(a.monto), 0);
-    const disponibleReal = fondo + efectivo + efectivoDolar + efectivoCreditos + dolarCreditos - totalRetirosActual;
+    const disponibleReal = fondo + efectivo + efectivoCreditos - retirosMXNActual;
     if (monto > disponibleReal + 0.01) {
-      toast(`❌ Saldo insuficiente. Disponible real: $${disponibleReal.toFixed(2)}`, true);
+      toast(`❌ Saldo insuficiente. Efectivo MXN disponible: $${disponibleReal.toFixed(2)}`, true);
       return;
     }
     const { error } = await db.from('retiros_caja').insert({
