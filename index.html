@@ -5420,7 +5420,7 @@ function go(id) {
   if (id === 'ventas')              { if (!vtaItems || !vtaItems.length) { initVenta(); } cargarVtaPendientes(); setTimeout(()=>document.getElementById('vta-pac-search')?.focus(),150); }
   if (id === 'promociones')          { cargarPromociones(); }
   if (id === 'caja')                 { initCaja(); }
-  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _csBtn=document.getElementById('btn-compra-scanner'); if(_csBtn) _csBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _npBtn=document.getElementById('btn-prod-nuevo'); if(_npBtn) _npBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; }
+  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _csBtn=document.getElementById('btn-compra-scanner'); if(_csBtn) _csBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; var _npBtn=document.getElementById('btn-prod-nuevo'); if(_npBtn) _npBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; }
   if (id === 'alta-masiva')         { amInit(); }
   if (id === 'compra-scanner')     { csInit(); }
   if (id === 'compras-lab')         { clbInit(); }
@@ -26960,7 +26960,7 @@ async function csAbrirSesion(sesionId) {
   if (isActive) {
     var scanUrlDirect = scannerUrl + '&user=' + encodeURIComponent(currentUser?.nombre || currentUser?.id || 'Admin');
     h += '<div style="text-align:center;margin-bottom:16px">'
-      + '<button onclick="location.href=\'' + scanUrlDirect + '\'" style="width:100%;padding:18px;background:linear-gradient(135deg,#c8f04a,#7cc440);border:none;border-radius:14px;color:#000;font-size:16px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:8px">📷 Empezar a escanear</button>'
+      + '<button onclick="location.href=\'' + scanUrlDirect + '\'" style="width:100%;padding:18px;background:linear-gradient(135deg,#c8f04a,#7cc440);border:none;border-radius:14px;color:#000;font-size:16px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif">📷 Empezar a escanear</button>'
       + '</div>';
     h += '<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:12px;color:var(--muted);text-align:center">📱 Compartir con otra persona</summary>'
       + '<div style="background:rgba(200,240,74,.04);border:1px solid rgba(200,240,74,.15);border-radius:12px;padding:16px;margin-top:8px;text-align:center">'
