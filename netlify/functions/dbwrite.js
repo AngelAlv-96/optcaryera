@@ -29,7 +29,8 @@ const ALLOWED_TABLES = [
   'compras_lab','precios_materiales','proveedores_lab',
   'mapeo_materiales','catalogo_tienda','reglas_materiales',
   'asistencia','asistencia_firmas','gastos','facturas',
-  'inventario_auditorias','review_queue'
+  'inventario_auditorias','review_queue',
+  'compra_sesiones','compra_scans'
 ];
 
 async function supaREST(method, path, body, extraHeaders) {

@@ -3695,6 +3695,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-left"><h2>Productos</h2><p>Cat&aacute;logo e inventario</p></div>
           <div class="topbar-right">
             <button class="btn btn-g btn-sm" onclick="cargarProductos()">🔄</button>
+            <button class="btn btn-g btn-sm" onclick="go('compra-scanner')" id="btn-compra-scanner" style="display:none">🛒 Compras</button>
             <button class="btn btn-g btn-sm" onclick="go('alta-masiva')" id="btn-alta-masiva" style="display:none">📷 Alta masiva</button>
             <button class="btn btn-p btn-sm" onclick="mostrarFormProducto()" id="btn-prod-nuevo">+ Nuevo</button>
           </div>
@@ -4108,6 +4109,23 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           </div>
         </div>
       </div>
+      <!-- ═══ COMPRA SCANNER ═══ -->
+      <div class="view" id="view-compra-scanner">
+        <div class="topbar">
+          <div class="topbar-left"><h2>🛒 Compras</h2><p>Escaneo masivo de armazones en proveedor</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="go('productos')">← Productos</button>
+            <button class="btn btn-p btn-sm" onclick="csNuevaSesion()">+ Nueva sesi&oacute;n</button>
+          </div>
+        </div>
+        <div class="body" style="padding:16px">
+          <div id="cs-content">
+            <!-- Sesiones activas -->
+            <div id="cs-sesiones"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ ALTA MASIVA ARMAZONES ═══ -->
       <div class="view" id="view-alta-masiva">
         <div class="topbar">
@@ -5384,7 +5402,7 @@ function go(id) {
   const viewEl = document.getElementById('view-' + id);
   if (!viewEl) { console.error('[go] View not found: view-' + id); return; }
   viewEl.classList.add('active');
-  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, estrategia:24, 'auditoria-pedidos':25, configuracion:26, clari:27, landings:28, 'lc-crm':19, 'alta-masiva':13 };
+  const map = { dashboard:0, agenda:1, pacientes:2, preregistro:3, historia:4, orden:5, laboratorio:6, 'lab-proceso':7, 'surtido-station':8, 'reporte-materiales':9, 'compras-lab':10, garantias:11, ventas:12, productos:13, 'historial-ventas':14, promociones:15, catalogo:16, caja:17, creditos:18, 'lentes-contacto':19, 'vision-segura':20, comisiones:21, asistencia:22, contabilidad:23, estrategia:24, 'auditoria-pedidos':25, configuracion:26, clari:27, landings:28, 'lc-crm':19, 'alta-masiva':13, 'compra-scanner':13 };
   document.querySelectorAll('.nav-item')[map[id]]?.classList.add('active');
   closeSidebar();
   const mainEl = document.querySelector('.main');
@@ -5402,8 +5420,9 @@ function go(id) {
   if (id === 'ventas')              { if (!vtaItems || !vtaItems.length) { initVenta(); } cargarVtaPendientes(); setTimeout(()=>document.getElementById('vta-pac-search')?.focus(),150); }
   if (id === 'promociones')          { cargarPromociones(); }
   if (id === 'caja')                 { initCaja(); }
-  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _npBtn=document.getElementById('btn-prod-nuevo'); if(_npBtn) _npBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; }
+  if (id === 'productos')           { cargarProductos(); var _amBtn=document.getElementById('btn-alta-masiva'); if(_amBtn) _amBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _csBtn=document.getElementById('btn-compra-scanner'); if(_csBtn) _csBtn.style.display=currentUser?.rol==='admin'?'':'none'; var _npBtn=document.getElementById('btn-prod-nuevo'); if(_npBtn) _npBtn.style.display=(currentUser?.rol==='admin'||currentUser?.rol==='gerencia')?'':'none'; }
   if (id === 'alta-masiva')         { amInit(); }
+  if (id === 'compra-scanner')     { csInit(); }
   if (id === 'compras-lab')         { clbInit(); }
   if (id === 'historial-ventas')    { hvPage=0; initHistorialFechas(); cargarHistorialVentas(); }
   if (id === 'catalogo')             { loadCatalogoView(); }
@@ -26865,6 +26884,191 @@ function amEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;
 document.addEventListener('visibilitychange',function(){
   if(document.hidden && amSesionPollId) { /* keep polling — desktop stays open */ }
 });
+
+// ═══════════════════════════════════════════════════════════
+// COMPRA SCANNER — Escaneo masivo de armazones en proveedor
+// ═══════════════════════════════════════════════════════════
+var _csSesionActiva = null;
+var _csPollId = null;
+
+async function csInit() {
+  var content = document.getElementById('cs-sesiones');
+  content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Cargando sesiones...</div>';
+  try {
+    var { data: sesiones } = await db.from('compra_sesiones').select('*').order('created_at', { ascending: false }).limit(20);
+    if (!sesiones || !sesiones.length) {
+      content.innerHTML = '<div style="text-align:center;padding:40px">'
+        + '<div style="font-size:48px;margin-bottom:16px">🛒</div>'
+        + '<div style="font-size:16px;font-weight:700;color:var(--beige);margin-bottom:8px">Sin sesiones de compra</div>'
+        + '<div style="font-size:13px;color:var(--muted);margin-bottom:20px">Crea una sesion para empezar a escanear armazones</div>'
+        + '<button class="btn btn-p" onclick="csNuevaSesion()" style="padding:12px 24px;font-size:14px">+ Nueva sesion de compra</button>'
+        + '</div>';
+      return;
+    }
+    var h = '<div style="display:grid;gap:12px">';
+    for (var s of sesiones) {
+      var isActive = s.estado === 'activa';
+      var fecha = new Date(s.created_at).toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false, timeZone:'America/Chihuahua' });
+      h += '<div style="background:var(--surface2);border:1px solid ' + (isActive ? 'rgba(200,240,74,.3)' : 'rgba(255,255,255,.06)') + ';border-radius:12px;padding:14px 16px;cursor:pointer" onclick="csAbrirSesion(\'' + s.id + '\')">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center">'
+        + '<div><div style="font-size:14px;font-weight:700;color:' + (isActive ? '#c8f04a' : 'var(--white)') + '">' + (s.nombre || 'Sesion ' + s.id.substring(0,8)) + '</div>'
+        + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + fecha + ' · por ' + (s.created_by || '?') + '</div></div>'
+        + '<span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;background:' + (isActive ? 'rgba(200,240,74,.15)' : 'rgba(255,255,255,.06)') + ';color:' + (isActive ? '#c8f04a' : 'var(--muted)') + '">' + s.estado + '</span>'
+        + '</div></div>';
+    }
+    h += '</div>';
+    content.innerHTML = h;
+  } catch(e) {
+    content.innerHTML = '<div style="color:#e08080;padding:20px">Error: ' + e.message + '</div>';
+  }
+}
+
+async function csNuevaSesion() {
+  var nombre = prompt('Nombre de la sesion (ej: Compra SEIMA Abril):');
+  if (!nombre) return;
+  var id = 'CS' + Date.now().toString(36).toUpperCase();
+  try {
+    await db.from('compra_sesiones').insert({ id: id, nombre: nombre, created_by: currentUser?.nombre || currentUser?.id || 'admin' });
+    toast('Sesion creada: ' + nombre);
+    csAbrirSesion(id);
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+async function csAbrirSesion(sesionId) {
+  _csSesionActiva = sesionId;
+  var content = document.getElementById('cs-sesiones');
+  content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted)">Cargando sesion...</div>';
+
+  // Cargar datos de la sesion
+  var { data: sesion } = await db.from('compra_sesiones').select('*').eq('id', sesionId).single();
+  if (!sesion) { toast('Sesion no encontrada', true); csInit(); return; }
+
+  var isActive = sesion.estado === 'activa';
+  var scannerUrl = location.origin + '/compra-cam.html?sesion=' + sesionId;
+
+  var h = '<div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+    + '<div><div style="font-size:18px;font-weight:700;color:var(--beige)">' + (sesion.nombre || sesionId) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted)">ID: ' + sesionId + ' · ' + sesion.estado + '</div></div>'
+    + '<div style="display:flex;gap:6px">'
+    + '<button class="btn btn-g btn-sm" onclick="csInit()">← Volver</button>'
+    + (isActive ? '<button class="btn btn-g btn-sm" onclick="csCerrarSesion(\'' + sesionId + '\')">🔒 Cerrar sesion</button>' : '')
+    + '</div></div>';
+
+  // QR y link para celulares
+  if (isActive) {
+    h += '<div style="background:rgba(200,240,74,.04);border:1px solid rgba(200,240,74,.15);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">'
+      + '<div style="font-size:13px;font-weight:700;color:#c8f04a;margin-bottom:8px">📱 Escanear desde celular</div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Abre este link en tu celular para empezar a escanear:</div>'
+      + '<div id="cs-qr-container" style="margin:0 auto 12px;width:200px;height:200px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center"></div>'
+      + '<input type="text" value="' + scannerUrl + '" readonly onclick="this.select();document.execCommand(\'copy\');toast(\'Link copiado\')" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;color:var(--white);font-size:11px;font-family:monospace;text-align:center;cursor:pointer">'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Toca para copiar · Cada persona abre el link en su celular</div>'
+      + '</div>';
+  }
+
+  // Stats
+  h += '<div id="cs-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">'
+    + '<div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:#c8f04a" id="cs-stat-total">0</div><div style="font-size:10px;color:var(--muted)">Piezas</div></div>'
+    + '<div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:var(--white)" id="cs-stat-modelos">0</div><div style="font-size:10px;color:var(--muted)">Modelos</div></div>'
+    + '<div style="background:var(--surface2);border-radius:10px;padding:12px;text-align:center"><div style="font-size:24px;font-weight:800;color:var(--beige)" id="cs-stat-marcas">0</div><div style="font-size:10px;color:var(--muted)">Marcas</div></div>'
+    + '</div>';
+
+  // Por usuario
+  h += '<div id="cs-by-user" style="margin-bottom:16px"></div>';
+
+  // Lista por marca
+  h += '<div id="cs-scan-list" style="margin-bottom:16px"></div>';
+
+  content.innerHTML = h;
+
+  // Generar QR
+  if (isActive && typeof qrcode !== 'undefined') {
+    try {
+      var qr = qrcode(0, 'M');
+      qr.addData(scannerUrl);
+      qr.make();
+      document.getElementById('cs-qr-container').innerHTML = qr.createImgTag(5, 10);
+    } catch(e) { document.getElementById('cs-qr-container').innerHTML = '<div style="font-size:10px;color:#888">QR no disponible</div>'; }
+  }
+
+  // Cargar scans y empezar polling
+  await csLoadScans(sesionId);
+  if (_csPollId) clearInterval(_csPollId);
+  if (isActive) {
+    _csPollId = setInterval(function() { csLoadScans(sesionId); }, 3000);
+  }
+}
+
+async function csLoadScans(sesionId) {
+  if (_csSesionActiva !== sesionId) { if (_csPollId) { clearInterval(_csPollId); _csPollId = null; } return; }
+  try {
+    var { data: scans } = await db.from('compra_scans').select('id,modelo,marca,scanned_by,created_at').eq('sesion_id', sesionId).order('created_at', { ascending: false });
+    if (!scans) return;
+
+    // Stats
+    document.getElementById('cs-stat-total').textContent = scans.length;
+    var modelos = new Set(scans.map(function(s){ return s.modelo; }));
+    document.getElementById('cs-stat-modelos').textContent = modelos.size;
+    var marcas = new Set(scans.map(function(s){ return s.marca; }).filter(Boolean));
+    document.getElementById('cs-stat-marcas').textContent = marcas.size;
+
+    // Por usuario
+    var byUser = {};
+    scans.forEach(function(s) { byUser[s.scanned_by || '?'] = (byUser[s.scanned_by || '?'] || 0) + 1; });
+    var uh = '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+    Object.entries(byUser).forEach(function(e) {
+      uh += '<div style="background:rgba(138,176,232,.08);border:1px solid rgba(138,176,232,.15);border-radius:8px;padding:6px 12px;font-size:12px"><span style="color:#8ab0e8;font-weight:700">👤 ' + e[0] + '</span> <span style="color:var(--white);font-weight:800;margin-left:4px">' + e[1] + '</span></div>';
+    });
+    uh += '</div>';
+    document.getElementById('cs-by-user').innerHTML = uh;
+
+    // Agrupar por marca → modelo → count
+    var byBrand = {};
+    scans.forEach(function(s) {
+      var b = s.marca || 'Sin marca';
+      if (!byBrand[b]) byBrand[b] = {};
+      if (!byBrand[b][s.modelo]) byBrand[b][s.modelo] = 0;
+      byBrand[b][s.modelo]++;
+    });
+
+    var lh = '';
+    var sortedBrands = Object.entries(byBrand).sort(function(a, b) {
+      var ta = Object.values(a[1]).reduce(function(s,v){return s+v},0);
+      var tb = Object.values(b[1]).reduce(function(s,v){return s+v},0);
+      return tb - ta;
+    });
+    for (var bi = 0; bi < sortedBrands.length; bi++) {
+      var brand = sortedBrands[bi][0];
+      var models = sortedBrands[bi][1];
+      var brandTotal = Object.values(models).reduce(function(s,v){return s+v},0);
+      var modelCount = Object.keys(models).length;
+      lh += '<details' + (bi < 3 ? ' open' : '') + ' style="margin-bottom:8px">'
+        + '<summary style="cursor:pointer;background:var(--surface2);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--beige);display:flex;justify-content:space-between;align-items:center;list-style:none">'
+        + '<span>' + brand + '</span>'
+        + '<span style="font-size:11px;color:var(--muted);font-weight:400">' + brandTotal + ' pzas · ' + modelCount + ' modelos</span>'
+        + '</summary>';
+      lh += '<div style="padding:4px 0 4px 14px">';
+      var sortedModels = Object.entries(models).sort(function(a,b){ return b[1] - a[1]; });
+      for (var mi = 0; mi < sortedModels.length; mi++) {
+        lh += '<div style="display:flex;justify-content:space-between;padding:3px 8px;font-size:12px;border-bottom:1px solid rgba(255,255,255,.03)">'
+          + '<span style="color:var(--white)">' + sortedModels[mi][0] + '</span>'
+          + '<span style="color:#c8f04a;font-weight:700">' + (sortedModels[mi][1] > 1 ? 'x' + sortedModels[mi][1] : '') + '</span>'
+          + '</div>';
+      }
+      lh += '</div></details>';
+    }
+    document.getElementById('cs-scan-list').innerHTML = lh;
+  } catch(e) { console.warn('[CS] Poll error:', e); }
+}
+
+async function csCerrarSesion(sesionId) {
+  if (!confirm('Cerrar esta sesion? Los datos se conservan pero ya no se podra escanear.')) return;
+  await db.from('compra_sesiones').update({ estado: 'cerrada', updated_at: new Date().toISOString() }).eq('id', sesionId);
+  if (_csPollId) { clearInterval(_csPollId); _csPollId = null; }
+  toast('Sesion cerrada');
+  csAbrirSesion(sesionId);
+}
 </script>
 </body>
 </html>

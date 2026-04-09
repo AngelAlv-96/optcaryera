@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Compra Scanner - Car & Era</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+#video{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1}
+#canvas{display:none}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between}
+
+/* TOP BAR */
+#top-bar{pointer-events:all;background:linear-gradient(to bottom,rgba(0,0,0,.85) 0%,transparent 100%);padding:env(safe-area-inset-top,14px) 14px 24px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+#top-left{flex:1;min-width:0}
+#top-title{font-size:14px;font-weight:700;color:#fff;letter-spacing:.03em}
+#top-user{font-size:10px;color:rgba(255,255,255,.5);margin-top:2px}
+#stats-bar{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.stat-chip{background:rgba(255,255,255,.1);border-radius:12px;padding:3px 10px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;gap:4px}
+.stat-chip .num{color:#c8f04a;font-size:13px}
+#btn-stop{background:rgba(240,74,106,.2);border:1px solid rgba(240,74,106,.5);color:#f04a6a;font-size:11px;font-weight:700;padding:6px 12px;border-radius:16px;cursor:pointer;flex-shrink:0}
+
+/* CENTER */
+#center-area{display:flex;align-items:center;justify-content:center;flex:1}
+#finder-box{width:240px;height:160px;border:2px solid rgba(200,240,74,.4);border-radius:12px;position:relative}
+#scan-line{position:absolute;left:10%;width:80%;height:2px;background:linear-gradient(90deg,transparent,#c8f04a,transparent);top:50%;opacity:0;transition:opacity .3s}
+#scan-line.active{opacity:1;animation:scanMove 2s ease-in-out infinite}
+@keyframes scanMove{0%,100%{top:20%}50%{top:80%}}
+
+/* FLASH OVERLAY */
+#flash{position:fixed;top:0;left:0;width:100%;height:100%;z-index:5;pointer-events:none;opacity:0;transition:opacity .15s}
+
+/* BOTTOM */
+#bottom{pointer-events:all;background:linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 100%);padding:16px 14px env(safe-area-inset-bottom,14px);max-height:45vh;overflow-y:auto}
+#last-scan{text-align:center;margin-bottom:10px;min-height:28px}
+#last-modelo{font-size:22px;font-weight:800;color:#c8f04a;letter-spacing:.05em}
+#last-marca{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+#last-count{font-size:12px;color:#f0b44a;font-weight:700}
+
+/* BUTTONS */
+#btn-row{display:flex;gap:8px;margin-bottom:10px;justify-content:center}
+#btn-capture{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#c8f04a,#7cc440);border:3px solid rgba(255,255,255,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;transition:transform .1s}
+#btn-capture:active{transform:scale(.9)}
+#btn-manual{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px}
+#btn-undo{width:40px;height:40px;border-radius:50%;background:rgba(240,74,106,.15);border:1px solid rgba(240,74,106,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;display:none}
+
+/* SCAN LIST */
+#scan-list{max-height:120px;overflow-y:auto}
+.scan-row{display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.scan-modelo{font-weight:700;color:#fff;flex:1}
+.scan-marca{color:rgba(255,255,255,.4);font-size:10px}
+.scan-qty{color:#c8f04a;font-weight:800;font-size:13px;min-width:24px;text-align:right}
+.scan-time{color:rgba(255,255,255,.25);font-size:9px}
+
+/* MANUAL INPUT OVERLAY */
+#manual-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:20;background:rgba(0,0,0,.85);align-items:center;justify-content:center}
+#manual-box{background:#1a1a1a;border:1px solid rgba(200,240,74,.3);border-radius:16px;padding:24px;width:90%;max-width:340px;text-align:center}
+#manual-input{width:100%;background:#111;border:2px solid rgba(200,240,74,.3);border-radius:10px;padding:14px;color:#fff;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase;outline:none;font-family:monospace;letter-spacing:.1em}
+#manual-input:focus{border-color:#c8f04a}
+
+/* STATUS */
+#status-bar{text-align:center;margin-bottom:8px}
+#status-text{font-size:11px;color:rgba(255,255,255,.4)}
+.processing #status-text{color:#f0b44a}
+</style>
+</head>
+<body>
+<video id="video" autoplay playsinline muted></video>
+<canvas id="canvas"></canvas>
+<div id="flash"></div>
+
+<div id="ui">
+  <div id="top-bar">
+    <div id="top-left">
+      <div id="top-title">Compra Scanner</div>
+      <div id="top-user"></div>
+      <div id="stats-bar">
+        <div class="stat-chip"><span class="num" id="stat-total">0</span> piezas</div>
+        <div class="stat-chip"><span class="num" id="stat-modelos">0</span> modelos</div>
+        <div class="stat-chip"><span class="num" id="stat-marcas">0</span> marcas</div>
+      </div>
+    </div>
+    <button id="btn-stop" onclick="detener()">Salir</button>
+  </div>
+
+  <div id="center-area">
+    <div id="finder-box"><div id="scan-line"></div></div>
+  </div>
+
+  <div id="bottom">
+    <div id="last-scan">
+      <div id="last-modelo">Apunta a la varilla</div>
+      <div id="last-marca"></div>
+      <div id="last-count"></div>
+    </div>
+    <div id="status-bar"><span id="status-text">Toca el boton para capturar</span></div>
+    <div id="btn-row">
+      <button id="btn-undo" onclick="undoLast()" title="Deshacer ultimo">↩</button>
+      <button id="btn-capture" onclick="capturar()">📷</button>
+      <button id="btn-manual" onclick="abrirManual()" title="Escribir modelo">⌨️</button>
+    </div>
+    <div id="scan-list"></div>
+  </div>
+</div>
+
+<!-- MANUAL INPUT -->
+<div id="manual-overlay" onclick="if(event.target===this)cerrarManual()">
+  <div id="manual-box">
+    <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px">Escribir modelo</div>
+    <input type="text" id="manual-input" placeholder="SM1515" autocomplete="off" autocapitalize="characters">
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:center">
+      <button onclick="cerrarManual()" style="padding:10px 20px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
+      <button onclick="guardarManual()" style="padding:10px 20px;background:#c8f04a;border:none;border-radius:10px;color:#000;font-size:13px;font-weight:700;cursor:pointer">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var sesionId = null;
+var userName = '';
+var stream = null;
+var active = false;
+var processing = false;
+var scanHistory = []; // [{modelo, marca, count, ids}]
+var lastUndoId = null;
+var API_URL = '/.netlify/functions/frame-ocr';
+
+// ═══ INIT ═══
+(function(){
+  var params = new URLSearchParams(location.search);
+  sesionId = params.get('sesion');
+  userName = params.get('user') || '';
+  if (!sesionId) {
+    document.getElementById('last-modelo').textContent = 'Error: sin sesion';
+    document.getElementById('last-modelo').style.color = '#f04a6a';
+    return;
+  }
+  if (!userName) {
+    userName = prompt('Tu nombre (para identificar tus escaneos):') || 'Anonimo';
+  }
+  document.getElementById('top-user').textContent = '👤 ' + userName + ' · Sesion ' + sesionId.substring(0,8);
+  startCamera();
+  // Cargar scans existentes
+  loadExistingScans();
+})();
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080} },
+      audio: false
+    });
+    var video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    active = true;
+    document.getElementById('scan-line').classList.add('active');
+    setStatus('Listo para escanear');
+  } catch(e) {
+    setStatus('Sin acceso a camara');
+    document.getElementById('last-modelo').textContent = 'Activa la camara';
+    document.getElementById('last-modelo').style.color = '#f04a6a';
+  }
+}
+
+function detener() {
+  active = false; processing = false;
+  if (stream) stream.getTracks().forEach(function(t){ t.stop(); });
+  if (confirm('Salir del scanner? La sesion sigue activa, puedes volver.')) {
+    window.close();
+    location.href = 'about:blank';
+  } else {
+    startCamera();
+  }
+}
+
+// ═══ CAPTURE ═══
+async function capturar() {
+  if (!active || processing) return;
+  processing = true;
+  var btn = document.getElementById('btn-capture');
+  btn.style.opacity = '0.5';
+  setStatus('Analizando...');
+
+  try {
+    var video = document.getElementById('video');
+    var canvas = document.getElementById('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    var base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+
+    var resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        sesion_id: sesionId,
+        image_base64: base64,
+        scanned_by: userName,
+        media_type: 'image/jpeg'
+      })
+    });
+
+    var data = await resp.json();
+    if (!resp.ok || data.error) {
+      flash('#f04a6a');
+      setStatus(data.error || 'Error');
+      vibrate([100, 50, 100]);
+      return;
+    }
+
+    if (data.modelos && data.modelos.length > 0) {
+      var m = data.modelos[0];
+      flash('#c8f04a');
+      vibrate([50]);
+      showDetected(m.modelo, m.marca, m.id);
+      lastUndoId = m.id;
+      document.getElementById('btn-undo').style.display = '';
+    } else {
+      flash('#f0b44a');
+      vibrate([100, 50, 100]);
+      setStatus('No detectado - intenta otro angulo');
+      document.getElementById('last-modelo').textContent = '? No leido';
+      document.getElementById('last-modelo').style.color = '#f0b44a';
+    }
+
+    if (data.stats) updateStats(data.stats);
+
+  } catch(e) {
+    flash('#f04a6a');
+    setStatus('Error: ' + e.message);
+  } finally {
+    processing = false;
+    btn.style.opacity = '1';
+  }
+}
+
+function showDetected(modelo, marca, id) {
+  // Actualizar historial local
+  var existing = scanHistory.find(function(s){ return s.modelo === modelo; });
+  if (existing) {
+    existing.count++;
+    existing.ids.push(id);
+    document.getElementById('last-count').textContent = 'x' + existing.count;
+    document.getElementById('last-count').style.display = '';
+  } else {
+    scanHistory.unshift({ modelo: modelo, marca: marca, count: 1, ids: [id] });
+    document.getElementById('last-count').style.display = 'none';
+  }
+  document.getElementById('last-modelo').textContent = modelo;
+  document.getElementById('last-modelo').style.color = '#c8f04a';
+  document.getElementById('last-marca').textContent = marca || '';
+  setStatus('Guardado');
+  renderScanList();
+}
+
+function renderScanList() {
+  var html = '';
+  var show = scanHistory.slice(0, 20);
+  for (var i = 0; i < show.length; i++) {
+    var s = show[i];
+    html += '<div class="scan-row">'
+      + '<span class="scan-modelo">' + s.modelo + '</span>'
+      + '<span class="scan-marca">' + (s.marca || '') + '</span>'
+      + '<span class="scan-qty">' + (s.count > 1 ? 'x' + s.count : '') + '</span>'
+      + '</div>';
+  }
+  if (scanHistory.length > 20) {
+    html += '<div style="text-align:center;font-size:10px;color:rgba(255,255,255,.3);padding:4px">+' + (scanHistory.length - 20) + ' mas...</div>';
+  }
+  document.getElementById('scan-list').innerHTML = html;
+}
+
+function updateStats(stats) {
+  document.getElementById('stat-total').textContent = stats.total || 0;
+  document.getElementById('stat-modelos').textContent = stats.unique || 0;
+  document.getElementById('stat-marcas').textContent = stats.marcas || 0;
+}
+
+// ═══ MANUAL ENTRY ═══
+function abrirManual() {
+  document.getElementById('manual-overlay').style.display = 'flex';
+  var input = document.getElementById('manual-input');
+  input.value = '';
+  setTimeout(function(){ input.focus(); }, 100);
+}
+
+function cerrarManual() {
+  document.getElementById('manual-overlay').style.display = 'none';
+}
+
+async function guardarManual() {
+  var modelo = document.getElementById('manual-input').value.trim().toUpperCase();
+  if (!modelo) return;
+  cerrarManual();
+  processing = true;
+  setStatus('Guardando...');
+
+  try {
+    var resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        sesion_id: sesionId,
+        manual_modelo: modelo,
+        scanned_by: userName
+      })
+    });
+    var data = await resp.json();
+    if (data.ok && data.modelos?.length) {
+      var m = data.modelos[0];
+      flash('#c8f04a');
+      vibrate([50]);
+      showDetected(m.modelo, m.marca, m.id);
+      lastUndoId = m.id;
+      document.getElementById('btn-undo').style.display = '';
+    }
+    if (data.stats) updateStats(data.stats);
+  } catch(e) {
+    setStatus('Error: ' + e.message);
+  } finally {
+    processing = false;
+  }
+}
+
+// ═══ UNDO LAST ═══
+async function undoLast() {
+  if (!lastUndoId) return;
+  try {
+    // Borrar via dbwrite
+    var resp = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        action: 'delete',
+        table: 'compra_scans',
+        filters: [{ column: 'id', operator: 'eq', value: lastUndoId }],
+        auth: { id: 'admin', pass: 'car2024ad' }
+      })
+    });
+    // Quitar del historial local
+    for (var i = 0; i < scanHistory.length; i++) {
+      var idx = scanHistory[i].ids.indexOf(lastUndoId);
+      if (idx >= 0) {
+        scanHistory[i].ids.splice(idx, 1);
+        scanHistory[i].count--;
+        if (scanHistory[i].count <= 0) scanHistory.splice(i, 1);
+        break;
+      }
+    }
+    lastUndoId = null;
+    document.getElementById('btn-undo').style.display = 'none';
+    renderScanList();
+    // Refresh stats
+    var scans = await fetch(location.origin + '/rest/v1/compra_scans?sesion_id=eq.' + sesionId + '&select=modelo,marca,scanned_by', {
+      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imljc25sZ2VlcmVlcGVzYnJkamhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc2NjcyMjMsImV4cCI6MjA1MzI0MzIyM30.sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm' }
+    }).then(function(r){ return r.json(); }).catch(function(){ return []; });
+    var total = scans.length;
+    var unique = new Set(scans.map(function(s){return s.modelo})).size;
+    var brands = new Set(scans.map(function(s){return s.marca}).filter(Boolean)).size;
+    updateStats({total:total, unique:unique, marcas:brands});
+    setStatus('Ultimo deshecho');
+    vibrate([30]);
+  } catch(e) {
+    setStatus('Error al deshacer');
+  }
+}
+
+// ═══ LOAD EXISTING ═══
+async function loadExistingScans() {
+  try {
+    var SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+    var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imljc25sZ2VlcmVlcGVzYnJkamhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzc2NjcyMjMsImV4cCI6MjA1MzI0MzIyM30.sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+    var resp = await fetch(SUPA_URL + '/rest/v1/compra_scans?sesion_id=eq.' + sesionId + '&select=id,modelo,marca,scanned_by&order=created_at.desc', {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY }
+    });
+    var scans = await resp.json();
+    if (!Array.isArray(scans) || !scans.length) return;
+
+    // Rebuild local history from DB
+    scanHistory = [];
+    var modelMap = {};
+    for (var i = scans.length - 1; i >= 0; i--) {
+      var s = scans[i];
+      if (!modelMap[s.modelo]) {
+        modelMap[s.modelo] = { modelo: s.modelo, marca: s.marca || '', count: 0, ids: [] };
+        scanHistory.unshift(modelMap[s.modelo]);
+      }
+      modelMap[s.modelo].count++;
+      modelMap[s.modelo].ids.push(s.id);
+    }
+
+    var unique = new Set(scans.map(function(s){return s.modelo})).size;
+    var brands = new Set(scans.map(function(s){return s.marca}).filter(Boolean)).size;
+    updateStats({ total: scans.length, unique: unique, marcas: brands });
+    renderScanList();
+
+    if (scans.length > 0) {
+      document.getElementById('last-modelo').textContent = scans[0].modelo;
+      document.getElementById('last-modelo').style.color = '#c8f04a';
+      document.getElementById('last-marca').textContent = scans[0].marca || '';
+      var topCount = modelMap[scans[0].modelo]?.count || 1;
+      if (topCount > 1) {
+        document.getElementById('last-count').textContent = 'x' + topCount;
+        document.getElementById('last-count').style.display = '';
+      }
+    }
+  } catch(e) {
+    console.warn('Load existing scans:', e);
+  }
+}
+
+// ═══ HELPERS ═══
+function flash(color) {
+  var el = document.getElementById('flash');
+  el.style.background = color;
+  el.style.opacity = '0.3';
+  setTimeout(function(){ el.style.opacity = '0'; }, 200);
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function setStatus(text) {
+  document.getElementById('status-text').textContent = text;
+}
+</script>
+</body>
+</html>
