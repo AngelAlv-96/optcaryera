@@ -26956,15 +26956,18 @@ async function csAbrirSesion(sesionId) {
     + (isActive ? '<button class="btn btn-g btn-sm" onclick="csCerrarSesion(\'' + sesionId + '\')">🔒 Cerrar sesion</button>' : '')
     + '</div></div>';
 
-  // QR y link para celulares
+  // Botón escanear directo + QR para otros
   if (isActive) {
-    h += '<div style="background:rgba(200,240,74,.04);border:1px solid rgba(200,240,74,.15);border-radius:12px;padding:16px;margin-bottom:16px;text-align:center">'
-      + '<div style="font-size:13px;font-weight:700;color:#c8f04a;margin-bottom:8px">📱 Escanear desde celular</div>'
-      + '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Abre este link en tu celular para empezar a escanear:</div>'
-      + '<div id="cs-qr-container" style="margin:0 auto 12px;width:200px;height:200px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center"></div>'
-      + '<input type="text" value="' + scannerUrl + '" readonly onclick="this.select();document.execCommand(\'copy\');toast(\'Link copiado\')" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;color:var(--white);font-size:11px;font-family:monospace;text-align:center;cursor:pointer">'
-      + '<div style="font-size:10px;color:var(--muted);margin-top:6px">Toca para copiar · Cada persona abre el link en su celular</div>'
+    var scanUrlDirect = scannerUrl + '&user=' + encodeURIComponent(currentUser?.nombre || currentUser?.id || 'Admin');
+    h += '<div style="text-align:center;margin-bottom:16px">'
+      + '<button onclick="location.href=\'' + scanUrlDirect + '\'" style="width:100%;padding:18px;background:linear-gradient(135deg,#c8f04a,#7cc440);border:none;border-radius:14px;color:#000;font-size:16px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;margin-bottom:8px">📷 Empezar a escanear</button>'
       + '</div>';
+    h += '<details style="margin-bottom:16px"><summary style="cursor:pointer;font-size:12px;color:var(--muted);text-align:center">📱 Compartir con otra persona</summary>'
+      + '<div style="background:rgba(200,240,74,.04);border:1px solid rgba(200,240,74,.15);border-radius:12px;padding:16px;margin-top:8px;text-align:center">'
+      + '<div id="cs-qr-container" style="margin:0 auto 12px;width:180px;height:180px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center"></div>'
+      + '<input type="text" value="' + scannerUrl + '" readonly onclick="this.select();document.execCommand(\'copy\');toast(\'Link copiado\')" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 12px;color:var(--white);font-size:11px;font-family:monospace;text-align:center;cursor:pointer">'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:6px">La otra persona abre este link en su celular</div>'
+      + '</div></details>';
   }
 
   // Stats
