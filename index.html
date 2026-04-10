@@ -25409,6 +25409,47 @@ var AM_SALES_REF = {
   ]
 };
 
+// ── MAPA SERIES SALES: modelo sin ceros → {marca, costo, pv} ──
+var _amSalesSeriesMap = null;
+function _amBuildSeriesMap() {
+  if (_amSalesSeriesMap) return;
+  _amSalesSeriesMap = [];
+  Object.keys(AM_SALES_REF).forEach(function(marca) {
+    AM_SALES_REF[marca].forEach(function(it) {
+      if (it.m === '\u2014' || it.m === 'Nombre') return;
+      // Serie = modelo sin ceros trailing y sin espacios (CM68000 → CM68, MRN21000 → MRN21)
+      var raw = it.m.replace(/\s*\(.*\)/, '').trim().toUpperCase(); // quitar "(81504)" etc
+      var serie = raw.replace(/0+$/, '').replace(/[-\s]/g, '');
+      if (serie.length < 2) return;
+      _amSalesSeriesMap.push({ serie: serie, raw: raw, marca: marca, c: it.c, pv: it.pv, ref: it.ref });
+    });
+  });
+  // Ordenar por largo de serie (más largo = más específico primero)
+  _amSalesSeriesMap.sort(function(a, b) { return b.serie.length - a.serie.length; });
+}
+
+function amSalesDetectByModel(modelo) {
+  if (!modelo || modelo.length < 2) return null;
+  _amBuildSeriesMap();
+  var mod = modelo.toUpperCase().replace(/0+$/, '').replace(/[-\s]/g, '');
+  // 1. Match exacto de serie
+  var exact = _amSalesSeriesMap.find(function(e) { return e.serie === mod; });
+  if (exact) return exact;
+  // 2. El modelo escrito empieza con una serie conocida (MRN21045 → MRN21)
+  var prefix = _amSalesSeriesMap.find(function(e) { return mod.indexOf(e.serie) === 0 && e.serie.length >= 3; });
+  if (prefix) return prefix;
+  // 3. Una serie empieza con lo que escribió (MRN2 → MRN21 si es único)
+  var starts = _amSalesSeriesMap.filter(function(e) { return e.serie.indexOf(mod) === 0; });
+  if (starts.length === 1) return starts[0];
+  // 4. Múltiples matches de misma marca = retornar el primero (misma marca, diferente serie)
+  if (starts.length > 1) {
+    var marcas = {};
+    starts.forEach(function(e) { marcas[e.marca] = (marcas[e.marca]||0) + 1; });
+    if (Object.keys(marcas).length === 1) return starts[0]; // todos de la misma marca
+  }
+  return null;
+}
+
 // ── PANEL REFERENCIA SALES ──
 var _amSalesOpen = false;
 function amSalesToggle() {
@@ -26786,18 +26827,49 @@ function amTicketRenderResumen() {
 }
 
 // Auto-detect marca from barcode prefix (SM→SEIMA, ZB→ZABDI, etc.) + costo del ticket
+// + Auto-detect por serie SALES (MRN21→MARINA, costo $139, precio $2,900)
 function amRqAutoDetect(val) {
-  if (!val || val.length < 4) return;
+  if (!val || val.length < 2) return;
   var code = val.toUpperCase().trim();
+  var marcaEl = document.getElementById('am-rq-marca');
+  var costoEl = document.getElementById('am-rq-costo');
+  var precioEl = document.getElementById('am-rq-precio');
+  var st = document.getElementById('am-rq-status');
+
+  // 1. Prefijo proveedor (SM→SEIMA, ZB→ZABDI, etc.)
   var marca = amDetectPrefix(code);
   if (marca) {
-    // SIEMPRE sobreescribir marca al detectar prefijo (fix: antes dejaba la marca del escaneo anterior)
-    var marcaEl = document.getElementById('am-rq-marca');
     if (marcaEl) marcaEl.value = marca;
-    // Auto-llenar costo del ticket precargado
-    if (_amTicketCostos[code]) {
-      var costoEl = document.getElementById('am-rq-costo');
-      if (costoEl) costoEl.value = _amTicketCostos[code];
+    if (_amTicketCostos[code] && costoEl) costoEl.value = _amTicketCostos[code];
+    return;
+  }
+
+  // 2. Serie SALES — detectar marca+costo+precio por patrón del modelo
+  if (code.length >= 3) {
+    var salesMatch = amSalesDetectByModel(code);
+    if (salesMatch) {
+      // Auto-llenar marca si está vacío o ya tenía un auto-fill anterior
+      if (marcaEl && (!marcaEl.value || marcaEl.dataset.salesAuto === '1')) {
+        marcaEl.value = salesMatch.marca;
+        marcaEl.dataset.salesAuto = '1';
+      }
+      // Auto-llenar costo si está vacío
+      if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0) {
+        costoEl.value = salesMatch.c;
+      }
+      // Auto-llenar precio si está vacío
+      if (precioEl && !parseFloat(precioEl.value) && salesMatch.pv > 0) {
+        precioEl.value = salesMatch.pv;
+      }
+      // Status feedback
+      if (st) {
+        var margen = salesMatch.pv > 0 ? Math.round((1 - salesMatch.c / salesMatch.pv) * 100) : 0;
+        st.innerHTML = '📋 <b style="color:#4ac8f0">SALES</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
+          ' &rarr; costo <b>$' + salesMatch.c + '</b>' +
+          (salesMatch.pv > 0 ? ' &rarr; venta <b style="color:var(--accent);font-size:13px">$' + salesMatch.pv.toLocaleString('es-MX') + '</b> (' + margen + '%)' : ' <span style="color:#f0b84a">sin precio ref</span>') +
+          ' <span style="color:rgba(255,255,255,.3)">[' + salesMatch.ref + ']</span>';
+        st.style.color = '#4ac8f0';
+      }
     }
   }
 }
@@ -27179,10 +27251,14 @@ async function amRqConfirmar() {
   }
 
   // Limpiar para siguiente entrada
-  document.getElementById('am-rq-marca').value = '';
+  var _marcaEl = document.getElementById('am-rq-marca');
+  _marcaEl.value = '';
+  _marcaEl.dataset.salesAuto = '0';
   document.getElementById('am-rq-modelo').value = '';
   document.getElementById('am-rq-precio').value = '';
   if (document.getElementById('am-rq-costo')) document.getElementById('am-rq-costo').value = '';
+  var _matchEl = document.getElementById('am-sales-match');
+  if (_matchEl) _matchEl.style.display = 'none';
   st.textContent = '✓ Guardado e impreso — listo para el siguiente';
   st.style.color = 'var(--accent)';
   document.getElementById('am-rq-modelo').focus();
