@@ -26926,7 +26926,7 @@ async function amPrecioLoadMarca(marca) {
       if (pv > 0) map[pv] = (map[pv]||0) + 1;
     });
     var items = Object.keys(map).map(function(k) { return { precio: parseInt(k), count: map[k] }; });
-    items.sort(function(a,b) { return b.count - a.count; }); // más usados primero
+    items.sort(function(a,b) { return a.precio - b.precio; }); // orden numérico ascendente
     _amPrecioCache[marcaBase] = items;
     amPrecioRender(items);
   } catch(e) { console.warn('amPrecioLoad:', e); }
@@ -26939,12 +26939,26 @@ function amPrecioRender(items) {
   if (!list) return;
   if (!items.length) { list.style.display = 'none'; return; }
   list.style.display = '';
+  // Precio actual en el campo para resaltarlo
+  var currentPv = parseFloat(document.getElementById('am-rq-precio').value) || 0;
+  var currentIdx = -1;
   list.innerHTML = items.map(function(it, i) {
-    return '<div class="am-precio-opt" data-idx="' + i + '" onclick="amPrecioSelect(' + i + ')" onmouseover="amPrecioHover(' + i + ')" style="padding:6px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-family:Outfit,sans-serif;border-bottom:1px solid rgba(255,255,255,.05);transition:background .1s">' +
-      '<span style="font-weight:700;color:var(--accent)">$' + it.precio.toLocaleString('es-MX') + '</span>' +
+    var isCurrent = currentPv > 0 && it.precio === currentPv;
+    if (isCurrent) currentIdx = i;
+    return '<div class="am-precio-opt" data-idx="' + i + '" onclick="amPrecioSelect(' + i + ')" onmouseover="amPrecioHover(' + i + ')" style="padding:6px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-family:Outfit,sans-serif;border-bottom:1px solid rgba(255,255,255,.05);transition:background .1s' +
+      (isCurrent ? ';background:rgba(200,240,74,.12);border-left:3px solid var(--accent)' : '') + '">' +
+      '<span style="font-weight:700;color:' + (isCurrent ? 'var(--accent)' : 'var(--white)') + '">$' + it.precio.toLocaleString('es-MX') + (isCurrent ? ' ◂' : '') + '</span>' +
       '<span style="font-size:9px;color:var(--muted)">' + it.count + ' producto' + (it.count>1?'s':'') + '</span>' +
     '</div>';
   }).join('');
+  // Scroll para centrar el precio actual
+  if (currentIdx >= 0) {
+    _amPrecioIdx = currentIdx;
+    setTimeout(function() {
+      var opts = list.querySelectorAll('.am-precio-opt');
+      if (opts[currentIdx]) opts[currentIdx].scrollIntoView({ block: 'center' });
+    }, 10);
+  }
 }
 
 function amPrecioHover(idx) {
@@ -26986,8 +27000,8 @@ function amPrecioKeydown(e) {
     e.preventDefault();
     _amPrecioIdx = Math.min(_amPrecioIdx + 1, _amPrecioItems.length - 1);
     amPrecioHighlight();
-    // Preview en campo
     if (_amPrecioItems[_amPrecioIdx]) document.getElementById('am-rq-precio').value = _amPrecioItems[_amPrecioIdx].precio;
+    _amPrecioManual = true;
     return;
   }
   if (visible && e.key === 'ArrowUp') {
@@ -26995,6 +27009,7 @@ function amPrecioKeydown(e) {
     _amPrecioIdx = Math.max(_amPrecioIdx - 1, 0);
     amPrecioHighlight();
     if (_amPrecioItems[_amPrecioIdx]) document.getElementById('am-rq-precio').value = _amPrecioItems[_amPrecioIdx].precio;
+    _amPrecioManual = true;
     return;
   }
   if (e.key === 'Enter') {
