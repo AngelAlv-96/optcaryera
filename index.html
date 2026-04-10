@@ -25550,6 +25550,15 @@ function amSalesLookup(marca, modelo) {
   if (!marca) return null;
   var key = marca.toUpperCase();
   var items = AM_SALES_REF[key];
+  // Fuzzy: FUNKYFREED → FUNKY FRED, FUNKY → FUNKY FRED, etc.
+  if (!items) {
+    var keyClean = key.replace(/[^A-Z]/g, '');
+    var found = Object.keys(AM_SALES_REF).find(function(k) {
+      var kClean = k.replace(/[^A-Z]/g, '');
+      return kClean === keyClean || kClean.indexOf(keyClean) >= 0 || keyClean.indexOf(kClean) >= 0;
+    });
+    if (found) { key = found; items = AM_SALES_REF[found]; }
+  }
   if (!items) return null;
   if (!modelo) return { marca: key, items: items, match: null };
   var mod = modelo.toUpperCase().replace(/[-\s]/g, '');
@@ -27248,18 +27257,18 @@ async function amRqConfirmar() {
   if (!marca || !modelo) { st.textContent = '⚠ Ingresa marca y modelo'; st.style.color='var(--warn)'; return; }
   if (!precio) { st.textContent = '⚠ Ingresa el precio'; st.style.color='var(--warn)'; return; }
 
-  // Advertencia si el precio cambió respecto al último elegido para esta serie
+  // Advertencia si el precio cambió respecto al último etiquetado para esta serie
   var _confSerie = _amGetSerie(modelo);
   var _confHist = _confSerie ? _amHistGet(_confSerie) : null;
   if (_confHist && _confHist.precio > 0 && precio !== _confHist.precio) {
     var diff = precio - _confHist.precio;
     var diffPct = ((diff / _confHist.precio) * 100).toFixed(0);
     var confirmChange = confirm(
-      '⚠ CAMBIO DE PRECIO\n\n' +
-      'Serie: ' + _confSerie + ' (' + marca + ')\n' +
-      'Último precio elegido: $' + _confHist.precio.toLocaleString('es-MX') + ' (' + _confHist.fecha + ')\n' +
+      '⚠ CAMBIO DE PRECIO en etiquetado\n\n' +
+      marca + ' · serie ' + _confSerie + '\n' +
+      'Última etiqueta: $' + _confHist.precio.toLocaleString('es-MX') + ' (' + _confHist.fecha + ')\n' +
       'Precio nuevo: $' + precio.toLocaleString('es-MX') + ' (' + (diff > 0 ? '+' : '') + diffPct + '%)\n\n' +
-      '¿Confirmar el cambio de precio?'
+      '¿Etiquetar con el precio nuevo?'
     );
     if (!confirmChange) return;
   }
