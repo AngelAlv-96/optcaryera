@@ -25483,6 +25483,16 @@ function amSalesShowMatch(marca, modelo) {
   if (!el) return;
   var lookup = amSalesLookup(marca, modelo);
   if (!lookup) { el.style.display = 'none'; return; }
+  // Auto-abrir panel y filtrar por marca
+  var body = document.getElementById('am-sales-body');
+  if (body && !_amSalesOpen) { amSalesToggle(); }
+  if (body) {
+    var filterEl = document.getElementById('am-sales-filter');
+    if (filterEl && filterEl.value.toUpperCase() !== lookup.marca) {
+      filterEl.value = lookup.marca;
+      amSalesRender(lookup.marca);
+    }
+  }
   if (lookup.match) {
     var it = lookup.match;
     var margen = it.pv > 0 ? Math.round((1 - it.c / it.pv) * 100) : 0;
