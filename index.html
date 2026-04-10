@@ -27082,18 +27082,22 @@ async function amRqBuscarPrecio() {
   }
 
   amRqPrecioTimer = setTimeout(async function() {
-    if (_amPrecioManual) return; // usuario ya eligió precio, no sobreescribir
     try {
       var marcaBase = marca.split(' ')[0];
       var modeloLimpio = modelo.replace(/[-\s]/g,'');
+      var _precioEl = document.getElementById('am-rq-precio');
+      var _precioYaTiene = parseFloat(_precioEl.value) || 0;
+
+      // ── REGLA: si el campo precio YA tiene valor, NUNCA sobreescribir ──
+      // Solo mostrar info en status. El precio lo controla el usuario.
 
       // 0a. Buscar en items confirmados de esta sesión (amRows)
       if (modelo.length >= 3) {
         var sesionMatch = amRows.find(function(r) { return r.modelo === modelo || r.codigo === modelo; });
         if (sesionMatch && sesionMatch.precio > 0) {
-          document.getElementById('am-rq-precio').value = sesionMatch.precio;
-          st.innerHTML = '🔁 Precio de sesión <b>' + (sesionMatch.nombre || modelo) + '</b>: <b style="color:var(--accent)">$' + sesionMatch.precio.toLocaleString('es-MX') + '</b>' +
-            ' <span style="color:rgba(255,255,255,.25)">— ya escaneado antes</span>';
+          if (!_precioYaTiene) _precioEl.value = sesionMatch.precio;
+          st.innerHTML = '🔁 Sesión: <b>' + (sesionMatch.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + sesionMatch.precio.toLocaleString('es-MX') + '</b>' +
+            (_precioYaTiene && _precioYaTiene !== sesionMatch.precio ? ' <span style="color:#f0b84a">(campo: $' + _precioYaTiene.toLocaleString('es-MX') + ')</span>' : '');
           st.style.color = 'var(--accent)';
           return;
         }
@@ -27110,18 +27114,17 @@ async function amRqBuscarPrecio() {
           var ref = qCod.data[0];
           var precioModelo = parseFloat(ref.precio_venta) || 0;
           if (precioModelo > 0) {
-            document.getElementById('am-rq-precio').value = precioModelo;
+            if (!_precioYaTiene) _precioEl.value = precioModelo;
             var costoAnterior = parseFloat(ref.costo) || 0;
-            st.innerHTML = '📌 Encontrado <b>' + (ref.nombre || modelo) + '</b>: <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
-              (costoAnterior > 0 ? ' · costo anterior: $' + costoAnterior.toLocaleString('es-MX') : '') +
-              ' <span style="color:rgba(255,255,255,.25)">— escanea siguiente</span>';
+            st.innerHTML = '📌 DB: <b>' + (ref.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
+              (costoAnterior > 0 ? ' · costo: $' + costoAnterior.toLocaleString('es-MX') : '');
             st.style.color = 'var(--accent)';
             return;
           }
         }
       }
 
-      // 1. Precio EXACTO por modelo — si ya existe, usar ESE precio (no el máximo)
+      // 1. Precio por modelo en DB — solo info, no sobreescribe
       if (modelo.length >= 2) {
         var qm = await db.from('productos')
           .select('precio_venta,modelo,costo,nombre')
@@ -27129,7 +27132,6 @@ async function amRqBuscarPrecio() {
           .eq('activo', true)
           .limit(200);
         if (qm.data && qm.data.length) {
-          // Buscar match exacto primero, luego parcial
           var exactos = qm.data.filter(function(r) {
             var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
             return mod === modeloLimpio;
@@ -27141,32 +27143,16 @@ async function amRqBuscarPrecio() {
           var matches = exactos.length ? exactos : parciales;
 
           if (matches.length) {
-            // Si hay match exacto, usar el precio de ESE producto (no el máximo)
-            var ref = matches[0]; // primer match exacto
+            var ref = matches[0];
             var precioModelo = parseFloat(ref.precio_venta) || 0;
             if (precioModelo > 0) {
-              document.getElementById('am-rq-precio').value = precioModelo;
+              if (!_precioYaTiene) _precioEl.value = precioModelo;
               var costoAnterior = parseFloat(ref.costo) || 0;
-              st.innerHTML = '📌 Precio actual <b>' + (ref.nombre || modelo) + '</b>: <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
-                (costoAnterior > 0 ? ' · costo anterior: $' + costoAnterior.toLocaleString('es-MX') : '') +
-                ' <span style="color:rgba(255,255,255,.25)">— editable</span>';
-
-              // Aviso prominente si el costo subió
-              if (costo > 0 && costoAnterior > 0 && costo !== costoAnterior) {
+              st.innerHTML = '📌 DB: <b>' + (ref.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
+                (costoAnterior > 0 ? ' · costo: $' + costoAnterior.toLocaleString('es-MX') : '');
+              if (costo > 0 && costoAnterior > 0 && costo > costoAnterior) {
                 var cambio = ((costo - costoAnterior) / costoAnterior * 100).toFixed(1);
-                var cambioNum = parseFloat(cambio);
-                if (cambioNum > 0) {
-                  // Calcular precio sugerido nuevo basado en el incremento de costo
-                  var precioSugerido = Math.round((precioModelo * (1 + cambioNum/100)) / 50) * 50;
-                  st.innerHTML += '<br><div style="margin-top:4px;padding:6px 10px;border-radius:6px;background:rgba(240,120,74,.12);border:1px solid rgba(240,120,74,.3)">' +
-                    '<span style="color:#f0784a;font-weight:700;font-size:11px">⚠ COSTO SUBIÓ ' + cambio + '%</span>' +
-                    ' <span style="color:var(--muted);font-size:10px">($' + costoAnterior.toLocaleString('es-MX') + ' → $' + costo.toLocaleString('es-MX') + ')</span>' +
-                    '<br><span style="font-size:10px;color:rgba(255,255,255,.5)">Precio actual: $' + precioModelo.toLocaleString('es-MX') +
-                    ' · Sugerido nuevo: <b style="color:var(--warn)">$' + precioSugerido.toLocaleString('es-MX') + '</b></span>' +
-                    '</div>';
-                } else {
-                  st.innerHTML += '<br><span style="color:#4af0c8;font-size:10px">✓ Costo bajó ' + Math.abs(cambioNum).toFixed(1) + '% ($' + costoAnterior.toLocaleString('es-MX') + ' → $' + costo.toLocaleString('es-MX') + ')</span>';
-                }
+                st.innerHTML += '<br><span style="color:#f0784a;font-size:10px">⚠ Costo subió ' + cambio + '% ($' + costoAnterior.toLocaleString('es-MX') + ' → $' + costo.toLocaleString('es-MX') + ')</span>';
               }
               return;
             }
