@@ -26983,8 +26983,8 @@ function amPrecioSelect(idx) {
   if (idx < 0 || idx >= _amPrecioItems.length) return;
   document.getElementById('am-rq-precio').value = _amPrecioItems[idx].precio;
   document.getElementById('am-precio-list').style.display = 'none';
-  _amPrecioIdx = -1;
   _amPrecioManual = true;
+  // Mantener idx para que la siguiente ↑↓ arranque desde aquí
 }
 
 function amPrecioShowList() {
@@ -26996,16 +26996,22 @@ function amPrecioKeydown(e) {
   var list = document.getElementById('am-precio-list');
   var visible = list && list.style.display !== 'none' && _amPrecioItems.length > 0;
 
-  if (visible && e.key === 'ArrowDown') {
+  if (e.key === 'ArrowDown') {
     e.preventDefault();
+    // Reabrir dropdown si está cerrado
+    if (!visible && _amPrecioItems.length > 0) { list.style.display = ''; visible = true; }
+    if (!visible) return;
     _amPrecioIdx = Math.min(_amPrecioIdx + 1, _amPrecioItems.length - 1);
     amPrecioHighlight();
+    // Establecer precio inmediatamente (sin cerrar dropdown)
     if (_amPrecioItems[_amPrecioIdx]) document.getElementById('am-rq-precio').value = _amPrecioItems[_amPrecioIdx].precio;
     _amPrecioManual = true;
     return;
   }
-  if (visible && e.key === 'ArrowUp') {
+  if (e.key === 'ArrowUp') {
     e.preventDefault();
+    if (!visible && _amPrecioItems.length > 0) { list.style.display = ''; visible = true; }
+    if (!visible) return;
     _amPrecioIdx = Math.max(_amPrecioIdx - 1, 0);
     amPrecioHighlight();
     if (_amPrecioItems[_amPrecioIdx]) document.getElementById('am-rq-precio').value = _amPrecioItems[_amPrecioIdx].precio;
@@ -27014,10 +27020,9 @@ function amPrecioKeydown(e) {
   }
   if (e.key === 'Enter') {
     e.preventDefault();
-    if (visible && _amPrecioIdx >= 0) {
-      amPrecioSelect(_amPrecioIdx);
-    }
-    // Confirmar el armazón
+    // Cerrar dropdown si está visible
+    if (visible) { list.style.display = 'none'; }
+    // Confirmar el armazón con el precio que esté en el campo
     amRqConfirmar();
     return;
   }
