@@ -25927,7 +25927,9 @@ async function amConfirmar(idx) {
   if (existente) {
     row._existe   = true;
     row._bd_id    = existente.id;
-    row.precio    = existente.precio_venta || row.precio;
+    row._precioBD = parseFloat(existente.precio_venta) || 0;
+    // NUNCA sobreescribir el precio que el usuario eligió — solo usar DB si no tiene precio
+    if (!row.precio) row.precio = row._precioBD;
     // Mantener código del proveedor si tiene prefijo conocido
     if (!amDetectPrefix(row.modelo)) {
       row.codigo = existente.codigo_barras || row.codigo;
