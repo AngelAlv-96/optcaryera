@@ -25409,6 +25409,26 @@ var AM_SALES_REF = {
   ]
 };
 
+// ── HISTORIAL DE PRECIOS ELEGIDOS POR SERIE (localStorage) ──
+// Guarda el último precio que Angel eligió para cada serie, persiste entre sesiones
+var _amPrecioHist = {};
+function _amHistLoad() {
+  try { _amPrecioHist = JSON.parse(localStorage.getItem('am_precio_hist') || '{}'); } catch(e) { _amPrecioHist = {}; }
+}
+function _amHistSave(serie, precio) {
+  _amHistLoad();
+  _amPrecioHist[serie] = { precio: precio, fecha: new Date().toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: '2-digit', month: 'short', year: 'numeric' }) };
+  try { localStorage.setItem('am_precio_hist', JSON.stringify(_amPrecioHist)); } catch(e) {}
+}
+function _amHistGet(serie) {
+  if (!Object.keys(_amPrecioHist).length) _amHistLoad();
+  return _amPrecioHist[serie] || null;
+}
+function _amGetSerie(modelo) {
+  if (!modelo) return '';
+  return modelo.toUpperCase().replace(/0+$/, '').replace(/[-\s]/g, '');
+}
+
 // ── MAPA SERIES SALES: modelo sin ceros → {marca, costo, pv} ──
 var _amSalesSeriesMap = null;
 function _amBuildSeriesMap() {
@@ -26857,17 +26877,30 @@ function amRqAutoDetect(val) {
       if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0) {
         costoEl.value = salesMatch.c;
       }
-      // Auto-llenar precio si está vacío Y usuario no eligió manual
-      if (precioEl && !parseFloat(precioEl.value) && !_amPrecioManual && salesMatch.pv > 0) {
-        precioEl.value = salesMatch.pv;
+      // Buscar en historial de precios elegidos (prioridad sobre SALES ref)
+      var _sSerie = _amGetSerie(code);
+      var _sHist = _sSerie ? _amHistGet(_sSerie) : null;
+      var _usedPv = 0;
+      if (!_amPrecioManual && precioEl && !parseFloat(precioEl.value)) {
+        if (_sHist && _sHist.precio > 0) {
+          precioEl.value = _sHist.precio;
+          _usedPv = _sHist.precio;
+        } else if (salesMatch.pv > 0) {
+          precioEl.value = salesMatch.pv;
+          _usedPv = salesMatch.pv;
+        }
       }
       // Status feedback
       if (st) {
         var margen = salesMatch.pv > 0 ? Math.round((1 - salesMatch.c / salesMatch.pv) * 100) : 0;
-        st.innerHTML = '📋 <b style="color:#4ac8f0">SALES</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
+        var statusHtml = '📋 <b style="color:#4ac8f0">SALES</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
           ' &rarr; costo <b>$' + salesMatch.c + '</b>' +
           (salesMatch.pv > 0 ? ' &rarr; venta <b style="color:var(--accent);font-size:13px">$' + salesMatch.pv.toLocaleString('es-MX') + '</b> (' + margen + '%)' : ' <span style="color:#f0b84a">sin precio ref</span>') +
           ' <span style="color:rgba(255,255,255,.3)">[' + salesMatch.ref + ']</span>';
+        if (_sHist) {
+          statusHtml += '<br><span style="font-size:10px;color:#4af0c8">🕐 Último precio elegido: <b>$' + _sHist.precio.toLocaleString('es-MX') + '</b> (' + _sHist.fecha + ')</span>';
+        }
+        st.innerHTML = statusHtml;
         st.style.color = '#4ac8f0';
       }
     }
@@ -27203,6 +27236,22 @@ async function amRqConfirmar() {
   if (!marca || !modelo) { st.textContent = '⚠ Ingresa marca y modelo'; st.style.color='var(--warn)'; return; }
   if (!precio) { st.textContent = '⚠ Ingresa el precio'; st.style.color='var(--warn)'; return; }
 
+  // Advertencia si el precio cambió respecto al último elegido para esta serie
+  var _confSerie = _amGetSerie(modelo);
+  var _confHist = _confSerie ? _amHistGet(_confSerie) : null;
+  if (_confHist && _confHist.precio > 0 && precio !== _confHist.precio) {
+    var diff = precio - _confHist.precio;
+    var diffPct = ((diff / _confHist.precio) * 100).toFixed(0);
+    var confirmChange = confirm(
+      '⚠ CAMBIO DE PRECIO\n\n' +
+      'Serie: ' + _confSerie + ' (' + marca + ')\n' +
+      'Último precio elegido: $' + _confHist.precio.toLocaleString('es-MX') + ' (' + _confHist.fecha + ')\n' +
+      'Precio nuevo: $' + precio.toLocaleString('es-MX') + ' (' + (diff > 0 ? '+' : '') + diffPct + '%)\n\n' +
+      '¿Confirmar el cambio de precio?'
+    );
+    if (!confirmChange) return;
+  }
+
   var cfg = amGetConfig();
   // Si el modelo matchea un prefijo de proveedor (SM1515, ZB2274), usar como código directo
   var codigo = amDetectPrefix(modelo) ? modelo : amGenCodigo(marca, modelo);
@@ -27217,6 +27266,10 @@ async function amRqConfirmar() {
     codigo: codigo,
     fuente: 'manual-rapida'
   };
+
+  // Guardar precio elegido en historial por serie
+  var _serie = _amGetSerie(modelo);
+  if (_serie && precio > 0) _amHistSave(_serie, precio);
 
   st.textContent = '⏳ Procesando…';
   amPending.unshift(row);
