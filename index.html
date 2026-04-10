@@ -26848,8 +26848,8 @@ function amTicketRenderResumen() {
   resDiv.innerHTML = html;
 }
 
-// Auto-detect marca from barcode prefix (SM→SEIMA, ZB→ZABDI, etc.) + costo del ticket
-// + Auto-detect por serie SALES (MRN21→MARINA, costo $139, precio $2,900)
+// Auto-detect marca + precio por modelo
+// Prioridad: 1) DB exacto  2) Historial  3) SALES ref (solo si match específico)
 function amRqAutoDetect(val) {
   if (!val || val.length < 2) return;
   var code = val.toUpperCase().trim();
@@ -26866,43 +26866,27 @@ function amRqAutoDetect(val) {
     return;
   }
 
-  // 2. Serie SALES — detectar marca+costo+precio por patrón del modelo
+  // 2. Serie SALES — solo detectar MARCA y COSTO (NO precio)
+  //    El precio lo decide la DB o el usuario, no la referencia SALES
   if (code.length >= 3) {
     var salesMatch = amSalesDetectByModel(code);
     if (salesMatch) {
-      // Auto-llenar marca si está vacío o ya tenía un auto-fill anterior
+      // Auto-llenar marca
       if (marcaEl && (!marcaEl.value || marcaEl.dataset.salesAuto === '1')) {
         marcaEl.value = salesMatch.marca;
         marcaEl.dataset.salesAuto = '1';
       }
-      // Auto-llenar costo si está vacío
+      // Auto-llenar costo
       if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0) {
         costoEl.value = salesMatch.c;
       }
-      // Buscar en historial de precios elegidos (prioridad sobre SALES ref)
-      var _sSerie = _amGetSerie(code);
-      var _sHist = _sSerie ? _amHistGet(_sSerie) : null;
-      var _usedPv = 0;
-      if (!_amPrecioManual && precioEl && !parseFloat(precioEl.value)) {
-        if (_sHist && _sHist.precio > 0) {
-          precioEl.value = _sHist.precio;
-          _usedPv = _sHist.precio;
-        } else if (salesMatch.pv > 0) {
-          precioEl.value = salesMatch.pv;
-          _usedPv = salesMatch.pv;
-        }
-      }
-      // Status feedback
+      // NO auto-llenar precio aquí — se deja para la búsqueda DB en amRqBuscarPrecio
+      // Solo mostrar info de referencia
       if (st) {
-        var margen = salesMatch.pv > 0 ? Math.round((1 - salesMatch.c / salesMatch.pv) * 100) : 0;
-        var statusHtml = '📋 <b style="color:#4ac8f0">SALES</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
-          ' &rarr; costo <b>$' + salesMatch.c + '</b>' +
-          (salesMatch.pv > 0 ? ' &rarr; venta <b style="color:var(--accent);font-size:13px">$' + salesMatch.pv.toLocaleString('es-MX') + '</b> (' + margen + '%)' : ' <span style="color:#f0b84a">sin precio ref</span>') +
-          ' <span style="color:rgba(255,255,255,.3)">[' + salesMatch.ref + ']</span>';
-        if (_sHist) {
-          statusHtml += '<br><span style="font-size:10px;color:#4af0c8">🕐 Último precio elegido: <b>$' + _sHist.precio.toLocaleString('es-MX') + '</b> (' + _sHist.fecha + ')</span>';
-        }
-        st.innerHTML = statusHtml;
+        st.innerHTML = '📋 <b style="color:#4ac8f0">SALES ref</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
+          ' · costo <b>$' + salesMatch.c + '</b>' +
+          (salesMatch.pv > 0 ? ' · ref venta: $' + salesMatch.pv.toLocaleString('es-MX') : '') +
+          ' <span style="color:rgba(255,255,255,.3)">— esperando precio de DB...</span>';
         st.style.color = '#4ac8f0';
       }
     }
@@ -27072,16 +27056,8 @@ async function amRqBuscarPrecio() {
   // Referencia SALES — mostrar match si existe
   amSalesShowMatch(marca, modelo);
 
-  // Auto-llenar precio de referencia SALES si no hay precio aún Y usuario no eligió manual
-  var precioEl = document.getElementById('am-rq-precio');
-  if (precioEl && !parseFloat(precioEl.value) && !_amPrecioManual) {
-    var _slk = amSalesLookup(marca, modelo);
-    if (_slk && _slk.match && _slk.match.pv > 0) {
-      precioEl.value = _slk.match.pv;
-      st.innerHTML = '📋 <b style="color:#4ac8f0">Ref SALES</b>: ' + marca + ' ' + (_slk.match.m) + ' &rarr; <b style="color:var(--accent)">$' + _slk.match.pv.toLocaleString('es-MX') + '</b> <span style="color:var(--muted)">(costo $' + _slk.match.c + ')</span>';
-      st.style.color = '#4ac8f0';
-    }
-  }
+  // SALES ref: solo info visual, NUNCA auto-llena precio
+  // El precio viene de DB (setTimeout) o del usuario (dropdown/manual)
 
   amRqPrecioTimer = setTimeout(async function() {
     try {
