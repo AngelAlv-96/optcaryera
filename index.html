@@ -25465,7 +25465,29 @@ function amSalesDetectByModel(modelo) {
   if (starts.length > 1) {
     var marcas = {};
     starts.forEach(function(e) { marcas[e.marca] = (marcas[e.marca]||0) + 1; });
-    if (Object.keys(marcas).length === 1) return starts[0]; // todos de la misma marca
+    if (Object.keys(marcas).length === 1) return starts[0];
+  }
+  // 5. Prefijo alfabético del modelo → buscar marca por letras iniciales
+  //    MR8039 → "MR", busca si alguna serie empieza con "MR" → MRN21 (MARINA)
+  var alphaPrefix = mod.match(/^[A-Z]+/);
+  if (alphaPrefix && alphaPrefix[0].length >= 2) {
+    var alpha = alphaPrefix[0];
+    var alphaMatches = _amSalesSeriesMap.filter(function(e) {
+      var eSerie = e.serie.match(/^[A-Z]+/);
+      return eSerie && (eSerie[0].indexOf(alpha) === 0 || alpha.indexOf(eSerie[0]) === 0);
+    });
+    if (alphaMatches.length > 0) {
+      var marcasAlpha = {};
+      alphaMatches.forEach(function(e) { marcasAlpha[e.marca] = 1; });
+      var marcaKeys = Object.keys(marcasAlpha);
+      if (marcaKeys.length === 1) {
+        // Una sola marca posible → retornar con pv=0 (solo marca, sin precio específico)
+        return { serie: alpha, raw: mod, marca: marcaKeys[0], c: alphaMatches[0].c, pv: 0, ref: 'prefijo ' + alpha + ' → ' + marcaKeys[0], _soloMarca: true };
+      } else {
+        // Múltiples marcas posibles → retornar con "?"
+        return { serie: alpha, raw: mod, marca: '? (' + marcaKeys.join('/') + ')', c: 0, pv: 0, ref: 'ambiguo', _ambiguo: true };
+      }
+    }
   }
   return null;
 }
@@ -26871,23 +26893,35 @@ function amRqAutoDetect(val) {
   if (code.length >= 3) {
     var salesMatch = amSalesDetectByModel(code);
     if (salesMatch) {
-      // Auto-llenar marca
-      if (marcaEl && (!marcaEl.value || marcaEl.dataset.salesAuto === '1')) {
-        marcaEl.value = salesMatch.marca;
-        marcaEl.dataset.salesAuto = '1';
-      }
-      // Auto-llenar costo
-      if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0) {
-        costoEl.value = salesMatch.c;
-      }
-      // NO auto-llenar precio aquí — se deja para la búsqueda DB en amRqBuscarPrecio
-      // Solo mostrar info de referencia
-      if (st) {
-        st.innerHTML = '📋 <b style="color:#4ac8f0">SALES ref</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
-          ' · costo <b>$' + salesMatch.c + '</b>' +
-          (salesMatch.pv > 0 ? ' · ref venta: $' + salesMatch.pv.toLocaleString('es-MX') : '') +
-          ' <span style="color:rgba(255,255,255,.3)">— esperando precio de DB...</span>';
-        st.style.color = '#4ac8f0';
+      if (salesMatch._ambiguo) {
+        // Marca ambigua — mostrar "?" para que el usuario la escriba
+        if (marcaEl && (!marcaEl.value || marcaEl.dataset.salesAuto === '1')) {
+          marcaEl.value = '';
+          marcaEl.dataset.salesAuto = '0';
+        }
+        if (st) {
+          st.innerHTML = '❓ <b style="color:#f0b84a">MARCA?</b> — prefijo "' + salesMatch.serie + '" puede ser: <b>' + salesMatch.marca.replace('? (','').replace(')','') + '</b> — escribe la marca';
+          st.style.color = '#f0b84a';
+        }
+      } else {
+        // Marca detectada (segura o solo-marca)
+        if (marcaEl && (!marcaEl.value || marcaEl.dataset.salesAuto === '1')) {
+          marcaEl.value = salesMatch.marca;
+          marcaEl.dataset.salesAuto = '1';
+        }
+        // Auto-llenar costo si tiene
+        if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0 && !salesMatch._soloMarca) {
+          costoEl.value = salesMatch.c;
+        }
+        if (st) {
+          var info = salesMatch._soloMarca
+            ? '🔍 Marca detectada: <b style="color:#4ac8f0">' + salesMatch.marca + '</b> <span style="color:rgba(255,255,255,.3)">— modelo no está en ref SALES</span>'
+            : '📋 <b style="color:#4ac8f0">SALES ref</b>: <b>' + salesMatch.marca + '</b> serie ' + salesMatch.serie +
+              (salesMatch.c > 0 ? ' · costo $' + salesMatch.c : '') +
+              (salesMatch.pv > 0 ? ' · ref venta: $' + salesMatch.pv.toLocaleString('es-MX') : '');
+          st.innerHTML = info;
+          st.style.color = '#4ac8f0';
+        }
       }
     }
   }
