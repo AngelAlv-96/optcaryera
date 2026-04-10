@@ -4190,7 +4190,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               </div>
               <button class="btn btn-p" onclick="amRqConfirmar()" style="padding:8px 16px;font-size:12px" tabindex="5">✓ Enter</button>
             </div>
-            <div id="am-rq-status" style="font-size:10px;color:var(--muted);margin-top:6px;font-family:Outfit,sans-serif"></div>
+            <div id="am-rq-status" style="font-size:10px;color:var(--muted);margin-top:6px;font-family:Outfit,sans-serif;text-align:right"></div>
           </div>
 
           <!-- REFERENCIA SALES -->
@@ -27150,31 +27150,32 @@ async function amRqBuscarPrecio() {
       if (costo > 0) {
         var precioSug = Math.round((costo * mult) / 100) * 100;
         precioSug = Math.max(precioSug, 200);
-        document.getElementById('am-rq-precio').value = precioSug;
-        st.innerHTML = '🆕 <b style="color:#f0b84a">NUEVO</b>: no existe en DB — precio sugerido: <b style="color:var(--accent)">$' + precioSug.toLocaleString('es-MX') + '</b>' +
-          ' <span style="color:rgba(255,255,255,.25)">(costo $' + costo + ' x' + mult.toFixed(1) + ', rango $' + (Math.round(costo*multMin/100)*100).toLocaleString('es-MX') +
-          '–$' + (Math.round(costo*multMax/100)*100).toLocaleString('es-MX') + ')</span>' +
+        _precioEl.value = precioSug;
+        st.innerHTML = '🆕 <b style="color:#f0b84a">NO EXISTE</b> — precio sugerido: <b style="color:var(--accent)">$' + precioSug.toLocaleString('es-MX') + '</b>' +
+          ' <span style="color:rgba(255,255,255,.25)">(costo $' + costo + ' x' + mult.toFixed(1) + ')</span>' +
           (muestras <= 0 ? ' <span style="color:var(--warn);font-size:10px">⚠ revisa el precio</span>' : '');
       } else {
-        // Sin costo — precio promedio de la marca
+        // Sin costo — precio más común de la marca (redondeado a $100)
         var qp = await db.from('productos')
           .select('precio_venta')
           .ilike('marca', '%' + marcaBase + '%')
           .eq('activo', true)
-          .limit(50);
+          .limit(200);
         if (qp.data && qp.data.length) {
           var precios = qp.data.map(function(r){ return parseFloat(r.precio_venta)||0; }).filter(function(p){ return p>0; });
           if (precios.length) {
-            // Precio PROMEDIO, no máximo
-            var total = precios.reduce(function(a,b){return a+b;},0);
-            var promedio = Math.round(total / precios.length / 50) * 50;
-            document.getElementById('am-rq-precio').value = promedio;
-            st.innerHTML = '📊 Promedio <b>' + marca + '</b>: <b style="color:var(--accent)">$' + promedio.toLocaleString('es-MX') + '</b>' +
-              ' <span style="color:rgba(255,255,255,.25)">(' + precios.length + ' productos) — agrega el costo para mejor sugerencia</span>';
+            // Precio más frecuente de la marca (moda), no promedio
+            var freqMap = {};
+            precios.forEach(function(p) { var k = Math.round(p/100)*100; freqMap[k] = (freqMap[k]||0)+1; });
+            var moda = Object.keys(freqMap).sort(function(a,b){ return freqMap[b]-freqMap[a]; })[0];
+            var precioModa = parseInt(moda) || Math.round(precios.reduce(function(a,b){return a+b;},0) / precios.length / 100) * 100;
+            _precioEl.value = precioModa;
+            st.innerHTML = '🆕 <b style="color:#f0b84a">NO EXISTE</b> — precio más usado de <b>' + marca + '</b>: <b style="color:var(--accent)">$' + precioModa.toLocaleString('es-MX') + '</b>' +
+              ' <span style="color:rgba(255,255,255,.25)">(' + precios.length + ' productos) — agrega costo para mejor sugerencia</span>';
             return;
           }
         }
-        st.textContent = 'Ingresa el costo para calcular precio sugerido';
+        st.innerHTML = '🆕 <b style="color:#f0b84a">NO EXISTE</b> — ingresa costo para sugerencia de precio';
       }
     } catch(e) {
       st.textContent = 'Error: ' + e.message;
