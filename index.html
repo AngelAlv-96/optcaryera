@@ -4193,6 +4193,22 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <div id="am-rq-status" style="font-size:10px;color:var(--muted);margin-top:6px;font-family:Outfit,sans-serif"></div>
           </div>
 
+          <!-- REFERENCIA SALES -->
+          <div id="am-sales-ref" style="margin-bottom:12px;background:var(--surface2);border:1px solid rgba(74,200,240,0.2);border-radius:10px;overflow:hidden">
+            <div onclick="amSalesToggle()" style="cursor:pointer;padding:10px 13px;display:flex;align-items:center;justify-content:space-between;user-select:none" onmouseover="this.style.background='rgba(74,200,240,.05)'" onmouseout="this.style.background='transparent'">
+              <span style="font-size:11px;font-weight:700;color:#4ac8f0">📋 Referencia SALES — abril 2026 <span style="font-size:9px;color:var(--muted);font-weight:400">(36 marcas, 1,187 pzas)</span></span>
+              <span id="am-sales-arrow" style="color:var(--muted);font-size:10px;transition:transform .2s">▸</span>
+            </div>
+            <div id="am-sales-body" style="display:none;padding:0 13px 12px">
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <input type="text" id="am-sales-filter" placeholder="Filtrar marca..." oninput="amSalesFilter()" style="flex:1;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:6px 10px;color:var(--white);font-size:11px;outline:none">
+                <span id="am-sales-count" style="font-size:9px;color:var(--muted)"></span>
+              </div>
+              <div id="am-sales-tabla" style="max-height:400px;overflow-y:auto;border-radius:6px;border:1px solid rgba(255,255,255,.07)"></div>
+              <div id="am-sales-match" style="display:none;margin-top:8px;padding:8px 12px;border-radius:6px;font-size:12px;font-family:Outfit,sans-serif"></div>
+            </div>
+          </div>
+
           <!-- TICKET PROVEEDOR (precarga costos) -->
           <div id="am-ticket-section" style="display:none;margin-bottom:12px;background:var(--surface2);border:1px solid rgba(74,160,240,0.3);border-radius:10px;padding:12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -25215,6 +25231,285 @@ function amDetectPrefix(code) {
   return AM_PREFIX_MAP[prefix] || null;
 }
 
+// ── REFERENCIA COMPRAS SALES 09-ABR-2026 ──
+var AM_SALES_REF = {
+  'FUNKY FRED': [
+    {m:'A100',c:59,pv:1400,ref:'FF/ACTIVE 0xA'},
+    {m:'8000M',c:79,pv:2500,ref:'serie 8xxx'},
+    {m:'Active 00A',c:99,pv:1400,ref:'FF/ACTIVE 0xA'},
+    {m:'Hp',c:119,pv:0,ref:'sin ref DB'},
+    {m:'Aceo 1500M',c:119,pv:0,ref:'sin ref DB'},
+    {m:'CA1400M',c:119,pv:0,ref:'sin ref DB'},
+    {m:'1600M',c:129,pv:2500,ref:'serie 1xxxM'},
+    {m:'Active 100A',c:129,pv:1400,ref:'FF/ACTIVE 1xxA'},
+    {m:'A200N',c:139,pv:2400,ref:'A2xxx'},
+    {m:'FF 1500M',c:149,pv:2400,ref:'FF15xx'},
+    {m:'9000',c:149,pv:2500,ref:'serie 9xxx'},
+    {m:'1000M',c:149,pv:2500,ref:'serie 1xxxM'},
+    {m:'GR1000A',c:149,pv:0,ref:'sin ref DB'},
+    {m:'A2000E',c:149,pv:2400,ref:'A2xxx'},
+    {m:'MA2000',c:159,pv:3400,ref:'MA'},
+    {m:'A2000F',c:159,pv:2400,ref:'A2xxxF'},
+    {m:'RB 700',c:169,pv:0,ref:'sin ref DB'},
+    {m:'A3000',c:179,pv:3400,ref:'A3xxx SP'},
+    {m:'A5000',c:179,pv:2500,ref:'A5xxx'},
+    {m:'F8000',c:179,pv:0,ref:'sin ref DB'},
+    {m:'3000 Sp',c:229,pv:3400,ref:'SP'},
+    {m:'FO Sp',c:249,pv:3400,ref:'SP'}
+  ],
+  'MARINA': [
+    {m:'M18000',c:109,pv:2700,ref:'M18xxx'},
+    {m:'M6000',c:129,pv:2700,ref:'M6xxx'},
+    {m:'M21000',c:129,pv:2700,ref:'M21xxx'},
+    {m:'NLN8900',c:129,pv:0,ref:'sin ref DB'},
+    {m:'MRN21000',c:139,pv:2900,ref:'MRN21xxx'},
+    {m:'TR90 M9000',c:149,pv:0,ref:'sin ref DB'},
+    {m:'Blueshield',c:159,pv:0,ref:'sin ref DB'},
+    {m:'MRN88000',c:159,pv:3000,ref:'MRN88xxx'},
+    {m:'M9000',c:169,pv:2700,ref:'M9xxx'},
+    {m:'Titanium 3000',c:179,pv:0,ref:'sin ref DB'},
+    {m:'MLN9000',c:189,pv:3000,ref:'MLN9xxx'},
+    {m:'MLN8000',c:189,pv:2700,ref:'MLN8xxx'},
+    {m:'MRN5000',c:199,pv:2500,ref:'MRN5xxx'},
+    {m:'MLN88000',c:209,pv:3000,ref:'MLN88xxx'}
+  ],
+  'WANMEE': [
+    {m:'WMP00Z',c:139,pv:1500,ref:'WANMEE'},
+    {m:'WMP002',c:139,pv:1500,ref:'WANMEE'}
+  ],
+  'ELEGANCIA': [
+    {m:'E5000',c:29,pv:300,ref:'ELEGANCIA'},
+    {m:'E8000',c:39,pv:300,ref:'ELEGANCIA'},
+    {m:'E9000A',c:39,pv:300,ref:'ELEGANCIA'}
+  ],
+  'AREZIA': [
+    {m:'A3000',c:119,pv:1200,ref:'AREZIA'},
+    {m:'A8000',c:119,pv:1200,ref:'AREZIA'},
+    {m:'A8000B',c:119,pv:1200,ref:'AREZIA'},
+    {m:'68000',c:139,pv:1200,ref:'AREZIA'}
+  ],
+  'ROYALTY': [
+    {m:'Te',c:139,pv:1944,ref:'ROYALTY'},
+    {m:'Ry Z66000',c:139,pv:1944,ref:'ROYALTY'},
+    {m:'RyR66000',c:139,pv:1944,ref:'ROYALTY'},
+    {m:'Ry5000',c:159,pv:1944,ref:'ROYALTY'},
+    {m:'Te (81498)',c:189,pv:1944,ref:'ROYALTY'},
+    {m:'Ry T8000',c:189,pv:1944,ref:'ROYALTY'}
+  ],
+  'COOL MEN': [
+    {m:'CM3000',c:69,pv:2800,ref:'CM30xx'},
+    {m:'C477000',c:99,pv:0,ref:'sin ref DB'},
+    {m:'Acebo 8000',c:99,pv:0,ref:'sin ref DB'},
+    {m:'Alum77000',c:99,pv:2800,ref:'CM77xxx'},
+    {m:'CM68000',c:119,pv:2800,ref:'CM68xxx'},
+    {m:'CM6800',c:119,pv:2800,ref:'CM68xxx'},
+    {m:'68000',c:119,pv:2800,ref:'CM68xxx'},
+    {m:'Ly180000',c:119,pv:0,ref:'sin ref DB'},
+    {m:'Alum77000 (81504)',c:129,pv:2800,ref:'CM77xxx Alum'},
+    {m:'9000',c:169,pv:2800,ref:'CM90xx'},
+    {m:'CM9000',c:169,pv:2800,ref:'CM90xx'}
+  ],
+  'NOVICA': [
+    {m:'NV11000',c:69,pv:600,ref:'NOVICA $600-900'},
+    {m:'2000',c:119,pv:900,ref:'NOVICA $600-900'}
+  ],
+  'DIGNITY': [
+    {m:'DG53000',c:79,pv:2500,ref:'DG57xxx'},
+    {m:'DG77000',c:119,pv:2500,ref:'DG77xxx'},
+    {m:'XH22000',c:119,pv:2500,ref:'XH22xxx'}
+  ],
+  'MINAMI': [
+    {m:'000',c:119,pv:2500,ref:'MINAMI'},
+    {m:'1000M',c:169,pv:2500,ref:'MINAMI'}
+  ],
+  'HONOR MOMENT': [
+    {m:'HM',c:149,pv:1900,ref:'sin clip'},
+    {m:'TJ2000 Sp',c:169,pv:2900,ref:'TJ2xxx CLIP'}
+  ],
+  'GOOD KIDS': [
+    {m:'G19600',c:159,pv:1800,ref:'GOOD KIDS'}
+  ],
+  'NOAH': [
+    {m:'200',c:119,pv:1800,ref:'NOAH'},
+    {m:'2200M',c:169,pv:3500,ref:'NOAH'},
+    {m:'1101A',c:169,pv:1800,ref:'NOAH'}
+  ],
+  'CAFFDY': [
+    {m:'8000',c:39,pv:300,ref:'CAFFDY $300-400'}
+  ],
+  'NIKITANA': [
+    {m:'NK9000F',c:119,pv:1200,ref:'NIKITANA'}
+  ],
+  'ROSSELO': [
+    {m:'Ros0670',c:89,pv:2500,ref:'ROSSELO'}
+  ],
+  'SORAYA': [
+    {m:'1000C',c:49,pv:400,ref:'SORAYA'},
+    {m:'8000',c:39,pv:400,ref:'SORAYA'}
+  ],
+  'WHARTON': [
+    {m:'000',c:29,pv:500,ref:'WHARTON'}
+  ],
+  'VICHY': [
+    {m:'Am000',c:139,pv:1500,ref:'VICHY'},
+    {m:'2000A',c:139,pv:1500,ref:'VICHY'},
+    {m:'2214M',c:149,pv:1500,ref:'VICHY'}
+  ],
+  'ONOLA': [
+    {m:'Ons000',c:39,pv:300,ref:'ONOLA'}
+  ],
+  'BRIGHT VISION': [
+    {m:'Polarizado Kids',c:79,pv:600,ref:'BV Kids $600'}
+  ],
+  'VIA AMORE': [
+    {m:'\u2014',c:79,pv:324,ref:'VIA AMORE'}
+  ],
+  'PRETTY GIRL': [
+    {m:'PG2000',c:139,pv:2052,ref:'PRETTY GIRL $1,100-2,700'}
+  ],
+  'FALANYA': [
+    {m:'\u2014',c:79,pv:600,ref:'FALANYA'}
+  ],
+  'FORMOSA': [
+    {m:'2108 Sp',c:159,pv:2900,ref:'FORMOSA $2,900-3,000'}
+  ],
+  'LADY LUCK': [
+    {m:'\u2014',c:129,pv:0,ref:'nueva marca'},
+    {m:'N5000',c:129,pv:0,ref:'nueva marca'}
+  ],
+  'MARISA': [
+    {m:'P5000',c:129,pv:0,ref:'nueva marca'}
+  ],
+  'LAMOST': [
+    {m:'L22000',c:139,pv:0,ref:'nueva marca'}
+  ],
+  'XEOS': [
+    {m:'J2000p1000',c:59,pv:0,ref:'nueva marca'},
+    {m:'Nombre',c:249,pv:0,ref:'nueva marca'}
+  ],
+  'TOP MODA': [
+    {m:'TR900K',c:69,pv:0,ref:'nueva marca'},
+    {m:'TR00K',c:69,pv:0,ref:'nueva marca'}
+  ],
+  'DREAM LISA': [
+    {m:'000',c:29,pv:0,ref:'nueva marca'}
+  ],
+  'PINKY': [
+    {m:'SE000',c:149,pv:0,ref:'nueva marca'},
+    {m:'MAL000',c:159,pv:0,ref:'nueva marca'}
+  ],
+  'AMASS': [
+    {m:'000',c:79,pv:0,ref:'nueva marca'}
+  ],
+  'ZAKKA KIDS': [
+    {m:'000',c:39,pv:0,ref:'nueva marca'}
+  ],
+  'BISMARCK': [
+    {m:'8000',c:79,pv:0,ref:'nueva marca'}
+  ]
+};
+
+// ── PANEL REFERENCIA SALES ──
+var _amSalesOpen = false;
+function amSalesToggle() {
+  _amSalesOpen = !_amSalesOpen;
+  var body = document.getElementById('am-sales-body');
+  var arrow = document.getElementById('am-sales-arrow');
+  if (!body) return;
+  body.style.display = _amSalesOpen ? '' : 'none';
+  if (arrow) arrow.textContent = _amSalesOpen ? '▾' : '▸';
+  if (_amSalesOpen && !body.dataset.loaded) { amSalesRender(); body.dataset.loaded = '1'; }
+}
+
+function amSalesRender(filterMarca) {
+  var el = document.getElementById('am-sales-tabla');
+  if (!el) return;
+  var filter = (filterMarca || '').toUpperCase();
+  var marcas = Object.keys(AM_SALES_REF).sort();
+  if (filter) marcas = marcas.filter(function(m) { return m.indexOf(filter) >= 0; });
+  var countEl = document.getElementById('am-sales-count');
+  if (countEl) countEl.textContent = marcas.length + ' marcas';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="position:sticky;top:0;z-index:1">' +
+    '<th style="padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Marca</th>' +
+    '<th style="padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Modelo/Serie</th>' +
+    '<th style="padding:6px 8px;text-align:right;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Costo</th>' +
+    '<th style="padding:6px 8px;text-align:right;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">P.Venta</th>' +
+    '<th style="padding:6px 8px;text-align:right;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Margen</th>' +
+    '<th style="padding:6px 8px;text-align:left;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Ref DB</th>' +
+    '</tr></thead><tbody>';
+  marcas.forEach(function(marca) {
+    var items = AM_SALES_REF[marca];
+    items.forEach(function(it, i) {
+      var margen = it.pv > 0 ? Math.round((1 - it.c / it.pv) * 100) : 0;
+      var bgColor = it.pv > 0 ? 'rgba(74,240,120,.04)' : (it.ref === 'nueva marca' ? 'rgba(240,74,74,.04)' : 'rgba(240,200,74,.04)');
+      var pvColor = it.pv > 0 ? 'var(--accent)' : (it.ref === 'nueva marca' ? '#f04a4a' : '#f0b84a');
+      var pvText = it.pv > 0 ? '$' + it.pv.toLocaleString('es-MX') : (it.ref === 'nueva marca' ? 'NUEVA' : 'Sin ref');
+      html += '<tr data-marca="' + marca + '" data-modelo="' + it.m + '" style="border-bottom:1px solid rgba(255,255,255,.04);background:' + bgColor + '">' +
+        '<td style="padding:5px 8px;font-weight:' + (i === 0 ? '700' : '400') + ';color:' + (i === 0 ? 'var(--white)' : 'var(--muted)') + '">' + (i === 0 ? marca : '') + '</td>' +
+        '<td style="padding:5px 8px;color:var(--white);font-family:monospace;font-size:10px">' + it.m + '</td>' +
+        '<td style="padding:5px 8px;text-align:right;color:var(--muted)">$' + it.c + '</td>' +
+        '<td style="padding:5px 8px;text-align:right;font-weight:700;color:' + pvColor + '">' + pvText + '</td>' +
+        '<td style="padding:5px 8px;text-align:right;color:' + (margen >= 85 ? '#4af078' : margen >= 70 ? '#f0b84a' : 'var(--muted)') + '">' + (margen > 0 ? margen + '%' : '') + '</td>' +
+        '<td style="padding:5px 8px;font-size:9px;color:var(--muted)">' + it.ref + '</td>' +
+        '</tr>';
+    });
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+function amSalesFilter() {
+  var v = (document.getElementById('am-sales-filter').value || '').trim();
+  amSalesRender(v);
+}
+
+function amSalesLookup(marca, modelo) {
+  if (!marca) return null;
+  var key = marca.toUpperCase();
+  var items = AM_SALES_REF[key];
+  if (!items) return null;
+  if (!modelo) return { marca: key, items: items, match: null };
+  var mod = modelo.toUpperCase().replace(/[-\s]/g, '');
+  var best = null;
+  items.forEach(function(it) {
+    var itm = it.m.toUpperCase().replace(/[-\s]/g, '');
+    if (itm === mod || mod.indexOf(itm) >= 0 || itm.indexOf(mod) >= 0) best = it;
+  });
+  return { marca: key, items: items, match: best };
+}
+
+function amSalesShowMatch(marca, modelo) {
+  var el = document.getElementById('am-sales-match');
+  if (!el) return;
+  var lookup = amSalesLookup(marca, modelo);
+  if (!lookup) { el.style.display = 'none'; return; }
+  if (lookup.match) {
+    var it = lookup.match;
+    var margen = it.pv > 0 ? Math.round((1 - it.c / it.pv) * 100) : 0;
+    el.style.display = '';
+    el.style.background = it.pv > 0 ? 'rgba(74,240,120,.1)' : 'rgba(240,200,74,.1)';
+    el.style.border = '1px solid ' + (it.pv > 0 ? 'rgba(74,240,120,.3)' : 'rgba(240,200,74,.3)');
+    el.innerHTML = '<b style="color:var(--white)">' + marca + ' ' + it.m + '</b>' +
+      ' &mdash; Costo: <b>$' + it.c + '</b>' +
+      (it.pv > 0 ? ' &rarr; Venta: <b style="color:var(--accent);font-size:14px">$' + it.pv.toLocaleString('es-MX') + '</b> (' + margen + '% margen)' : ' &rarr; <span style="color:#f0b84a">Sin precio ref</span>') +
+      ' <span style="color:var(--muted);font-size:9px">[' + it.ref + ']</span>';
+  } else {
+    el.style.display = '';
+    el.style.background = 'rgba(74,200,240,.08)';
+    el.style.border = '1px solid rgba(74,200,240,.2)';
+    el.innerHTML = '<b style="color:#4ac8f0">' + marca + '</b> &mdash; ' + lookup.items.length + ' modelo(s) en ref SALES. Precios: ' +
+      lookup.items.filter(function(x){return x.pv>0}).map(function(x){return '<b>$'+x.pv.toLocaleString('es-MX')+'</b>'}).filter(function(v,i,a){return a.indexOf(v)===i}).join(', ');
+  }
+  // Highlight rows in table
+  var rows = document.querySelectorAll('#am-sales-tabla tr[data-marca]');
+  rows.forEach(function(r) {
+    var isMarca = r.dataset.marca === lookup.marca;
+    var isModelo = lookup.match && r.dataset.modelo === lookup.match.m;
+    r.style.outline = isModelo ? '2px solid var(--accent)' : '';
+    r.style.background = isModelo ? 'rgba(200,240,74,.12)' : (isMarca ? 'rgba(74,200,240,.06)' : '');
+  });
+}
+
 // ── INIT ──
 function amInit() {
   amRenderTabla();
@@ -26634,6 +26929,20 @@ async function amRqBuscarPrecio() {
 
   // Cargar dropdown de precios de la marca
   if (marca.length >= 2) amPrecioLoadMarca(marca);
+
+  // Referencia SALES — mostrar match si existe
+  amSalesShowMatch(marca, modelo);
+
+  // Auto-llenar precio de referencia SALES si no hay precio aún
+  var precioEl = document.getElementById('am-rq-precio');
+  if (precioEl && !parseFloat(precioEl.value)) {
+    var _slk = amSalesLookup(marca, modelo);
+    if (_slk && _slk.match && _slk.match.pv > 0) {
+      precioEl.value = _slk.match.pv;
+      st.innerHTML = '📋 <b style="color:#4ac8f0">Ref SALES</b>: ' + marca + ' ' + (_slk.match.m) + ' &rarr; <b style="color:var(--accent)">$' + _slk.match.pv.toLocaleString('es-MX') + '</b> <span style="color:var(--muted)">(costo $' + _slk.match.c + ')</span>';
+      st.style.color = '#4ac8f0';
+    }
+  }
 
   amRqPrecioTimer = setTimeout(async function() {
     try {
