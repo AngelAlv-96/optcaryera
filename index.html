@@ -27064,18 +27064,18 @@ async function amRqBuscarPrecio() {
       var marcaBase = marca.split(' ')[0];
       var modeloLimpio = modelo.replace(/[-\s]/g,'');
       var _precioEl = document.getElementById('am-rq-precio');
-      var _precioYaTiene = parseFloat(_precioEl.value) || 0;
 
-      // ── REGLA: si el campo precio YA tiene valor, NUNCA sobreescribir ──
-      // Solo mostrar info en status. El precio lo controla el usuario.
+      // ── REGLA: solo _amPrecioManual (usuario eligió con ↑↓ o tecleó) bloquea ──
+      // DB y sesión SIEMPRE pueden poner el precio correcto del modelo exacto
+      if (_amPrecioManual) return;
 
-      // 0a. Buscar en items confirmados de esta sesión (amRows)
+      // 0a. Buscar en items confirmados de esta sesión (amRows) — modelo EXACTO
       if (modelo.length >= 3) {
         var sesionMatch = amRows.find(function(r) { return r.modelo === modelo || r.codigo === modelo; });
         if (sesionMatch && sesionMatch.precio > 0) {
-          if (!_precioYaTiene) _precioEl.value = sesionMatch.precio;
+          _precioEl.value = sesionMatch.precio;
           st.innerHTML = '🔁 Sesión: <b>' + (sesionMatch.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + sesionMatch.precio.toLocaleString('es-MX') + '</b>' +
-            (_precioYaTiene && _precioYaTiene !== sesionMatch.precio ? ' <span style="color:#f0b84a">(campo: $' + _precioYaTiene.toLocaleString('es-MX') + ')</span>' : '');
+            ' <span style="color:rgba(255,255,255,.25)">— mismo modelo confirmado antes</span>';
           st.style.color = 'var(--accent)';
           return;
         }
@@ -27092,7 +27092,7 @@ async function amRqBuscarPrecio() {
           var ref = qCod.data[0];
           var precioModelo = parseFloat(ref.precio_venta) || 0;
           if (precioModelo > 0) {
-            if (!_precioYaTiene) _precioEl.value = precioModelo;
+            _precioEl.value = precioModelo;
             var costoAnterior = parseFloat(ref.costo) || 0;
             st.innerHTML = '📌 DB: <b>' + (ref.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
               (costoAnterior > 0 ? ' · costo: $' + costoAnterior.toLocaleString('es-MX') : '');
@@ -27102,7 +27102,7 @@ async function amRqBuscarPrecio() {
         }
       }
 
-      // 1. Precio por modelo en DB — solo info, no sobreescribe
+      // 1. Precio por modelo en DB — modelo exacto SIEMPRE pone precio
       if (modelo.length >= 2) {
         var qm = await db.from('productos')
           .select('precio_venta,modelo,costo,nombre')
@@ -27124,7 +27124,7 @@ async function amRqBuscarPrecio() {
             var ref = matches[0];
             var precioModelo = parseFloat(ref.precio_venta) || 0;
             if (precioModelo > 0) {
-              if (!_precioYaTiene) _precioEl.value = precioModelo;
+              _precioEl.value = precioModelo;
               var costoAnterior = parseFloat(ref.costo) || 0;
               st.innerHTML = '📌 DB: <b>' + (ref.nombre || modelo) + '</b> a <b style="color:var(--accent)">$' + precioModelo.toLocaleString('es-MX') + '</b>' +
                 (costoAnterior > 0 ? ' · costo: $' + costoAnterior.toLocaleString('es-MX') : '');
