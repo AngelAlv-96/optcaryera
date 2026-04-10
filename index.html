@@ -4185,7 +4185,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <div class="fg" style="flex:1.2;min-width:140px"><label>Marca</label><input type="text" id="am-rq-marca" placeholder="Funky Fred" style="text-transform:uppercase" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="1"></div>
               <div class="fg" style="flex:1.2;min-width:140px"><label>Modelo</label><input type="text" id="am-rq-modelo" placeholder="SM1515 / MA2501" style="text-transform:uppercase" oninput="amRqAutoDetect(this.value); amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="2"></div>
               <div class="fg" style="min-width:90px"><label>Costo $</label><input type="number" id="am-rq-costo" placeholder="0" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="3"></div>
-              <div class="fg" style="min-width:100px;position:relative"><label>Precio $ <span style="font-size:9px;color:var(--accent)">(↑↓ elegir)</span></label><input type="number" id="am-rq-precio" placeholder="0" onkeydown="amPrecioKeydown(event)" onfocus="amPrecioShowList()" tabindex="4">
+              <div class="fg" style="min-width:100px;position:relative"><label>Precio $ <span style="font-size:9px;color:var(--accent)">(↑↓ elegir)</span></label><input type="number" id="am-rq-precio" placeholder="0" onkeydown="amPrecioKeydown(event)" onfocus="amPrecioShowList()" oninput="_amPrecioManual=true" tabindex="4">
                 <div id="am-precio-list" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1px solid rgba(200,240,74,.3);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.5);margin-top:2px"></div>
               </div>
               <button class="btn btn-p" onclick="amRqConfirmar()" style="padding:8px 16px;font-size:12px" tabindex="5">✓ Enter</button>
@@ -26857,8 +26857,8 @@ function amRqAutoDetect(val) {
       if (costoEl && !parseFloat(costoEl.value) && salesMatch.c > 0) {
         costoEl.value = salesMatch.c;
       }
-      // Auto-llenar precio si está vacío
-      if (precioEl && !parseFloat(precioEl.value) && salesMatch.pv > 0) {
+      // Auto-llenar precio si está vacío Y usuario no eligió manual
+      if (precioEl && !parseFloat(precioEl.value) && !_amPrecioManual && salesMatch.pv > 0) {
         precioEl.value = salesMatch.pv;
       }
       // Status feedback
@@ -26931,11 +26931,13 @@ function amPrecioHighlight() {
   if (opts[_amPrecioIdx]) opts[_amPrecioIdx].scrollIntoView({ block: 'nearest' });
 }
 
+var _amPrecioManual = false; // true cuando el usuario eligió precio manualmente — no sobreescribir
 function amPrecioSelect(idx) {
   if (idx < 0 || idx >= _amPrecioItems.length) return;
   document.getElementById('am-rq-precio').value = _amPrecioItems[idx].precio;
   document.getElementById('am-precio-list').style.display = 'none';
   _amPrecioIdx = -1;
+  _amPrecioManual = true;
 }
 
 function amPrecioShowList() {
@@ -27015,9 +27017,9 @@ async function amRqBuscarPrecio() {
   // Referencia SALES — mostrar match si existe
   amSalesShowMatch(marca, modelo);
 
-  // Auto-llenar precio de referencia SALES si no hay precio aún
+  // Auto-llenar precio de referencia SALES si no hay precio aún Y usuario no eligió manual
   var precioEl = document.getElementById('am-rq-precio');
-  if (precioEl && !parseFloat(precioEl.value)) {
+  if (precioEl && !parseFloat(precioEl.value) && !_amPrecioManual) {
     var _slk = amSalesLookup(marca, modelo);
     if (_slk && _slk.match && _slk.match.pv > 0) {
       precioEl.value = _slk.match.pv;
@@ -27027,6 +27029,7 @@ async function amRqBuscarPrecio() {
   }
 
   amRqPrecioTimer = setTimeout(async function() {
+    if (_amPrecioManual) return; // usuario ya eligió precio, no sobreescribir
     try {
       var marcaBase = marca.split(' ')[0];
       var modeloLimpio = modelo.replace(/[-\s]/g,'');
@@ -27251,6 +27254,7 @@ async function amRqConfirmar() {
   }
 
   // Limpiar para siguiente entrada
+  _amPrecioManual = false;
   var _marcaEl = document.getElementById('am-rq-marca');
   _marcaEl.value = '';
   _marcaEl.dataset.salesAuto = '0';
