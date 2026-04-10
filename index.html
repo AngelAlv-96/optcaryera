@@ -27102,25 +27102,21 @@ async function amRqBuscarPrecio() {
       }
 
       // 1. Precio por modelo en DB — modelo exacto SIEMPRE pone precio
-      if (modelo.length >= 2) {
+      if (modelo.length >= 3) {
         var qm = await db.from('productos')
           .select('precio_venta,modelo,costo,nombre')
           .ilike('marca', '%' + marcaBase + '%')
           .eq('activo', true)
           .limit(200);
         if (qm.data && qm.data.length) {
+          // SOLO match exacto de modelo — parciales causan falsos positivos
           var exactos = qm.data.filter(function(r) {
             var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
-            return mod === modeloLimpio;
+            return mod && mod === modeloLimpio;
           });
-          var parciales = exactos.length ? [] : qm.data.filter(function(r) {
-            var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
-            return mod.startsWith(modeloLimpio) || modeloLimpio.startsWith(mod);
-          });
-          var matches = exactos.length ? exactos : parciales;
 
-          if (matches.length) {
-            var ref = matches[0];
+          if (exactos.length) {
+            var ref = exactos[0];
             var precioModelo = parseFloat(ref.precio_venta) || 0;
             if (precioModelo > 0) {
               _precioEl.value = precioModelo;
