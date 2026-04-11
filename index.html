@@ -6785,40 +6785,7 @@ async function _marcarEntregados(ids, asesor) {
   // Alerta QC: si se entregan sin revisión
   if (_qcEntregaList.length > 0) _alertaQCSinRevision(_qcEntregaList, 'sucursal');
 
-  // ── ENCOLAR ENCUESTA DE OPINIÓN (2h después) ──
-  try {
-    // Obtener paciente_id y sucursal de la primera orden
-    var { data: ordInfo } = await db.from('ordenes_laboratorio')
-      .select('paciente_id, sucursal, notas_laboratorio')
-      .eq('id', ids[0]).single();
-    if (ordInfo && ordInfo.paciente_id) {
-      var { data: pac } = await db.from('pacientes')
-        .select('nombre, apellidos, telefono')
-        .eq('id', ordInfo.paciente_id).single();
-      var tel = (pac?.telefono || '').replace(/\D/g, '');
-      if (tel.length >= 10 && pac?.nombre) {
-        // Extraer folio de notas
-        var folioMatch = (ordInfo.notas_laboratorio || '').match(/Folio:\s*(\S+)/);
-        var folio = folioMatch ? folioMatch[1] : '';
-        // Verificar que no exista encuesta reciente (30 días)
-        var cutoff30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        var { data: yaEncolado } = await db.from('review_queue')
-          .select('id').eq('phone', tel.startsWith('521') ? tel : '521' + tel)
-          .gte('created_at', cutoff30).limit(1);
-        if (!yaEncolado || yaEncolado.length === 0) {
-          var sendAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-          var phoneNorm = tel.startsWith('521') ? tel : '521' + tel;
-          await db.from('review_queue').insert({
-            phone: phoneNorm,
-            paciente_nombre: (pac.nombre + ' ' + (pac.apellidos || '')).trim(),
-            folio: folio,
-            sucursal: ordInfo.sucursal || '',
-            send_at: sendAt
-          });
-        }
-      }
-    }
-  } catch(e) { console.log('review_queue insert error:', e); }
+  // ── ENCUESTA DE OPINIÓN: ahora se encola al registrar la venta (no al entregar) ──
 
   // Cerrar modal y refrescar todas las vistas que muestran órdenes
   if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; }
@@ -19091,6 +19058,27 @@ async function _procesarVentaInner() {
         await db.from('monedero').insert({paciente_id:vtaPaciente.id,tipo:'acumulado',monto:monGenerar,venta_id:venta.id,descripcion:`${MONEDERO_PCT}% de ${folio}`});
         await db.from('ventas').update({monedero_generado:monGenerar}).eq('id',venta.id);
       }
+    }
+    // ── ENCOLAR ENCUESTA DE OPINIÓN (1h después de la venta) ──
+    if (vtaPaciente?.id && vtaPaciente?.telefono) {
+      try {
+        var _rvTel = (vtaPaciente.telefono || '').replace(/\D/g, '');
+        if (_rvTel.length >= 10) {
+          var _rvPhone = _rvTel.startsWith('521') ? _rvTel : '521' + _rvTel;
+          var _rvCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+          var { data: _rvYa } = await db.from('review_queue').select('id').eq('phone', _rvPhone).gte('created_at', _rvCutoff).limit(1);
+          if (!_rvYa || _rvYa.length === 0) {
+            var _rvSendAt = new Date(Date.now() + 1 * 60 * 60 * 1000).toISOString();
+            await db.from('review_queue').insert({
+              phone: _rvPhone,
+              paciente_nombre: (vtaPaciente.nombre || '').trim(),
+              folio: folio,
+              sucursal: ventaSucursal,
+              send_at: _rvSendAt
+            });
+          }
+        }
+      } catch(e) { console.log('review_queue insert error:', e); }
     }
     // Auto-register LC for CRM tracking (non-blocking)
     _lcAutoRegistrar(venta.id, ventaSucursal, canalVenta).catch(e => console.warn('[LC]', e));

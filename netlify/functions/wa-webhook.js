@@ -2165,7 +2165,7 @@ exports.handler = async function(event) {
             var mapsLink = mapsLinks[reviewSuc] || mapsLinks['Américas'];
             var reviewReply;
             if (lowerText === 'todo excelente' || lowerText === 'buenas promos') {
-              reviewReply = '¡Gracias! 😊 Nos encantaría que compartieras tu experiencia en Google:\n👉 ' + mapsLink;
+              reviewReply = '¡Gracias! 😊 ¿Nos regalas 15 segundos? Solo toca el link, pon tus estrellitas ⭐ y listo. Nos ayudas a que más familias en Juárez nos encuentren 🙏\n👉 ' + mapsLink;
             } else {
               // "Podría mejorar" — enter care mode
               reviewReply = 'Lamentamos que tu experiencia no haya sido la mejor 😔\n\nQueremos mejorar. ¿Podrías contarnos qué te gustaría que hiciéramos diferente? Tu opinión es muy valiosa para nosotros.\n\nSi prefieres, también puedes visitarnos en cualquier sucursal y con gusto te atendemos personalmente 🤝';
