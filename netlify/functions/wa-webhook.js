@@ -862,6 +862,223 @@ function hoyLocal() {
   return new Date().toLocaleDateString('en-CA');
 }
 
+// ── ATTENDANCE QUERIES (admin via WA) ──
+function _normalizeText(t) {
+  return (t||'').toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').trim();
+}
+
+async function _getEmpleados() {
+  var cfgData = await supaFetch('app_config?id=eq.empleados_telefono&select=value');
+  if (!cfgData?.[0]?.value) return {};
+  return typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+}
+
+function _findEmpleadoByName(empleados, nameQuery) {
+  var q = _normalizeText(nameQuery);
+  if (!q) return null;
+  // empleados = { phone: uid, ... } — need expedientes for names
+  // Instead match against known names from horarios_asistencia or expedientes
+  return q; // Return the query text, caller will match against DB
+}
+
+async function _getAsistenciaHoy() {
+  var fecha = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  var data = await supaFetch('asistencia?fecha=eq.' + fecha + '&select=uid,entrada,salida,comida_inicio,comida_fin,retardo_min,es_falta,sucursal');
+  return { fecha, records: data || [] };
+}
+
+async function _getEmpleadoNames() {
+  // Get employee names from expedientes
+  var cfgData = await supaFetch('app_config?id=eq.expedientes_empleados&select=value');
+  var expedientes = {};
+  if (cfgData?.[0]?.value) {
+    expedientes = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+  }
+  // Also get phone→uid mapping
+  var telData = await supaFetch('app_config?id=eq.empleados_telefono&select=value');
+  var telMap = {};
+  if (telData?.[0]?.value) {
+    telMap = typeof telData[0].value === 'string' ? JSON.parse(telData[0].value) : telData[0].value;
+  }
+  // Build uid→name map
+  var names = {};
+  // From expedientes (preferred — has full name)
+  Object.keys(expedientes).forEach(function(uid) {
+    var exp = expedientes[uid];
+    names[uid] = exp.nombre_completo || exp.nombre || uid;
+  });
+  // Fallback from telMap values (uid is the value)
+  Object.values(telMap).forEach(function(uid) {
+    if (!names[uid]) names[uid] = uid;
+  });
+  return names;
+}
+
+function _matchEmpleado(names, query) {
+  var q = _normalizeText(query);
+  if (!q) return null;
+  var best = null, bestScore = 0;
+  Object.keys(names).forEach(function(uid) {
+    var name = _normalizeText(names[uid]);
+    // Exact uid match
+    if (_normalizeText(uid) === q) { best = uid; bestScore = 100; return; }
+    // Name contains query
+    if (name.includes(q) && q.length >= 3) {
+      var score = q.length / name.length * 10;
+      if (score > bestScore) { best = uid; bestScore = score; }
+    }
+    // First name match
+    var firstName = name.split(' ')[0];
+    if (firstName === q && q.length >= 3) { best = uid; bestScore = 50; }
+  });
+  return best;
+}
+
+async function _handleAsistQuery(lowerText, originalText, fromPhone) {
+  var tz = 'America/Chihuahua';
+  var norm = _normalizeText(lowerText);
+
+  // ── "Asistencia hoy" / "asistencia" — full summary ──
+  if (/^asistencia(\s+hoy)?$/.test(norm)) {
+    var { fecha, records } = await _getAsistenciaHoy();
+    var names = await _getEmpleadoNames();
+    if (!records.length) return '📋 *ASISTENCIA ' + fecha + '*\n\nNadie ha fichado hoy.';
+    var lines = records.map(function(r) {
+      var name = names[r.uid] || r.uid;
+      var entrada = r.entrada ? new Date(r.entrada).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true }) : '—';
+      var status = '';
+      if (r.es_falta) status = '❌ Falta';
+      else if (r.salida) status = '🏠 Salió ' + new Date(r.salida).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+      else if (r.comida_inicio && !r.comida_fin) status = '🍽 Comiendo';
+      else if (r.entrada) status = '✅ Trabajando';
+      else status = '⏳ Sin entrada';
+      var retardo = r.retardo_min > 0 ? ' ⚠️+' + r.retardo_min + 'min' : '';
+      return name + ': ' + entrada + ' ' + status + retardo;
+    });
+    // Check who hasn't shown up
+    var fichadosUids = records.map(function(r) { return r.uid; });
+    var allNames = Object.keys(names);
+    var noShow = allNames.filter(function(uid) { return !fichadosUids.includes(uid); });
+    if (noShow.length) {
+      lines.push('');
+      lines.push('*Sin fichar:*');
+      noShow.forEach(function(uid) { lines.push('⚠️ ' + (names[uid] || uid)); });
+    }
+    return '📋 *ASISTENCIA ' + fecha + '*\n\n' + lines.join('\n');
+  }
+
+  // ── "Ya llegó [nombre]?" / "¿a qué hora llegó [nombre]?" ──
+  var llegoMatch = norm.match(/(?:ya llego|ya llego|llego|a que hora llego|hora de llegada de|hora llegada)\s+(\w+)/);
+  if (llegoMatch) {
+    var empName = llegoMatch[1];
+    var names = await _getEmpleadoNames();
+    var uid = _matchEmpleado(names, empName);
+    if (!uid) return '❓ No encontré empleado "' + empName + '". Usa el primer nombre.';
+    var { records } = await _getAsistenciaHoy();
+    var rec = records.find(function(r) { return r.uid === uid; });
+    var displayName = names[uid] || uid;
+    if (!rec || !rec.entrada) return '⏳ *' + displayName + '* aún no ha llegado hoy.';
+    var hora = new Date(rec.entrada).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+    var retMsg = rec.retardo_min > 0 ? ' (⚠️ ' + rec.retardo_min + ' min tarde)' : ' (✅ a tiempo)';
+    return '✅ *' + displayName + '* llegó a las *' + hora + '*' + retMsg;
+  }
+
+  // ── "¿A qué hora salió [nombre]?" ──
+  var salioMatch = norm.match(/(?:a que hora salio|ya salio|salio|hora de salida de|hora salida)\s+(\w+)/);
+  if (salioMatch) {
+    var empName = salioMatch[1];
+    var names = await _getEmpleadoNames();
+    var uid = _matchEmpleado(names, empName);
+    if (!uid) return '❓ No encontré empleado "' + empName + '".';
+    var { records } = await _getAsistenciaHoy();
+    var rec = records.find(function(r) { return r.uid === uid; });
+    var displayName = names[uid] || uid;
+    if (!rec || !rec.entrada) return '⏳ *' + displayName + '* no ha fichado hoy.';
+    if (!rec.salida) return '🏢 *' + displayName + '* sigue en sucursal (no ha fichado salida).';
+    var hora = new Date(rec.salida).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+    return '🏠 *' + displayName + '* salió a las *' + hora + '*.';
+  }
+
+  // ── "¿[nombre] está comiendo?" / "anda comiendo [nombre]?" ──
+  var comidaMatch = norm.match(/(?:esta comiendo|anda comiendo|fue a comer|salio a comer)\s+(\w+)/) || norm.match(/(\w+)\s+(?:esta comiendo|anda comiendo|fue a comer)/);
+  if (comidaMatch) {
+    var empName = comidaMatch[1];
+    var names = await _getEmpleadoNames();
+    var uid = _matchEmpleado(names, empName);
+    if (!uid) return '❓ No encontré empleado "' + empName + '".';
+    var { records } = await _getAsistenciaHoy();
+    var rec = records.find(function(r) { return r.uid === uid; });
+    var displayName = names[uid] || uid;
+    if (!rec || !rec.entrada) return '⏳ *' + displayName + '* no ha fichado hoy.';
+    if (rec.comida_inicio && !rec.comida_fin) {
+      var horaComida = new Date(rec.comida_inicio).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+      return '🍽 Sí, *' + displayName + '* salió a comer a las *' + horaComida + '* y aún no regresa.';
+    }
+    if (rec.comida_inicio && rec.comida_fin) {
+      var horaRegreso = new Date(rec.comida_fin).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+      return '✅ *' + displayName + '* ya regresó de comer (a las ' + horaRegreso + ').';
+    }
+    return '🏢 *' + displayName + '* no ha salido a comer.';
+  }
+
+  // ── "Avísame cuando llegue [nombre]" ──
+  var avisaMatch = norm.match(/(?:avisame|avisame|avisa)\s+(?:cuando|si)\s+(?:llegue|llega|entre|ficha|venga)\s+(\w+)/);
+  if (avisaMatch) {
+    var empName = avisaMatch[1];
+    var names = await _getEmpleadoNames();
+    var uid = _matchEmpleado(names, empName);
+    if (!uid) return '❓ No encontré empleado "' + empName + '". Usa el primer nombre.';
+    var displayName = names[uid] || uid;
+    // Check if already arrived
+    var { records } = await _getAsistenciaHoy();
+    var rec = records.find(function(r) { return r.uid === uid; });
+    if (rec && rec.entrada) {
+      var hora = new Date(rec.entrada).toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+      return '✅ *' + displayName + '* ya llegó hoy a las *' + hora + '*.';
+    }
+    // Save alert in app_config
+    var alertKey = 'asist_alert_' + new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    var existingAlerts = await supaFetch('app_config?id=eq.' + alertKey + '&select=value');
+    var alerts = [];
+    if (existingAlerts?.[0]?.value) {
+      alerts = typeof existingAlerts[0].value === 'string' ? JSON.parse(existingAlerts[0].value) : existingAlerts[0].value;
+    }
+    // Add alert (dedup)
+    var already = alerts.find(function(a) { return a.uid === uid && a.phone === fromPhone; });
+    if (!already) {
+      alerts.push({ uid: uid, name: displayName, phone: fromPhone, created: new Date().toISOString() });
+      if (existingAlerts?.[0]) {
+        await supaFetch('app_config?id=eq.' + alertKey, { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(alerts) }), prefer: 'return=minimal' });
+      } else {
+        await supaFetch('app_config', { method: 'POST', body: JSON.stringify({ id: alertKey, value: JSON.stringify(alerts) }), prefer: 'return=minimal' });
+      }
+    }
+    return '🔔 Listo. Te aviso cuando *' + displayName + '* fiche entrada hoy.';
+  }
+
+  return null; // No attendance query matched
+}
+
+// Check and send pending arrival alerts (called after entry is recorded)
+async function _checkArrivalAlerts(uid, empName, empSuc) {
+  try {
+    var tz = 'America/Chihuahua';
+    var alertKey = 'asist_alert_' + new Date().toLocaleDateString('en-CA', { timeZone: tz });
+    var existingAlerts = await supaFetch('app_config?id=eq.' + alertKey + '&select=value');
+    if (!existingAlerts?.[0]?.value) return;
+    var alerts = typeof existingAlerts[0].value === 'string' ? JSON.parse(existingAlerts[0].value) : existingAlerts[0].value;
+    var matching = alerts.filter(function(a) { return a.uid === uid; });
+    if (!matching.length) return;
+    var hora = new Date().toLocaleTimeString('es-MX', { timeZone: tz, hour:'2-digit', minute:'2-digit', hour12:true });
+    for (var i = 0; i < matching.length; i++) {
+      await sendWhatsAppReply(matching[i].phone, '🔔 *' + empName + '* acaba de llegar\n⏰ ' + hora + '\n🏪 ' + empSuc);
+    }
+    // Remove fulfilled alerts
+    var remaining = alerts.filter(function(a) { return a.uid !== uid; });
+    await supaFetch('app_config?id=eq.' + alertKey, { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(remaining) }), prefer: 'return=minimal' });
+  } catch(e) { console.warn('[AsistAlert]', e.message); }
+}
+
 // ── ATTENDANCE COMMAND DETECTION (typo-tolerant + synonyms) ──
 function _detectAsistCmd(text) {
   var t = text.replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/[^\w\s]/g,'').trim();
@@ -1005,6 +1222,8 @@ async function cmdAsistencia(phone, action, profileName) {
         await supaFetch('asistencia', { method: 'POST', body: JSON.stringify(payload), prefer: 'return=minimal' });
       }
       var replyMsg = '✅ Entrada registrada\n⏰ ' + horaLocal + '\n🏪 ' + empSuc;
+      // Check pending arrival alerts
+      _checkArrivalAlerts(uid, empName, empSuc).catch(function(e){ console.warn('[AsistAlert]', e.message); });
       if (retardoMin > 0) {
         replyMsg += '\n⚠️ Retardo: ' + retardoMin + ' min';
         // Notify admin
@@ -2116,6 +2335,10 @@ exports.handler = async function(event) {
               + '📢 *Promo [texto]* — Actualizar promos Clari\n'
               + '👀 *Ver promo* — Ver promos actuales\n'
               + '✅ *Aprobar / ❌ Rechazar* — Ventas Clari\n'
+              + '\n👤 *ASISTENCIA*\n'
+              + '📋 *Asistencia hoy* — Resumen del día\n'
+              + '❓ *Ya llegó [nombre]?* — Estado de un empleado\n'
+              + '🔔 *Avísame cuando llegue [nombre]* — Alerta\n'
               + '\n📦 *LAB ASSISTANT*\n'
               + '📸 *Enviar foto* — Registra nota de compra\n'
               + '💰 *Gastos / Cuánto gasté* — Resumen gastos\n'
@@ -2126,6 +2349,17 @@ exports.handler = async function(event) {
             await saveMessage(from, 'user', userText, userName);
             await saveMessage(from, 'assistant', helpReply);
             cmdHandled = true;
+          }
+
+          // ── ATTENDANCE QUERIES (admin/gerencia via WA) ──
+          if (!cmdHandled) {
+            var asistQueryResult = await _handleAsistQuery(lowerText, userText, from);
+            if (asistQueryResult) {
+              await sendWhatsAppReply(from, asistQueryResult);
+              await saveMessage(from, 'user', userText, userName);
+              await saveMessage(from, 'assistant', asistQueryResult);
+              cmdHandled = true;
+            }
           }
 
           // ── LAB ASSISTANT (materiales, precios, gastos) ──
