@@ -26002,12 +26002,20 @@ function amRechazar(idx) {
 // ── BD LOOKUP ──
 async function amBuscarEnBD(modelo, marca) {
   try {
+    // Buscar por modelo EXACTO + marca (no parcial, para evitar que "019" matchee "SM2019")
     var res = await db.from('productos')
       .select('id, nombre, precio_venta, codigo_barras, stock')
       .eq('activo', true)
-      .ilike('modelo', '%' + (modelo||'') + '%')
+      .ilike('modelo', modelo||'')
       .limit(3);
-    if (res.data && res.data.length) return res.data[0];
+    if (res.data && res.data.length) {
+      // Si hay marca, preferir match con misma marca
+      if (marca) {
+        var sameMarca = res.data.find(function(p){ return (p.nombre||'').toUpperCase().indexOf(marca.toUpperCase()) >= 0; });
+        if (sameMarca) return sameMarca;
+      }
+      return res.data[0];
+    }
     // Try by codigo (generated or direct barcode from provider)
     var codigoGen = amGenCodigo(marca, modelo);
     var codigoDirect = amDetectPrefix(modelo) ? modelo : '';
@@ -27262,8 +27270,9 @@ async function amRqConfirmar() {
   }
 
   var cfg = amGetConfig();
-  // Si el modelo matchea un prefijo de proveedor (SM1515, ZB2274), usar como código directo
-  var codigo = amDetectPrefix(modelo) ? modelo : amGenCodigo(marca, modelo);
+  // Si el modelo matchea un prefijo de proveedor (SM1515, ZB2274) Y la marca coincide, usar como código directo
+  var prefixMarca = amDetectPrefix(modelo);
+  var codigo = (prefixMarca && prefixMarca === marca) ? modelo : amGenCodigo(marca, modelo);
   var row = {
     marca: marca,
     modelo: modelo,
