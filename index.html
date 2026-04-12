@@ -25817,6 +25817,13 @@ async function amIniciarVoz() {
   };
 
   amVozRecognition.onerror = function(e) {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      amVozActiva = false;
+      var btn = document.getElementById('am-btn-voz');
+      if (btn) { btn.textContent = '🎤 Voz'; btn.style.background = 'rgba(74,240,200,0.1)'; }
+      toast('Micrófono no permitido. Activa el permiso en tu navegador.', true);
+      return;
+    }
     if (e.error !== 'no-speech') toast('Error voz: ' + e.error, true);
   };
 
