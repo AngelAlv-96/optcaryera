@@ -18595,7 +18595,7 @@ async function buscarVtaPac() {
   }
   if (q.length<2) { dd.style.display='none'; return; }
   const filtro=buildSmartFilter(q);
-  let query=db.from('pacientes').select('id, nombre, apellidos, telefono').limit(15);
+  let query=db.from('pacientes').select('id, nombre, apellidos, telefono').limit(50);
   query=applySmartFilter(query,filtro);
   const { data } = await query;
   if (!data?.length) { dd.innerHTML='<div style="padding:10px;color:var(--muted);font-size:12px;text-align:center">Sin resultados</div>'; dd.style.display=''; return; }
