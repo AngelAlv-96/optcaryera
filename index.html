@@ -25817,14 +25817,15 @@ async function amIniciarVoz() {
   };
 
   amVozRecognition.onerror = function(e) {
-    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'aborted') {
       amVozActiva = false;
+      if (amVozRecognition) { try { amVozRecognition.stop(); } catch(x){} }
       var btn = document.getElementById('am-btn-voz');
       if (btn) { btn.textContent = '🎤 Voz'; btn.style.background = 'rgba(74,240,200,0.1)'; }
-      toast('Micrófono no permitido. Activa el permiso en tu navegador.', true);
+      if (e.error !== 'aborted') toast('Micrófono no permitido. Revisa permisos del navegador.');
       return;
     }
-    if (e.error !== 'no-speech') toast('Error voz: ' + e.error, true);
+    if (e.error !== 'no-speech') toast('Error voz: ' + e.error);
   };
 
   amVozRecognition.onend = function() {
