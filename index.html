@@ -26076,7 +26076,7 @@ async function amGuardarTodo() {
 // ── PRINT ZPL ──
 var _amPrinterConnected = false;
 var _amPrinterName = '';
-var AM_BP_URL = 'https://localhost:9200'; // ZPL Bridge (zpl_bridge.py)
+var AM_BP_URL = 'http://localhost:9200'; // ZPL Bridge (zpl_bridge.py) — HTTP ok for localhost (secure context)
 
 async function amCheckPrinter() {
   var dot  = document.getElementById('am-print-dot');

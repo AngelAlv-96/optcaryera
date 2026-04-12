@@ -119,19 +119,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
 
 def run_server():
-    gen_cert()
     server = HTTPServer(('127.0.0.1', PORT), Handler)
-    if os.path.exists(CERT_FILE) and os.path.exists(KEY_FILE):
-        try:
-            ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-            ctx.load_cert_chain(CERT_FILE, KEY_FILE)
-            server.socket = ctx.wrap_socket(server.socket, server_side=True)
-            proto = 'https'
-        except Exception as e:
-            print('HTTP mode:', e); proto = 'http'
-    else:
-        proto = 'http'
-    print(f'ZPL Bridge corriendo en {proto}://localhost:{PORT}')
+    # HTTP only — localhost is always a secure context in Chrome/Edge
+    # HTTPS with self-signed cert caused "sitio no seguro" warning
+    # which broke SpeechRecognition API (requires secure context)
+    print(f'ZPL Bridge corriendo en http://localhost:{PORT}')
     server.serve_forever()
 
 def install_service():
