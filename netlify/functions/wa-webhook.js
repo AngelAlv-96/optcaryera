@@ -2067,20 +2067,26 @@ exports.handler = async function(event) {
           }
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
-        // Non-admin sent photo WITH text → LC OCR + pass text to context
+        // Non-admin sent photo WITH text → check if it's about LC or something else
         if (!isAdminWithMedia && mediaUrl2 && (mediaType2||'').startsWith('image/')) {
           var custImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
           await saveMessage(from, 'user', '📷 ' + userText + (custImgUrl2 ? '\n[IMG:' + custImgUrl2 + ']' : ''), userName);
-          try {
-            console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
-            var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);
-            await sendWhatsAppReply(from, lcResult2.reply);
-            await saveMessage(from, 'assistant', lcResult2.reply);
-          } catch(lcErr2) {
-            console.error('[LC-OCR2 Error]', lcErr2.message);
-            await sendWhatsAppReply(from, '📸 Recibí tu foto pero tuve un problema. ¿Podrías enviarla de nuevo? 👓');
+          // If caption mentions LC-related terms → LC OCR. Otherwise → let Clari handle with photo context
+          var lcTerms = /lente(s)?\s*(de)?\s*contacto|caja|graduaci[oó]n|receta|rx|prescripci[oó]n|recompra|pedir\s*lentes/i;
+          if (lcTerms.test(userText)) {
+            try {
+              console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
+              var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);
+              await sendWhatsAppReply(from, lcResult2.reply);
+              await saveMessage(from, 'assistant', lcResult2.reply);
+            } catch(lcErr2) {
+              console.error('[LC-OCR2 Error]', lcErr2.message);
+              await sendWhatsAppReply(from, '📸 Recibí tu foto pero tuve un problema. ¿Podrías enviarla de nuevo? 👓');
+            }
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
           }
-          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          // Not LC-related → let message flow through to Clari (photo saved above, text continues below)
+          console.log('[Photo+Text] Not LC — passing to Clari: ' + userText.substring(0,60));
         }
       }
 
