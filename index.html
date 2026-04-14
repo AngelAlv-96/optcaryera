@@ -27073,13 +27073,186 @@ function amPrecioKeydown(e) {
   }
 }
 
-// Cerrar dropdown al hacer click fuera
+// Cerrar dropdowns al hacer click fuera
 document.addEventListener('click', function(e) {
   var list = document.getElementById('am-precio-list');
   if (list && !e.target.closest('#am-precio-list') && e.target.id !== 'am-rq-precio') {
     list.style.display = 'none';
   }
+  var mlist = document.getElementById('am-marca-list');
+  if (mlist && !e.target.closest('#am-marca-list') && e.target.id !== 'am-rq-modelo') {
+    mlist.style.display = 'none';
+  }
 });
+
+// ── BUSCAR MODELO SIN MARCA — autocomplete marca desde DB ──
+var _amMarcaTimer = null;
+var _amMarcaItems = []; // [{marca, modelo, precio, costo, nombre}]
+var _amMarcaIdx = -1;
+
+function amRqBuscarModeloSinMarca(modelo) {
+  clearTimeout(_amMarcaTimer);
+  if (!modelo || modelo.length < 3) return;
+  var st = document.getElementById('am-rq-status');
+  _amMarcaTimer = setTimeout(async function() {
+    try {
+      var modeloLimpio = modelo.replace(/[-\s]/g,'').toUpperCase();
+
+      // 0. Buscar en sesión actual (amRows)
+      var sesionMatch = amRows.find(function(r) {
+        return (r.modelo||'').toUpperCase() === modelo || (r.codigo||'').toUpperCase() === modelo;
+      });
+      if (sesionMatch && sesionMatch.marca) {
+        document.getElementById('am-rq-marca').value = sesionMatch.marca;
+        if (sesionMatch.precio > 0) document.getElementById('am-rq-precio').value = sesionMatch.precio;
+        if (sesionMatch.costo > 0 && !parseFloat(document.getElementById('am-rq-costo').value)) document.getElementById('am-rq-costo').value = sesionMatch.costo;
+        if (st) { st.innerHTML = '✅ <b style="color:#4af078">YA REGISTRADO</b> (sesión): <b>' + sesionMatch.marca + ' ' + modelo + '</b> — precio: $' + (sesionMatch.precio||0).toLocaleString('es-MX'); st.style.color = '#4af078'; }
+        amPrecioLoadMarca(sesionMatch.marca);
+        amMarcaHideDropdown();
+        return;
+      }
+
+      // 1. Buscar en DB por modelo o codigo_barras (sin filtro de marca)
+      var qAll = await db.from('productos')
+        .select('marca,modelo,precio_venta,costo,nombre,codigo_barras')
+        .eq('activo', true)
+        .or('modelo.ilike.%' + modelo + '%,codigo_barras.eq.' + modelo)
+        .limit(50);
+      if (!qAll.data || !qAll.data.length) {
+        amMarcaHideDropdown();
+        return;
+      }
+
+      // Filtrar matches exactos de modelo
+      var exactos = qAll.data.filter(function(r) {
+        var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
+        var cod = (r.codigo_barras||'').toUpperCase();
+        return mod === modeloLimpio || cod === modelo;
+      });
+      if (!exactos.length) { amMarcaHideDropdown(); return; }
+
+      // Agrupar por marca (quedarnos con el primero de cada marca)
+      var marcasMap = {};
+      exactos.forEach(function(r) {
+        var m = (r.marca||'').toUpperCase().trim();
+        if (m && !marcasMap[m]) marcasMap[m] = r;
+      });
+      var marcaKeys = Object.keys(marcasMap);
+
+      if (marcaKeys.length === 1) {
+        // Una sola marca → autocompletar directo
+        var ref = marcasMap[marcaKeys[0]];
+        var marcaEl = document.getElementById('am-rq-marca');
+        var precioEl = document.getElementById('am-rq-precio');
+        var costoEl = document.getElementById('am-rq-costo');
+        marcaEl.value = marcaKeys[0];
+        var pv = parseFloat(ref.precio_venta) || 0;
+        var co = parseFloat(ref.costo) || 0;
+        if (pv > 0) precioEl.value = pv;
+        if (co > 0 && !parseFloat(costoEl.value)) costoEl.value = co;
+        if (st) {
+          st.innerHTML = '✅ <b style="color:#4af078">YA REGISTRADO</b> ' + marcaKeys[0] + ' ' + modelo + ' — precio: <b style="color:var(--accent)">$' + pv.toLocaleString('es-MX') + '</b>' + (co > 0 ? ' · costo: $' + co.toLocaleString('es-MX') : '');
+          st.style.color = '#4af078';
+        }
+        amPrecioLoadMarca(marcaKeys[0]);
+        amMarcaHideDropdown();
+      } else {
+        // Múltiples marcas → mostrar dropdown para elegir con ↑↓
+        _amMarcaItems = marcaKeys.map(function(m) { return { marca: m, ref: marcasMap[m] }; });
+        _amMarcaIdx = -1;
+        amMarcaRenderDropdown();
+        if (st) {
+          st.innerHTML = '❓ <b style="color:#f0b84a">' + marcaKeys.length + ' marcas</b> tienen modelo ' + modelo + ' — usa <b>↑↓</b> para elegir';
+          st.style.color = '#f0b84a';
+        }
+      }
+    } catch(e) { console.warn('amRqBuscarModeloSinMarca:', e); }
+  }, 350);
+}
+
+function amMarcaRenderDropdown() {
+  var list = document.getElementById('am-marca-list');
+  if (!list) {
+    // Crear dropdown debajo del campo Modelo
+    var modeloInput = document.getElementById('am-rq-modelo');
+    var parent = modeloInput.parentElement;
+    parent.style.position = 'relative';
+    list = document.createElement('div');
+    list.id = 'am-marca-list';
+    list.style.cssText = 'position:absolute;top:100%;left:0;right:0;z-index:100;background:var(--surface);border:1px solid rgba(240,184,74,.4);border-radius:8px;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.5);margin-top:2px';
+    parent.appendChild(list);
+  }
+  list.style.display = '';
+  list.innerHTML = _amMarcaItems.map(function(it, i) {
+    var pv = parseFloat(it.ref.precio_venta) || 0;
+    return '<div class="am-marca-opt" data-idx="' + i + '" onclick="amMarcaSelect(' + i + ')" onmouseover="_amMarcaIdx=' + i + ';amMarcaHighlight()" style="padding:7px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-family:Outfit,sans-serif;border-bottom:1px solid rgba(255,255,255,.05);transition:background .1s">' +
+      '<span style="font-weight:700;color:var(--white)">' + it.marca + '</span>' +
+      '<span style="font-size:10px;color:var(--muted)">$' + pv.toLocaleString('es-MX') + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function amMarcaHighlight() {
+  var list = document.getElementById('am-marca-list');
+  if (!list) return;
+  var opts = list.querySelectorAll('.am-marca-opt');
+  opts.forEach(function(el, i) {
+    el.style.background = i === _amMarcaIdx ? 'rgba(240,184,74,.15)' : 'transparent';
+  });
+}
+
+function amMarcaSelect(idx) {
+  if (idx < 0 || idx >= _amMarcaItems.length) return;
+  var it = _amMarcaItems[idx];
+  var marcaEl = document.getElementById('am-rq-marca');
+  var precioEl = document.getElementById('am-rq-precio');
+  var costoEl = document.getElementById('am-rq-costo');
+  var st = document.getElementById('am-rq-status');
+  var modelo = (document.getElementById('am-rq-modelo').value || '').trim().toUpperCase();
+
+  marcaEl.value = it.marca;
+  var pv = parseFloat(it.ref.precio_venta) || 0;
+  var co = parseFloat(it.ref.costo) || 0;
+  if (pv > 0) precioEl.value = pv;
+  if (co > 0 && !parseFloat(costoEl.value)) costoEl.value = co;
+  if (st) {
+    st.innerHTML = '✅ <b style="color:#4af078">YA REGISTRADO</b> ' + it.marca + ' ' + modelo + ' — precio: <b style="color:var(--accent)">$' + pv.toLocaleString('es-MX') + '</b>' + (co > 0 ? ' · costo: $' + co.toLocaleString('es-MX') : '');
+    st.style.color = '#4af078';
+  }
+  amMarcaHideDropdown();
+  amPrecioLoadMarca(it.marca);
+}
+
+function amMarcaHideDropdown() {
+  var list = document.getElementById('am-marca-list');
+  if (list) list.style.display = 'none';
+  _amMarcaItems = [];
+  _amMarcaIdx = -1;
+}
+
+function amMarcaKeydown(e) {
+  // Solo activo si hay dropdown de marcas visible
+  var list = document.getElementById('am-marca-list');
+  if (!list || list.style.display === 'none' || !_amMarcaItems.length) return false;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _amMarcaIdx = Math.min(_amMarcaIdx + 1, _amMarcaItems.length - 1);
+    amMarcaHighlight();
+    return true;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _amMarcaIdx = Math.max(_amMarcaIdx - 1, 0);
+    amMarcaHighlight();
+    return true;
+  }
+  if (e.key === 'Enter' && _amMarcaIdx >= 0) {
+    e.preventDefault();
+    amMarcaSelect(_amMarcaIdx);
+    return true;
+  }
+  return false;
+}
 
 async function amRqBuscarPrecio() {
   clearTimeout(amRqPrecioTimer);
@@ -27091,6 +27264,11 @@ async function amRqBuscarPrecio() {
   if (marca.length < 2 && modelo.length >= 4) {
     var _detMarca = amDetectPrefix(modelo);
     if (_detMarca) { marca = _detMarca; document.getElementById('am-rq-marca').value = _detMarca; }
+  }
+  // Si no hay marca pero sí modelo, buscar en DB por modelo solo → autocompletar marca
+  if (marca.length < 2 && modelo.length >= 3) {
+    amRqBuscarModeloSinMarca(modelo);
+    return;
   }
   if (marca.length < 2) return;
   var st = document.getElementById('am-rq-status');
@@ -27233,6 +27411,8 @@ async function amRqBuscarPrecio() {
 
 
 function amRqKeydown(e) {
+  // Si hay dropdown de marcas visible, interceptar ↑↓ Enter
+  if (amMarcaKeydown(e)) return;
   if (e.key === 'Enter') { e.preventDefault(); amRqConfirmar(); return; }
   // Tab flow: Marca → Modelo → Costo → Precio → Confirmar
   if (e.key === 'Tab' && !e.shiftKey) {
@@ -27342,6 +27522,7 @@ async function amRqConfirmar() {
   if (document.getElementById('am-rq-costo')) document.getElementById('am-rq-costo').value = '';
   var _matchEl = document.getElementById('am-sales-match');
   if (_matchEl) _matchEl.style.display = 'none';
+  amMarcaHideDropdown();
   st.textContent = '✓ Guardado e impreso — listo para el siguiente';
   st.style.color = 'var(--accent)';
   document.getElementById('am-rq-modelo').focus();
