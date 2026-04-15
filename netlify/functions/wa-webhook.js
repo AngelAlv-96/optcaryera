@@ -87,7 +87,7 @@ REGLAS PARA QUEJAS Y PROBLEMAS DE SERVICIO:
 - INVESTIGAR ANTES DE REDIRIGIR: si el cliente reporta que fue a una sucursal y no lo atendieron (no estaba el optometrista, estaba cerrado, no había personal), pregunta a qué hora fue. Esto ayuda a identificar si coincide con horario de comida del personal o algún problema operativo. Ejemplo: "Lamento el inconveniente. ¿A qué hora llegaste? Lo reporto para que no vuelva a pasar."
 - Si el cliente da la hora o más contexto, agradece brevemente y dile que se va a reportar internamente. No insistas más.
 - Si el cliente NO quiere dar más info o dice que ya fue a otro lado, responde breve: "Entendido, lamento el inconveniente. Cuando gustes volver estamos para servirte." Y ya, no alargues.
-- Para otros tipos de quejas (cobros, servicio, producto): redirige a la sucursal con el teléfono directo. "Para revisar tu caso puedes comunicarte directo a [sucursal] al [teléfono]."
+- Para otros tipos de quejas (cobros, servicio, producto): dile que ya se notificó a gerencia y que una persona del equipo de gerencia se comunicará con él/ella en breve para atender su caso personalmente. NO des nombres. NO redirijas a teléfono de sucursal.
 - NO sigas la conversación de queja más allá de 2-3 mensajes. Cierra profesionalmente.`;
 
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
@@ -241,14 +241,72 @@ async function supaFetch(path, opts) {
 }
 
 // ── CHECK IF BOT IS DISABLED FOR A CONVERSATION ──
+// Format: {"phone": timestamp_ms, ...} — auto-expires after 2h of no admin interaction
+const BOT_OFF_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 async function isBotDisabled(phone) {
   try {
     var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
     if (!cfg || !cfg[0] || !cfg[0].value) return false;
-    var list = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
-    if (!Array.isArray(list)) return false;
-    return list.indexOf(String(phone)) !== -1;
+    var map = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+    // Backward compat: if array, treat as disabled without expiry check
+    if (Array.isArray(map)) {
+      if (map.indexOf(String(phone)) !== -1) return true;
+      return false;
+    }
+    if (typeof map !== 'object') return false;
+    var ts = map[String(phone)];
+    if (!ts) return false;
+    // Auto-expire after 2h
+    if (Date.now() - ts > BOT_OFF_TTL_MS) {
+      // Remove expired entry
+      delete map[String(phone)];
+      try {
+        await supaFetch('app_config?id=eq.bot_disabled_conversations', {
+          method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(map) }), prefer: 'return=minimal'
+        });
+      } catch(e2) {}
+      console.log('[Bot Auto-Reactivated] ' + phone + ' — 2h sin interacción admin');
+      return false;
+    }
+    return true;
   } catch(e) { return false; }
+}
+
+async function disableBotForPhone(phone) {
+  try {
+    var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
+    var map = {};
+    if (cfg && cfg[0] && cfg[0].value) {
+      map = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+      if (Array.isArray(map)) { var obj = {}; map.forEach(function(p) { obj[p] = Date.now(); }); map = obj; }
+    }
+    map[String(phone)] = Date.now();
+    await supaFetch('app_config?id=eq.bot_disabled_conversations', {
+      method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(map) }), prefer: 'return=minimal'
+    });
+    console.log('[Bot Disabled] ' + phone);
+  } catch(e) { console.error('[Bot Disable Error]', e.message); }
+}
+
+// ── COMPLAINT DETECTION ──
+const COMPLAINT_KEYWORDS = [
+  'queja', 'quejar', 'molest', 'enojad', 'enojar', 'inconform', 'mal servicio',
+  'mal trato', 'maltrato', 'mala atencion', 'mala atención', 'pesimo', 'pésimo',
+  'no me atendieron', 'nadie me atendio', 'nadie me atendió', 'cerrado',
+  'no habia nadie', 'no había nadie', 'demanda', 'demandar', 'profeco',
+  'abuso', 'robo', 'robaron', 'estafa', 'engaño', 'engañ', 'falta de respeto',
+  'grosero', 'grosera', 'prepotente', 'negligencia', 'irresponsab',
+  'nunca vuelvo', 'no vuelvo', 'no regreso', 'horrible', 'terrible', 'asqueroso',
+  'basura', 'porqueria', 'porquería', 'incompetent'
+];
+
+function isComplaintMessage(text) {
+  if (!text) return false;
+  var lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return COMPLAINT_KEYWORDS.some(function(kw) {
+    return lower.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  });
 }
 
 async function getClariConfig() {
@@ -2338,29 +2396,22 @@ exports.handler = async function(event) {
             var botTarget = botMatch[2].trim();
             try {
               var bdCfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=id,value');
-              var bdList = [];
+              var bdMap = {};
               if (bdCfg && bdCfg[0] && bdCfg[0].value) {
-                bdList = typeof bdCfg[0].value === 'string' ? JSON.parse(bdCfg[0].value) : bdCfg[0].value;
+                bdMap = typeof bdCfg[0].value === 'string' ? JSON.parse(bdCfg[0].value) : bdCfg[0].value;
+                if (Array.isArray(bdMap)) { var obj = {}; bdMap.forEach(function(p) { obj[p] = Date.now(); }); bdMap = obj; }
               }
-              if (!Array.isArray(bdList)) bdList = [];
               var bdReply = '';
               if (botAction === 'off') {
-                if (bdList.indexOf(botTarget) === -1) bdList.push(botTarget);
-                bdReply = '🔇 Bot DESACTIVADO para: ' + botTarget + '\nClari ya no responderá a esa conversación. Los mensajes se guardan.\nUsa "bot on ' + botTarget + '" para reactivar.';
+                bdMap[botTarget] = Date.now();
+                bdReply = '🔇 Bot DESACTIVADO para: ' + botTarget + '\nClari ya no responderá a esa conversación. Los mensajes se guardan.\nSe reactiva automáticamente después de 2h sin interacción.\nUsa "bot on ' + botTarget + '" para reactivar manualmente.';
               } else {
-                bdList = bdList.filter(function(x) { return x !== botTarget; });
+                delete bdMap[botTarget];
                 bdReply = '🔊 Bot REACTIVADO para: ' + botTarget + '\nClari volverá a responder normalmente.';
               }
-              var bdPayload = JSON.stringify(bdList);
-              if (bdCfg && bdCfg[0]) {
-                await supaFetch('app_config?id=eq.bot_disabled_conversations', {
-                  method: 'PATCH', body: JSON.stringify({ value: bdPayload }), prefer: 'return=minimal'
-                });
-              } else {
-                await supaFetch('app_config', {
-                  method: 'POST', body: JSON.stringify({ id: 'bot_disabled_conversations', value: bdPayload }), prefer: 'return=minimal'
-                });
-              }
+              await supaFetch('app_config?id=eq.bot_disabled_conversations', {
+                method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(bdMap) }), prefer: 'return=minimal'
+              });
               await sendWhatsAppReply(from, bdReply);
               await saveMessage(from, 'user', userText, userName);
               await saveMessage(from, 'assistant', bdReply);
@@ -2564,6 +2615,32 @@ exports.handler = async function(event) {
         
         console.log('[Reply] -> ' + from + ': ' + reply.substring(0, 100) + '...');
         await sendWhatsAppReply(from, reply);
+
+        // ── COMPLAINT DETECTION — notify admin + auto-disable bot ──
+        if (isComplaintMessage(userText)) {
+          console.log('[Complaint Detected] ' + from + ': ' + userText.substring(0, 80));
+          try {
+            // Notify Angel by WA
+            var complaintName = userName || from;
+            var complaintAlert = '🚨 *QUEJA / CLIENTE MOLESTO*\n\n'
+              + '👤 ' + complaintName + '\n'
+              + '📱 ' + from + '\n'
+              + '💬 "' + userText.substring(0, 200) + '"\n\n'
+              + 'Clari respondió y le dijo que gerencia se comunicará en breve.\n'
+              + 'Bot desactivado automáticamente — revisa en el panel de Clari.';
+            var waCfgComplaint = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+            var alertPhone = '5216564269961'; // Angel default
+            if (waCfgComplaint && waCfgComplaint[0]) {
+              var wcfg = typeof waCfgComplaint[0].value === 'string' ? JSON.parse(waCfgComplaint[0].value) : waCfgComplaint[0].value;
+              if (wcfg.auth_phones && wcfg.auth_phones.length) alertPhone = wcfg.auth_phones[0];
+            }
+            await sendWhatsAppReply(alertPhone, complaintAlert);
+            // Auto-disable bot for this conversation
+            await disableBotForPhone(from);
+          } catch(complaintErr) {
+            console.error('[Complaint Alert Error]', complaintErr.message);
+          }
+        }
       }
 
       return { statusCode: 200, headers: H, body: '<Response></Response>' };

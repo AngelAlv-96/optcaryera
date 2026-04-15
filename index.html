@@ -15000,7 +15000,7 @@ let clariHasMore = false;
 let clariAutoRefresh = null;
 let clariOpenPhone = null;
 let clariRealtimeSub = null;
-var _botDisabledList = [];
+var _botDisabledMap = {}; // {phone: timestamp_ms}
 
 function clariTab(tab) {
   document.getElementById('clari-panel-conv').style.display = tab === 'conv' ? '' : 'none';
@@ -15081,14 +15081,16 @@ async function loadClariConversations(append) {
   } else {
     clariConversations = data || [];
   }
-  // Load bot-disabled list
+  // Load bot-disabled map {phone: timestamp}
   try {
     var bdCfg = await db.from('app_config').select('value').eq('id', 'bot_disabled_conversations').single();
     if (bdCfg.data && bdCfg.data.value) {
-      _botDisabledList = typeof bdCfg.data.value === 'string' ? JSON.parse(bdCfg.data.value) : bdCfg.data.value;
-      if (!Array.isArray(_botDisabledList)) _botDisabledList = [];
-    } else { _botDisabledList = []; }
-  } catch(e) { _botDisabledList = []; }
+      var bdVal = typeof bdCfg.data.value === 'string' ? JSON.parse(bdCfg.data.value) : bdCfg.data.value;
+      if (Array.isArray(bdVal)) { _botDisabledMap = {}; bdVal.forEach(function(p) { _botDisabledMap[p] = Date.now(); }); }
+      else if (typeof bdVal === 'object') { _botDisabledMap = bdVal; }
+      else { _botDisabledMap = {}; }
+    } else { _botDisabledMap = {}; }
+  } catch(e) { _botDisabledMap = {}; }
   // Load last purchase info for each conversation phone (folio + sucursal)
   await _clariLoadPurchaseInfo();
   renderClariConversations();
@@ -15193,7 +15195,7 @@ function renderClariConversations() {
       }
     }
     var replyPhoneId = c.via_phone_id || '';
-    var isBotOff = _botDisabledList.indexOf(c.phone) !== -1;
+    var isBotOff = _botDisabledMap.hasOwnProperty(c.phone) && (Date.now() - _botDisabledMap[c.phone] < 7200000);
     var botBadge = isBotOff ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444425;color:#ef4444;border:1px solid #ef444440;margin-left:4px;white-space:nowrap">🤖 Bot OFF</span>' : '';
     html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px' + (isBotOff ? ';border-left:3px solid #ef4444' : '') + '">';
     html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';
@@ -15329,6 +15331,11 @@ async function enviarClariReply(input) {
     var data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Error enviando');
     await db.from('clari_conversations').insert({ phone:phone, role:'assistant', content:'[Admin] '+text, user_name:null, via_phone_id:phoneId||null });
+    // Refresh bot-disable timer if this conversation has bot OFF
+    if (_botDisabledMap.hasOwnProperty(phone)) {
+      _botDisabledMap[phone] = Date.now();
+      try { await fetch('/.netlify/functions/dbwrite', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ table:'app_config', action:'upsert', data:{ id:'bot_disabled_conversations', value:JSON.stringify(_botDisabledMap) }, auth:{ id:currentUser?.id, pass:currentUser?.pass } }) }); } catch(e) {}
+    }
     input.value = '';
     toast('\u2713 Mensaje enviado');
     setTimeout(function() { loadClariConversations(); }, 500);
@@ -15341,27 +15348,27 @@ async function enviarClariReply(input) {
 
 async function toggleBotForConvo(phone, btn) {
   if (!phone) return;
-  var isCurrentlyOff = _botDisabledList.indexOf(phone) !== -1;
-  var action = isCurrentlyOff ? 'reactivar' : 'desactivar';
-  if (!confirm((isCurrentlyOff ? 'Reactivar Clari para esta conversación?\nClari volverá a responder automáticamente.' : 'Desactivar Clari para esta conversación?\nTú tomarás el control — Clari dejará de responder pero seguirá guardando los mensajes.'))) return;
+  var isCurrentlyOff = _botDisabledMap.hasOwnProperty(phone) && (Date.now() - _botDisabledMap[phone] < 7200000);
+  if (!confirm((isCurrentlyOff ? 'Reactivar Clari para esta conversación?\nClari volverá a responder automáticamente.' : 'Desactivar Clari para esta conversación?\nTú tomarás el control — Clari dejará de responder pero seguirá guardando los mensajes.\nSe reactiva automáticamente después de 2h sin interacción.'))) return;
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  var oldVal = _botDisabledMap[phone];
   try {
     if (isCurrentlyOff) {
-      _botDisabledList = _botDisabledList.filter(function(x) { return x !== phone; });
+      delete _botDisabledMap[phone];
     } else {
-      _botDisabledList.push(phone);
+      _botDisabledMap[phone] = Date.now();
     }
     var res = await fetch('/.netlify/functions/dbwrite', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: 'app_config', action: 'upsert', data: { id: 'bot_disabled_conversations', value: JSON.stringify(_botDisabledList) }, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+      body: JSON.stringify({ table: 'app_config', action: 'upsert', data: { id: 'bot_disabled_conversations', value: JSON.stringify(_botDisabledMap) }, auth: { id: currentUser?.id, pass: currentUser?.pass } })
     });
     var json = await res.json();
     if (json.error) throw new Error(json.error);
-    toast(isCurrentlyOff ? '🤖 Clari reactivada' : '🔇 Clari desactivada — tú controlas');
+    toast(isCurrentlyOff ? '🤖 Clari reactivada' : '🔇 Clari desactivada — tú controlas (2h auto-reactiva)');
     renderClariConversations();
   } catch(e) {
     // Revert
-    if (isCurrentlyOff) { _botDisabledList.push(phone); } else { _botDisabledList = _botDisabledList.filter(function(x) { return x !== phone; }); }
+    if (isCurrentlyOff) { _botDisabledMap[phone] = oldVal; } else { delete _botDisabledMap[phone]; }
     toast('Error: ' + e.message, true);
   }
   if (btn) { btn.disabled = false; }

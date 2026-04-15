@@ -84,7 +84,7 @@ REGLAS PARA QUEJAS Y PROBLEMAS DE SERVICIO:
 - INVESTIGAR ANTES DE REDIRIGIR: si el cliente reporta que fue a una sucursal y no lo atendieron (no estaba el optometrista, estaba cerrado, no había personal), pregunta a qué hora fue. Esto ayuda a identificar si coincide con horario de comida del personal o algún problema operativo. Ejemplo: "Lamento el inconveniente. ¿A qué hora llegaste? Lo reporto para que no vuelva a pasar."
 - Si el cliente da la hora o más contexto, agradece brevemente y dile que se va a reportar internamente. No insistas más.
 - Si el cliente NO quiere dar más info o dice que ya fue a otro lado, responde breve: "Entendido, lamento el inconveniente. Cuando gustes volver estamos para servirte." Y ya, no alargues.
-- Para otros tipos de quejas (cobros, servicio, producto): redirige a la sucursal con el teléfono directo. "Para revisar tu caso puedes comunicarte directo a [sucursal] al [teléfono]."
+- Para otros tipos de quejas (cobros, servicio, producto): dile que ya se notificó a gerencia y que una persona del equipo de gerencia se comunicará con él/ella en breve para atender su caso personalmente. NO des nombres. NO redirijas a teléfono de sucursal.
 - NO sigas la conversación de queja más allá de 2-3 mensajes. Cierra profesionalmente.`;
 
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
@@ -176,15 +176,57 @@ async function supaFetch(path, opts) {
 }
 
 // ── CHECK IF BOT IS DISABLED FOR A CONVERSATION ──
+const BOT_OFF_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 async function isBotDisabled(senderId) {
   try {
     var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
-    if (cfg && cfg[0] && cfg[0].value) {
-      var list = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
-      if (Array.isArray(list) && list.indexOf(String(senderId)) !== -1) return true;
+    if (!cfg || !cfg[0] || !cfg[0].value) return false;
+    var map = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+    if (Array.isArray(map)) return map.indexOf(String(senderId)) !== -1;
+    if (typeof map !== 'object') return false;
+    var ts = map[String(senderId)];
+    if (!ts) return false;
+    if (Date.now() - ts > BOT_OFF_TTL_MS) {
+      delete map[String(senderId)];
+      try { await supaFetch('app_config?id=eq.bot_disabled_conversations', { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(map) }), prefer: 'return=minimal' }); } catch(e2) {}
+      console.log('[Meta Bot Auto-Reactivated] ' + senderId);
+      return false;
     }
-    return false;
+    return true;
   } catch(e) { return false; }
+}
+
+async function disableBotForPhone(phone) {
+  try {
+    var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
+    var map = {};
+    if (cfg && cfg[0] && cfg[0].value) {
+      map = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+      if (Array.isArray(map)) { var obj = {}; map.forEach(function(p) { obj[p] = Date.now(); }); map = obj; }
+    }
+    map[String(phone)] = Date.now();
+    await supaFetch('app_config?id=eq.bot_disabled_conversations', { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(map) }), prefer: 'return=minimal' });
+  } catch(e) { console.error('[Meta Bot Disable Error]', e.message); }
+}
+
+const COMPLAINT_KEYWORDS = [
+  'queja', 'quejar', 'molest', 'enojad', 'enojar', 'inconform', 'mal servicio',
+  'mal trato', 'maltrato', 'mala atencion', 'mala atención', 'pesimo', 'pésimo',
+  'no me atendieron', 'nadie me atendio', 'nadie me atendió', 'cerrado',
+  'no habia nadie', 'no había nadie', 'demanda', 'demandar', 'profeco',
+  'abuso', 'robo', 'robaron', 'estafa', 'engaño', 'engañ', 'falta de respeto',
+  'grosero', 'grosera', 'prepotente', 'negligencia', 'irresponsab',
+  'nunca vuelvo', 'no vuelvo', 'no regreso', 'horrible', 'terrible', 'asqueroso',
+  'basura', 'porqueria', 'porquería', 'incompetent'
+];
+
+function isComplaintMessage(text) {
+  if (!text) return false;
+  var lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return COMPLAINT_KEYWORDS.some(function(kw) {
+    return lower.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  });
 }
 
 async function getClariConfig() {
@@ -953,6 +995,33 @@ exports.handler = async function(event) {
 
         // Send reply
         await sendMetaReply(senderId, reply, channel);
+
+        // ── COMPLAINT DETECTION — notify admin + auto-disable bot ──
+        if (isComplaintMessage(messageText)) {
+          console.log('[Meta Complaint] ' + channel + ' from ' + senderId + ': ' + messageText.substring(0, 80));
+          try {
+            var complaintName = senderName || senderId;
+            var complaintAlert = '🚨 *QUEJA / CLIENTE MOLESTO (' + channel.toUpperCase() + ')*\n\n'
+              + '👤 ' + complaintName + '\n'
+              + '📱 ' + senderId + ' (vía ' + channel + ')\n'
+              + '💬 "' + messageText.substring(0, 200) + '"\n\n'
+              + 'Clari respondió y le dijo que gerencia se comunicará en breve.\n'
+              + 'Bot desactivado automáticamente — revisa en el panel de Clari.';
+            var TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
+            var TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+            var TWILIO_FROM = process.env.TWILIO_FROM_NUMBER || 'whatsapp:+5216563110094';
+            if (TWILIO_SID && TWILIO_TOKEN) {
+              var alertPhone = '5216564269961';
+              var twilioUrl = 'https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_SID + '/Messages.json';
+              await fetch(twilioUrl, {
+                method: 'POST',
+                headers: { 'Authorization': 'Basic ' + Buffer.from(TWILIO_SID + ':' + TWILIO_TOKEN).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'From=' + encodeURIComponent(TWILIO_FROM) + '&To=' + encodeURIComponent('whatsapp:+' + alertPhone) + '&Body=' + encodeURIComponent(complaintAlert)
+              });
+            }
+            await disableBotForPhone(senderId);
+          } catch(compErr) { console.error('[Meta Complaint Error]', compErr.message); }
+        }
       }
 
       // ── HANDLE COMMENTS (feed changes — if feed webhook works) ──
