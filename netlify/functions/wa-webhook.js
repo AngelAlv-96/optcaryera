@@ -52,7 +52,7 @@ function getActivePromos() {
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'REGLA: La promoción vigente es 2x1. Si el cliente pregunta por 3x1, NO hagas que se sienta que se perdió algo. Dile con entusiasmo que ahora tenemos 2x1, y que además puede agregar un tercer lente solar graduado por solo $499 — así que en realidad tiene una oferta igual de buena o mejor. Hazlo ver como oportunidad, no como que llegó tarde. No inventes otras promos.';
+      'REGLA CUANDO PREGUNTEN POR 3x1: La promo 3x1 tuvo vigencia hasta el 14 de abril. Menciónalo brevemente ("Esa promo estuvo vigente hasta el 14 de abril") y de inmediato presenta la promo actual con entusiasmo: "A partir de hoy tenemos 2x1 en lentes completos + un solar graduado por solo $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad, NO como consuelo ni como que se perdieron algo. Tono positivo y directo. No inventes otras promos.';
   }
 
   // Fallback (fuera de abril 2026 o antes del deploy)
