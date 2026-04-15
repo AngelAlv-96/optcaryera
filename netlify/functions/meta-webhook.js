@@ -52,19 +52,18 @@ function getActivePromos() {
 
   if (year === 2026 && month === 4 && day >= 15) {
     return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
-      '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39 sin tratamiento, visión sencilla). Válida hasta el 30 de abril.\n' +
-      '☀️ Lente solar graduado adicional por $249 (combinable con la promo).\n' +
+      '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39, visión sencilla). La promo SE PUEDE COMPARTIR entre máximo 2 personas. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 30 de abril.\n' +
+      '☀️ Lente solar graduado adicional por $499 (combinable con la promo 2x1).\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'Las promociones deben ser aprovechadas por la misma persona.\n' +
       'REGLA: Solo existe esta promoción. NO menciones 3x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
   }
 
   return 'PROMOCIÓN VIGENTE:\n' +
-    '🎁 3x1 en lentes completos desde $1,200. Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
-    '💳 Meses sin intereses.\n' +
-    'Las promociones deben ser aprovechadas por la misma persona.';
+    '🎁 2x1 en lentes completos. Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
+    '☀️ Solar graduado adicional por $499.\n' +
+    '💳 Meses sin intereses.';
 }
 
 // ── DEFAULT PROMPTS (same as wa-webhook, adapted for Messenger/Instagram) ──
