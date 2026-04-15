@@ -22194,10 +22194,7 @@ async function eliminarPromo(id) {
 async function abrirSelectorPromo() {
   if (!vtaItems.length) { toast('Agrega productos primero', true); return; }
   const { data } = await db.from('promociones').select('*').eq('activa', true).order('nombre');
-  const hoy = new Date().toISOString().slice(0, 10);
   const disponibles = (data || []).filter(p => {
-    if (p.fecha_inicio && p.fecha_inicio > hoy) return false;
-    if (p.fecha_fin && p.fecha_fin < hoy) return false;
     if (p.max_usos && p.usos_actuales >= p.max_usos) return false;
     return true;
   });
