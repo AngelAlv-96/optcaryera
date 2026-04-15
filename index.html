@@ -15000,6 +15000,7 @@ let clariHasMore = false;
 let clariAutoRefresh = null;
 let clariOpenPhone = null;
 let clariRealtimeSub = null;
+var _botDisabledList = [];
 
 function clariTab(tab) {
   document.getElementById('clari-panel-conv').style.display = tab === 'conv' ? '' : 'none';
@@ -15080,6 +15081,14 @@ async function loadClariConversations(append) {
   } else {
     clariConversations = data || [];
   }
+  // Load bot-disabled list
+  try {
+    var bdCfg = await db.from('app_config').select('value').eq('id', 'bot_disabled_conversations').single();
+    if (bdCfg.data && bdCfg.data.value) {
+      _botDisabledList = typeof bdCfg.data.value === 'string' ? JSON.parse(bdCfg.data.value) : bdCfg.data.value;
+      if (!Array.isArray(_botDisabledList)) _botDisabledList = [];
+    } else { _botDisabledList = []; }
+  } catch(e) { _botDisabledList = []; }
   // Load last purchase info for each conversation phone (folio + sucursal)
   await _clariLoadPurchaseInfo();
   renderClariConversations();
@@ -15184,13 +15193,15 @@ function renderClariConversations() {
       }
     }
     var replyPhoneId = c.via_phone_id || '';
-    html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px">';
+    var isBotOff = _botDisabledList.indexOf(c.phone) !== -1;
+    var botBadge = isBotOff ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444425;color:#ef4444;border:1px solid #ef444440;margin-left:4px;white-space:nowrap">🤖 Bot OFF</span>' : '';
+    html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px' + (isBotOff ? ';border-left:3px solid #ef4444' : '') + '">';
     html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';
     html += '<div style="flex:1;min-width:0">';
     html += '<div style="display:flex;align-items:center;gap:8px">';
     html += '<div style="width:34px;height:34px;border-radius:50%;background:' + (unread ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.06)') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">' + (unread ? '🟢' : '💬') + '</div>';
     html += '<div style="min-width:0">';
-    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--white);gap:2px">' + (c.name || 'Sin nombre') + lineBadge + campaignBadge + purchBadge + '</div>';
+    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--white);gap:2px">' + (c.name || 'Sin nombre') + lineBadge + campaignBadge + purchBadge + botBadge + '</div>';
     html += '<div style="font-size:11px;color:var(--muted)">' + displayPhone + '</div>';
     html += '</div></div>';
     html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastMsg.role !== 'assistant' ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Sistema]') ? '\ud83d\udce2 ' : lastMsg.content.startsWith('[Admin]') ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Corte]') ? '\ud83d\udcca ' : '\ud83e\udd16 ') + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '')) + '</div>';
@@ -15224,6 +15235,7 @@ function renderClariConversations() {
     });
     html += '</div>';
     html += '<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;align-items:center">';
+    html += '<button class="btn btn-sm" onclick="toggleBotForConvo(\'' + c.phone + '\',this)" style="font-size:10px;white-space:nowrap;padding:6px 8px;background:' + (isBotOff ? 'rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b98140' : 'rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef444440') + '" title="' + (isBotOff ? 'Reactivar Clari para esta conversación' : 'Desactivar Clari — tú tomas el control') + '">' + (isBotOff ? '🤖 ON' : '🤖 OFF') + '</button>';
     html += '<input class="ord-input clari-reply-input" data-phone="' + c.phone + '" data-phone-id="' + replyPhoneId + '" placeholder="Responder como t\u00fa (no como Clari)..." style="flex:1;font-size:12px;padding:8px 12px" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();enviarClariReply(this)}">';
     html += '<button class="btn btn-p btn-sm" onclick="enviarClariReply(this.previousElementSibling)" style="font-size:11px;white-space:nowrap">Enviar \u2709\uFE0F</button>';
     html += '</div>';
@@ -15325,6 +15337,34 @@ async function enviarClariReply(input) {
   }
   input.disabled = false;
   if (btn) { btn.disabled = false; btn.textContent = 'Enviar \u2709\uFE0F'; }
+}
+
+async function toggleBotForConvo(phone, btn) {
+  if (!phone) return;
+  var isCurrentlyOff = _botDisabledList.indexOf(phone) !== -1;
+  var action = isCurrentlyOff ? 'reactivar' : 'desactivar';
+  if (!confirm((isCurrentlyOff ? 'Reactivar Clari para esta conversación?\nClari volverá a responder automáticamente.' : 'Desactivar Clari para esta conversación?\nTú tomarás el control — Clari dejará de responder pero seguirá guardando los mensajes.'))) return;
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    if (isCurrentlyOff) {
+      _botDisabledList = _botDisabledList.filter(function(x) { return x !== phone; });
+    } else {
+      _botDisabledList.push(phone);
+    }
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: 'app_config', action: 'upsert', data: { id: 'bot_disabled_conversations', value: JSON.stringify(_botDisabledList) }, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+    var json = await res.json();
+    if (json.error) throw new Error(json.error);
+    toast(isCurrentlyOff ? '🤖 Clari reactivada' : '🔇 Clari desactivada — tú controlas');
+    renderClariConversations();
+  } catch(e) {
+    // Revert
+    if (isCurrentlyOff) { _botDisabledList.push(phone); } else { _botDisabledList = _botDisabledList.filter(function(x) { return x !== phone; }); }
+    toast('Error: ' + e.message, true);
+  }
+  if (btn) { btn.disabled = false; }
 }
 
 function filterClariConv() { renderClariConversations(); }
