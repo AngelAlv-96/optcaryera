@@ -49,7 +49,7 @@ function getActivePromos() {
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'REGLA: La promoción vigente es 2x1. Si el cliente pregunta por la promoción 3x1, explícale brevemente que esa promoción terminó el 14 de abril y que la vigente ahora es 2x1. No inventes otras promos.';
+      'REGLA: La promoción vigente es 2x1. Si el cliente pregunta por 3x1, NO hagas que se sienta que se perdió algo. Dile con entusiasmo que ahora tenemos 2x1, y que además puede agregar un tercer lente solar graduado por solo $499 — así que en realidad tiene una oferta igual de buena o mejor. Hazlo ver como oportunidad, no como que llegó tarde. No inventes otras promos.';
   }
 
   return 'PROMOCIÓN VIGENTE:\n' +
