@@ -49,7 +49,7 @@ function getActivePromos() {
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'REGLA: Solo existe esta promoción. NO menciones 3x1, ni ninguna otra promo. Si preguntan por otras promos, di que la vigente es esta.';
+      'REGLA: La promoción vigente es 2x1. Si el cliente pregunta por la promoción 3x1, explícale brevemente que esa promoción terminó el 14 de abril y que la vigente ahora es 2x1. No inventes otras promos.';
   }
 
   return 'PROMOCIÓN VIGENTE:\n' +
