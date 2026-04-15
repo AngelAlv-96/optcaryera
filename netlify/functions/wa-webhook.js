@@ -240,6 +240,17 @@ async function supaFetch(path, opts) {
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
+// ── CHECK IF BOT IS DISABLED FOR A CONVERSATION ──
+async function isBotDisabled(phone) {
+  try {
+    var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
+    if (!cfg || !cfg[0] || !cfg[0].value) return false;
+    var list = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+    if (!Array.isArray(list)) return false;
+    return list.indexOf(String(phone)) !== -1;
+  } catch(e) { return false; }
+}
+
 async function getClariConfig() {
   try {
     var data = await supaFetch('app_config?id=eq.clari_config&select=value');
@@ -2320,6 +2331,46 @@ exports.handler = async function(event) {
             cmdHandled = true;
           }
 
+          // BOT OFF/ON command — disable/enable bot for a conversation
+          if (!cmdHandled && /^bot\s+(off|on)\s+(.+)/i.test(userText)) {
+            var botMatch = userText.match(/^bot\s+(off|on)\s+(.+)/i);
+            var botAction = botMatch[1].toLowerCase();
+            var botTarget = botMatch[2].trim();
+            try {
+              var bdCfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=id,value');
+              var bdList = [];
+              if (bdCfg && bdCfg[0] && bdCfg[0].value) {
+                bdList = typeof bdCfg[0].value === 'string' ? JSON.parse(bdCfg[0].value) : bdCfg[0].value;
+              }
+              if (!Array.isArray(bdList)) bdList = [];
+              var bdReply = '';
+              if (botAction === 'off') {
+                if (bdList.indexOf(botTarget) === -1) bdList.push(botTarget);
+                bdReply = '🔇 Bot DESACTIVADO para: ' + botTarget + '\nClari ya no responderá a esa conversación. Los mensajes se guardan.\nUsa "bot on ' + botTarget + '" para reactivar.';
+              } else {
+                bdList = bdList.filter(function(x) { return x !== botTarget; });
+                bdReply = '🔊 Bot REACTIVADO para: ' + botTarget + '\nClari volverá a responder normalmente.';
+              }
+              var bdPayload = JSON.stringify(bdList);
+              if (bdCfg && bdCfg[0]) {
+                await supaFetch('app_config?id=eq.bot_disabled_conversations', {
+                  method: 'PATCH', body: JSON.stringify({ value: bdPayload }), prefer: 'return=minimal'
+                });
+              } else {
+                await supaFetch('app_config', {
+                  method: 'POST', body: JSON.stringify({ id: 'bot_disabled_conversations', value: bdPayload }), prefer: 'return=minimal'
+                });
+              }
+              await sendWhatsAppReply(from, bdReply);
+              await saveMessage(from, 'user', userText, userName);
+              await saveMessage(from, 'assistant', bdReply);
+              console.log('[Bot ' + botAction.toUpperCase() + '] ' + botTarget + ' by ' + userName);
+            } catch(bdErr) {
+              await sendWhatsAppReply(from, '❌ Error: ' + bdErr.message);
+            }
+            cmdHandled = true;
+          }
+
           // HELP/COMANDOS command
           if (!cmdHandled && /^(comandos|ayuda|help|menu|menú)$/i.test(lowerText)) {
             var helpReply = '🛠️ *COMANDOS ADMIN*\n\n'
@@ -2339,6 +2390,9 @@ exports.handler = async function(event) {
               + '💰 *Gastos / Cuánto gasté* — Resumen gastos\n'
               + '🔍 *Precio del [material]* — Consultar precio\n'
               + '📝 *[material] ya vale $X* — Actualizar precio\n'
+              + '\n🤖 *BOT*\n'
+              + '🔇 *Bot off [id]* — Desactivar bot para conversación\n'
+              + '🔊 *Bot on [id]* — Reactivar bot\n'
               + '❓ *Comandos* — Ver esta ayuda';
             await sendWhatsAppReply(from, helpReply);
             await saveMessage(from, 'user', userText, userName);
@@ -2415,6 +2469,16 @@ exports.handler = async function(event) {
             await saveMessage(from, 'assistant', '[Review Response] ' + reviewReply);
             cmdHandled = true;
           }
+        }
+      }
+
+      // ── CHECK IF BOT IS DISABLED FOR THIS CONVERSATION ──
+      if (!isAuthResponse && !asistHandled && !cmdHandled) {
+        var botOff = await isBotDisabled(from);
+        if (botOff) {
+          console.log('[Bot Disabled] Skipping AI for ' + from + ' — saving message only');
+          await saveMessage(from, 'user', userText, userName);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
       }
 

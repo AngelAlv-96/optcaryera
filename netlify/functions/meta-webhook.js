@@ -175,6 +175,18 @@ async function supaFetch(path, opts) {
   try { return JSON.parse(text); } catch(e) { return null; }
 }
 
+// ── CHECK IF BOT IS DISABLED FOR A CONVERSATION ──
+async function isBotDisabled(senderId) {
+  try {
+    var cfg = await supaFetch('app_config?id=eq.bot_disabled_conversations&select=value');
+    if (cfg && cfg[0] && cfg[0].value) {
+      var list = typeof cfg[0].value === 'string' ? JSON.parse(cfg[0].value) : cfg[0].value;
+      if (Array.isArray(list) && list.indexOf(String(senderId)) !== -1) return true;
+    }
+    return false;
+  } catch(e) { return false; }
+}
+
 async function getClariConfig() {
   try {
     var data = await supaFetch('app_config?id=eq.clari_config&select=value');
@@ -923,6 +935,15 @@ exports.handler = async function(event) {
         // Determine channel
         var channel = body.object === 'instagram' ? 'instagram' : 'messenger';
         console.log('[Meta] ' + channel + ' message from ' + senderId + ': ' + messageText.substring(0, 50));
+
+        // Check if bot is disabled for this conversation
+        var botOff = await isBotDisabled(senderId);
+        if (botOff) {
+          console.log('[Meta] Bot disabled for ' + senderId + ' — saving message only');
+          var senderNameOff = await getSenderProfile(senderId, channel);
+          await saveMessage(senderId, 'user', '[Vía ' + channel + '] ' + messageText, senderNameOff || 'clari-' + channel);
+          continue;
+        }
 
         // Get sender name
         var senderName = await getSenderProfile(senderId, channel);
