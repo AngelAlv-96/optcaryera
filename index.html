@@ -1240,6 +1240,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
           Auditoría Pedidos
         </div>
+        <div class="nav-item" id="nav-report-precio-cambios" style="display:none" onclick="go('precio-cambios')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Cambios de Precio
+          <span class="nav-badge" id="badge-precio-cambios" style="display:none">0</span>
+        </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
@@ -4420,6 +4425,34 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </style>
       </div>
 
+      <!-- CAMBIOS DE PRECIO (re-etiquetado en sucursal) -->
+      <div class="view" id="view-precio-cambios">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Cambios de Precio</h2><p>Armazones a re-etiquetar en sucursal</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="loadPrecioCambios()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            <input type="text" id="pc-search" placeholder="Buscar marca/modelo…" oninput="renderPrecioCambios()" style="flex:1;min-width:180px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none">
+            <select id="pc-filter" onchange="renderPrecioCambios()" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none">
+              <option value="pendientes">Solo pendientes</option>
+              <option value="todas">Todas</option>
+              <option value="etiquetadas">Solo etiquetadas</option>
+            </select>
+            <select id="pc-rango" onchange="loadPrecioCambios()" style="background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none">
+              <option value="30">Últimos 30 días</option>
+              <option value="7">Últimos 7 días</option>
+              <option value="90">Últimos 90 días</option>
+              <option value="all">Todo el historial</option>
+            </select>
+          </div>
+          <div id="pc-stats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
+          <div id="pc-list"></div>
+        </div>
+      </div>
+
       <!-- AUDITORÍA PEDIDOS -->
       <div class="view" id="view-auditoria-pedidos">
         <div class="topbar">
@@ -5198,6 +5231,7 @@ function setupApp(u) {
       document.getElementById('nav-report-contabilidad').style.display = '';
       document.getElementById('nav-report-estrategia').style.display = '';
       document.getElementById('nav-report-auditoria').style.display = '';
+      document.getElementById('nav-report-precio-cambios').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
@@ -5465,6 +5499,7 @@ function go(id) {
   if (id === 'contabilidad')        { initContabilidad(); }
   if (id === 'estrategia')          { initEstrategia(); }
   if (id === 'auditoria-pedidos')   { loadAuditoriaPedidos(); }
+  if (id === 'precio-cambios')      { loadPrecioCambios(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
 }
 
@@ -6892,6 +6927,14 @@ async function loadDash() {
     body.innerHTML = await renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol);
   }
   renderTipoCambioDash();
+  // Badge cambios de precio (todos los roles que tienen el item visible)
+  setTimeout(function() {
+    db.from('precio_cambios').select('id',{count:'exact',head:true}).eq('etiquetada', false).then(function(r) {
+      var badge = document.getElementById('badge-precio-cambios');
+      var cnt = r?.count || 0;
+      if (badge) { badge.style.display = cnt > 0 ? '' : 'none'; badge.textContent = cnt; }
+    }).catch(function(){});
+  }, 120);
   // Update LC CRM badge (deferred)
   if (rol === 'admin' || rol === 'gerencia') {
     setTimeout(function() {
@@ -7065,6 +7108,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
     if (listos > 0) h += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer" onclick="go(\'laboratorio\')"><span style="font-size:16px">✅</span><span style="flex:1;font-size:13px;color:var(--white)">' + listos + ' lentes listos para entregar</span><span style="font-size:11px;color:var(--beige)">Ir →</span></div>';
     h += '<div id="dash-suc-pendientes-cobro"></div>';
     h += '<div id="dash-entregas-vencidas"></div>';
+    h += '<div id="dash-precio-cambios"></div>';
     h += '</div></div>';
   } else {
     h += '<div id="dash-suc-pendientes-cobro-wrap"></div>';
@@ -7074,6 +7118,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   setTimeout(function(){ _loadDashSucPendientes(suc, porRevisar > 0 || listos > 0); }, 50);
   setTimeout(function(){ _loadDashEntregasVencidas(porRevisar > 0 || listos > 0); }, 80);
   setTimeout(function(){ _loadDashMetaWidget(suc); }, 100);
+  setTimeout(function(){ _loadDashPrecioCambios(porRevisar > 0 || listos > 0); }, 110);
 
   // Urgentes
   if (urgentes.length > 0) {
@@ -7145,6 +7190,181 @@ async function _loadDashEntregasVencidas(cardExists) {
       }
     }
   } catch(e) { console.warn('Entregas vencidas load:', e); }
+}
+
+async function _loadDashPrecioCambios(cardExists) {
+  try {
+    var { count, error } = await db.from('precio_cambios').select('id', { count: 'exact', head: true }).eq('etiquetada', false);
+    if (error || !count) return;
+    var row = '<div id="dash-precio-cambios-row" style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer" onclick="go(\'precio-cambios\')">'
+      + '<span style="font-size:16px">💰</span>'
+      + '<span style="flex:1;font-size:13px;color:#f59e0b;font-weight:600">' + count + ' precio' + (count > 1 ? 's' : '') + ' pendiente' + (count > 1 ? 's' : '') + ' de re-etiquetar</span>'
+      + '<span style="font-size:11px;color:var(--beige)">Revisar →</span>'
+      + '</div>';
+    if (cardExists) {
+      var el = document.getElementById('dash-precio-cambios');
+      if (el) el.outerHTML = row;
+    } else {
+      var wrap = document.getElementById('dash-suc-pendientes-cobro-wrap');
+      if (wrap) {
+        if (wrap.innerHTML.includes('Tareas pendientes')) {
+          var inner = wrap.querySelector('div[style*="padding:8px 16px"]');
+          if (inner) inner.insertAdjacentHTML('beforeend', row);
+        } else {
+          wrap.innerHTML = '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>📋 Tareas pendientes</h3></div><div style="padding:8px 16px">' + row + '</div></div>';
+        }
+      }
+    }
+    // Actualizar badge sidebar
+    var badge = document.getElementById('badge-precio-cambios');
+    if (badge) { badge.textContent = count; badge.style.display = count > 0 ? '' : 'none'; }
+  } catch(e) { console.warn('precio_cambios badge:', e); }
+}
+
+// ── CAMBIOS DE PRECIO (re-etiquetado) ──
+var _pcData = [];
+async function loadPrecioCambios() {
+  var listEl = document.getElementById('pc-list');
+  var statsEl = document.getElementById('pc-stats');
+  if (listEl) listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Cargando…</div>';
+  try {
+    var rango = document.getElementById('pc-rango')?.value || '30';
+    var query = db.from('precio_cambios').select('*').order('created_at', { ascending: false });
+    if (rango !== 'all') {
+      var dias = parseInt(rango) || 30;
+      var desde = new Date(Date.now() - dias * 24 * 3600 * 1000).toISOString();
+      query = query.gte('created_at', desde);
+    }
+    var { data, error } = await query.limit(500);
+    if (error) throw error;
+    _pcData = data || [];
+    // Stats
+    var pendientes = _pcData.filter(function(r){ return !r.etiquetada; }).length;
+    var etiquetadas = _pcData.length - pendientes;
+    if (statsEl) {
+      statsEl.innerHTML = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:8px 14px;border-radius:8px;font-size:12px"><b style="color:#f59e0b">' + pendientes + '</b> pendientes</div>'
+        + '<div style="background:rgba(74,240,120,0.1);border:1px solid rgba(74,240,120,0.3);padding:8px 14px;border-radius:8px;font-size:12px"><b style="color:#4af078">' + etiquetadas + '</b> etiquetadas</div>'
+        + '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.1);padding:8px 14px;border-radius:8px;font-size:12px;color:var(--muted)">' + _pcData.length + ' total</div>';
+    }
+    renderPrecioCambios();
+  } catch(e) {
+    console.error('loadPrecioCambios:', e);
+    if (listEl) listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--warn)">Error: ' + (e.message || e) + '</div>';
+  }
+}
+
+function renderPrecioCambios() {
+  var listEl = document.getElementById('pc-list');
+  if (!listEl) return;
+  var search = (document.getElementById('pc-search')?.value || '').toLowerCase().trim();
+  var filter = document.getElementById('pc-filter')?.value || 'pendientes';
+  var rows = _pcData.filter(function(r) {
+    if (filter === 'pendientes' && r.etiquetada) return false;
+    if (filter === 'etiquetadas' && !r.etiquetada) return false;
+    if (search) {
+      var hay = ((r.marca||'') + ' ' + (r.modelo||'') + ' ' + (r.nombre||'')).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+  if (!rows.length) {
+    listEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted)">Sin cambios que mostrar.</div>';
+    return;
+  }
+  var h = '<div style="display:flex;flex-direction:column;gap:8px">';
+  rows.forEach(function(r) {
+    var fecha = new Date(r.created_at).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    var diff = Number(r.precio_nuevo) - Number(r.precio_anterior);
+    var diffPct = Number(r.precio_anterior) > 0 ? ((diff / Number(r.precio_anterior)) * 100).toFixed(0) : 0;
+    var diffColor = diff > 0 ? '#4af078' : (diff < 0 ? '#e08080' : 'var(--muted)');
+    var diffSign = diff > 0 ? '+' : '';
+    var bgColor = r.etiquetada ? 'rgba(74,240,120,0.04)' : 'rgba(245,158,11,0.04)';
+    var borderColor = r.etiquetada ? 'rgba(74,240,120,0.2)' : 'rgba(245,158,11,0.25)';
+    h += '<div style="background:' + bgColor + ';border:1px solid ' + borderColor + ';border-radius:8px;padding:12px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:12px">';
+    h += '<div style="flex:1;min-width:180px">';
+    h += '<div style="font-size:13px;font-weight:700;color:var(--white)">' + (r.marca || '') + ' · ' + (r.modelo || '') + '</div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + fecha + ' · ' + (r.usuario || '') + '</div>';
+    h += '</div>';
+    h += '<div style="display:flex;align-items:center;gap:6px;font-size:12px">';
+    h += '<span style="color:var(--muted);text-decoration:line-through">$' + Number(r.precio_anterior).toLocaleString('es-MX') + '</span>';
+    h += '<span style="color:var(--muted)">→</span>';
+    h += '<span style="font-weight:700;color:var(--accent)">$' + Number(r.precio_nuevo).toLocaleString('es-MX') + '</span>';
+    h += '<span style="color:' + diffColor + ';font-weight:700;font-size:11px">(' + diffSign + diffPct + '%)</span>';
+    h += '</div>';
+    h += '<div style="display:flex;gap:6px">';
+    h += '<button class="btn btn-g btn-sm" onclick="pcReimprimir(' + r.id + ')" style="font-size:11px;padding:6px 10px">🖨 Etiqueta</button>';
+    if (r.etiquetada) {
+      h += '<button class="btn btn-g btn-sm" onclick="pcMarcarEtiquetada(' + r.id + ', false)" style="font-size:11px;padding:6px 10px;background:rgba(74,240,120,0.15);border-color:rgba(74,240,120,0.3);color:#4af078">✓ Etiquetada</button>';
+    } else {
+      h += '<button class="btn btn-p btn-sm" onclick="pcMarcarEtiquetada(' + r.id + ', true)" style="font-size:11px;padding:6px 10px">Marcar etiquetada</button>';
+    }
+    h += '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  listEl.innerHTML = h;
+}
+
+async function pcMarcarEtiquetada(id, valor) {
+  try {
+    var data = { etiquetada: valor };
+    if (valor) {
+      data.etiquetada_at = new Date().toISOString();
+      data.etiquetada_por = (currentUser && (currentUser.username || currentUser.id)) || 'desconocido';
+    } else {
+      data.etiquetada_at = null;
+      data.etiquetada_por = null;
+    }
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        action:'update', table:'precio_cambios',
+        auth:{id:currentUser?.id, pass:currentUser?.pass},
+        filters:[{col:'id',op:'eq',val:id}], data: data
+      })
+    });
+    var json = await res.json();
+    if (json.error) throw new Error(json.error);
+    var local = _pcData.find(function(r){ return r.id === id; });
+    if (local) { local.etiquetada = valor; local.etiquetada_at = data.etiquetada_at; local.etiquetada_por = data.etiquetada_por; }
+    toast(valor ? '✓ Marcada como etiquetada' : 'Reabierta como pendiente');
+    // Refrescar stats
+    var pendientes = _pcData.filter(function(r){ return !r.etiquetada; }).length;
+    var etiquetadas = _pcData.length - pendientes;
+    var statsEl = document.getElementById('pc-stats');
+    if (statsEl) {
+      statsEl.innerHTML = '<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:8px 14px;border-radius:8px;font-size:12px"><b style="color:#f59e0b">' + pendientes + '</b> pendientes</div>'
+        + '<div style="background:rgba(74,240,120,0.1);border:1px solid rgba(74,240,120,0.3);padding:8px 14px;border-radius:8px;font-size:12px"><b style="color:#4af078">' + etiquetadas + '</b> etiquetadas</div>'
+        + '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.1);padding:8px 14px;border-radius:8px;font-size:12px;color:var(--muted)">' + _pcData.length + ' total</div>';
+    }
+    renderPrecioCambios();
+  } catch(e) { toast('Error: ' + (e.message || e), true); }
+}
+
+async function pcReimprimir(id) {
+  var r = _pcData.find(function(x){ return x.id === id; });
+  if (!r) return;
+  // Reusar amImprimirEtiqueta — necesita impresora ZPL local conectada
+  if (typeof amCheckPrinter === 'function' && !_amPrinterConnected) {
+    try { await amCheckPrinter(); } catch(e) {}
+  }
+  if (!_amPrinterConnected) {
+    toast('⚠ Conecta la impresora ZPL desde Alta Masiva primero', true);
+    return;
+  }
+  // Obtener código de barras del producto
+  var codigo = '';
+  try {
+    if (r.producto_id) {
+      var qp = await db.from('productos').select('codigo_barras').eq('id', r.producto_id).limit(1);
+      if (qp.data && qp.data[0]) codigo = qp.data[0].codigo_barras || '';
+    }
+  } catch(e) {}
+  if (!codigo) codigo = (typeof amGenCodigo === 'function') ? amGenCodigo(r.marca || '', r.modelo || '') : ((r.marca||'') + '-' + (r.modelo||''));
+  await amImprimirEtiqueta({
+    marca: r.marca || '', modelo: r.modelo || '',
+    precio: r.precio_nuevo, codigo: codigo
+  });
 }
 
 async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol) {
@@ -26313,7 +26533,7 @@ async function amConfirmar(idx) {
           body: JSON.stringify({
             action:'update', table:'productos',
             auth:{id:currentUser?.id, pass:currentUser?.pass},
-            match:{id: row._bd_id}, data: _updateData
+            filters:[{col:'id',op:'eq',val:row._bd_id}], data: _updateData
           })
         });
         var _jsonUpd = await _resUpd.json();
@@ -26329,6 +26549,26 @@ async function amConfirmar(idx) {
           } else {
             toast('💰 Costo actualizado en DB');
           }
+          // Registrar en historial de cambios para que sucursales actualicen etiquetas físicas
+          try {
+            await fetch('/.netlify/functions/dbwrite', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({
+                action:'insert', table:'precio_cambios',
+                auth:{id:currentUser?.id, pass:currentUser?.pass},
+                data:{
+                  producto_id: row._bd_id,
+                  marca: row.marca, modelo: row.modelo,
+                  nombre: row.nombre || (row.marca + ' ' + row.modelo),
+                  precio_anterior: row._precioBD,
+                  precio_nuevo: _updateData.precio_venta || row._precioBD,
+                  costo_anterior: _costoBD,
+                  costo_nuevo: _updateData.costo || _costoBD,
+                  usuario: (currentUser && (currentUser.username || currentUser.id)) || 'desconocido'
+                }
+              })
+            });
+          } catch(eHist) { console.warn('precio_cambios insert', eHist); }
         }
       } catch(e) { console.error('Auto-update precio error', e); }
     }

@@ -30,7 +30,8 @@ const ALLOWED_TABLES = [
   'mapeo_materiales','catalogo_tienda','reglas_materiales',
   'asistencia','asistencia_firmas','gastos','facturas',
   'inventario_auditorias','review_queue',
-  'compra_sesiones','compra_scans'
+  'compra_sesiones','compra_scans',
+  'precio_cambios'
 ];
 
 async function supaREST(method, path, body, extraHeaders) {

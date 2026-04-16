@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v262 — Alta Masiva: al etiquetar con precio/costo distinto al de DB, ahora también actualiza el producto existente en `productos`.
+**Última versión**: v263 — Historial de Cambios de Precio: tabla `precio_cambios` + vista en sidebar + tarea en dashboard sucursal para re-etiquetar armazones que cambiaron de precio.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
