@@ -26291,6 +26291,7 @@ async function amConfirmar(idx) {
     row._existe   = true;
     row._bd_id    = existente.id;
     row._precioBD = parseFloat(existente.precio_venta) || 0;
+    var _costoBD  = parseFloat(existente.costo) || 0;
     // NUNCA sobreescribir el precio que el usuario eligió — solo usar DB si no tiene precio
     if (!row.precio) row.precio = row._precioBD;
     // Mantener código del proveedor si tiene prefijo conocido
@@ -26298,6 +26299,39 @@ async function amConfirmar(idx) {
       row.codigo = existente.codigo_barras || row.codigo;
     }
     row._estado   = 'existe';
+    // Si el usuario etiquetó con precio (o costo) distinto al de DB, actualizar DB
+    var _nuevoPrecio = parseFloat(row.precio) || 0;
+    var _nuevoCosto  = parseFloat(row.costo)  || 0;
+    var _updateData  = {};
+    if (_nuevoPrecio > 0 && _nuevoPrecio !== row._precioBD) _updateData.precio_venta = _nuevoPrecio;
+    if (_nuevoCosto  > 0 && _nuevoCosto  !== _costoBD)      _updateData.costo        = _nuevoCosto;
+    if (Object.keys(_updateData).length > 0) {
+      _updateData.updated_at = new Date().toISOString();
+      try {
+        var _resUpd = await fetch('/.netlify/functions/dbwrite', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            action:'update', table:'productos',
+            auth:{id:currentUser?.id, pass:currentUser?.pass},
+            match:{id: row._bd_id}, data: _updateData
+          })
+        });
+        var _jsonUpd = await _resUpd.json();
+        if (_jsonUpd.error) {
+          console.warn('Auto-update precio error:', _jsonUpd.error);
+          toast('⚠ No se pudo actualizar precio en DB: ' + _jsonUpd.error);
+        } else {
+          row._actualizado = true;
+          row._estado = 'actualizado';
+          delete _amPrecioCache[(row.marca||'').split(' ')[0]];
+          if (_updateData.precio_venta) {
+            toast('💰 Precio actualizado en DB: $' + row._precioBD.toLocaleString('es-MX') + ' → $' + _nuevoPrecio.toLocaleString('es-MX'));
+          } else {
+            toast('💰 Costo actualizado en DB');
+          }
+        }
+      } catch(e) { console.error('Auto-update precio error', e); }
+    }
   } else {
     row._existe   = false;
     row._estado   = 'nuevo';
@@ -26348,7 +26382,7 @@ async function amBuscarEnBD(modelo, marca) {
   try {
     // Buscar por modelo EXACTO + marca (no parcial, para evitar que "019" matchee "SM2019")
     var res = await db.from('productos')
-      .select('id, nombre, precio_venta, codigo_barras, stock')
+      .select('id, nombre, precio_venta, costo, codigo_barras, stock')
       .eq('activo', true)
       .ilike('modelo', modelo||'')
       .limit(3);
@@ -26364,7 +26398,7 @@ async function amBuscarEnBD(modelo, marca) {
     var codigoGen = amGenCodigo(marca, modelo);
     var codigoDirect = amDetectPrefix(modelo) ? modelo : '';
     var res2 = await db.from('productos')
-      .select('id, nombre, precio_venta, codigo_barras, stock')
+      .select('id, nombre, precio_venta, costo, codigo_barras, stock')
       .eq('activo', true)
       .or('codigo_barras.ilike.%' + codigoGen + '%' + (codigoDirect ? ',codigo_barras.eq.' + codigoDirect : ''))
       .limit(1);

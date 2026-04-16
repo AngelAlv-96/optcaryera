@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v261 — Fix Alta Masiva: auto-detección de marca dejaba de respetar la edición manual cuando había modelo duplicado en DB.
+**Última versión**: v262 — Alta Masiva: al etiquetar con precio/costo distinto al de DB, ahora también actualiza el producto existente en `productos`.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
