@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v259 — Análisis corte Américas 15-abr + limpieza crédito SICAR 15506 + lecciones sobre arrastre de billetes.
+**Última versión**: v260 — Fix falso positivo "queja" por keyword `engañ` (NFD) matching `enganche` en wa-webhook.js + meta-webhook.js.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

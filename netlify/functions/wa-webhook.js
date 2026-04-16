@@ -129,19 +129,16 @@ Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Ap
 Abonos en línea: https://clip.mx/@caryera
 
 APLAZO — COMPRA AHORA, PAGA DESPUÉS (sin tarjeta de crédito):
-Aplazo es un sistema de crédito que permite al cliente comprar sus lentes y pagarlos en quincenas, sin necesidad de tarjeta de crédito.
+Aplazo es un sistema externo de pagos a plazos. El cliente lo compra como medio de pago, igual que tarjeta o efectivo.
 Cómo funciona:
 1. El cliente se registra ANTES de venir a la óptica en: https://customer.aplazo.mx/register/credentials (o descarga la app "Aplazo" en su celular)
-2. Solo necesita su INE y una tarjeta de débito para registrarse
-3. En 5 minutos le aprueban su línea de crédito
-4. Una vez aprobado, visita cualquiera de nuestras sucursales y al pagar selecciona Aplazo
-5. Paga en hasta 5 quincenas (pagos quincenales automáticos)
-IMPORTANTE para Clari: si alguien pregunta por Aplazo o por pagar a plazos/quincenas/crédito:
-- Envíale el link de registro: https://customer.aplazo.mx/register/credentials
-- Dile que se registre primero desde su celular (tarda 5 min, solo INE + tarjeta débito)
-- Una vez aprobado, que nos visite en sucursal para elegir sus lentes
-- NO necesita tarjeta de crédito, NO necesita historial crediticio
-- Aplazo cubre el riesgo, el cliente paga directo a Aplazo en quincenas
+2. Una vez aprobado, visita cualquiera de nuestras sucursales y al pagar selecciona Aplazo
+3. Paga en 5 parcialidades QUINCENALES — la PRIMERA se paga AL MOMENTO de la compra (20% del total) y las 4 restantes cada 15 días
+IMPORTANTE para Clari — qué decir y qué NO decir sobre Aplazo:
+- Si preguntan cómo funciona en general: explica que son 5 quincenas (1 al momento + 4 más) y manda el link de registro
+- Si preguntan si necesita ENGANCHE: SÍ — el primer pago de los 5 se cobra al momento de la compra (es como un 20% inicial). NUNCA digas que "no necesita enganche"
+- Si preguntan por requisitos generales: solo INE, sin tarjeta de crédito ni historial crediticio
+- Clari NO es soporte de Aplazo. Para CUALQUIER duda específica del proceso de Aplazo (cómo registrarse, qué les piden, si les autorizaron, si necesitan tarjeta, qué hacer con el NIP, dónde llega la respuesta, por qué no avanza, etc.) responde: "Esas dudas las resuelve directo Aplazo desde su app o página — yo no manejo el proceso interno. Una vez aprobado, vienes con tu NIP a sucursal y nosotros cobramos." NO inventes pasos del registro, NO afirmes qué documentos pide Aplazo, NO digas dónde llega la aprobación.
 
 APARTADO: 30% de pago inicial, se mantiene precio de promoción por 40 días.
 
@@ -295,7 +292,7 @@ const COMPLAINT_KEYWORDS = [
   'mal trato', 'maltrato', 'mala atencion', 'mala atención', 'pesimo', 'pésimo',
   'no me atendieron', 'nadie me atendio', 'nadie me atendió', 'cerrado',
   'no habia nadie', 'no había nadie', 'demanda', 'demandar', 'profeco',
-  'abuso', 'robo', 'robaron', 'estafa', 'engaño', 'engañ', 'falta de respeto',
+  'abuso', 'robo', 'robaron', 'estafa', 'engaño', 'engaña', 'engañar', 'engañaron', 'engañad', 'falta de respeto',
   'grosero', 'grosera', 'prepotente', 'negligencia', 'irresponsab',
   'nunca vuelvo', 'no vuelvo', 'no regreso', 'horrible', 'terrible', 'asqueroso',
   'basura', 'porqueria', 'porquería', 'incompetent'
