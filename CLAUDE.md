@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v266 — Alta Masiva: auto-detección de marca por similitud de prefijo (no solo match exacto). Debounce 350→200ms.
+**Última versión**: v267 — Alta Masiva: auto-cambio de marca cuando el modelo escrito existe exacto en otra marca y el usuario no editó la marca manualmente.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

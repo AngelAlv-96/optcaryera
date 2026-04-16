@@ -27855,6 +27855,7 @@ function amMarcaSelect(idx) {
   var modelo = (document.getElementById('am-rq-modelo').value || '').trim().toUpperCase();
 
   marcaEl.value = it.marca;
+  marcaEl.dataset.userMarca = '0'; // selección desde dropdown ≠ edición manual
   var pv = parseFloat(it.ref.precio_venta) || 0;
   var co = parseFloat(it.ref.costo) || 0;
   if (pv > 0) precioEl.value = pv;
@@ -27907,6 +27908,8 @@ async function amRqBuscarPrecio() {
   var costo  = costoEl ? (parseFloat(costoEl.value)||0) : 0;
   // Si el usuario está editando el campo marca (cursor ahí), NO auto-llenar — está escribiendo manualmente
   var marcaIsActive = document.activeElement === marcaEl;
+  // Marcar que el usuario tocó manualmente el campo marca (se preserva hasta confirmar/limpiar)
+  if (marcaIsActive) marcaEl.dataset.userMarca = '1';
   // Si tiene prefijo de proveedor pero marca aún no se llenó, auto-llenar
   if (!marcaIsActive && marca.length < 2 && modelo.length >= 4) {
     var _detMarca = amDetectPrefix(modelo);
@@ -28003,6 +28006,55 @@ async function amRqBuscarPrecio() {
               }
               return;
             }
+          }
+        }
+      }
+
+      // 1.4 Modelo NO existe en marca activa — verificar si existe EXACTO en otra marca
+      if (modelo.length >= 3) {
+        var qExactCross = await db.from('productos')
+          .select('marca,modelo,precio_venta,costo,nombre,codigo_barras')
+          .eq('activo', true)
+          .or('modelo.ilike.%' + modelo + '%,codigo_barras.eq.' + modelo)
+          .limit(20);
+        var crossExactos = (qExactCross.data || []).filter(function(r) {
+          var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
+          return mod === modeloLimpio || (r.codigo_barras||'').toUpperCase() === modelo;
+        });
+        if (crossExactos.length) {
+          var crossMap = {};
+          crossExactos.forEach(function(r) {
+            var m = (r.marca||'').toUpperCase().trim();
+            if (m && !crossMap[m]) crossMap[m] = r;
+          });
+          var crossKeys = Object.keys(crossMap);
+          var userTocoMarca = marcaEl.dataset.userMarca === '1';
+          if (crossKeys.length === 1 && !userTocoMarca) {
+            // Una sola marca lo tiene exacto + usuario NO toco la marca → auto-cambiar
+            var newMarca = crossKeys[0];
+            var newRef = crossMap[newMarca];
+            var pvCross = parseFloat(newRef.precio_venta) || 0;
+            var coCross = parseFloat(newRef.costo) || 0;
+            marcaEl.value = newMarca;
+            if (pvCross > 0) _precioEl.value = pvCross;
+            if (coCross > 0 && !parseFloat(costoEl.value)) costoEl.value = coCross;
+            st.innerHTML = '🔄 <b style="color:#4af078">MARCA CAMBIADA</b>: ' + modelo + ' es de <b>' + newMarca + '</b> (no de ' + marca + ') — precio: <b style="color:var(--accent)">$' + pvCross.toLocaleString('es-MX') + '</b>';
+            st.style.color = '#4af078';
+            amPrecioLoadMarca(newMarca);
+            return;
+          } else if (crossKeys.length === 1 && userTocoMarca) {
+            // Usuario eligió marca manualmente — solo avisar, no cambiar
+            st.innerHTML = '⚠ <b style="color:#f0b84a">' + modelo + ' existe en ' + crossKeys[0] + '</b> (no en ' + marca + '). Si quieres ese precio cambia la marca.';
+            st.style.color = '#f0b84a';
+            // Continuamos al paso 1.5 para sugerir precio por prefijo dentro de la marca actual
+          } else if (crossKeys.length > 1 && !userTocoMarca) {
+            // Varias marcas tienen el modelo exacto → mostrar dropdown
+            _amMarcaItems = crossKeys.map(function(m) { return { marca: m, ref: crossMap[m] }; });
+            _amMarcaIdx = -1;
+            amMarcaRenderDropdown();
+            st.innerHTML = '❓ <b style="color:#f0b84a">' + crossKeys.length + ' marcas</b> tienen modelo ' + modelo + ' — usa <b>↑↓</b> para elegir';
+            st.style.color = '#f0b84a';
+            return;
           }
         }
       }
@@ -28217,6 +28269,7 @@ async function amRqConfirmar() {
   var _marcaEl = document.getElementById('am-rq-marca');
   _marcaEl.value = '';
   _marcaEl.dataset.salesAuto = '0';
+  _marcaEl.dataset.userMarca = '0';
   document.getElementById('am-rq-modelo').value = '';
   document.getElementById('am-rq-precio').value = '';
   if (document.getElementById('am-rq-costo')) document.getElementById('am-rq-costo').value = '';
