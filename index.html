@@ -19164,6 +19164,23 @@ async function _procesarVentaInner() {
         for (let i = 2; i <= vtaPromoAplicada.folios_lab; i++) foliosGen.push(`${folio}-${i}`);
         if (vtaFolioSlots.length) {
           foliosDetalle = vtaFolioSlots.map((slot, s) => {
+            // Folio addon (solar) — datos especiales
+            if (slot.es_addon) {
+              const tinteVal = slot.addon_color ? (slot.addon_tono ? `${slot.addon_color} ${slot.addon_tono}%` : slot.addon_color) : 'Sin tinte';
+              return {
+                folio: foliosGen[s] || `${folio}-${s+1}`,
+                slot_label: slot.label,
+                paciente_id: slot.paciente_id || vtaPaciente?.id || null,
+                paciente_nombre: slot.paciente_nombre || (vtaPaciente ? `${vtaPaciente.nombre||''} ${vtaPaciente.apellidos||''}`.trim() : null),
+                armazon: slot.addon_armazon || 'Lente de sol (promo)',
+                material: null,
+                es_addon: true,
+                addon_tinte: tinteVal,
+                addon_producto_id: slot.addon_producto_id || null,
+                aro_px: false,
+                usado: false
+              };
+            }
             const armIt = slot.armazonIdx>=0 ? vtaItems[slot.armazonIdx] : null;
             const matIt = slot.materialIdx>=0 ? vtaItems[slot.materialIdx] : null;
             return {
@@ -19929,15 +19946,17 @@ async function _procesarCompletarPar() {
     if (dupExact) { toast('⚠️ Folio ' + subFolio + ' ya existe — saltando duplicado'); continue; }
 
     // Create orden lab
+    var isAddonFolio = pend.fd.es_addon === true;
     var orderPayload = {
       paciente_id: pacienteId,
       estado_lab: 'Enviado al lab',
       sucursal: sucursal,
-      armazon: par.armDesc || null,
-      tipo_lente: '',
-      material: par.matDesc || null,
+      armazon: isAddonFolio ? (pend.fd.armazon || 'Lente de sol (promo)') : (par.armDesc || null),
+      tipo_lente: isAddonFolio ? 'Lente de sol graduado' : '',
+      material: isAddonFolio ? null : (par.matDesc || null),
       tratamiento: '',
-      notas_laboratorio: 'Folio: ' + subFolio + ' | Completar promo de ' + folio + ' | Urgencia: Normal'
+      tinte: isAddonFolio ? (pend.fd.addon_tinte || 'Sin tinte') : '',
+      notas_laboratorio: 'Folio: ' + subFolio + ' | Completar promo de ' + folio + (isAddonFolio ? ' | ADDON SOLAR $' + (vtaPromoAplicada?.addon_config?.precio || 499) : '') + ' | Urgencia: Normal'
     };
     var { error: ordErr } = await db.from('ordenes_laboratorio').insert(orderPayload);
     if (ordErr) { toast('Error creando orden: ' + ordErr.message, true); continue; }
@@ -22142,6 +22161,44 @@ function setAddonConfig(cfg) {
   toggleAddonFields();
 }
 
+var _addonArmTimer = null;
+function _buscarAddonArmazon(slotIdx, q) {
+  clearTimeout(_addonArmTimer);
+  const dd = document.getElementById('addon-arm-results-' + slotIdx);
+  if (!dd) return;
+  q = (q||'').trim().toLowerCase();
+  if (q.length < 2) { dd.style.display = 'none'; return; }
+  _addonArmTimer = setTimeout(async () => {
+    var [r1,r2,r3,r4] = await Promise.all([
+      db.from('productos').select('id,nombre,marca,modelo,codigo_barras,precio_venta,stock,categoria').eq('activo',true).ilike('nombre','%'+q+'%').limit(15),
+      db.from('productos').select('id,nombre,marca,modelo,codigo_barras,precio_venta,stock,categoria').eq('activo',true).ilike('codigo_barras','%'+q+'%').limit(15),
+      db.from('productos').select('id,nombre,marca,modelo,codigo_barras,precio_venta,stock,categoria').eq('activo',true).ilike('marca','%'+q+'%').limit(15),
+      db.from('productos').select('id,nombre,marca,modelo,codigo_barras,precio_venta,stock,categoria').eq('activo',true).ilike('modelo','%'+q+'%').limit(15)
+    ]);
+    var seen = {};
+    var all = [...(r1.data||[]),...(r2.data||[]),...(r3.data||[]),...(r4.data||[])].filter(p => {
+      if (seen[p.id]) return false; seen[p.id] = true;
+      return p.categoria === 'Armazón' || p.categoria === 'Lente de sol';
+    }).slice(0,10);
+    if (!all.length) { dd.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:11px;text-align:center">Sin resultados</div>'; dd.style.display = ''; return; }
+    dd.innerHTML = all.map(p => {
+      const icon = p.categoria === 'Lente de sol' ? '🕶' : '🔲';
+      return `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03);transition:background .12s" onmouseover="this.style.background='rgba(56,189,248,0.08)'" onmouseout="this.style.background=''" onclick="_seleccionarAddonArmazon(${slotIdx},'${p.id}')">
+        <span style="font-size:13px">${icon}</span>
+        <div style="flex:1"><div style="font-size:11px;color:var(--white)">${p.nombre}</div><div style="font-size:9px;color:var(--muted)">${p.marca||''} ${p.codigo_barras?'· '+p.codigo_barras:''}</div></div>
+      </div>`;
+    }).join('');
+    dd.style.display = '';
+  }, 300);
+}
+async function _seleccionarAddonArmazon(slotIdx, prodId) {
+  const { data: p } = await db.from('productos').select('*').eq('id', prodId).single();
+  if (!p) return;
+  vtaFolioSlots[slotIdx].addon_armazon = p.nombre + (p.marca ? ' · ' + p.marca : '');
+  vtaFolioSlots[slotIdx].addon_producto_id = p.id;
+  renderFolioSlots();
+}
+
 const PAGA_CAT_OPTIONS = ['Armazón','Material','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
 function togglePagaCat() {
   document.getElementById('promo-paga-cat-wrap').style.display = document.getElementById('promo-nxm-paga-cat').checked ? '' : 'none';
@@ -22646,17 +22703,27 @@ function renderFolioSlots() {
       const addonNombre = vtaPromoAplicada?.addon_config?.nombre || 'Addon';
       const addonPrecio = vtaPromoAplicada?.addon_config?.precio || 0;
       const colorOpts = TINTE_COLORES.map(c => `<option${c===slot.addon_color?' selected':''}>${c}</option>`).join('');
+      const armDisplay = slot.addon_armazon || '';
       return `<div style="background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.2);border-radius:8px;padding:8px 10px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
           <span style="font-size:11px;font-weight:700;color:#38bdf8">🕶 Folio ${slot.label} — ${addonNombre}</span>
           <span style="font-size:10px;color:#38bdf8;font-weight:700">$${Number(addonPrecio).toFixed(0)}</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px">
-          <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
-            <input type="text" value="${slot.addon_armazon||''}" placeholder="Modelo/descripción del armazón de sol"
-              onchange="vtaFolioSlots[${s}].addon_armazon=this.value"
-              style="flex:1;${_inputSt}">
+          <div style="display:flex;align-items:center;gap:4px;position:relative">
+            <span style="font-size:10px;width:14px;flex-shrink:0">🕶</span>
+            ${armDisplay
+              ? `<div style="flex:1;display:flex;align-items:center;gap:4px">
+                  <span style="font-size:10px;color:var(--white);flex:1">${armDisplay}</span>
+                  <button onclick="vtaFolioSlots[${s}].addon_armazon='';vtaFolioSlots[${s}].addon_producto_id=null;renderFolioSlots()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:10px;padding:0">✕</button>
+                </div>`
+              : `<div style="flex:1;position:relative">
+                  <input type="text" id="addon-arm-search-${s}" placeholder="Buscar armazón de sol (código, modelo, marca)"
+                    oninput="_buscarAddonArmazon(${s},this.value)" onfocus="if(this.value.length>=2)_buscarAddonArmazon(${s},this.value)"
+                    style="width:100%;${_inputSt}">
+                  <div id="addon-arm-results-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius:6px;max-height:150px;overflow-y:auto;margin-top:2px"></div>
+                </div>`
+            }
           </div>
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:10px;width:14px;flex-shrink:0">🎨</span>
