@@ -27713,7 +27713,7 @@ function amRqBuscarModeloSinMarca(modelo) {
       if ((_marcaElGuard.value || '').trim().length >= 2) { amMarcaHideDropdown(); return; }
       var modeloLimpio = modelo.replace(/[-\s]/g,'').toUpperCase();
 
-      // 0. Buscar en sesión actual (amRows)
+      // 0. Buscar en sesión actual (amRows) — match exacto
       var sesionMatch = amRows.find(function(r) {
         return (r.modelo||'').toUpperCase() === modelo || (r.codigo||'').toUpperCase() === modelo;
       });
@@ -27728,23 +27728,45 @@ function amRqBuscarModeloSinMarca(modelo) {
       }
 
       // 1. Buscar en DB por modelo o codigo_barras (sin filtro de marca)
+      // Ampliamos el ilike a los primeros 3 chars para capturar también modelos por prefijo común
+      var prefBusqueda = modeloLimpio.substring(0, 3);
       var qAll = await db.from('productos')
         .select('marca,modelo,precio_venta,costo,nombre,codigo_barras')
         .eq('activo', true)
-        .or('modelo.ilike.%' + modelo + '%,codigo_barras.eq.' + modelo)
-        .limit(50);
+        .or('modelo.ilike.%' + prefBusqueda + '%,codigo_barras.eq.' + modelo)
+        .limit(200);
       if (!qAll.data || !qAll.data.length) {
         amMarcaHideDropdown();
         return;
       }
 
-      // Filtrar matches exactos de modelo
+      // 1a. Match exacto de modelo o código
       var exactos = qAll.data.filter(function(r) {
         var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
         var cod = (r.codigo_barras||'').toUpperCase();
         return mod === modeloLimpio || cod === modelo;
       });
-      if (!exactos.length) { amMarcaHideDropdown(); return; }
+
+      // Helper: prefijo común (chars iniciales en común entre 2 strings)
+      function _prefLen(a, b) {
+        var n = Math.min(a.length, b.length);
+        for (var i = 0; i < n; i++) { if (a[i] !== b[i]) return i; }
+        return n;
+      }
+
+      // 1b. Si NO hay exactos, buscar por similitud de prefijo (≥3 chars)
+      var usarPrefijo = false;
+      if (!exactos.length) {
+        var simRanked = qAll.data.map(function(r) {
+          var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
+          return { row: r, sim: _prefLen(modeloLimpio, mod) };
+        }).filter(function(x) { return x.sim >= 3; });
+        if (!simRanked.length) { amMarcaHideDropdown(); return; }
+        // Tomar los que tienen el sim más alto (prefijo más largo)
+        var maxSim = Math.max.apply(null, simRanked.map(function(x){ return x.sim; }));
+        exactos = simRanked.filter(function(x) { return x.sim === maxSim; }).map(function(x) { return x.row; });
+        usarPrefijo = true;
+      }
 
       // Agrupar por marca (quedarnos con el primero de cada marca)
       var marcasMap = {};
@@ -27753,6 +27775,7 @@ function amRqBuscarModeloSinMarca(modelo) {
         if (m && !marcasMap[m]) marcasMap[m] = r;
       });
       var marcaKeys = Object.keys(marcasMap);
+      if (!marcaKeys.length) { amMarcaHideDropdown(); return; }
 
       if (marcaKeys.length === 1) {
         // Una sola marca → autocompletar directo
@@ -27766,8 +27789,13 @@ function amRqBuscarModeloSinMarca(modelo) {
         if (pv > 0) precioEl.value = pv;
         if (co > 0 && !parseFloat(costoEl.value)) costoEl.value = co;
         if (st) {
-          st.innerHTML = '✅ <b style="color:#4af078">YA REGISTRADO</b> ' + marcaKeys[0] + ' ' + modelo + ' — precio: <b style="color:var(--accent)">$' + pv.toLocaleString('es-MX') + '</b>' + (co > 0 ? ' · costo: $' + co.toLocaleString('es-MX') : '');
-          st.style.color = '#4af078';
+          if (usarPrefijo) {
+            st.innerHTML = '🔍 <b style="color:#f0b84a">Modelo nuevo</b> — marca deducida por prefijo: <b>' + marcaKeys[0] + '</b> (ref: ' + (ref.modelo||'') + ', $' + pv.toLocaleString('es-MX') + ')';
+            st.style.color = '#f0b84a';
+          } else {
+            st.innerHTML = '✅ <b style="color:#4af078">YA REGISTRADO</b> ' + marcaKeys[0] + ' ' + modelo + ' — precio: <b style="color:var(--accent)">$' + pv.toLocaleString('es-MX') + '</b>' + (co > 0 ? ' · costo: $' + co.toLocaleString('es-MX') : '');
+            st.style.color = '#4af078';
+          }
         }
         amPrecioLoadMarca(marcaKeys[0]);
         amMarcaHideDropdown();
@@ -27777,12 +27805,13 @@ function amRqBuscarModeloSinMarca(modelo) {
         _amMarcaIdx = -1;
         amMarcaRenderDropdown();
         if (st) {
-          st.innerHTML = '❓ <b style="color:#f0b84a">' + marcaKeys.length + ' marcas</b> tienen modelo ' + modelo + ' — usa <b>↑↓</b> para elegir';
+          var label = usarPrefijo ? 'tienen modelos similares a' : 'tienen modelo';
+          st.innerHTML = '❓ <b style="color:#f0b84a">' + marcaKeys.length + ' marcas</b> ' + label + ' ' + modelo + ' — usa <b>↑↓</b> para elegir';
           st.style.color = '#f0b84a';
         }
       }
     } catch(e) { console.warn('amRqBuscarModeloSinMarca:', e); }
-  }, 350);
+  }, 200);
 }
 
 function amMarcaRenderDropdown() {

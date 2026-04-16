@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v265 — Alta Masiva: sugerencia de precio por similitud de prefijo dentro de la misma marca (modelo más cercano gana sobre moda o costo×mult).
+**Última versión**: v266 — Alta Masiva: auto-detección de marca por similitud de prefijo (no solo match exacto). Debounce 350→200ms.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
