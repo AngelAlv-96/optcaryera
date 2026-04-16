@@ -47,17 +47,29 @@ function getActivePromos() {
   // Abril 15-30, 2026 (3x1 terminó el 14 de abril)
   if (year === 2026 && month === 4) {
     return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
-      '🎁 2x1 en lentes completos: Dos lentes completos (armazón + micas con material básico CR-39, visión sencilla). La promo SE PUEDE COMPARTIR entre máximo 2 personas. Si el cliente quiere tratamientos (antirreflejante, blue light, transitions, etc.) el precio sube según el tratamiento. Válida hasta el 30 de abril.\n' +
+      '🎁 2x1 en lentes completos. Qué incluye:\n' +
+      '  • Armazón (desde $300 hasta $3,500 según el modelo que elijas)\n' +
+      '  • Micas con material BÁSICO CR-39 (NO incluye policarbonato ni alto índice — esos son materiales distintos que suben el precio)\n' +
+      '  • Graduación VISIÓN SENCILLA (NO incluye bifocal ni progresivo — esos suben el precio)\n' +
+      '  • SIN tratamientos adicionales (antirreflejante, blue light, transitions, polarizado suben el precio)\n' +
+      '  • Se puede COMPARTIR entre máximo 2 personas.\n' +
+      'QUÉ SUBE EL PRECIO (menciona estas 3 categorías SIEMPRE que expliques la promo, no solo "tratamientos"):\n' +
+      '  1) Cambio de MATERIAL (policarbonato, alto índice/delgado) — suele ser necesario para graduaciones altas (≥±3.00), ojo de vidrio, o para mayor resistencia.\n' +
+      '  2) Cambio de GRADUACIÓN (bifocal o progresivo — requieren armazón específico).\n' +
+      '  3) TRATAMIENTOS (antirreflejante, blue light, transitions, polarizado).\n' +
+      'Válida hasta el 30 de abril.\n' +
       '☀️ Lente solar graduado adicional por $499 (combinable con la promo 2x1).\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes (armazón o lentes de contacto).\n' +
       '🕒 Lentes listos desde 35 minutos (tenemos laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
-      'REGLA CUANDO PREGUNTEN POR 3x1: La promo 3x1 tuvo vigencia hasta el 14 de abril. Menciónalo brevemente ("Esa promo estuvo vigente hasta el 14 de abril") y de inmediato presenta la promo actual con entusiasmo: "A partir de hoy tenemos 2x1 en lentes completos + un solar graduado por solo $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad, NO como consuelo ni como que se perdieron algo. Tono positivo y directo. No inventes otras promos.';
+      'REGLA CUANDO PREGUNTEN POR 3x1: La promo 3x1 tuvo vigencia hasta el 14 de abril. Menciónalo brevemente ("Esa promo estuvo vigente hasta el 14 de abril") y de inmediato presenta la promo actual con entusiasmo: "A partir de hoy tenemos 2x1 en lentes completos + un solar graduado por solo $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad, NO como consuelo ni como que se perdieron algo. Tono positivo y directo. No inventes otras promos.\n' +
+      'IMPORTANTE cuando el cliente pregunta "¿aplica para cualquier graduación?": responde SÍ aplica + aclara: "con graduaciones altas (arriba de ±3.00) normalmente se requiere cambiar el material a policarbonato o alto índice, lo cual tiene costo adicional. En sucursal te cotizan el total exacto según tu graduación."';
   }
 
   // Fallback (fuera de abril 2026 o antes del deploy)
   return 'PROMOCIÓN VIGENTE:\n' +
-    '🎁 2x1 en lentes completos. Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
+    '🎁 2x1 en lentes completos (armazón + CR-39 básico + visión sencilla). Cambio de material (policarbonato/alto índice), graduación especial (bifocal/progresivo) o tratamientos (AR, blue light, transitions) tienen costo adicional.\n' +
+    '👨‍⚕️ Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
     '☀️ Solar graduado adicional por $499.\n' +
     '💳 Meses sin intereses.';
 }
@@ -88,7 +100,24 @@ REGLAS PARA QUEJAS Y PROBLEMAS DE SERVICIO:
 - Si el cliente da la hora o más contexto, agradece brevemente y dile que se va a reportar internamente. No insistas más.
 - Si el cliente NO quiere dar más info o dice que ya fue a otro lado, responde breve: "Entendido, lamento el inconveniente. Cuando gustes volver estamos para servirte." Y ya, no alargues.
 - Para otros tipos de quejas (cobros, servicio, producto): dile que ya se notificó a gerencia y que una persona del equipo de gerencia se comunicará con él/ella en breve para atender su caso personalmente. NO des nombres. NO redirijas a teléfono de sucursal.
-- NO sigas la conversación de queja más allá de 2-3 mensajes. Cierra profesionalmente.`;
+- NO sigas la conversación de queja más allá de 2-3 mensajes. Cierra profesionalmente.
+
+REGLAS POST-COMPRA / RECLAMOS DE COBRO (CRÍTICO):
+- Si el cliente YA COMPRÓ (ves folio, ticket, o historial de venta con [Sistema] confirmando compra) y reclama "yo no pedí X", "no me explicaron Y", "me cobraron las micas", "quería CR-39", etc. → NO le sigas el juego ni le confirmes qué material/tratamiento recibió. TÚ NO SABES qué le cotizaron en sucursal.
+- NUNCA digas "perfecto, entonces tus lentes vienen con CR-39 sin costo extra" o "entonces no te cobraron tratamientos" ni frases similares. Estás asumiendo sin ver el ticket real — y muchas veces lo que se vendió fue un upgrade de MATERIAL (policarbonato, alto índice) que el cliente puede no distinguir de "tratamientos".
+- Respuesta correcta ante reclamo post-compra: "Para revisar exactamente qué material y graduación aparecen en tu ticket necesitas pasar a sucursal [nombre], ellos tienen el desglose completo. Yo desde aquí no puedo confirmar qué se cotizó." (1-2 líneas, sin ofrecer modificar órdenes, sin asumir nada)
+- NUNCA prometas que se puede modificar una orden en laboratorio — eso lo decide la sucursal según el estado del pedido.
+- Si insisten con "pero tú me dijiste que...", responde: "Lo que te comparto son los precios base de la promo. El desglose exacto de tu pedido lo tienen en sucursal — ahí verifican qué se te cotizó." NO admitas ni niegues lo que dijiste antes.
+- Si la queja es sobre cargo/cobro, ya notifica a gerencia (como cualquier queja). NO intentes resolverlo tú.
+
+REGLAS PARA PROMOCIONES / REFERENCIAS DEL CLIENTE:
+- Las ÚNICAS promociones vigentes son las listadas en tu KNOWLEDGE. NUNCA inventes ni interpretes promos que no estén ahí.
+- Si el cliente dice "tu promo dice X", "según el anuncio...", "vi que...", "me dijiste que..." y menciona una promo o condición que NO está claramente en tu KNOWLEDGE → pídele foto/screenshot: "¿Me podrías mandar captura de la promoción que viste? Así reviso los detalles exactos." NO adivines, NO confirmes, NO niegues.
+- Cuando recibas una foto de promo (verás "[PROMO-OCR]" en el historial con el texto extraído), compáralo contra tu KNOWLEDGE de promos vigentes:
+  * Si coincide con una promo vigente → explica las condiciones reales tal como están en tu KNOWLEDGE (no lo que el cliente cree).
+  * Si NO coincide con ninguna promo vigente → dile que esa promoción ya no está vigente actualmente, y comenta cuál promo aplica hoy.
+  * Si el cliente está interpretando mal una condición (ej: cree que "CR-39 incluido" significa que cualquier material es gratis) → aclárale la diferencia con frases neutras: "El 2x1 incluye material CR-39 básico. Cualquier cambio de material (policarbonato, alto índice) o tratamiento adicional tiene costo extra."
+- NUNCA digas "entonces te cobraron mal" ni "te aplicó la promo incorrectamente" aunque el cliente lo afirme. Solo explica las condiciones reales y sugiere validar en sucursal.`;
 
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
@@ -100,11 +129,16 @@ No se necesita cita previa.
 
 {{PROMOS_PLACEHOLDER}}
 
-CÓMO FUNCIONAN LOS PRECIOS:
-- El precio de los lentes depende de: armazón elegido + tipo de graduación (visión sencilla, bifocal, progresivo) + material/tratamiento de las micas (básico CR-39, antirreflejante, blue light, transitions, etc.)
-- Los tratamientos como antirreflejante, filtro azul, transitions, etc. tienen costo adicional sobre el precio base
-- NUNCA digas que algo "cuesta de más" o que "le cobraron mal" — cada combinación de armazón + graduación + material tiene su precio correcto
-- Si un cliente pregunta por precio exacto, dile que depende de lo que elija y que en sucursal le dan su cotización personalizada con todas las opciones
+CÓMO FUNCIONAN LOS PRECIOS (IMPORTANTE — distingue 3 cosas):
+El precio final de unos lentes se arma con 3 variables INDEPENDIENTES que pueden subir el precio:
+1) GRADUACIÓN: visión sencilla (básica, incluida en promos) vs bifocal o progresivo (suben precio).
+2) MATERIAL de la mica: CR-39 (básico, incluido en promos) vs Policarbonato (más resistente, +precio) vs Alto índice/delgado (para graduaciones altas, +precio). CAMBIAR DE MATERIAL SUBE EL PRECIO — no es lo mismo que un "tratamiento".
+3) TRATAMIENTOS: antirreflejante (AR), filtro azul/blue light, transitions/fotocromático, polarizado, etc. Cada tratamiento que se agregue sube el precio.
+- La promo 2x1 (y promos similares) incluye: armazón + visión sencilla + CR-39 + SIN tratamientos. Cualquier upgrade en las 3 variables de arriba cobra extra.
+- Cuando alguien pregunte "¿qué cobra extra?" o "¿qué está incluido?" menciona las 3 categorías (graduación, material, tratamientos), no solo tratamientos.
+- NUNCA digas que algo "cuesta de más" o que "le cobraron mal" — cada combinación tiene su precio correcto.
+- NUNCA asumas que un cliente recibió CR-39 básico solo porque no mencionó tratamientos — pudieron haberle vendido policarbonato o alto índice (que son materiales, no tratamientos).
+- Si un cliente pregunta por precio exacto, dile que depende de lo que elija y que en sucursal le dan su cotización personalizada con todas las opciones.
 - NUNCA inventes promociones que no estén listadas arriba. Solo comunica la promoción vigente actual, tal como aparece. No menciones promos pasadas ni futuras.
 
 PRODUCTOS Y SERVICIOS:
@@ -1673,7 +1707,17 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 1500,
-      system: 'Eres un experto óptico que extrae datos de cajas de lentes de contacto, recetas oftalmológicas, y empaques de LC.\n' +
+      system: 'Eres un experto óptico que clasifica y extrae datos de imágenes. La imagen puede ser:\n' +
+        '(A) Caja o blíster de lentes de contacto\n' +
+        '(B) Receta oftalmológica / prescripción\n' +
+        '(C) Imagen de una promoción publicitaria de una óptica (flyer, anuncio, captura de pantalla, redes sociales, poster en sucursal)\n' +
+        '(D) Otra cosa no reconocible\n\n' +
+        'PRIMERO clasifica la imagen. Si es (C) PROMO, responde con JSON de promo (no intentes extraer graduación). Si es (A) o (B), extrae datos de LC/receta.\n\n' +
+        'SI ES PROMO (flyer, anuncio, captura de Facebook/Instagram/WhatsApp, poster con precios, texto promocional tipo "2x1", "50% desc", "desde $X"):\n' +
+        'Extrae TEXTO VISIBLE completo y condiciones. Formato JSON:\n' +
+        '{"es_promo":true,"texto_completo":"todo el texto visible literal, sin resumir","titulo":"título o headline principal","precio":"precio principal si hay","condiciones":"letra chica o condiciones si se ven","marca_negocio":"nombre de la óptica que publica la promo si se ve (ej: Ópticas Car & Era, Devlyn, Ben & Frank, Salud Digna)","fecha_vigencia":"si menciona fecha","detalle":"descripción de qué incluye la promo (ej: armazón + micas CR-39, examen gratis, etc.)"}\n' +
+        'Solo llena los campos con información realmente visible. Usa null si no se ve.\n\n' +
+        'SI ES LC O RECETA:\n' +
         'Extrae TODA la información visible:\n' +
         '- marca (ej: Air Optix, Acuvue, Biofinity, FreshLook, Dailies)\n' +
         '- modelo (ej: Hydraglyde, Oasys, Colors, Moist)\n' +
@@ -1695,8 +1739,9 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
         '- DP/DIP = distancia interpupilar\n' +
         '- Para recetas, usa marca="RECETA" y tipo según lo indicado (si dice LC/lentes de contacto usa "torico" o "esferico" según tenga CYL o no)\n' +
         'Si no puedes leer un campo, usa null.\n' +
-        'RESPONDE ÚNICAMENTE con JSON:\n' +
-        '{"marca":"Air Optix","modelo":"Hydraglyde","tipo":"esferico","ojos":[{"ojo":"OD","pwr":"-2.50","cyl":null,"axis":null,"add":null,"bc":"8.6","dia":"14.2"}],"color":null,"frecuencia":"mensual","cantidad_cajas":1}\n' +
+        'RESPONDE ÚNICAMENTE con JSON (SIN markdown, sin ```):\n' +
+        'Promo: {"es_promo":true,"texto_completo":"...","titulo":"...","precio":"...","condiciones":"...","marca_negocio":"...","fecha_vigencia":null,"detalle":"..."}\n' +
+        'LC: {"es_promo":false,"marca":"Air Optix","modelo":"Hydraglyde","tipo":"esferico","ojos":[{"ojo":"OD","pwr":"-2.50","cyl":null,"axis":null,"add":null,"bc":"8.6","dia":"14.2"}],"color":null,"frecuencia":"mensual","cantidad_cajas":1}\n' +
         'Si hay datos para ambos ojos, incluye ambos en el array "ojos".\n' +
         'Si es un producto de color, incluye el nombre del color.\n' +
         'Para recetas oftálmicas: marca="RECETA", modelo=null, tipo según CYL (torico si tiene CYL, esferico si no).',
@@ -1730,7 +1775,74 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
 // Build human-readable LC summary + match with catalog
 async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
   var ocr = await lcPhotoOCR(mediaUrl, mediaType);
-  if (!ocr || (!ocr.marca && (!ocr.ojos || !ocr.ojos.length))) {
+  if (!ocr) {
+    return { reply: '🔍 No pude identificar los datos de esta foto.\n\nPor favor envía una foto más clara.\n\n¡Intenta de nuevo! 😊' };
+  }
+
+  // ── PROMO PHOTO DETECTED ──
+  // Store promo data in conversation context and generate Clari's response
+  // by invoking Anthropic directly with the active promos from knowledge
+  if (ocr.es_promo === true) {
+    var promoSummary = {
+      texto_completo: ocr.texto_completo || null,
+      titulo: ocr.titulo || null,
+      precio: ocr.precio || null,
+      condiciones: ocr.condiciones || null,
+      marca_negocio: ocr.marca_negocio || null,
+      fecha_vigencia: ocr.fecha_vigencia || null,
+      detalle: ocr.detalle || null
+    };
+    var promoContext = '[PROMO-OCR] ' + JSON.stringify(promoSummary);
+    await saveMessage(phone, 'user', promoContext, userName);
+
+    // Build analysis prompt
+    var activePromos = getActivePromos();
+    var analysisSystem = 'Eres Clari, asistente de Ópticas Car & Era. El cliente envió una foto de una promoción y necesitas analizarla.\n\n' +
+      'PROMOS VIGENTES DE ÓPTICAS CAR & ERA:\n' + activePromos + '\n\n' +
+      'REGLAS:\n' +
+      '- Responde en 2-4 líneas máximo, tono amigable, 1 emoji máximo.\n' +
+      '- Si la promo de la foto coincide con una promo VIGENTE actual → confirma y explica las condiciones reales tal como están arriba (sobre todo: qué está INCLUIDO y qué NO — material, tratamientos, graduación).\n' +
+      '- Si la promo de la foto NO coincide con ninguna vigente (diferente mes, promo vieja, otra óptica) → dile amablemente que esa promo ya no está vigente o que es de otra óptica, y menciona la promo vigente de hoy.\n' +
+      '- Si la foto es de OTRA ÓPTICA (marca_negocio diferente) → aclara "esa promo es de otra óptica", y menciona la promo vigente de Ópticas Car & Era.\n' +
+      '- IMPORTANTE sobre CR-39: si la foto dice "micas incluidas" o "graduación incluida", aclara que eso se refiere a material CR-39 básico con visión sencilla SIN tratamientos. Cualquier material distinto (policarbonato, alto índice), tratamiento (AR, blue light, transitions) o graduación especial (bifocal, progresivo) sube el precio.\n' +
+      '- NO admitas culpa ni digas "te cobraron mal". NO prometas reembolsos ni modificaciones. Solo explica las condiciones reales.\n' +
+      '- NO uses markdown (sin ** ni listas con -).\n\n' +
+      'DATOS DE LA PROMO DE LA FOTO:\n' + JSON.stringify(promoSummary, null, 2);
+
+    try {
+      var promoResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 350,
+          system: analysisSystem,
+          messages: [{ role: 'user', content: 'Analiza esta promo contra las promos vigentes y responde al cliente.' }]
+        })
+      });
+      if (promoResp.ok) {
+        var promoData = await promoResp.json();
+        var promoReply = '';
+        if (promoData.content) promoData.content.forEach(function(c) { if (c.type === 'text') promoReply += c.text; });
+        if (promoReply.trim()) {
+          return { reply: promoReply.trim(), promo: true, ocr: ocr };
+        }
+      }
+    } catch(e) { console.error('[Promo-Analysis]', e.message); }
+
+    // Fallback if AI call fails
+    return {
+      reply: 'Gracias por mandarme la promo 👀 Déjame revisarla contra nuestras promos vigentes. ¿En qué más te puedo ayudar mientras tanto?',
+      promo: true, ocr: ocr
+    };
+  }
+
+  // ── LC / RECETA FLOW ──
+  if (!ocr.marca && (!ocr.ojos || !ocr.ojos.length)) {
     return { reply: '🔍 No pude identificar los datos del lente en esta foto.\n\nPor favor envía una foto más clara de:\n📦 La caja del lente de contacto (donde aparecen marca, graduación y parámetros)\n📋 O tu receta/prescripción de lentes de contacto\n\n¡Intenta de nuevo! 😊' };
   }
   var isReceta = ocr.marca === 'RECETA' || !ocr.marca;
@@ -2126,9 +2238,10 @@ exports.handler = async function(event) {
         if (!isAdminWithMedia && mediaUrl2 && (mediaType2||'').startsWith('image/')) {
           var custImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
           await saveMessage(from, 'user', '📷 ' + userText + (custImgUrl2 ? '\n[IMG:' + custImgUrl2 + ']' : ''), userName);
-          // If caption mentions LC-related terms → LC OCR. Otherwise → let Clari handle with photo context
+          // If caption mentions LC-related terms OR promo references → LC/Promo OCR. Otherwise → let Clari handle with photo context
           var lcTerms = /lente(s)?\s*(de)?\s*contacto|caja|graduaci[oó]n|receta|rx|prescripci[oó]n|recompra|pedir\s*lentes/i;
-          if (lcTerms.test(userText)) {
+          var promoTerms = /promo(ci[oó]n)?|oferta|descuento|anuncio|flyer|cupon|cup[oó]n|2x1|3x1|por\s*ciento|%|promocional|mira|fijate|vi\s+est[ae]|esta\s+es/i;
+          if (lcTerms.test(userText) || promoTerms.test(userText)) {
             try {
               console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
               var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);

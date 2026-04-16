@@ -154,6 +154,17 @@ Si algo se rompe gravemente:
 - **Clientes existentes (pedidos)**: cuando alguien pregunta por su pedido YA ES CLIENTE — NUNCA dar direcciones, referencias de ubicación, horarios ni teléfonos. Solo el nombre de la sucursal. Las direcciones son para prospectos nuevos.
 - **Búsqueda de pedidos**: si no encuentra por teléfono del WA, pedir FOLIO → TELÉFONO registrado → ticket de compra. NUNCA redirigir a sucursal sin agotar opciones. Si el cliente dice que recibió WA de "lentes listos", confirmar que somos nosotros.
 - **⚠️ LECCIÓN v245**: Mirta Escobar preguntó por Messenger si sus lentes estaban listos. Clari no la encontró (buscó stopwords "Están" y "nombre" en vez de "Mirta" y "Escobar"), no pidió folio ni teléfono, la redirigió a llamar a sucursal, y le dio direcciones como si fuera clienta nueva.
+- **Post-compra / reclamos de cobro**: si el cliente ya compró (ves folio o [Sistema] en historial) y reclama "yo no pedí X", "me cobraron las micas", "quería CR-39", etc. → NO confirmar ni asumir qué material/tratamiento recibió. Respuesta fija: "Para revisar qué material y graduación aparecen en tu ticket pasa a sucursal [X], ellos tienen el desglose." Nunca prometer modificaciones de orden (solo sucursal decide según estado del pedido). Si insisten "pero tú me dijiste…" → "Lo que te comparto son precios base, el desglose exacto lo tienen en sucursal." NO admitir ni negar lo dicho antes.
+- **Precios — 3 variables independientes**: el precio final lo arman 3 cosas que suben precio POR SEPARADO: (a) Graduación (sencilla vs bifocal/progresivo), (b) MATERIAL (CR-39 vs policarbonato vs alto índice) — cambiar de material sube el precio, NO es un "tratamiento", (c) Tratamientos (AR, blue light, transitions, polarizado). NUNCA asumir que el cliente recibió CR-39 básico solo porque "no pidió tratamientos" — pudieron venderle policarbonato (que es material, no tratamiento). Promos incluyen SOLO: CR-39 + visión sencilla + sin tratamientos.
+- **Promociones — referencia del cliente**: si el cliente dice "tu promo dice X", "según el anuncio…" y no coincide con KNOWLEDGE → pedir foto/screenshot en vez de adivinar. NO confirmar ni negar lo que el cliente afirma.
+- **⚠️ LECCIÓN v268**: Brianda Carmona (folio 10593 Magnolia) compró con policarbonato, reclamó por chat "tu promo dice graduación incluida sin costo extra, no pedí tratamientos". Clari respondió "perfecto, entonces tus lentes vienen con CR-39 sin costo extra" — sin acceso real a lo que se cotizó. La clienta mandó a alguien a cambiar los 3 pares a CR-39 con ese argumento. Raíz: el prompt solo hablaba de "tratamientos" como upgrade, nunca de cambio de material. Cuando falta una variable del prompt, el modelo la ignora y asume el default.
+
+## 📸 CLARI — OCR DE PROMOCIONES
+- **`lcPhotoOCR` clasifica en 4 categorías** (A=caja LC, B=receta, C=promo/flyer/anuncio/captura, D=otro). Si detecta promo devuelve JSON con `{es_promo:true, texto_completo, titulo, precio, condiciones, marca_negocio, fecha_vigencia, detalle}`.
+- **`processLCPhoto` maneja promo**: guarda `[PROMO-OCR] {json}` en `clari_conversations` e invoca Anthropic (claude-sonnet-4) con un system prompt específico que incluye las promos vigentes de `getActivePromos()` + los datos extraídos del flyer. Genera respuesta 2-4 líneas comparando vigencia/óptica/condiciones.
+- **3 casos de análisis**: (i) promo nuestra vigente → explica condiciones reales, (ii) promo de OTRA óptica (marca_negocio diferente) → "es de otra óptica" + menciona la vigente, (iii) promo vieja → "esa promo ya no está vigente" + menciona la actual.
+- **Detección por caption**: fotos + texto con `promo|oferta|descuento|anuncio|flyer|2x1|3x1|%|mira|fijate|vi esta` se procesan con OCR. Si solo mandan foto sin texto, el clasificador decide por contenido.
+- **Fallback**: si Anthropic falla, Clari responde "Gracias por mandarme la promo, déjame revisarla" — el contexto [PROMO-OCR] queda guardado para que Clari responda con él en el siguiente turno.
 
 ## 🏪 NEGOCIO
 - 3 sucursales: Américas, Pinocelli, Magnolia (Ciudad Juárez, Chihuahua)
@@ -398,7 +409,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v267 — Alta Masiva: auto-cambio de marca cuando el modelo escrito existe exacto en otra marca y el usuario no editó la marca manualmente.
+**Última versión**: v268 — Clari: reglas post-compra (no confirma qué se cotizó), distinción material/tratamiento/graduación en precios, OCR de promociones con análisis automático vs KNOWLEDGE.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
