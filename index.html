@@ -3548,6 +3548,10 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     </div>
                     <button onclick="quitarPromoVenta()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:14px;padding:2px" title="Quitar promo">✕</button>
                   </div>
+                  <div id="vta-addon-applied" style="display:none;margin-top:6px;display:none;align-items:center;justify-content:space-between;background:rgba(56,189,248,0.06);padding:5px 8px;border-radius:6px;border:1px solid rgba(56,189,248,0.12)">
+                    <div style="font-size:10px;color:#38bdf8">🕶 <span id="vta-addon-name">—</span> · <strong id="vta-addon-precio">$0</strong></div>
+                    <button onclick="_quitarAddon()" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:12px;padding:0" title="Quitar addon">✕</button>
+                  </div>
                 </div>
 
                 <!-- Promo button (visible when items exist) -->
@@ -3804,8 +3808,6 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="">Todas</option>
               <option value="activa" selected>Activas</option>
               <option value="inactiva">Inactivas</option>
-              <option value="vigente">Vigentes hoy</option>
-              <option value="expirada">Expiradas</option>
             </select>
           </div>
           <div id="promo-list" style="display:grid;gap:8px"></div>
@@ -4560,6 +4562,19 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <button type="button" onclick="addPagaCatRow()" style="margin-top:6px;font-size:10px;padding:4px 10px;background:rgba(212,184,74,0.12);color:var(--beige);border:1px solid rgba(212,184,74,0.2);border-radius:5px;cursor:pointer;font-family:'Outfit',sans-serif">+ Agregar categoría</button>
         </div>
       </div>
+      <div style="border-top:1px solid rgba(226,198,166,0.15);margin-top:8px;padding-top:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;background:rgba(56,189,248,0.08);padding:8px 10px;border-radius:6px;border:1px solid rgba(56,189,248,0.15)">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#38bdf8;cursor:pointer;font-weight:600"><input type="checkbox" id="promo-addon-enabled" onchange="toggleAddonFields()" style="accent-color:#38bdf8;width:16px;height:16px"> 🕶 Addon opcional</label>
+          <span style="font-size:9px;color:var(--muted)">(item extra a precio fijo, genera folio adicional)</span>
+        </div>
+        <div id="promo-addon-wrap" style="display:none;background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.12);border-radius:8px;padding:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="fg"><label>Nombre del addon</label><input type="text" id="promo-addon-nombre" placeholder="Lente de sol graduado"></div>
+            <div class="fg"><label>Precio fijo</label><input type="number" id="promo-addon-precio" min="0" step="1" placeholder="499"></div>
+          </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:4px">Al aplicar la promo en POS, el empleado puede agregar este item extra. Genera un folio adicional.</div>
+        </div>
+      </div>
     </div>
     <div id="promo-fields-precio-fijo" style="display:none">
       <div class="fg"><label>Precio del paquete</label><input type="number" id="promo-precio-paq" min="0" step="0.01" placeholder="999.00"></div>
@@ -4685,10 +4700,9 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
         <div style="font-size:8px;color:var(--muted);margin-top:4px">Filtra items de Material por tipo/material/tratamiento. Dejar vacío = todos los materiales.</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div class="fg"><label>Fecha inicio</label><input type="date" id="promo-fecha-ini"></div>
-        <div class="fg"><label>Fecha fin</label><input type="date" id="promo-fecha-fin"></div>
-      </div>
+      <!-- Fechas ocultas — promos se controlan solo con toggle Activar/Desactivar -->
+      <input type="hidden" id="promo-fecha-ini">
+      <input type="hidden" id="promo-fecha-fin">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div class="fg"><label>Máximo de usos</label><input type="number" id="promo-max-usos" min="0" placeholder="Ilimitado"></div>
         <div class="fg" style="display:flex;flex-direction:column;justify-content:center;gap:6px;padding-top:14px">
@@ -21948,12 +21962,10 @@ function renderPromoStats() {
   const all = promosCache;
   const hoy = new Date().toISOString().slice(0, 10);
   const activas = all.filter(p => p.activa);
-  const vigentes = activas.filter(p => (!p.fecha_inicio || p.fecha_inicio <= hoy) && (!p.fecha_fin || p.fecha_fin >= hoy));
   const usosTot = all.reduce((s, p) => s + (p.usos_actuales || 0), 0);
   document.getElementById('promo-stats').innerHTML = [
     { lbl: 'Total', val: all.length, sub: 'promociones' },
-    { lbl: 'Activas', val: activas.length, sub: 'habilitadas' },
-    { lbl: 'Vigentes hoy', val: vigentes.length, sub: 'disponibles' },
+    { lbl: 'Activas', val: activas.length, sub: 'disponibles' },
     { lbl: 'Usos totales', val: usosTot, sub: 'aplicadas' }
   ].map(s => `<div class="stat"><div class="stat-lbl">${s.lbl}</div><div class="stat-val">${s.val}</div><div class="stat-sub">${s.sub}</div></div>`).join('');
 }
@@ -21962,14 +21974,11 @@ function filtrarPromos() {
   const q = (document.getElementById('promo-search')?.value || '').toLowerCase().trim();
   const tf = document.getElementById('promo-tipo-filter')?.value || '';
   const ef = document.getElementById('promo-estado-filter')?.value || '';
-  const hoy = new Date().toISOString().slice(0, 10);
   let list = promosCache;
   if (q) list = list.filter(p => p.nombre.toLowerCase().includes(q));
   if (tf) list = list.filter(p => p.tipo === tf);
   if (ef === 'activa') list = list.filter(p => p.activa);
   else if (ef === 'inactiva') list = list.filter(p => !p.activa);
-  else if (ef === 'vigente') list = list.filter(p => p.activa && (!p.fecha_inicio || p.fecha_inicio <= hoy) && (!p.fecha_fin || p.fecha_fin >= hoy));
-  else if (ef === 'expirada') list = list.filter(p => p.fecha_fin && p.fecha_fin < hoy);
   renderPromoList(list);
 }
 
@@ -22088,6 +22097,7 @@ function abrirModalPromo(editData) {
   document.getElementById('promo-notas').value = editData?.notas || '';
   document.querySelectorAll('.promo-cat').forEach(cb => { cb.checked = editData?.categorias?.includes(cb.value) || false; });
   setPagaCatConfig(editData?.paga_categorias || null);
+  setAddonConfig(editData?.addon_config || null);
   togglePromoFields();
   if (editData?.tipo === 'paquete_fijo') setPfFoliosConfig(editData.pf_config?.folios_material || []);
   document.getElementById('m-promo-form').classList.add('open');
@@ -22112,6 +22122,24 @@ function togglePromoFields() {
   else if (t === 'paquete_fijo') { document.getElementById('promo-fields-paquete-fijo').style.display = ''; pfRegenerarFolios(); }
   // Ocultar filtros globales de material cuando el tipo ya tiene los suyos
   document.getElementById('promo-filtros-material-wrap').style.display = (t === 'material_1' || t === 'paquete_fijo') ? 'none' : '';
+}
+
+function toggleAddonFields() {
+  document.getElementById('promo-addon-wrap').style.display = document.getElementById('promo-addon-enabled').checked ? '' : 'none';
+}
+function getAddonConfig() {
+  if (!document.getElementById('promo-addon-enabled').checked) return null;
+  const nombre = document.getElementById('promo-addon-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('promo-addon-precio').value) || 0;
+  if (!nombre || !precio) return null;
+  return { nombre, precio, genera_folio: true };
+}
+function setAddonConfig(cfg) {
+  if (!cfg) { document.getElementById('promo-addon-enabled').checked = false; toggleAddonFields(); return; }
+  document.getElementById('promo-addon-enabled').checked = true;
+  document.getElementById('promo-addon-nombre').value = cfg.nombre || '';
+  document.getElementById('promo-addon-precio').value = cfg.precio || '';
+  toggleAddonFields();
 }
 
 const PAGA_CAT_OPTIONS = ['Armazón','Material','Lente de sol','Lente de contacto','Solución','Accesorio','Servicio','Cobertura'];
@@ -22154,8 +22182,8 @@ async function guardarPromo() {
     descripcion: document.getElementById('promo-descripcion').value.trim() || null,
     valor: null, compra_cantidad: null, paga_cantidad: null, precio_paquete: null, monto_minimo: null, folios_lab: 1,
     categorias: cats.length ? cats : null,
-    fecha_inicio: document.getElementById('promo-fecha-ini').value || null,
-    fecha_fin: document.getElementById('promo-fecha-fin').value || null,
+    fecha_inicio: null,
+    fecha_fin: null,
     max_usos: parseInt(document.getElementById('promo-max-usos').value) || null,
     combinable: document.getElementById('promo-combinable').checked,
     aplica_monedero: document.getElementById('promo-aplica-monedero').checked,
@@ -22169,6 +22197,7 @@ async function guardarPromo() {
     payload.paga_cantidad = parseInt(document.getElementById('promo-paga').value) || 1;
     payload.folios_lab = parseInt(document.getElementById('promo-folios').value) || payload.compra_cantidad;
     payload.paga_categorias = getPagaCatConfig();
+    payload.addon_config = getAddonConfig();
   }
   else if (tipo === 'precio_fijo') payload.precio_paquete = parseFloat(document.getElementById('promo-precio-paq').value) || 0;
   else if (tipo === 'monto_minimo') {
@@ -22328,7 +22357,7 @@ function setPfFoliosConfig(arr) {
 
 // Helper: filtra items por categorías y filtros_material de la promo
 function _filtrarItemsPromo(promo, items) {
-  let filtered = items;
+  let filtered = items.filter(i => !i.es_addon_promo);
   if (promo.categorias?.length) filtered = filtered.filter(i => promo.categorias.some(c => (i.categoria || '').includes(c)));
   if (promo.filtros_material) {
     const fm = promo.filtros_material;
@@ -22476,7 +22505,9 @@ async function aplicarPromoVenta(promoId) {
     folios_lab: data.folios_lab || 1,
     combinable: data.combinable,
     aplica_monedero: data.aplica_monedero,
-    paga_categorias: data.paga_categorias || null
+    paga_categorias: data.paga_categorias || null,
+    addon_config: data.addon_config || null,
+    addon_aplicado: false
   };
   document.getElementById('vta-descuento').value = vtaPromoAplicada.descuento.toFixed(2);
   const panel = document.getElementById('vta-promo-applied');
@@ -22490,6 +22521,10 @@ async function aplicarPromoVenta(promoId) {
   recalcVtaTotales();
   document.getElementById('m-promo-selector').classList.remove('open');
   toast(`✓ Promo "${data.nombre}" aplicada: -$${vtaPromoAplicada.descuento.toFixed(2)}`);
+  // Addon opcional — preguntar si quiere agregar item extra
+  if (data.addon_config?.nombre && data.addon_config?.precio) {
+    _mostrarAddonPrompt(data.addon_config);
+  }
   if ((data.tipo === 'nxm' || data.tipo === 'material_a_peso' || data.tipo === 'material_1' || data.tipo === 'paquete_fijo') && vtaPromoAplicada.folios_lab > 1) {
     autoAsignarFolios();
   } else {
@@ -22497,11 +22532,78 @@ async function aplicarPromoVenta(promoId) {
   }
 }
 
+function _mostrarAddonPrompt(addon) {
+  // Modal pregunta addon
+  const existing = document.getElementById('m-addon-prompt');
+  if (existing) existing.remove();
+  const m = document.createElement('div');
+  m.id = 'm-addon-prompt';
+  m.className = 'm-overlay open';
+  m.style.zIndex = '10003';
+  m.innerHTML = `<div class="m-content" style="max-width:380px;text-align:center;padding:24px">
+    <div style="font-size:28px;margin-bottom:8px">🕶</div>
+    <div style="font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px">Addon disponible</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">¿Agregar <strong style="color:var(--beige)">${addon.nombre}</strong> por <strong style="color:#72c47e">$${Number(addon.precio).toFixed(0)}</strong> extra?</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:16px">Se agrega como item adicional al carrito y genera un folio extra para el laboratorio.</div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn btn-p" onclick="_aplicarAddon()" style="flex:1;max-width:160px">✓ Sí, agregar</button>
+      <button class="btn btn-g" onclick="document.getElementById('m-addon-prompt').remove()" style="flex:1;max-width:160px">No, gracias</button>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+function _aplicarAddon() {
+  const addon = vtaPromoAplicada?.addon_config;
+  if (!addon) return;
+  document.getElementById('m-addon-prompt')?.remove();
+  // Agregar item virtual al carrito
+  vtaItems.push({
+    producto_id: null,
+    descripcion: addon.nombre + ' (promo)',
+    categoria: 'Lente de sol',
+    precio_unitario: addon.precio,
+    cantidad: 1,
+    subtotal: addon.precio,
+    es_addon_promo: true
+  });
+  vtaPromoAplicada.addon_aplicado = true;
+  vtaPromoAplicada.folios_lab += 1;
+  // Mostrar badge addon en panel de promo
+  const addonPanel = document.getElementById('vta-addon-applied');
+  if (addonPanel) { addonPanel.style.display = 'flex'; document.getElementById('vta-addon-name').textContent = addon.nombre; document.getElementById('vta-addon-precio').textContent = '$' + Number(addon.precio).toFixed(0); }
+  // Re-renderizar carrito y folios
+  renderVtaItems();
+  recalcVtaTotales();
+  if (vtaPromoAplicada.folios_lab > 1) autoAsignarFolios();
+  toast(`✓ ${addon.nombre} agregado por $${Number(addon.precio).toFixed(0)}`);
+}
+
+function _quitarAddon() {
+  if (!vtaPromoAplicada?.addon_aplicado) return;
+  vtaItems = vtaItems.filter(i => !i.es_addon_promo);
+  vtaPromoAplicada.addon_aplicado = false;
+  vtaPromoAplicada.folios_lab -= 1;
+  const addonPanel = document.getElementById('vta-addon-applied');
+  if (addonPanel) addonPanel.style.display = 'none';
+  renderVtaItems();
+  recalcVtaTotales();
+  if (vtaPromoAplicada.folios_lab > 1) autoAsignarFolios();
+  toast('Addon removido');
+}
+
 function quitarPromoVenta() {
+  // Quitar addon si estaba aplicado
+  if (vtaPromoAplicada?.addon_aplicado) {
+    vtaItems = vtaItems.filter(i => !i.es_addon_promo);
+    renderVtaItems();
+  }
   vtaPromoAplicada = null;
   vtaFolioSlots = [];
   document.getElementById('vta-promo-applied').style.display = 'none';
   document.getElementById('vta-folio-assign').style.display = 'none';
+  document.getElementById('m-addon-prompt')?.remove();
+  const _adp = document.getElementById('vta-addon-applied'); if (_adp) _adp.style.display = 'none';
   const pb = document.getElementById('vta-promo-btn-wrap'); if(pb && vtaItems.length) pb.style.display='';
   document.getElementById('vta-descuento').value = '0';
   recalcVtaTotales();
