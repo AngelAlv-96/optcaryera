@@ -409,7 +409,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v268 — Clari: reglas post-compra (no confirma qué se cotizó), distinción material/tratamiento/graduación en precios, OCR de promociones con análisis automático vs KNOWLEDGE.
+**Última versión**: v269 — Clari: nunca afirma que la promo "incluye" material/graduación específica, nunca menciona "desde $1,200" (promo anterior), el precio siempre depende de armazón + graduación + material + tratamientos que elija el cliente. $499 solar clarificado como par extra empacado aparte.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
