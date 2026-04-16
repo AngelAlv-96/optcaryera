@@ -27945,15 +27945,17 @@ async function amRqBuscarPrecio() {
       }
 
       // 1. Precio por modelo en DB — modelo exacto SIEMPRE pone precio
+      var _qmData = null;
       if (modelo.length >= 3) {
         var qm = await db.from('productos')
           .select('precio_venta,modelo,costo,nombre')
           .ilike('marca', '%' + marcaBase + '%')
           .eq('activo', true)
           .limit(200);
-        if (qm.data && qm.data.length) {
+        _qmData = qm.data || [];
+        if (_qmData.length) {
           // SOLO match exacto de modelo — parciales causan falsos positivos
-          var exactos = qm.data.filter(function(r) {
+          var exactos = _qmData.filter(function(r) {
             var mod = (r.modelo||'').replace(/[-\s]/g,'').toUpperCase();
             return mod && mod === modeloLimpio;
           });
@@ -27973,6 +27975,32 @@ async function amRqBuscarPrecio() {
               return;
             }
           }
+        }
+      }
+
+      // 1.5 Modelo NO existe exacto — buscar el más cercano por prefijo común dentro de la misma marca
+      if (modelo.length >= 3 && _qmData && _qmData.length) {
+        function _prefLen(a, b) {
+          var n = Math.min(a.length, b.length);
+          for (var i = 0; i < n; i++) { if (a[i] !== b[i]) return i; }
+          return n;
+        }
+        var _ranked = _qmData
+          .map(function(r) {
+            var mod = (r.modelo || '').replace(/[-\s]/g, '').toUpperCase();
+            return { modelo: r.modelo, nombre: r.nombre, precio: parseFloat(r.precio_venta) || 0, costo: parseFloat(r.costo) || 0, sim: _prefLen(modeloLimpio, mod) };
+          })
+          .filter(function(r) { return r.precio > 0 && r.sim >= 2; })
+          .sort(function(a, b) { return b.sim - a.sim || b.precio - a.precio; });
+
+        if (_ranked.length) {
+          var _top = _ranked[0];
+          var _prefijo = modeloLimpio.substring(0, _top.sim);
+          _precioEl.value = _top.precio;
+          st.innerHTML = '🔍 <b style="color:#f0b84a">Modelo nuevo</b> — más cercano de <b>' + marca + '</b>: <b>' + _top.modelo + '</b> (prefijo "' + _prefijo + '") — precio: <b style="color:var(--accent)">$' + _top.precio.toLocaleString('es-MX') + '</b>' +
+            (_top.costo > 0 ? ' · costo ref: $' + _top.costo.toLocaleString('es-MX') : '');
+          st.style.color = '#f0b84a';
+          return;
         }
       }
 

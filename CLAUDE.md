@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v264 — Alta Masiva: confirmación obligatoria del cambio de precio comparando contra DB (no solo contra historial local de sesión).
+**Última versión**: v265 — Alta Masiva: sugerencia de precio por similitud de prefijo dentro de la misma marca (modelo más cercano gana sobre moda o costo×mult).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
