@@ -27432,6 +27432,11 @@ function amRqBuscarModeloSinMarca(modelo) {
   var st = document.getElementById('am-rq-status');
   _amMarcaTimer = setTimeout(async function() {
     try {
+      // Si el usuario movió el cursor al campo marca (la está editando), abortar — no sobreescribir
+      var _marcaElGuard = document.getElementById('am-rq-marca');
+      if (document.activeElement === _marcaElGuard) { amMarcaHideDropdown(); return; }
+      // Si la marca ya tiene contenido (>=2 letras), también abortar
+      if ((_marcaElGuard.value || '').trim().length >= 2) { amMarcaHideDropdown(); return; }
       var modeloLimpio = modelo.replace(/[-\s]/g,'').toUpperCase();
 
       // 0. Buscar en sesión actual (amRows)
@@ -27592,17 +27597,20 @@ function amMarcaKeydown(e) {
 
 async function amRqBuscarPrecio() {
   clearTimeout(amRqPrecioTimer);
-  var marca  = (document.getElementById('am-rq-marca').value  || '').trim().toUpperCase();
+  var marcaEl = document.getElementById('am-rq-marca');
+  var marca  = (marcaEl.value  || '').trim().toUpperCase();
   var modelo = (document.getElementById('am-rq-modelo').value || '').trim().toUpperCase();
   var costoEl = document.getElementById('am-rq-costo');
   var costo  = costoEl ? (parseFloat(costoEl.value)||0) : 0;
+  // Si el usuario está editando el campo marca (cursor ahí), NO auto-llenar — está escribiendo manualmente
+  var marcaIsActive = document.activeElement === marcaEl;
   // Si tiene prefijo de proveedor pero marca aún no se llenó, auto-llenar
-  if (marca.length < 2 && modelo.length >= 4) {
+  if (!marcaIsActive && marca.length < 2 && modelo.length >= 4) {
     var _detMarca = amDetectPrefix(modelo);
-    if (_detMarca) { marca = _detMarca; document.getElementById('am-rq-marca').value = _detMarca; }
+    if (_detMarca) { marca = _detMarca; marcaEl.value = _detMarca; }
   }
   // Si no hay marca pero sí modelo, buscar en DB por modelo solo → autocompletar marca
-  if (marca.length < 2 && modelo.length >= 3) {
+  if (!marcaIsActive && marca.length < 2 && modelo.length >= 3) {
     amRqBuscarModeloSinMarca(modelo);
     return;
   }

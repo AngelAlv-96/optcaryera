@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v260 — Fix falso positivo "queja" por keyword `engañ` (NFD) matching `enganche` en wa-webhook.js + meta-webhook.js.
+**Última versión**: v261 — Fix Alta Masiva: auto-detección de marca dejaba de respetar la edición manual cuando había modelo duplicado en DB.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
