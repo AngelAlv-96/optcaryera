@@ -22540,14 +22540,14 @@ function _mostrarAddonPrompt(addon) {
   m.id = 'm-addon-prompt';
   m.className = 'm-overlay open';
   m.style.zIndex = '10003';
-  m.innerHTML = `<div class="m-content" style="max-width:380px;text-align:center;padding:24px">
-    <div style="font-size:28px;margin-bottom:8px">🕶</div>
-    <div style="font-size:15px;font-weight:700;color:var(--white);margin-bottom:6px">Addon disponible</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">¿Agregar <strong style="color:var(--beige)">${addon.nombre}</strong> por <strong style="color:#72c47e">$${Number(addon.precio).toFixed(0)}</strong> extra?</div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:16px">Se agrega como item adicional al carrito y genera un folio extra para el laboratorio.</div>
-    <div style="display:flex;gap:8px;justify-content:center">
-      <button class="btn btn-p" onclick="_aplicarAddon()" style="flex:1;max-width:160px">✓ Sí, agregar</button>
-      <button class="btn btn-g" onclick="document.getElementById('m-addon-prompt').remove()" style="flex:1;max-width:160px">No, gracias</button>
+  m.innerHTML = `<div class="m-box" style="max-width:380px;text-align:center;padding:28px">
+    <div style="font-size:32px;margin-bottom:10px">🕶</div>
+    <div style="font-size:16px;font-weight:700;color:var(--white);margin-bottom:8px">Addon disponible</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:16px">¿Agregar <strong style="color:var(--beige)">${addon.nombre}</strong> por <strong style="color:#72c47e;font-size:18px">$${Number(addon.precio).toFixed(0)}</strong> extra?</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px">Se agrega al carrito y genera un folio extra para el laboratorio.</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-p" onclick="_aplicarAddon()" style="flex:1;max-width:160px;padding:10px">✓ Sí, agregar</button>
+      <button class="btn btn-g" onclick="document.getElementById('m-addon-prompt').remove()" style="flex:1;max-width:160px;padding:10px">No, gracias</button>
     </div>
   </div>`;
   document.body.appendChild(m);
