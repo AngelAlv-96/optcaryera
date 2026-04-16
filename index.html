@@ -19058,6 +19058,20 @@ async function _procesarVentaInner() {
   if (!vtaPaciente?.id && !document.getElementById('vta-rapida')?.checked) {
     if (!confirm('⚠️ No hay paciente seleccionado.\n\nLa venta se registrará como "Público General".\n\n¿Continuar sin paciente?')) return;
   }
+  // Validación folio addon (solar): requiere armazón, color y tono
+  if (vtaPromoAplicada?.addon_aplicado && vtaFolioSlots.length) {
+    const addonSlot = vtaFolioSlots.find(s => s.es_addon);
+    if (addonSlot) {
+      const faltan = [];
+      if (!addonSlot.addon_armazon) faltan.push('armazón');
+      if (!addonSlot.addon_color) faltan.push('color de tinte');
+      if (!addonSlot.addon_tono) faltan.push('tono');
+      if (faltan.length) {
+        toast('⚠️ Folio addon solar: falta ' + faltan.join(', '), true);
+        return;
+      }
+    }
+  }
   const fechaEntregaVal=document.getElementById('vta-fecha-entrega')?.value||'';
   const horaEntregaVal=document.getElementById('vta-hora-entrega')?.value||'';
   if (!fechaEntregaVal) { toast('Selecciona la fecha de entrega',true); return; }
@@ -19199,6 +19213,12 @@ async function _procesarVentaInner() {
             };
           });
           for (const fd of foliosDetalle) {
+            if (fd.es_addon) {
+              // Item virtual del addon: asociar por descripción del item en carrito
+              const addonName = vtaPromoAplicada?.addon_config?.nombre || 'Lente de sol graduado';
+              await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('venta_id', venta.id).eq('descripcion', addonName + ' (promo)');
+              continue;
+            }
             if (fd.armazon) {
               await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('venta_id', venta.id).eq('descripcion', fd.armazon);
             }
@@ -19208,7 +19228,7 @@ async function _procesarVentaInner() {
           }
         }
       }
-      await db.from('venta_promociones').insert({
+      const { data: vpData, error: vpErr } = await db.from('venta_promociones').insert({
         venta_id: venta.id,
         promocion_id: vtaPromoAplicada.id,
         nombre_promo: vtaPromoAplicada.nombre,
@@ -19216,10 +19236,65 @@ async function _procesarVentaInner() {
         descuento_aplicado: vtaPromoAplicada.descuento,
         folios_generados: foliosGen,
         folios_detalle: foliosDetalle
-      });
+      }).select('id').single();
       const { data: promo } = await db.from('promociones').select('usos_actuales').eq('id', vtaPromoAplicada.id).single();
       if (promo) await db.from('promociones').update({ usos_actuales: (promo.usos_actuales || 0) + 1 }).eq('id', vtaPromoAplicada.id);
       if (foliosGen) parts.push(`📋 Folios: ${foliosGen.join(', ')}`);
+      // Auto-crear orden de lab para folios addon (solar) con graduación del paciente
+      if (foliosDetalle && vpData?.id) {
+        for (let fi = 0; fi < foliosDetalle.length; fi++) {
+          const fd = foliosDetalle[fi];
+          if (!fd.es_addon) continue;
+          try {
+            // Cargar graduación más reciente del paciente asignado a este folio
+            const addonPxId = fd.paciente_id || vtaPaciente?.id;
+            let rx = {};
+            if (addonPxId) {
+              const { data: hc } = await db.from('historias_clinicas')
+                .select('od_esfera,od_cilindro,od_eje,od_add,oi_esfera,oi_cilindro,oi_eje,oi_add')
+                .eq('paciente_id', addonPxId)
+                .order('created_at', { ascending: false }).limit(1);
+              if (hc && hc.length) rx = hc[0];
+            }
+            const addonOrder = {
+              paciente_id: addonPxId,
+              estado_lab: 'Enviado al lab',
+              sucursal: currentUser?.sucursal || venta.sucursal || '',
+              armazon: fd.armazon || 'Lente de sol (promo)',
+              tipo_lente: 'VS',
+              material: 'CR-39',
+              tratamiento: 'Blanco',
+              tinte: fd.addon_tinte || 'Sin tinte',
+              od_esfera: rx.od_esfera || '',
+              od_cilindro: rx.od_cilindro || '',
+              od_eje: rx.od_eje || '',
+              od_add: rx.od_add || '',
+              oi_esfera: rx.oi_esfera || '',
+              oi_cilindro: rx.oi_cilindro || '',
+              oi_eje: rx.oi_eje || '',
+              oi_add: rx.oi_add || '',
+              notas_laboratorio: 'Folio: ' + fd.folio + ' | Tinte Solar ' + (fd.addon_tinte || '') + ' | SOLAR PROMO $' + (vtaPromoAplicada?.addon_config?.precio || 499) + ' | Urgencia: Normal'
+            };
+            const { error: addonErr } = await db.from('ordenes_laboratorio').insert(addonOrder);
+            if (addonErr) {
+              // Fallback sin columnas de Rx si no existen
+              if (addonErr.message && (addonErr.message.includes('column') || addonErr.code === '42703')) {
+                const { od_esfera, od_cilindro, od_eje, od_add, oi_esfera, oi_cilindro, oi_eje, oi_add, ...fallback } = addonOrder;
+                await db.from('ordenes_laboratorio').insert(fallback);
+              } else {
+                console.warn('[Addon solar] Error al crear orden:', addonErr);
+              }
+            }
+            // Marcar folio addon como usado
+            const { data: vpNow } = await db.from('venta_promociones').select('folios_detalle').eq('id', vpData.id).single();
+            if (vpNow?.folios_detalle) {
+              const updDet = [...vpNow.folios_detalle];
+              updDet[fi] = { ...updDet[fi], usado: true, completado_at: new Date().toISOString() };
+              await db.from('venta_promociones').update({ folios_detalle: updDet }).eq('id', vpData.id);
+            }
+          } catch (e) { console.warn('[Addon solar]', e); }
+        }
+      }
     }
     let portalToken = venta.token_portal;
     if (!portalToken) {
