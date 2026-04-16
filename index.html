@@ -22617,10 +22617,13 @@ function autoAsignarFolios() {
   const nSlots = vtaPromoAplicada.folios_lab;
   vtaFolioSlots = [];
   for (let s = 0; s < nSlots; s++) {
+    const isAddon = vtaPromoAplicada.addon_aplicado && s === nSlots - 1;
     vtaFolioSlots.push({
       label: s === 0 ? 'Principal' : '-' + (s + 1),
       paciente_id: null, paciente_nombre: null,
-      armazonIdx: -1, materialIdx: -1, aro_px: false
+      armazonIdx: -1, materialIdx: -1, aro_px: false,
+      es_addon: isAddon,
+      addon_armazon: '', addon_color: '', addon_tono: '80'
     });
   }
   renderFolioSlots();
@@ -22634,8 +22637,51 @@ function renderFolioSlots() {
   const titular = vtaPaciente ? `${vtaPaciente.nombre || ''} ${vtaPaciente.apellidos || ''}`.trim() : 'Sin paciente';
   const arms = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Armazón');
   const mats = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Material');
+  const _inputSt = 'padding:4px 6px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)';
+  const TINTE_COLORES = ['Café','Gris','Verde','G15','Degradado café','Degradado gris','Foto Colors'];
   cont.innerHTML = vtaFolioSlots.map((slot, s) => {
     const isPrincipal = s === 0;
+    // Folio addon (solar) — campos especiales
+    if (slot.es_addon) {
+      const addonNombre = vtaPromoAplicada?.addon_config?.nombre || 'Addon';
+      const addonPrecio = vtaPromoAplicada?.addon_config?.precio || 0;
+      const colorOpts = TINTE_COLORES.map(c => `<option${c===slot.addon_color?' selected':''}>${c}</option>`).join('');
+      return `<div style="background:rgba(56,189,248,0.04);border:1px solid rgba(56,189,248,0.2);border-radius:8px;padding:8px 10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:11px;font-weight:700;color:#38bdf8">🕶 Folio ${slot.label} — ${addonNombre}</span>
+          <span style="font-size:10px;color:#38bdf8;font-weight:700">$${Number(addonPrecio).toFixed(0)}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
+            <input type="text" value="${slot.addon_armazon||''}" placeholder="Modelo/descripción del armazón de sol"
+              onchange="vtaFolioSlots[${s}].addon_armazon=this.value"
+              style="flex:1;${_inputSt}">
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span style="font-size:10px;width:14px;flex-shrink:0">🎨</span>
+            <select onchange="vtaFolioSlots[${s}].addon_color=this.value" style="flex:1;${_inputSt}">
+              <option value="">— Color de tinte —</option>${colorOpts}
+            </select>
+            <input type="text" value="${slot.addon_tono||'80'}" placeholder="Tono %"
+              onchange="vtaFolioSlots[${s}].addon_tono=this.value"
+              style="width:55px;${_inputSt};text-align:center" title="Tono (%)">
+            <span style="font-size:9px;color:var(--muted)">%</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:10px;color:var(--muted)">👤</span>
+          <div style="flex:1;position:relative">
+            <input type="text" value="${slot.paciente_nombre||''}" placeholder="${titular} (cambiar?)"
+              style="width:100%;${_inputSt}"
+              onfocus="this.select()" oninput="buscarPxFolioSlot(${s},this.value,this)">
+            <div id="vta-folio-px-res-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;max-height:120px;overflow-y:auto;margin-top:2px"></div>
+          </div>
+          ${slot.paciente_id ? `<button onclick="limpiarPxFolioSlot(${s})" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:10px;padding:0">✕</button>` : ''}
+        </div>
+      </div>`;
+    }
+    // Folio normal — armazón + material del carrito
     const borderColor = isPrincipal ? 'rgba(114,196,126,0.25)' : 'rgba(212,184,74,0.2)';
     const bgColor = isPrincipal ? 'rgba(114,196,126,0.04)' : 'rgba(212,184,74,0.03)';
     const armOpts = arms.map(a => {
@@ -22659,13 +22705,13 @@ function renderFolioSlots() {
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px">
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
-          <select onchange="vtaFolioSlots[${s}].armazonIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;padding:4px 6px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)">
+          <select onchange="vtaFolioSlots[${s}].armazonIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;${_inputSt}">
             <option value="-1" ${slot.armazonIdx<0?'selected':''}>— Armazón —</option>${armOpts}
           </select>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔬</span>
-          <select onchange="vtaFolioSlots[${s}].materialIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;padding:4px 6px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)">
+          <select onchange="vtaFolioSlots[${s}].materialIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;${_inputSt}">
             <option value="-1" ${slot.materialIdx<0?'selected':''}>— Material —</option>${matOpts}
           </select>
         </div>
@@ -22678,8 +22724,8 @@ function renderFolioSlots() {
               <button onclick="cambiarPxFolioPrincipal()" style="background:none;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:1px 6px;color:var(--muted);cursor:pointer;font-size:9px" title="Cambiar paciente del folio principal">✏</button>
             </div>`
           : `<div style="flex:1;position:relative">
-              <input type="text" value="${slot.paciente_nombre||''}" placeholder="${titular} (cambiar?)" 
-                style="width:100%;padding:4px 8px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)"
+              <input type="text" value="${slot.paciente_nombre||''}" placeholder="${titular} (cambiar?)"
+                style="width:100%;${_inputSt}"
                 onfocus="this.select()" oninput="buscarPxFolioSlot(${s},this.value,this)">
               <div id="vta-folio-px-res-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;background:var(--surface);border:1px solid rgba(255,255,255,0.1);border-radius:6px;max-height:120px;overflow-y:auto;margin-top:2px"></div>
             </div>
