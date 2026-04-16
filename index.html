@@ -19164,16 +19164,17 @@ async function _procesarVentaInner() {
         for (let i = 2; i <= vtaPromoAplicada.folios_lab; i++) foliosGen.push(`${folio}-${i}`);
         if (vtaFolioSlots.length) {
           foliosDetalle = vtaFolioSlots.map((slot, s) => {
-            // Folio addon (solar) — datos especiales
+            // Folio addon (solar) — CR-39 Bco + Tinte Solar
             if (slot.es_addon) {
-              const tinteVal = slot.addon_color ? (slot.addon_tono ? `${slot.addon_color} ${slot.addon_tono}%` : slot.addon_color) : 'Sin tinte';
+              const tinteVal = slot.addon_color ? (slot.addon_tono ? `${slot.addon_color} ${slot.addon_tono}` : slot.addon_color) : 'Sin tinte';
               return {
                 folio: foliosGen[s] || `${folio}-${s+1}`,
                 slot_label: slot.label,
                 paciente_id: slot.paciente_id || vtaPaciente?.id || null,
                 paciente_nombre: slot.paciente_nombre || (vtaPaciente ? `${vtaPaciente.nombre||''} ${vtaPaciente.apellidos||''}`.trim() : null),
                 armazon: slot.addon_armazon || 'Lente de sol (promo)',
-                material: null,
+                material: 'CR-39',
+                tratamiento: 'Blanco',
                 es_addon: true,
                 addon_tinte: tinteVal,
                 addon_producto_id: slot.addon_producto_id || null,
@@ -19952,11 +19953,11 @@ async function _procesarCompletarPar() {
       estado_lab: 'Enviado al lab',
       sucursal: sucursal,
       armazon: isAddonFolio ? (pend.fd.armazon || 'Lente de sol (promo)') : (par.armDesc || null),
-      tipo_lente: isAddonFolio ? 'Lente de sol graduado' : '',
-      material: isAddonFolio ? null : (par.matDesc || null),
-      tratamiento: '',
+      tipo_lente: isAddonFolio ? 'VS' : '',
+      material: isAddonFolio ? 'CR-39' : (par.matDesc || null),
+      tratamiento: isAddonFolio ? 'Blanco' : '',
       tinte: isAddonFolio ? (pend.fd.addon_tinte || 'Sin tinte') : '',
-      notas_laboratorio: 'Folio: ' + subFolio + ' | Completar promo de ' + folio + (isAddonFolio ? ' | ADDON SOLAR $' + (vtaPromoAplicada?.addon_config?.precio || 499) : '') + ' | Urgencia: Normal'
+      notas_laboratorio: 'Folio: ' + subFolio + ' | Completar promo de ' + folio + (isAddonFolio ? ' | Tinte Solar ' + (pend.fd.addon_tinte || '') + ' | SOLAR PROMO $' + (vtaPromoAplicada?.addon_config?.precio || 499) : '') + ' | Urgencia: Normal'
     };
     var { error: ordErr } = await db.from('ordenes_laboratorio').insert(orderPayload);
     if (ordErr) { toast('Error creando orden: ' + ordErr.message, true); continue; }
@@ -22680,7 +22681,7 @@ function autoAsignarFolios() {
       paciente_id: null, paciente_nombre: null,
       armazonIdx: -1, materialIdx: -1, aro_px: false,
       es_addon: isAddon,
-      addon_armazon: '', addon_color: '', addon_tono: '80'
+      addon_armazon: '', addon_color: '', addon_tono: ''
     });
   }
   renderFolioSlots();
@@ -22695,7 +22696,8 @@ function renderFolioSlots() {
   const arms = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Armazón');
   const mats = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Material');
   const _inputSt = 'padding:4px 6px;font-size:10px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)';
-  const TINTE_COLORES = ['Café','Gris','Verde','G15','Degradado café','Degradado gris','Foto Colors'];
+  const TINTE_COLORES = ['NEGRO','CAFE','G-15','NARANJA','AZUL','AMARILLO','MORADO','ROSA','ROJO','DE TEMPORADA'];
+  const TINTE_TONOS = ['25%','50%','75%','100%','DESVANECIDO'];
   cont.innerHTML = vtaFolioSlots.map((slot, s) => {
     const isPrincipal = s === 0;
     // Folio addon (solar) — campos especiales
@@ -22728,13 +22730,13 @@ function renderFolioSlots() {
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:10px;width:14px;flex-shrink:0">🎨</span>
             <select onchange="vtaFolioSlots[${s}].addon_color=this.value" style="flex:1;${_inputSt}">
-              <option value="">— Color de tinte —</option>${colorOpts}
+              <option value="">— Color tinte —</option>${colorOpts}
             </select>
-            <input type="text" value="${slot.addon_tono||'80'}" placeholder="Tono %"
-              onchange="vtaFolioSlots[${s}].addon_tono=this.value"
-              style="width:55px;${_inputSt};text-align:center" title="Tono (%)">
-            <span style="font-size:9px;color:var(--muted)">%</span>
+            <select onchange="vtaFolioSlots[${s}].addon_tono=this.value" style="width:80px;${_inputSt}">
+              <option value="">— Tono —</option>${TINTE_TONOS.map(t => `<option${t===slot.addon_tono?' selected':''}>${t}</option>`).join('')}
+            </select>
           </div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;padding-left:18px">Material: CR-39 Bco + Tinte Solar</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:10px;color:var(--muted)">👤</span>
