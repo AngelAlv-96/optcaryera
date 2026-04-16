@@ -28059,20 +28059,45 @@ async function amRqConfirmar() {
   if (!marca || !modelo) { st.textContent = '⚠ Ingresa marca y modelo'; st.style.color='var(--warn)'; return; }
   if (!precio) { st.textContent = '⚠ Ingresa el precio'; st.style.color='var(--warn)'; return; }
 
-  // Advertencia si el precio cambió respecto al último etiquetado para esta serie
-  var _confSerie = _amGetSerie(modelo);
-  var _confHist = _confSerie ? _amHistGet(_confSerie) : null;
-  if (_confHist && _confHist.precio > 0 && precio !== _confHist.precio) {
-    var diff = precio - _confHist.precio;
-    var diffPct = ((diff / _confHist.precio) * 100).toFixed(0);
-    var confirmChange = confirm(
-      '⚠ CAMBIO DE PRECIO en etiquetado\n\n' +
-      marca + ' · serie ' + _confSerie + '\n' +
-      'Última etiqueta: $' + _confHist.precio.toLocaleString('es-MX') + ' (' + _confHist.fecha + ')\n' +
-      'Precio nuevo: $' + precio.toLocaleString('es-MX') + ' (' + (diff > 0 ? '+' : '') + diffPct + '%)\n\n' +
-      '¿Etiquetar con el precio nuevo?'
-    );
-    if (!confirmChange) return;
+  // ── CONFIRMAR CAMBIO DE PRECIO si el producto YA existe en DB con precio distinto ──
+  var _confirmadoCambio = false;
+  try {
+    var _existDB = await amBuscarEnBD(modelo, marca);
+    if (_existDB) {
+      var _precioBD = parseFloat(_existDB.precio_venta) || 0;
+      if (_precioBD > 0 && _precioBD !== precio) {
+        var _dDB = precio - _precioBD;
+        var _dDBPct = ((_dDB / _precioBD) * 100).toFixed(0);
+        var _okDB = confirm(
+          '⚠ CAMBIO DE PRECIO EN SISTEMA\n\n' +
+          marca + ' · ' + modelo + '\n\n' +
+          'Precio actual en sistema: $' + _precioBD.toLocaleString('es-MX') + '\n' +
+          'Precio nuevo: $' + precio.toLocaleString('es-MX') + ' (' + (_dDB > 0 ? '+' : '') + _dDBPct + '%)\n\n' +
+          'Aceptar = Actualizar precio en sistema + imprimir etiqueta\n' +
+          'Cancelar = Regresar sin guardar nada'
+        );
+        if (!_okDB) { st.textContent = 'Cambio de precio cancelado'; st.style.color = 'var(--muted)'; return; }
+        _confirmadoCambio = true;
+      }
+    }
+  } catch(eDB) { console.warn('Confirmar cambio precio DB:', eDB); }
+
+  // Advertencia si el precio cambió respecto al último etiquetado para esta serie (solo si no se confirmó arriba)
+  if (!_confirmadoCambio) {
+    var _confSerie = _amGetSerie(modelo);
+    var _confHist = _confSerie ? _amHistGet(_confSerie) : null;
+    if (_confHist && _confHist.precio > 0 && precio !== _confHist.precio) {
+      var diff = precio - _confHist.precio;
+      var diffPct = ((diff / _confHist.precio) * 100).toFixed(0);
+      var confirmChange = confirm(
+        '⚠ CAMBIO DE PRECIO en etiquetado\n\n' +
+        marca + ' · serie ' + _confSerie + '\n' +
+        'Última etiqueta: $' + _confHist.precio.toLocaleString('es-MX') + ' (' + _confHist.fecha + ')\n' +
+        'Precio nuevo: $' + precio.toLocaleString('es-MX') + ' (' + (diff > 0 ? '+' : '') + diffPct + '%)\n\n' +
+        '¿Etiquetar con el precio nuevo?'
+      );
+      if (!confirmChange) return;
+    }
   }
 
   var cfg = amGetConfig();

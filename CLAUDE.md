@@ -398,7 +398,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v263 — Historial de Cambios de Precio: tabla `precio_cambios` + vista en sidebar + tarea en dashboard sucursal para re-etiquetar armazones que cambiaron de precio.
+**Última versión**: v264 — Alta Masiva: confirmación obligatoria del cambio de precio comparando contra DB (no solo contra historial local de sesión).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
