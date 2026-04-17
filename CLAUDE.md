@@ -409,7 +409,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v269 — Clari: nunca afirma que la promo "incluye" material/graduación específica, nunca menciona "desde $1,200" (promo anterior), el precio siempre depende de armazón + graduación + material + tratamientos que elija el cliente. $499 solar clarificado como par extra empacado aparte.
+**Última versión**: v270 — Clari: agregada promo especial Día del Niño (15-30 abril) en `getActivePromos()`. 30% descuento SOLO armazón, niños hasta 15 años, requiere lente completo con graduación, combinable con 2x1, no con otras promos. Incluye instrucción anti-invención.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

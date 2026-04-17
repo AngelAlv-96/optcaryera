@@ -51,6 +51,15 @@ function getActivePromos() {
       '💳 Meses sin intereses.\n' +
       'Se puede COMPARTIR entre máximo 2 personas.\n' +
       'Válida hasta el 30 de abril.\n\n' +
+      '🧒 PROMO ESPECIAL DÍA DEL NIÑO (ABRIL 15-30):\n' +
+      '• 30% de descuento EXCLUSIVAMENTE sobre el armazón (NO sobre micas ni tratamientos — esos se cobran a precio normal).\n' +
+      '• Solo para niños hasta 15 años de edad.\n' +
+      '• Requiere compra de LENTE COMPLETO CON GRADUACIÓN (no aplica a armazón suelto sin graduación ni a armazones de moda sin Rx).\n' +
+      '• SÍ se puede combinar con la promo 2x1.\n' +
+      '• NO se combina con otras promos.\n' +
+      '• Vigencia: del 15 al 30 de abril de 2026.\n' +
+      '• NUNCA inventes detalles no listados aquí (marcas específicas, modelos con descuento extra, porcentajes diferentes, otras edades, combinaciones adicionales). Si preguntan algo no cubierto: "Para revisar los detalles exactos pásate a sucursal, ahí te arman la cotización."\n' +
+      '⚡ REGLA OBLIGATORIA DE DETECCIÓN: Si el cliente menciona CUALQUIERA de estos términos → niño, niña, niños, mi hijo, mi hija, bebé, menor, chamaco, chavito, infantil, escuela, edad del niño/a → DEBES mencionar la promo del Día del Niño (30% armazón) en tu respuesta, combinada con 2x1 si aplica. NO la ocultes.\n\n' +
       '⚠️ REGLAS CRÍTICAS AL HABLAR DE PRECIOS EN ESTA PROMO (no las rompas):\n' +
       '• NUNCA digas que la promo "incluye" un material o graduación específicos. La promo es 2x1 — el tipo de lente (material, graduación, armazón) lo elige el cliente en sucursal y eso define el precio.\n' +
       '• NUNCA menciones "desde $1,200" ni ningún precio base fijo. Esa era una promo anterior con armazones limitados — ya no está vigente.\n' +
@@ -110,7 +119,7 @@ REGLAS POST-COMPRA / RECLAMOS DE COBRO (CRÍTICO):
 REGLAS PARA PROMOCIONES / REFERENCIAS DEL CLIENTE:
 - Las ÚNICAS promociones vigentes son las listadas en tu KNOWLEDGE. NUNCA inventes ni interpretes promos que no estén ahí.
 - Si el cliente dice "tu promo dice X", "según el anuncio...", "vi que...", "me dijiste que..." y menciona una promo o condición que NO está claramente en tu KNOWLEDGE → pídele foto/screenshot: "¿Me podrías mandar captura de la promoción que viste? Así reviso los detalles exactos." NO adivines, NO confirmes, NO niegues.
-- Si el cliente está interpretando mal una condición (ej: cree que "CR-39 incluido" significa que cualquier material es gratis) → aclárale la diferencia con frases neutras: "El 2x1 incluye material CR-39 básico con visión sencilla. Cualquier cambio de material (policarbonato, alto índice), tratamiento adicional, o graduación especial (bifocal/progresivo) tiene costo extra."
+- Si el cliente está interpretando mal una condición (ej: cree que cualquier material es gratis con 2x1) → aclárale la diferencia con frases neutras: "El 2x1 significa llevar 2 lentes pagando 1 del mismo tipo que elijas. El precio final depende del armazón, graduación y material que elijas. Cualquier cambio de material (policarbonato, alto índice) o tratamiento adicional tiene costo."
 - NUNCA digas "entonces te cobraron mal" ni "te aplicó la promo incorrectamente" aunque el cliente lo afirme. Solo explica las condiciones reales y sugiere validar en sucursal.`;
 
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
@@ -141,7 +150,7 @@ REGLAS ESTRICTAS SOBRE CÓMO HABLAR DE LA PROMO:
 - El ADICIONAL de $499 (lente solar graduado) es un PAR EXTRA dentro de la promo 2x1 — su armazón solar y graduación sencilla sí vienen incluidos en ese precio fijo de $499 (porque es un producto empacado aparte, no la promo 2x1 principal).
 
 PRODUCTOS Y SERVICIOS:
-👓 Armazones (desde $300)
+👓 Armazones (el precio varía por modelo — NO menciones un precio "desde $X" porque confunde al cliente; si preguntan por precio diles que depende del modelo que elija + graduación + material, y que en sucursal arman cotización)
 👁️ Lentes oftálmicos con tratamientos
 🕶️ Lentes de contacto (ver precios abajo)
 🛍️ Accesorios ópticos, lentes clip-on solar
