@@ -409,7 +409,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v270 — Clari: agregada promo especial Día del Niño (15-30 abril) en `getActivePromos()`. 30% descuento SOLO armazón, niños hasta 15 años, requiere lente completo con graduación, combinable con 2x1, no con otras promos. Incluye instrucción anti-invención.
+**Última versión**: v270 — Clari: promo Día del Niño (15-30 abril, 30% armazón, <=15 años, requiere graduación, combinable con 2x1) + refuerzo reglas v269 (quitar "desde $300" y "2x1 incluye CR-39 básico" que persistían en prompt) + regla OBLIGATORIA de detección por keywords "niño/niña/hijo/menor..." + outreach manual a 2 clientes donde Clari falló (Lu, corderovelia8). Doc actualizada: WA#1 deprecated, solo WA#2 Twilio vigente.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
