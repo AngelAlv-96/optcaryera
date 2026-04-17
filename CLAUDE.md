@@ -91,7 +91,7 @@ Si algo se rompe gravemente:
 ## 🔧 TECH STACK
 - **Frontend**: Vanilla JS SPA (CERO frameworks/bundlers). Todo es HTML+CSS+JS puro.
 - **Backend**: Supabase (PostgreSQL) + Netlify Functions (serverless)
-- **WhatsApp**: Twilio (WA#2) + Meta directa (WA#1 Clari)
+- **WhatsApp**: Twilio (WA#2, único número vigente) — WA#1 deprecated
 - **Messenger/Instagram**: Meta Graph API (meta-webhook.js) — Clari responde en FB Messenger + Instagram DM
 - **IA**: Anthropic API (Clari chatbot + Lab Assistant OCR)
 - **Pagos**: Clip API (checkout links portal pacientes + pagos únicos tienda + pagos recurrentes vía dashboard manual)
@@ -110,9 +110,9 @@ Si algo se rompe gravemente:
 - **`ordenes_laboratorio` NO tiene columna `updated_at`** — solo `created_at`. NUNCA usar `updated_at` en queries a esta tabla (causa 400)
 
 ## 📱 WHATSAPP
-- **WA#1** (Clari inbound): 5216561967020 — sigue en Meta directa
-- **WA#2** (notificaciones + Lab Assistant): 5216563110094 — Twilio activo
-- wa-webhook.js maneja WA#2 (Twilio)
+- **WA#2 Twilio** (único número vigente): **5216563110094** — Clari inbound + notificaciones + Lab Assistant + outbound freeform para reactivaciones
+- ⛔ **WA#1 (5216561967020) DEPRECATED** — NO usar, ya no está activo. Documentación previa con este número es obsoleta.
+- wa-webhook.js maneja TODO el flujo WA (Clari, notifs, Lab Assistant) por Twilio
 - **Twilio credenciales**: guardadas en memoria local de Claude Code (`memory/reference_twilio_credentials.md`) — NUNCA en repo
 - **Twilio Content API** (crear templates): `POST https://content.twilio.com/v1/Content` — Auth: Basic Base64(SID:TOKEN)
 - **Twilio Submit for approval**: `POST /v1/Content/{templateSID}/ApprovalRequests/whatsapp` body: `{name, category: 'MARKETING'}`
@@ -551,7 +551,7 @@ El changelog detallado de v138 a v259 vive en [`CHANGELOG.md`](CHANGELOG.md) (no
 - **Estacionalidad**: Nov=pico (Buen Fin), Ene=más flojo, Jun-Jul=caída verano, Sep-Oct=recuperación
 
 ## ⚠️ PENDIENTES
-1. Migrar WA#1 Clari a Twilio
+1. ~~Migrar WA#1 Clari a Twilio~~ ✅ Completado — WA#1 deprecated, WA#2 único vigente
 2. SICAR migración completa
 3. Landing pages bug
 4. Plantillas Twilio: lc_recompra + venta_clari_pendiente
