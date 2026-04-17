@@ -346,12 +346,35 @@ const COMPLAINT_KEYWORDS = [
   'basura', 'porqueria', 'porquería', 'incompetent'
 ];
 
+// Muletillas corteses que contienen keywords de queja pero NO son quejas reales
+// Ej: "disculpe la molestia", "perdón las molestias" = cortesía, no queja
+var POLITENESS_PATTERNS = [
+  /(disculp|perdon|perdón|siento|lament|spero no)\w*\s+(la|las|mi|cualquier|alguna|esta|el)?\s*molest/i,
+  /molest[oaá](r|rlo|rla|rte|rles)\b/i, // "no quiero molestarte/molestarlos"
+  /sin\s+molest/i, // "sin molestar"
+  /una\s+molest/i // "una molestia pequeña" — cortesía
+];
+
 function isComplaintMessage(text) {
   if (!text) return false;
   var lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return COMPLAINT_KEYWORDS.some(function(kw) {
+
+  // Detectar match de keyword
+  var matched = COMPLAINT_KEYWORDS.some(function(kw) {
     return lower.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
   });
+  if (!matched) return false;
+
+  // Si el ÚNICO match es 'molest' y la frase es una muletilla cortés, NO es queja
+  var onlyMolest = COMPLAINT_KEYWORDS
+    .filter(function(kw) { return kw !== 'molest'; })
+    .every(function(kw) { return !lower.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, '')); });
+  if (onlyMolest) {
+    var isPoliteness = POLITENESS_PATTERNS.some(function(rx) { return rx.test(text); });
+    if (isPoliteness) return false;
+  }
+
+  return true;
 }
 
 async function getClariConfig() {
