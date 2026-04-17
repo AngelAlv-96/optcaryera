@@ -5,9 +5,44 @@
 var _authCallback = null;
 var _authCodigo = null;
 var _authTipo = null;
+var _autoAuthEnabled = false;
+
+async function loadAutoAuthFlag() {
+  try {
+    var { data } = await db.from('app_config').select('value').eq('id', 'auto_auth_enabled').single();
+    _autoAuthEnabled = data?.value === 'true';
+  } catch(e) { _autoAuthEnabled = false; }
+}
+
+function syncAutoAuthToggle() {
+  var cb = document.getElementById('cfg-auto-auth');
+  var lbl = document.getElementById('cfg-auto-auth-label');
+  if (cb) cb.checked = _autoAuthEnabled;
+  if (lbl) {
+    lbl.textContent = _autoAuthEnabled ? 'ACTIVADO (modo viaje)' : 'Desactivado';
+    lbl.style.color = _autoAuthEnabled ? '#72c47e' : '#e08080';
+  }
+}
+
+async function toggleAutoAuth(on) {
+  var val = on ? 'true' : 'false';
+  try {
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upsert', table: 'app_config', data: { id: 'auto_auth_enabled', value: val }, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+    var json = await res.json();
+    if (json.error) throw new Error(json.error);
+    _autoAuthEnabled = on;
+    syncAutoAuthToggle();
+    toast(on ? '✅ Auto-aprobación ACTIVADA' : '🔒 Auto-aprobación desactivada');
+  } catch(e) { toast('Error: ' + e.message, true); syncAutoAuthToggle(); }
+}
 
 function solicitarAutorizacion(tipo, descripcion, onAprobado) {
   if (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') { onAprobado(); return; }
+  if (_autoAuthEnabled) { toast('✓ Auto-aprobado (modo viaje)'); onAprobado(); return; }
   _authCallback = onAprobado;
   _authTipo = tipo;
   _authDesc = descripcion;

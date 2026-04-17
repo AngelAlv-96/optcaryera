@@ -2884,6 +2884,26 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             </div>
           </div>
 
+          <!-- AUTO-APROBACIÓN (modo viaje) -->
+          <div class="card" style="margin-bottom:12px">
+            <div class="card-head"><h3>Auto-aprobaci&oacute;n de descuentos</h3></div>
+            <div style="padding:16px">
+              <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cuando est&aacute; activado, las solicitudes de autorizaci&oacute;n (descuentos, cancelaciones, etc.) se aprueban autom&aacute;ticamente sin c&oacute;digo WA. &Uacute;til cuando el administrador no tiene conexi&oacute;n.</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <label style="position:relative;display:inline-block;width:48px;height:26px;cursor:pointer">
+                  <input type="checkbox" id="cfg-auto-auth" onchange="toggleAutoAuth(this.checked)" style="opacity:0;width:0;height:0">
+                  <span style="position:absolute;top:0;left:0;right:0;bottom:0;background:var(--surface2);border-radius:13px;transition:background .3s"></span>
+                  <span style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:var(--white);border-radius:50%;transition:transform .3s" id="cfg-auto-auth-knob"></span>
+                </label>
+                <span id="cfg-auto-auth-label" style="font-size:13px;font-weight:600;color:#e08080">Desactivado</span>
+              </div>
+              <style>
+                #cfg-auto-auth:checked + span { background: #72c47e !important; }
+                #cfg-auto-auth:checked ~ #cfg-auto-auth-knob { transform: translateX(22px); }
+              </style>
+            </div>
+          </div>
+
           </div><!-- /cfg-panel-ventas -->
 
           <!-- ══ TAB: DATOS ══ -->
@@ -5288,6 +5308,7 @@ function setupApp(u) {
     setTimeout(checkChangelog, 500);
     startDashRefresh();
     initRealtimeSubscriptions();
+    loadAutoAuthFlag();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
     // Entregas pendientes se cargan en dashboard sucursal (no banner flotante)
@@ -5490,7 +5511,7 @@ function go(id) {
   if (id === 'compras-lab')         { clbInit(); }
   if (id === 'historial-ventas')    { hvPage=0; initHistorialFechas(); cargarHistorialVentas(); }
   if (id === 'catalogo')             { loadCatalogoView(); }
-  if (id === 'configuracion')       { cfgTab('equipo'); loadConfigUsers(); renderDelEstadosConfig(); cargarEstadoBackups(); renderAsesoresConfig(); var _dedupCard=document.getElementById('card-dedup'); if(_dedupCard) _dedupCard.style.display=currentUser?.rol==='admin'?'':'none'; }
+  if (id === 'configuracion')       { cfgTab('equipo'); loadConfigUsers(); renderDelEstadosConfig(); cargarEstadoBackups(); renderAsesoresConfig(); syncAutoAuthToggle(); var _dedupCard=document.getElementById('card-dedup'); if(_dedupCard) _dedupCard.style.display=currentUser?.rol==='admin'?'':'none'; }
   if (id === 'clari')               { loadClariConversations(); loadClariConfig(); }
   if (id === 'creditos')            { loadCreditos(); var _csf=document.getElementById('cred-suc-filter'); if(_csf) _csf.style.display=currentUser?.rol==='sucursal'?'none':''; }
   if (id === 'landings')            { cargarLandings(); }
