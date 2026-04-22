@@ -10,9 +10,10 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
-// Envío conservador: lento para evitar errores, dedup estricto para no repetir
-const MAX_PER_RUN = 25;
-const RATE_LIMIT_MS = 3000; // 3s entre mensajes
+// Envío conservador: cabe en timeout Netlify 10s (10 msgs × 500ms ≈ 5-8s).
+// Para cubrir lista de ~300, se llama la función múltiples veces desde orquestador externo.
+const MAX_PER_RUN = 10;
+const RATE_LIMIT_MS = 500; // 500ms entre mensajes (2 msgs/s, bajo límite Twilio 3/s)
 const DEDUP_DAYS = 60;
 const DEDUP_TAG = 'Promo-2x1-Abril';
 
