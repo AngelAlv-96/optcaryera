@@ -2192,6 +2192,28 @@ exports.handler = async function(event) {
       var messageSid = tw.MessageSid || '';
       var numMedia = parseInt(tw.NumMedia || '0');
 
+      // ── PROMO 2X1 ABRIL — Quick Reply button handler ──
+      // Twilio envía ButtonPayload con el id del botón cuando el usuario toca Quick Reply.
+      // Responde canned y regresa; el siguiente mensaje del usuario va a Clari IA normal.
+      var buttonPayload = (tw.ButtonPayload || '').trim();
+      if (from && (buttonPayload === 'interesa' || buttonPayload === 'mas_info' || buttonPayload === 'no_gracias')) {
+        var btnLabel = '', btnReply = '';
+        if (buttonPayload === 'interesa') {
+          btnLabel = 'Me interesa';
+          btnReply = '¡Perfecto! 👓 ¿Qué sucursal te queda más cerca o te mando las ubicaciones?';
+        } else if (buttonPayload === 'mas_info') {
+          btnLabel = 'Más info';
+          btnReply = 'En el 2x1 compras 2 lentes completos y pagas como 1. Puedes sumar un lente de sol graduado por solo $499 más. Válido hasta el 30 de abril. ¿Te late?';
+        } else {
+          btnLabel = 'No gracias';
+          btnReply = 'Gracias por avisarme 😊 Si cambias de parecer antes del 30, aquí estoy.';
+        }
+        await saveMessage(from, 'user', '[Promo-2x1-Button:' + buttonPayload + '] ' + btnLabel, userName);
+        await sendWhatsAppReply(from, btnReply);
+        await saveMessage(from, 'assistant', btnReply);
+        return { statusCode: 200, headers: H, body: '<Response></Response>' };
+      }
+
       if (!from || !userText) {
         // Media message without text (or empty text)
         if (from && numMedia > 0) {
