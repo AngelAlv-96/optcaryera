@@ -412,7 +412,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v271 — Clari: fix falso positivo detector de quejas (keyword `molest` hace match con "disculpe **la molest**ia" — muletilla cortés). Agregados `POLITENESS_PATTERNS` en `isComplaintMessage()` para que frases de cortesía no pausen el bot. Reactivación manual + respuesta clarificando Aplazo a Brenda (5216562998223). Info Aplazo: aprobado + procesado → lentes se entregan mismo día + cliente paga directo a Aplazo; solo si Aplazo rechaza, no se entregan.
+**Última versión**: v272 — Mantenimiento: actualización Claude Code CLI v2.1.92→v2.1.119, plugin Telegram v0.0.1→v0.0.4 (fix polling 409, soporte todos los tipos de archivo, botones inline permisos, seguridad comandos bot).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
