@@ -163,6 +163,23 @@ exports.handler = async (event) => {
     // If we can't match by folio OR by prid (both UUID and short code), it's not ours → skip.
     if (!ventaRes?.ok || !ventaRes?.data?.length) {
       console.log('Clip webhook: no reference/prid match — skipping (likely terminal charge). ref=' + reference + ' prid=' + prid + ' eventId=' + eventId + ' amount=' + amount);
+      // Notify admin (only once per receiptNo to avoid triple-fire noise from Clip's 3 webhook types)
+      try {
+        const skipDupKey = 'skip_' + (receiptNo || eventId || prid || 'unknown');
+        const skipDup = await supaREST('GET', `app_config?id=eq.clip_skip_log&select=value`);
+        const prevLog = (skipDup.ok && skipDup.data?.[0]?.value) ? (typeof skipDup.data[0].value === 'string' ? JSON.parse(skipDup.data[0].value) : skipDup.data[0].value) : {};
+        if (!prevLog[skipDupKey]) {
+          prevLog[skipDupKey] = Date.now();
+          // Cleanup entries >7 days old
+          const weekAgo = Date.now() - 7 * 86400000;
+          Object.keys(prevLog).forEach(k => { if (prevLog[k] < weekAgo) delete prevLog[k]; });
+          await supaREST('POST', 'app_config?on_conflict=id', { id: 'clip_skip_log', value: JSON.stringify(prevLog) }, { 'Prefer': 'return=minimal,resolution=merge-duplicates' });
+          const waCfg = await getWhatsAppConfig();
+          const admPhones = (waCfg.admin_phones || []);
+          const skipMsg = `ℹ️ *Clip webhook skip*\n💰 $${amount.toFixed(2)}\n🧾 Recibo: ${receiptNo || 'N/A'}\n\nUn cobro Clip no macheó con ninguna venta online (probablemente cobro terminal física). Se ignoró correctamente.`;
+          for (const ap of admPhones) { try { await sendWA(ap, skipMsg); } catch(e){} }
+        }
+      } catch(e) { console.warn('skip-notify error:', e.message); }
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no venta match (likely terminal)' }) };
     }
 
