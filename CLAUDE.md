@@ -412,7 +412,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v273 — Alta masiva: sección colapsable "🔎 Consultar catálogo" con búsqueda en vivo (nombre/marca/modelo/código), filtro por categoría y tabla compacta (precio/costo/stock) — sin salir de la vista. Reutiliza `productosCache`.
+**Última versión**: v274 — Asistencia: corrección automática de alertas de ausencia. Cuando el cron manda "ausencia sin aviso" y luego el empleado registra entrada (WA o manual UI), admin recibe WA "✅ Corrección asistencia" con hora real. Estado persistido en `app_config.asist_ausencia_pendientes`.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

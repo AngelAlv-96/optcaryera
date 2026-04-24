@@ -81,6 +81,51 @@ exports.handler = async function() {
     var tolerancia = horarios.tolerancia_min || 10;
     var checkDelay = 30; // check 30 min after scheduled entry
 
+    // ── 0. Check pending absence alerts: send correction if employee now has entrada ──
+    var adminPhonesGlobal = [];
+    try {
+      var cfgWAg = cfgRes.find(function(c){ return c.id === 'whatsapp_config'; });
+      if (cfgWAg && cfgWAg.value) {
+        var _wa = typeof cfgWAg.value === 'string' ? JSON.parse(cfgWAg.value) : cfgWAg.value;
+        adminPhonesGlobal = _wa.admin_phones || [];
+      }
+    } catch(e){}
+    try {
+      var pendRes = await supaFetch('app_config?id=eq.asist_ausencia_pendientes&select=value');
+      var pend = (pendRes && pendRes[0] && pendRes[0].value) ? (typeof pendRes[0].value === 'string' ? JSON.parse(pendRes[0].value) : pendRes[0].value) : [];
+      if (Array.isArray(pend) && pend.length) {
+        var keepPend = [];
+        for (var p = 0; p < pend.length; p++) {
+          var item = pend[p];
+          if (!item || !item.uid || !item.fecha) continue;
+          // Cleanup: older than 2 days → drop
+          var ageDays = Math.floor((now.getTime() - new Date(item.fecha + 'T12:00:00').getTime()) / 86400000);
+          if (ageDays > 2) continue;
+          var recCheck = await supaFetch('asistencia?uid=eq.' + item.uid + '&fecha=eq.' + item.fecha + '&select=entrada,nota');
+          var rec0 = (recCheck && recCheck[0]) ? recCheck[0] : null;
+          var authorized = rec0 && rec0.nota && /vacaciones|permiso|incapacidad|dia personal/i.test(rec0.nota);
+          if (rec0 && rec0.entrada) {
+            // Send correction
+            var entH = new Date(rec0.entrada).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:true });
+            var msg = '✅ *Corrección asistencia*\n📅 ' + item.fecha + '\n👤 ' + (item.nombre || item.uid) + '\n🏪 ' + (item.sucursal || 'N/A') + '\n\nYa tiene entrada registrada a las ' + entH + '. La alerta anterior queda resuelta.';
+            for (var ap = 0; ap < adminPhonesGlobal.length; ap++) {
+              try { await sendWA(adminPhonesGlobal[ap], msg); } catch(e){}
+              if (ap < adminPhonesGlobal.length - 1) await new Promise(function(r){ setTimeout(r, 1200); });
+            }
+            console.log('[Asistencia Cron] Sent correction for ' + item.uid + ' (' + item.fecha + ')');
+          } else if (authorized) {
+            // Got an authorized absence note — drop silently
+          } else {
+            keepPend.push(item);
+          }
+        }
+        if (keepPend.length !== pend.length) {
+          var upsertBody = JSON.stringify({ id: 'asist_ausencia_pendientes', value: JSON.stringify(keepPend) });
+          await supaFetch('app_config?on_conflict=id', { method: 'POST', body: upsertBody, prefer: 'return=minimal,resolution=merge-duplicates' });
+        }
+      }
+    } catch(e) { console.warn('[Asistencia Cron] Pending check error:', e.message); }
+
     // 3. Build employee list from phone map
     var employees = []; // { uid, phone, nombre, sucursal }
     for (var phone in phoneMap) {
@@ -187,6 +232,21 @@ exports.handler = async function() {
         if (a < adminPhones.length - 1) await new Promise(function(r) { setTimeout(r, 1500); });
       }
     }
+
+    // 7b. Record pending absence alerts for correction follow-up
+    try {
+      var pendRes2 = await supaFetch('app_config?id=eq.asist_ausencia_pendientes&select=value');
+      var pend2 = (pendRes2 && pendRes2[0] && pendRes2[0].value) ? (typeof pendRes2[0].value === 'string' ? JSON.parse(pendRes2[0].value) : pendRes2[0].value) : [];
+      if (!Array.isArray(pend2)) pend2 = [];
+      absent.forEach(function(emp) {
+        var already = pend2.find(function(p){ return p.uid === emp.uid && p.fecha === fechaLocal; });
+        if (!already) {
+          pend2.push({ uid: emp.uid, nombre: emp.nombre, sucursal: emp.sucursal, fecha: fechaLocal, alertedAt: new Date().toISOString() });
+        }
+      });
+      var upsertBody2 = JSON.stringify({ id: 'asist_ausencia_pendientes', value: JSON.stringify(pend2) });
+      await supaFetch('app_config?on_conflict=id', { method: 'POST', body: upsertBody2, prefer: 'return=minimal,resolution=merge-duplicates' });
+    } catch(e) { console.warn('[Asistencia Cron] Pending save error:', e.message); }
 
     console.log('[Asistencia Cron] Sent ' + absent.length + ' reminders + admin alert');
 

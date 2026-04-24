@@ -1185,6 +1185,34 @@ async function _handleAsistQuery(lowerText, originalText, fromPhone) {
   return null; // No attendance query matched
 }
 
+// Resolve pending absence alert: if cron sent an ausencia alert earlier, send correction to admin
+async function _resolveAbsenceAlert(uid, empName, empSuc, fecha, horaLocal) {
+  try {
+    var pendRes = await supaFetch('app_config?id=eq.asist_ausencia_pendientes&select=value');
+    if (!pendRes || !pendRes[0] || !pendRes[0].value) return;
+    var pend = typeof pendRes[0].value === 'string' ? JSON.parse(pendRes[0].value) : pendRes[0].value;
+    if (!Array.isArray(pend) || !pend.length) return;
+    var hit = pend.find(function(p){ return p.uid === uid && p.fecha === fecha; });
+    if (!hit) return;
+    var cfgWA = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+    var admPhones = [];
+    if (cfgWA && cfgWA[0] && cfgWA[0].value) {
+      var w = typeof cfgWA[0].value === 'string' ? JSON.parse(cfgWA[0].value) : cfgWA[0].value;
+      admPhones = w.admin_phones || [];
+    }
+    var msg = '✅ *Corrección asistencia*\n📅 ' + fecha + '\n👤 ' + empName + '\n🏪 ' + empSuc + '\n\nYa registró entrada a las ' + horaLocal + '. La alerta anterior queda resuelta.';
+    for (var a = 0; a < admPhones.length; a++) {
+      try { await sendWhatsAppReply(admPhones[a], msg); } catch(e){}
+    }
+    var remaining = pend.filter(function(p){ return !(p.uid === uid && p.fecha === fecha); });
+    await supaFetch('app_config?on_conflict=id', {
+      method: 'POST',
+      body: JSON.stringify({ id: 'asist_ausencia_pendientes', value: JSON.stringify(remaining) }),
+      prefer: 'return=minimal,resolution=merge-duplicates'
+    });
+  } catch(e) { console.warn('[AsistAbsCorr]', e.message); }
+}
+
 // Check and send pending arrival alerts (called after entry is recorded)
 async function _checkArrivalAlerts(uid, empName, empSuc) {
   try {
@@ -1350,6 +1378,8 @@ async function cmdAsistencia(phone, action, profileName) {
       var replyMsg = '✅ Entrada registrada\n⏰ ' + horaLocal + '\n🏪 ' + empSuc;
       // Check pending arrival alerts
       _checkArrivalAlerts(uid, empName, empSuc).catch(function(e){ console.warn('[AsistAlert]', e.message); });
+      // Check pending absence alerts (cron sent admin alert earlier → send correction now)
+      _resolveAbsenceAlert(uid, empName, empSuc, fechaLocal, horaLocal).catch(function(e){ console.warn('[AsistAbsCorr]', e.message); });
       if (retardoMin > 0) {
         replyMsg += '\n⚠️ Retardo: ' + retardoMin + ' min';
         // Notify admin
