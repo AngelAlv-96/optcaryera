@@ -413,7 +413,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v275 — Clip webhook: fix crítico de misatribución. Pagos de terminal física en Magnolia se registraban como "Link de pago" en venta 15767 porque el fallback por monto del webhook agarraba cualquier venta con `clip_prid` + saldo suficiente + Apartado. Eliminado el fallback — ahora requiere match exacto por folio o prid. Corregidos 5 pagos ($549 total) en 15767.
+**Última versión**: v275 — Clip webhook: fix crítico de misatribución. Pagos de terminal física (Magnolia + Pinocelli) se registraban como "Link de pago" en ventas con `clip_prid` porque el fallback por monto del webhook agarraba cualquier venta con saldo suficiente + Apartado. Eliminado el fallback — ahora requiere match exacto por folio o prid. Corregidos 7 pagos ($7,347 total): 6 en folio 15767 (Loruhama, Américas) + 1 en folio 11638 (jessica, Pinocelli).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
