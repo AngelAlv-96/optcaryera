@@ -157,27 +157,13 @@ exports.handler = async (event) => {
         console.log(`Clip webhook: found venta by id=${tryId}, folio=${ventaRes.data[0].folio}`);
       }
     }
-    // Last resort: find any venta with clip_prid in notas that has matching saldo and is pending
-    if ((!ventaRes?.ok || !ventaRes?.data?.length) && amount) {
-      ventaRes = await supaREST('GET', `ventas?notas=like.*clip_prid:*&saldo=gte.${amount}&estado=eq.Apartado&order=created_at.desc&limit=5&select=${ventaSelect}`);
-      if (ventaRes?.ok && ventaRes?.data?.length) {
-        // If only one match, use it. If multiple, try to match by amount
-        const exact = ventaRes.data.filter(v => Number(v.saldo) === amount);
-        if (exact.length === 1) {
-          ventaRes.data = exact;
-          console.log(`Clip webhook: found venta by amount match, folio=${exact[0].folio}`);
-        } else if (ventaRes.data.length === 1) {
-          console.log(`Clip webhook: found single pending venta with clip_prid, folio=${ventaRes.data[0].folio}`);
-        } else {
-          // Multiple matches, can't determine which one — don't process
-          console.error('Clip webhook: multiple pending ventas with clip_prid, cannot determine which one. Amount=', amount);
-          ventaRes = { ok: false, data: [] };
-        }
-      }
-    }
+    // NO amount-based fallback — terminal charges on the same Clip merchant account
+    // also fire this webhook and don't carry folio/metadata. The amount fallback was
+    // misattributing terminal Magnolia charges to online ventas (v275 incident — folio 15767).
+    // If we can't match by folio OR by prid (both UUID and short code), it's not ours → skip.
     if (!ventaRes?.ok || !ventaRes?.data?.length) {
-      console.error('Clip webhook: venta not found for ref=', reference, 'prid=', prid, 'eventId=', eventId);
-      return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'error', reason: 'venta not found' }) };
+      console.log('Clip webhook: no reference/prid match — skipping (likely terminal charge). ref=' + reference + ' prid=' + prid + ' eventId=' + eventId + ' amount=' + amount);
+      return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no venta match (likely terminal)' }) };
     }
 
     const venta = ventaRes.data[0];

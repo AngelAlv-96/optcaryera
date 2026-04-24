@@ -291,7 +291,8 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Duplicate detection: referencia `clip_{receipt_no}` evita doble registro (receipt_no es estable entre tipos de webhook)
 - **Comprobante WA al cliente**: template `comprobante_tienda` SID `HXa41211eb4bdec7a116dc43712be73ad8` — envía folio/monto/sucursal al teléfono del cliente (extraído de notas de venta) después de pago exitoso
 - **Payloads de Clip** (3 tipos por cada pago): (1) eventos INSERT/UPDATE con `{event_type, id:UUID, origin:"checkout-api"}` — sin datos de pago, (2) payload anidado con `{context, payment_detail:{amount, status_description:"Completed", receipt_no}, payment_request_detail:{payment_request_code, amount}}`, (3) payload plano con `{amount, status:"PAID", receipt_no, transaction_id}` — sin folio/metadata
-- **Vinculación venta↔pago**: `payment_request_id` (UUID, devuelto por API) ≠ `payment_request_code` (código corto, en webhook). `clip-payment.js` guarda UUID como `clip_prid:` en notas. Webhook busca por múltiples IDs + fallback por monto
+- **Vinculación venta↔pago**: `payment_request_id` (UUID, devuelto por API) ≠ `payment_request_code` (código corto, en webhook). `clip-payment.js` guarda UUID como `clip_prid:` en notas. Webhook busca por folio (metadata) + prid (UUID y código corto). **SIN fallback por monto** (v275) — el fallback misatribuía cobros de terminal física a ventas online con clip_prid. Si un webhook llega sin folio ni prid que machee, se skipea (es un cobro de terminal o malformado)
+- **⚠️ LECCIÓN v275**: Clip dispara el webhook para TODOS los cobros de la cuenta merchant (online + terminal física). Los cobros en terminal física llegan al webhook sin folio/metadata — si el webhook tiene fallback por monto, los absorbe la primera venta con `clip_prid` y saldo suficiente. Caso real: folio 15767 (Américas) recibió 5 pagos fantasma ($110+$60+$60+$199+$120=$549) que en realidad eran cobros con terminal Magnolia (cajero.magno@gmail.com). Regla: NUNCA usar fallback por monto en webhooks de procesadores compartidos entre online + terminal. Siempre requerir match explícito por referencia/id
 - **⚠️ LECCIÓN v252**: NUNCA confiar en URLs de redirección de procesadores de pago. NUNCA asumir estructura de payload de webhooks sin verificar con logs reales — la documentación de Clip no refleja la estructura real
 
 ## 📷 LC PHOTO OCR (Clari vende LC con fotos)
@@ -412,7 +413,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v274 — Asistencia: corrección automática de alertas de ausencia. Cuando el cron manda "ausencia sin aviso" y luego el empleado registra entrada (WA o manual UI), admin recibe WA "✅ Corrección asistencia" con hora real. Estado persistido en `app_config.asist_ausencia_pendientes`.
+**Última versión**: v275 — Clip webhook: fix crítico de misatribución. Pagos de terminal física en Magnolia se registraban como "Link de pago" en venta 15767 porque el fallback por monto del webhook agarraba cualquier venta con `clip_prid` + saldo suficiente + Apartado. Eliminado el fallback — ahora requiere match exacto por folio o prid. Corregidos 5 pagos ($549 total) en 15767.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
