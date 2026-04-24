@@ -26175,7 +26175,7 @@ function amProdFilter() {
     '<th style="padding:6px 8px;text-align:right;font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface)">Stock</th>' +
     '</tr></thead><tbody>';
   shown.forEach(function(p){
-    var precio = Number(p.precio || 0);
+    var precio = Number(p.precio_venta || p.precio || 0);
     var costo = Number(p.costo || 0);
     var stock = Number(p.stock || 0);
     var stockColor = stock <= 0 ? '#f04a4a' : (stock <= (p.stock_minimo || 2) ? '#f0b84a' : 'var(--muted)');
