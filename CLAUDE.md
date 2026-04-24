@@ -412,7 +412,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v272 — Mantenimiento: actualización Claude Code CLI v2.1.92→v2.1.119, plugin Telegram v0.0.1→v0.0.4 (fix polling 409, soporte todos los tipos de archivo, botones inline permisos, seguridad comandos bot).
+**Última versión**: v273 — Alta masiva: sección colapsable "🔎 Consultar catálogo" con búsqueda en vivo (nombre/marca/modelo/código), filtro por categoría y tabla compacta (precio/costo/stock) — sin salir de la vista. Reutiliza `productosCache`.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
