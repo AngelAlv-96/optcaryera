@@ -432,7 +432,7 @@ var TESTS = [
     procedure:['Pide al px que lea los números en voz alta.','Solo se usan dígitos 2-9 (1 y 0 son ambiguos).'],
     interpret:'Misma escala 20/X.'
   }},
-  { id:'lea', cat:'Agudeza visual', name:'LEA símbolos', icon:'🍎', desc:'Pediátrico (manzana, casa, círculo, cuadrado)', render:renderLEA, ins:{
+  { id:'lea', cat:'Agudeza visual', name:'Símbolos pediátricos', icon:'🍎', desc:'Casa, manzana, paraguas, corazón', render:renderLEA, ins:{
     purpose:'Agudeza visual en niños desde 2-3 años, antes de que reconozcan letras o números.',
     setup:'Distancia 3m generalmente (más cerca para que el niño coopere). Calibrar la distancia adecuada.',
     procedure:['Antes del test, muestra los 4 símbolos cerca y pide al niño que los nombre (manzana/casa/círculo/cuadrado, o el nombre que él use).','Empieza con la línea más grande, baja gradualmente.','Acepta cualquier nombre que el niño use consistentemente.'],
@@ -991,32 +991,48 @@ function renderNumbers(opts){
 }
 
 // ── LEA Symbols ──
-var LEA_SYMBOLS = ['🍎','🏠','◯','◻']; // apple, house, circle, square (simplified)
-// LEA symbols — usamos emojis del sistema (reconocibles instantáneamente)
-// Para mantener fidelidad clínica (silueta sin color), aplicamos filtro grayscale
-var LEA_EMOJI = {
-  apple: '🍎',
-  house: '🏠',
-  square: '◼️',
-  circle: '⚫'
+var LEA_SYMBOLS = ['house','apple','umbrella','heart']; // pediatric set
+// LEA symbols — set pediátrico clásico (casa, manzana, paraguas, corazón)
+// Siluetas negras nítidas dibujadas en SVG para fidelidad clínica
+var LEA_PATHS = {
+  house:
+    // Casa con techo + cuerpo + puerta blanca recortada (silueta clara)
+    '<path fill="#000" d="M 8 48 L 50 12 L 92 48 L 84 48 L 84 92 L 16 92 L 16 48 Z"/>' +
+    '<rect x="42" y="62" width="16" height="30" fill="#fff"/>' +
+    // Ventana blanca opcional para más realismo
+    '<rect x="22" y="55" width="14" height="14" fill="#fff"/>',
+  apple:
+    // Manzana con cuerpo bilobulado + tallo + hoja
+    '<path fill="#000" d="M 50 32 C 40 26 22 28 18 50 C 14 70 28 92 50 92 C 72 92 86 70 82 50 C 78 28 60 26 50 32 Z"/>' +
+    // Indent superior
+    '<path fill="#fff" d="M 46 30 Q 50 36 54 30 Q 50 33 46 30 Z"/>' +
+    // Tallo
+    '<rect x="48" y="14" width="4" height="14" fill="#000"/>' +
+    // Hoja
+    '<path fill="#000" d="M 53 22 Q 65 10 76 18 Q 70 28 56 26 Z"/>',
+  umbrella:
+    // Paraguas: media luna arriba + mango con curva abajo
+    '<path fill="#000" d="M 10 48 Q 50 2 90 48 Q 75 42 65 48 Q 55 42 50 48 Q 45 42 35 48 Q 25 42 10 48 Z"/>' +
+    '<rect x="47" y="48" width="6" height="38" fill="#000"/>' +
+    '<path fill="#000" d="M 53 86 Q 50 96 38 92 L 38 86 Q 47 90 47 86 Z"/>',
+  heart:
+    // Corazón clásico
+    '<path fill="#000" d="M 50 92 C 30 75 8 58 8 36 C 8 22 22 10 35 18 Q 45 24 50 34 Q 55 24 65 18 C 78 10 92 22 92 36 C 92 58 70 75 50 92 Z"/>'
 };
 function leaSvgPath(sym) {
-  // Mantenido para compatibilidad — devuelve emoji
-  return LEA_EMOJI[sym] || '';
+  return LEA_PATHS[sym] || '';
 }
 function leaSvg(hPx, sym) {
-  var span = document.createElement('span');
-  span.style.fontSize = hPx + 'px';
-  span.style.lineHeight = '1';
-  span.style.display = 'inline-block';
-  span.style.fontFamily = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  span.textContent = LEA_EMOJI[sym] || '';
-  return span;
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', hPx); svg.setAttribute('height', hPx); svg.setAttribute('viewBox','0 0 100 100');
+  svg.style.display = 'inline-block';
+  svg.innerHTML = LEA_PATHS[sym] || '';
+  return svg;
 }
 function renderLEA(opts){
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
-  var syms = ['apple','house','circle','square'];
+  var syms = ['house','apple','umbrella','heart'];
 
   if (current.kids) {
     current.randomSeed = Math.random();
@@ -1029,7 +1045,7 @@ function renderLEA(opts){
     disp.appendChild(grid);
     var symBtnSize = 50;
     var opts2 = syms.map(function(s){
-      var html = '<span style="font-size:'+symBtnSize+'px;line-height:1;font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Noto Color Emoji\',sans-serif">'+LEA_EMOJI[s]+'</span>';
+      var html = '<svg width="'+symBtnSize+'" height="'+symBtnSize+'" viewBox="0 0 100 100">'+LEA_PATHS[s]+'</svg>';
       return { value:s, html:html };
     });
     disp.appendChild(makeKidsPad('symbols', opts2, function(picked){
