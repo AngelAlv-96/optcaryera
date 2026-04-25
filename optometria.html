@@ -916,7 +916,178 @@ function pickRandomFromArray(arr, seed) {
   return arr[idx];
 }
 
-// ── Snellen letters ──
+// ═══ HELPERS GENÉRICOS PARA TESTS TIPO SNELLEN ═══
+// Cada test "Snellen-like" tiene un generador de estímulos. Los modos
+// (cartilla / una línea / examen) son compartidos.
+
+function genStimulusLine(testId, hPx, n, seed) {
+  var line = document.createElement('div');
+  line.className = 'opto-row';
+  // Espaciado clínico estándar: 1× ancho de letra entre estímulos
+  line.style.gap = (hPx * 0.5) + 'px';
+  line.style.alignItems = 'center';
+  line.style.justifyContent = 'center';
+
+  if (testId === 'snellen') {
+    var letters = lineLetters(n, seed);
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.textContent = letters;
+    return line;
+  }
+  if (testId === 'numbers') {
+    var digits = shuffle(DIGITS, seed).slice(0, Math.min(n, DIGITS.length)).join('');
+    if (digits.length < n) {
+      // Repeat shuffle for more digits
+      while (digits.length < n) digits += shuffle(DIGITS, seed * 31 + digits.length).slice(0,1).join('');
+    }
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.textContent = digits;
+    return line;
+  }
+  if (testId === 'hotv') {
+    var letters = pickLineNoConsecutiveDups(HOTV, n, seed).join('');
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.textContent = letters;
+    return line;
+  }
+  if (testId === 'tumblingE') {
+    var rots = pickLineNoConsecutiveDups(E_ROTATIONS, n, seed);
+    rots.forEach(function(rot) {
+      var e = document.createElement('span');
+      e.className = 'opto-letter';
+      e.style.fontSize = (hPx * 1.05) + 'px';
+      e.style.transform = 'rotate(' + rot + 'deg)';
+      e.style.display = 'inline-block';
+      e.textContent = 'E';
+      line.appendChild(e);
+    });
+    return line;
+  }
+  if (testId === 'landoltC') {
+    var rots = pickLineNoConsecutiveDups([0,45,90,135,180,225,270,315], n, seed);
+    rots.forEach(function(rot) {
+      line.appendChild(landoltSvg(hPx, rot));
+    });
+    return line;
+  }
+  if (testId === 'lea') {
+    var picks = pickLineNoConsecutiveDups(['house','apple','umbrella','heart'], n, seed);
+    picks.forEach(function(s) {
+      line.appendChild(leaSvg(hPx, s));
+    });
+    return line;
+  }
+  return line;
+}
+
+function genLabeledRow(testId, logmar, n, seed, lineNum) {
+  var hPx = snellenLogmarToHeightPx(logmar);
+  if (hPx < 4) hPx = 4;
+  var row = document.createElement('div');
+  row.className = 'snellen-line';
+  var label = document.createElement('div');
+  label.className = 'snellen-label';
+  var sn20 = logmarToSnellen(logmar);
+  var sn6 = logmarToMetric(logmar);
+  var dec = Math.pow(10, -logmar).toFixed(2);
+  var lineNumHtml = lineNum ? '<span style="display:inline-block;background:#444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;margin-bottom:3px">' + lineNum + '</span><br>' : '';
+  label.innerHTML = lineNumHtml + '<span class="a">' + sn20 + '</span><span class="b">' + sn6 + ' · ' + dec + '</span>';
+  var stim = genStimulusLine(testId, hPx, n, seed);
+  row.appendChild(label);
+  row.appendChild(stim);
+  return row;
+}
+
+// Renderer genérico de tests Snellen-like (cartilla / una línea / examen)
+function renderSnellenLike(testId) {
+  clearDisp();
+
+  // ELEVATOR MODE
+  if (current.snellenMode === 'elevator') {
+    if (!current.elev) startElevator();
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    if (hPx < 12) hPx = 12;
+    var stim = genStimulusLine(testId, hPx, 5, current.randomSeed + 0.7);
+    stim.style.marginBottom = '120px';
+    grid.appendChild(stim);
+    disp.appendChild(grid);
+    var pad = document.createElement('div'); pad.className = 'elev-pad';
+    var bOk = document.createElement('button');
+    bOk.className = 'elev-btn ok';
+    bOk.innerHTML = '✓ Vio bien';
+    bOk.addEventListener('click', function(){ elevatorAdvance(true); });
+    var bNo = document.createElement('button');
+    bNo.className = 'elev-btn no';
+    bNo.innerHTML = '✗ Falló';
+    bNo.addEventListener('click', function(){ elevatorAdvance(false); });
+    pad.appendChild(bOk); pad.appendChild(bNo);
+    disp.appendChild(pad);
+    var bar = document.createElement('div');
+    bar.className = 'score-bar';
+    bar.innerHTML =
+      '<div class="item"><span class="num">' + logmarToSnellen(current.logmar) + '</span><span class="lbl">Línea</span></div>' +
+      '<div class="item"><span class="num">' + current.oe + '</span><span class="lbl">Ojo</span></div>' +
+      '<div class="item"><span class="num">' + (current.elev.bestSnellen || '—') + '</span><span class="lbl">Mejor</span></div>';
+    disp.appendChild(bar);
+    setControlsForSize();
+    return;
+  }
+
+  // SINGLE LINE MODE
+  if (current.snellenMode === 'single' || current.isolate === 'line') {
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
+    grid.appendChild(genLabeledRow(testId, current.logmar, 5, current.randomSeed + 0.5, null));
+    disp.appendChild(grid);
+    setControlsForSize();
+    return;
+  }
+
+  // SINGLE LETTER (isolate)
+  if (current.isolate === 'letter') {
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
+    var hPx2 = snellenLogmarToHeightPx(current.logmar);
+    if (hPx2 < 4) hPx2 = 4;
+    grid.appendChild(genStimulusLine(testId, hPx2, 1, current.randomSeed + 0.3));
+    disp.appendChild(grid);
+    setControlsForSize();
+    return;
+  }
+
+  // MULTI-LINE CARTILLA con side labels + número de línea
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+  grid.style.gap = '16px';
+  var startLogmar = current.logmar + 0.2;
+  var endLogmar = current.logmar - 0.4;
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= startLogmar; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= endLogmar; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+  if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
+  var availH = (disp.clientHeight || window.innerHeight - 130) - 16;
+  var totalHeight = 0;
+  for (var i = startIdx; i <= endIdx; i++) {
+    var lm = LOGMAR_LINES[i];
+    var hPx = snellenLogmarToHeightPx(lm);
+    if (hPx < 4) continue;
+    if (totalHeight + hPx * 1.4 > availH) continue;
+    totalHeight += hPx * 1.4;
+    var lineNum = i + 1;
+    var n = lm > 0.5 ? 4 : 5;
+    grid.appendChild(genLabeledRow(testId, lm, n, current.randomSeed + i*0.1, lineNum));
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── Snellen letters (legacy alias usa renderSnellenLike) ──
 function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel, lineNum){
   var hPx = snellenLogmarToHeightPx(logmar);
   if (hPx < 4) hPx = 4;
@@ -949,6 +1120,11 @@ function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel, lineNum){
 }
 
 function renderSnellen(opts){
+  return renderSnellenLike('snellen');
+}
+
+// Legacy implementation kept for reference (no longer used)
+function _renderSnellenLegacy(opts){
   opts = opts || {};
   clearDisp();
 
@@ -1085,6 +1261,7 @@ var E_ROTATIONS = [0, 90, 180, 270]; // right, down, left, up (E points to: → 
 var E_DIR_MAP = { 0:'right', 90:'down', 180:'left', 270:'up' };
 
 function renderTumblingE(opts){
+  if (!current.kids) return renderSnellenLike('tumblingE');
   clearDisp();
   var grid = document.createElement('div');
   grid.className = 'opto-grid';
@@ -1163,6 +1340,7 @@ function renderTumblingE(opts){
 
 // ── Landolt C ──
 function renderLandoltC(opts){
+  if (!current.kids) return renderSnellenLike('landoltC');
   clearDisp();
   var grid = document.createElement('div');
   grid.className = 'opto-grid';
@@ -1248,6 +1426,7 @@ function landoltSvg(hPx, rotation) {
 // ── Numbers ──
 var DIGITS = ['2','3','4','5','6','7','8','9'];
 function renderNumbers(opts){
+  if (!current.kids) return renderSnellenLike('numbers');
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
 
@@ -1333,6 +1512,7 @@ function leaSvg(hPx, sym) {
   return svg;
 }
 function renderLEA(opts){
+  if (!current.kids) return renderSnellenLike('lea');
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
   var syms = ['house','apple','umbrella','heart'];
@@ -1384,6 +1564,7 @@ function renderLEA(opts){
 // ── HOTV ──
 var HOTV = ['H','O','T','V'];
 function renderHOTV(opts){
+  if (!current.kids) return renderSnellenLike('hotv');
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
 
@@ -2279,8 +2460,9 @@ function setControlsForSize(){
     }));
     ctrl.appendChild(g5);
   }
-  // Modo Snellen (multi/single/elevator) — solo para Snellen letras
-  if (current.test && current.test.id === 'snellen') {
+  // Modo Snellen-like (multi/single/elevator) — para todos los tests AV
+  var SNELLEN_LIKE = ['snellen','tumblingE','landoltC','numbers','hotv','lea'];
+  if (current.test && SNELLEN_LIKE.indexOf(current.test.id) >= 0) {
     var g6 = ctrlGroup();
     g6.appendChild(ctrlLabel('Modo'));
     g6.appendChild(ctrlBtn('Cartilla', function(){ current.snellenMode='multi'; current.elev=null; runCurrent(); }, current.snellenMode==='multi'));
