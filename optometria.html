@@ -122,6 +122,50 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 #instructions .btn-close{display:block;width:100%;background:var(--accent);color:#000;border-radius:8px;padding:12px;font-weight:700;font-size:13px;margin-top:14px}
 #instructions .warn{background:rgba(240,180,74,.1);border:1px solid var(--warn);color:var(--warn);padding:10px;border-radius:8px;font-size:12px;margin-top:8px}
 
+/* Interactive mode (kids) — answer buttons */
+.kids-pad{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:grid;gap:10px;z-index:5;background:rgba(0,0,0,.55);padding:14px;border-radius:14px;backdrop-filter:blur(8px)}
+#display.dark .kids-pad{background:rgba(255,255,255,.12)}
+.kids-pad.dirs{grid-template-columns:60px 60px 60px;grid-template-rows:60px 60px 60px;width:200px;height:200px}
+.kids-pad.dirs .kbtn{font-size:30px}
+.kids-pad.dirs .kbtn[data-d="up"]{grid-column:2;grid-row:1}
+.kids-pad.dirs .kbtn[data-d="left"]{grid-column:1;grid-row:2}
+.kids-pad.dirs .kbtn[data-d="right"]{grid-column:3;grid-row:2}
+.kids-pad.dirs .kbtn[data-d="down"]{grid-column:2;grid-row:3}
+.kids-pad.symbols{grid-template-columns:repeat(4,70px);width:auto}
+.kids-pad.symbols .kbtn{height:70px}
+.kids-pad.letters{grid-template-columns:repeat(4,60px)}
+.kids-pad.letters .kbtn{height:60px;font-size:26px;font-weight:700}
+.kids-pad.numbers{grid-template-columns:repeat(5,52px);grid-template-rows:repeat(2,52px)}
+.kids-pad.numbers .kbtn{font-size:22px;font-weight:700}
+.kbtn{background:#fff;border:2px solid #333;border-radius:10px;color:#000;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:rgba(74,240,120,.3)}
+.kbtn:active,.kbtn.pressed{transform:scale(.92);background:var(--accent)}
+.kbtn.correct{background:#4af078;border-color:#2a8a44;color:#000;animation:flash .4s}
+.kbtn.wrong{background:#f04a4a;border-color:#8a2a2a;color:#fff;animation:flash .4s}
+@keyframes flash{0%{transform:scale(1.1)}100%{transform:scale(1)}}
+
+/* Score banner during interactive */
+.score-bar{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.55);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-family:Outfit,sans-serif;z-index:6;display:flex;gap:14px;align-items:center;backdrop-filter:blur(8px)}
+#display.dark .score-bar{background:rgba(255,255,255,.12)}
+.score-bar .item{display:flex;flex-direction:column;align-items:center;gap:1px}
+.score-bar .num{font-size:16px;font-weight:700}
+.score-bar .lbl{font-size:8px;color:#aaa;text-transform:uppercase;letter-spacing:.05em}
+.score-bar .ok{color:#4af078}
+.score-bar .err{color:#f04a4a}
+
+/* Results modal */
+#results{position:fixed;inset:0;background:rgba(10,10,14,.92);backdrop-filter:blur(8px);z-index:90;display:none;align-items:center;justify-content:center;padding:20px}
+#results.open{display:flex}
+#results .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:480px;width:100%}
+#results h2{font-size:20px;color:var(--beige);margin-bottom:14px;text-align:center}
+#results .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+#results .row .v{font-weight:700;color:var(--accent)}
+#results .ok{color:var(--ok)}
+#results .err{color:var(--err)}
+#results .actions{display:flex;gap:10px;margin-top:18px}
+#results .btn{flex:1;padding:12px;border-radius:8px;font-weight:700;font-size:13px}
+#results .btn-primary{background:var(--accent);color:#000}
+#results .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--white)}
+
 /* Phone optimization */
 @media (max-width:600px){
   header{font-size:11px;padding:6px 8px}
@@ -185,6 +229,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   <div class="summary" id="calib-summary"></div>
   <button class="btn-primary" id="calib-save">✓ Guardar y empezar</button>
   <button class="btn-secondary" id="calib-skip" style="display:none">Saltar (modo demo)</button>
+</div>
+
+<!-- ═══ RESULTADOS ═══ -->
+<div id="results">
+  <div class="panel">
+    <h2 id="results-title">Resultado del examen</h2>
+    <div id="results-body"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" id="results-close">Cerrar</button>
+      <button class="btn btn-primary" id="results-retry">Repetir</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ INSTRUCCIONES ═══ -->
@@ -518,7 +574,108 @@ var TESTS = [
   }}
 ];
 
-var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD' };
+var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD', kids:false, session:null };
+
+// Tests that support interactive (kids) mode
+var KIDS_TESTS = ['tumblingE','landoltC','lea','hotv','numbers'];
+
+function startKidsSession() {
+  current.session = {
+    testId: current.test ? current.test.id : '',
+    eye: current.oe,
+    startLogmar: current.logmar,
+    bestLogmar: null,
+    correctRow: 0,
+    wrongRow: 0,
+    history: [], // {logmar, expected, given, correct, ts}
+    finished: false,
+    startedAt: Date.now()
+  };
+}
+function endKidsSession() {
+  if (!current.session) return;
+  current.session.finished = true;
+  current.session.endedAt = Date.now();
+  showResults();
+}
+
+function recordAnswer(expected, given) {
+  if (!current.session) return;
+  var correct = expected === given;
+  current.session.history.push({
+    logmar: current.logmar, expected:expected, given:given, correct:correct, ts:Date.now()
+  });
+  if (correct) {
+    current.session.correctRow++;
+    current.session.wrongRow = 0;
+    current.session.bestLogmar = current.logmar; // best so far
+    if (current.session.correctRow >= 3) {
+      // advance to smaller (lower logmar)
+      current.session.correctRow = 0;
+      var newLogmar = current.logmar - 0.1;
+      if (newLogmar < -0.3) {
+        endKidsSession();
+        return;
+      }
+      current.logmar = newLogmar;
+      setTimeout(function(){ runCurrent(); }, 600);
+    } else {
+      setTimeout(function(){ runCurrent(); }, 500);
+    }
+  } else {
+    current.session.wrongRow++;
+    current.session.correctRow = 0;
+    if (current.session.wrongRow >= 2) {
+      endKidsSession();
+      return;
+    }
+    setTimeout(function(){ runCurrent(); }, 600);
+  }
+}
+
+function showResults() {
+  var s = current.session;
+  if (!s) return;
+  var body = document.getElementById('results-body');
+  var av = s.bestLogmar !== null ? logmarToSnellen(s.bestLogmar) : '< 20/200';
+  var avMetric = s.bestLogmar !== null ? logmarToMetric(s.bestLogmar) : '< 6/60';
+  var totalAttempts = s.history.length;
+  var totalCorrect = s.history.filter(function(h){ return h.correct; }).length;
+  var pct = totalAttempts ? Math.round(totalCorrect/totalAttempts*100) : 0;
+  var dur = Math.round(((s.endedAt||Date.now())-s.startedAt)/1000);
+  body.innerHTML =
+    '<div class="row"><span>Test</span><span class="v">'+(current.test?current.test.name:'')+'</span></div>' +
+    '<div class="row"><span>Ojo</span><span class="v">'+s.eye+'</span></div>' +
+    '<div class="row"><span>Mejor agudeza</span><span class="v ok">'+av+' ('+avMetric+')</span></div>' +
+    '<div class="row"><span>Aciertos</span><span class="v">'+totalCorrect+' / '+totalAttempts+' ('+pct+'%)</span></div>' +
+    '<div class="row"><span>Duración</span><span class="v">'+dur+'s</span></div>';
+  document.getElementById('results').classList.add('open');
+}
+
+document.getElementById('results-close').addEventListener('click', function(){
+  document.getElementById('results').classList.remove('open');
+  current.session = null;
+  current.kids = false;
+  runCurrent();
+});
+document.getElementById('results-retry').addEventListener('click', function(){
+  document.getElementById('results').classList.remove('open');
+  current.logmar = 0.5;
+  startKidsSession();
+  runCurrent();
+});
+
+function renderScoreBar() {
+  if (!current.kids || !current.session) return;
+  var bar = document.createElement('div');
+  bar.className = 'score-bar';
+  bar.innerHTML =
+    '<div class="item"><span class="num ok">'+current.session.correctRow+'/3</span><span class="lbl">Aciertos</span></div>' +
+    '<div class="item"><span class="num err">'+current.session.wrongRow+'/2</span><span class="lbl">Fallas</span></div>' +
+    '<div class="item"><span class="num">'+logmarToSnellen(current.logmar)+'</span><span class="lbl">Línea</span></div>' +
+    '<div class="item"><span class="num">'+(current.session.eye)+'</span><span class="lbl">Ojo</span></div>';
+  disp.appendChild(bar);
+}
 
 // ═══════════════════════════════════════════════════════════
 // HELPER: Sloan letters (10 letters used in clinical testing)
@@ -543,6 +700,31 @@ var ctrl = document.getElementById('controls');
 function clearDisp() {
   disp.innerHTML = '';
   disp.classList.remove('dark','duochrome');
+}
+
+function makeKidsPad(layout, options, onPick) {
+  var pad = document.createElement('div');
+  pad.className = 'kids-pad ' + layout;
+  options.forEach(function(opt){
+    var btn = document.createElement('button');
+    btn.className = 'kbtn';
+    if (opt.dataAttr) btn.setAttribute('data-' + opt.dataAttr.k, opt.dataAttr.v);
+    if (opt.html) btn.innerHTML = opt.html;
+    else btn.textContent = opt.label;
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var correct = onPick(opt.value);
+      btn.classList.add(correct ? 'correct' : 'wrong');
+    });
+    pad.appendChild(btn);
+  });
+  return pad;
+}
+
+function pickRandomFromArray(arr, seed) {
+  var idx = Math.floor((seed * 100) % arr.length);
+  if (idx < 0) idx += arr.length;
+  return arr[idx];
 }
 
 // ── Snellen letters ──
@@ -594,10 +776,42 @@ function renderSnellen(opts){
 
 // ── Tumbling E ──
 var E_ROTATIONS = [0, 90, 180, 270]; // right, down, left, up (E points to: → ↓ ← ↑)
+var E_DIR_MAP = { 0:'right', 90:'down', 180:'left', 270:'up' };
+
 function renderTumblingE(opts){
   clearDisp();
   var grid = document.createElement('div');
   grid.className = 'opto-grid';
+
+  if (current.kids) {
+    // Modo niño: una sola E grande + 4 botones direccionales
+    current.randomSeed = Math.random();
+    var heightPx = snellenLogmarToHeightPx(current.logmar);
+    var rot = E_ROTATIONS[Math.floor((current.randomSeed*100) % 4)];
+    var expected = E_DIR_MAP[rot];
+    var span = document.createElement('div');
+    span.className = 'opto-letter';
+    span.style.fontSize = (heightPx * 1.05) + 'px';
+    span.style.transform = 'rotate(' + rot + 'deg)';
+    span.style.display = 'inline-block';
+    span.style.marginBottom = '120px';
+    span.textContent = 'E';
+    grid.appendChild(span);
+    disp.appendChild(grid);
+    disp.appendChild(makeKidsPad('dirs', [
+      { dataAttr:{k:'d',v:'up'}, value:'up', label:'↑' },
+      { dataAttr:{k:'d',v:'left'}, value:'left', label:'←' },
+      { dataAttr:{k:'d',v:'right'}, value:'right', label:'→' },
+      { dataAttr:{k:'d',v:'down'}, value:'down', label:'↓' }
+    ], function(picked){
+      var correct = picked === expected;
+      recordAnswer(expected, picked);
+      return correct;
+    }));
+    renderScoreBar();
+    setControlsForKids();
+    return;
+  }
 
   if (current.isolate === 'letter') {
     var heightPx = snellenLogmarToHeightPx(current.logmar);
@@ -650,6 +864,34 @@ function renderLandoltC(opts){
   if (startIdx < 0) startIdx = 0;
   if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
 
+  if (current.kids) {
+    current.randomSeed = Math.random();
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    // Use 4 cardinal directions for kids (less confusing than 8)
+    var rotMap = { 0:'up', 90:'right', 180:'down', 270:'left' };
+    var rots = [0,90,180,270];
+    var rot = rots[Math.floor((current.randomSeed*100) % 4)];
+    var expected = rotMap[rot];
+    var wrap = document.createElement('div');
+    wrap.style.marginBottom = '120px';
+    wrap.appendChild(landoltSvg(hPx, rot));
+    grid.appendChild(wrap);
+    disp.appendChild(grid);
+    disp.appendChild(makeKidsPad('dirs', [
+      { dataAttr:{k:'d',v:'up'}, value:'up', label:'↑' },
+      { dataAttr:{k:'d',v:'left'}, value:'left', label:'←' },
+      { dataAttr:{k:'d',v:'right'}, value:'right', label:'→' },
+      { dataAttr:{k:'d',v:'down'}, value:'down', label:'↓' }
+    ], function(picked){
+      var correct = picked === expected;
+      recordAnswer(expected, picked);
+      return correct;
+    }));
+    renderScoreBar();
+    setControlsForKids();
+    return;
+  }
+
   if (current.isolate === 'letter') {
     var hPx = snellenLogmarToHeightPx(current.logmar);
     var rot = E_ROTATIONS[Math.floor((current.randomSeed*100) % 4)];
@@ -700,6 +942,30 @@ var DIGITS = ['2','3','4','5','6','7','8','9'];
 function renderNumbers(opts){
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
+
+  if (current.kids) {
+    current.randomSeed = Math.random();
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    var expected = DIGITS[Math.floor((current.randomSeed*100) % DIGITS.length)];
+    var span = document.createElement('div');
+    span.className = 'opto-letter';
+    span.style.fontSize = (hPx * 1.05) + 'px';
+    span.style.marginBottom = '140px';
+    span.textContent = expected;
+    grid.appendChild(span);
+    disp.appendChild(grid);
+    disp.appendChild(makeKidsPad('numbers', DIGITS.map(function(d){
+      return { value:d, label:d };
+    }), function(picked){
+      var correct = picked === expected;
+      recordAnswer(expected, picked);
+      return correct;
+    }));
+    renderScoreBar();
+    setControlsForKids();
+    return;
+  }
+
   var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
   var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
   if (startIdx < 0) startIdx = 0;
@@ -721,23 +987,51 @@ function renderNumbers(opts){
 
 // ── LEA Symbols ──
 var LEA_SYMBOLS = ['🍎','🏠','◯','◻']; // apple, house, circle, square (simplified)
+function leaSvgPath(sym) {
+  var d = '';
+  if (sym === 'apple') d = 'M50 15 C 30 15, 15 40, 30 70 Q 50 95 70 70 C 85 40, 70 15, 50 15 Z M50 5 C 45 5, 45 12, 50 15';
+  else if (sym === 'house') d = 'M50 10 L 90 45 L 80 45 L 80 90 L 20 90 L 20 45 L 10 45 Z';
+  else if (sym === 'circle') d = 'M50 10 a40 40 0 1 0 .1 0 Z';
+  else if (sym === 'square') d = 'M15 15 L 85 15 L 85 85 L 15 85 Z';
+  return '<path fill="#000" d="'+d+'"/>';
+}
 function leaSvg(hPx, sym) {
   var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('width', hPx); svg.setAttribute('height', hPx); svg.setAttribute('viewBox','0 0 100 100');
   svg.style.display = 'inline-block';
-  var p = document.createElementNS('http://www.w3.org/2000/svg','path');
-  p.setAttribute('fill','#000');
-  if (sym === 'apple') p.setAttribute('d','M50 15 C 30 15, 15 40, 30 70 Q 50 95 70 70 C 85 40, 70 15, 50 15 Z M50 5 C 45 5, 45 12, 50 15');
-  else if (sym === 'house') p.setAttribute('d','M50 10 L 90 45 L 80 45 L 80 90 L 20 90 L 20 45 L 10 45 Z');
-  else if (sym === 'circle') { p.setAttribute('d','M50 10 a40 40 0 1 0 .1 0 Z'); }
-  else if (sym === 'square') p.setAttribute('d','M15 15 L 85 15 L 85 85 L 15 85 Z');
-  svg.appendChild(p);
+  svg.innerHTML = leaSvgPath(sym);
   return svg;
 }
 function renderLEA(opts){
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
   var syms = ['apple','house','circle','square'];
+
+  if (current.kids) {
+    current.randomSeed = Math.random();
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    var expected = syms[Math.floor((current.randomSeed*100) % 4)];
+    var wrap = document.createElement('div');
+    wrap.style.marginBottom = '120px';
+    wrap.appendChild(leaSvg(hPx, expected));
+    grid.appendChild(wrap);
+    disp.appendChild(grid);
+    var symBtnSize = 50;
+    var opts2 = syms.map(function(s){
+      var off = document.createElement('canvas'); off.width = symBtnSize; off.height = symBtnSize;
+      var html = '<svg width="'+symBtnSize+'" height="'+symBtnSize+'" viewBox="0 0 100 100">' + leaSvgPath(s) + '</svg>';
+      return { value:s, html:html };
+    });
+    disp.appendChild(makeKidsPad('symbols', opts2, function(picked){
+      var correct = picked === expected;
+      recordAnswer(expected, picked);
+      return correct;
+    }));
+    renderScoreBar();
+    setControlsForKids();
+    return;
+  }
+
   var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
   var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
   if (startIdx < 0) startIdx = 0;
@@ -763,6 +1057,30 @@ var HOTV = ['H','O','T','V'];
 function renderHOTV(opts){
   clearDisp();
   var grid = document.createElement('div'); grid.className = 'opto-grid';
+
+  if (current.kids) {
+    current.randomSeed = Math.random();
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    var expected = HOTV[Math.floor((current.randomSeed*100) % 4)];
+    var span = document.createElement('div');
+    span.className = 'opto-letter';
+    span.style.fontSize = (hPx * 1.05) + 'px';
+    span.style.marginBottom = '120px';
+    span.textContent = expected;
+    grid.appendChild(span);
+    disp.appendChild(grid);
+    disp.appendChild(makeKidsPad('letters', HOTV.map(function(l){
+      return { value:l, label:l };
+    }), function(picked){
+      var correct = picked === expected;
+      recordAnswer(expected, picked);
+      return correct;
+    }));
+    renderScoreBar();
+    setControlsForKids();
+    return;
+  }
+
   var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
   var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
   if (startIdx < 0) startIdx = 0;
@@ -1295,6 +1613,39 @@ function setControlsForSize(){
   g4.appendChild(ctrlBtn('OI', function(){ current.oe='OI'; runCurrent(); }, current.oe==='OI'));
   g4.appendChild(ctrlBtn('AO', function(){ current.oe='AO'; runCurrent(); }, current.oe==='AO'));
   ctrl.appendChild(g4);
+  // Modo niño (interactive)
+  if (current.test && KIDS_TESTS.indexOf(current.test.id) >= 0) {
+    var g5 = ctrlGroup();
+    g5.appendChild(ctrlLabel('Modo'));
+    g5.appendChild(ctrlBtn('🧒 Niño', function(){
+      current.kids = true;
+      current.logmar = 0.5;
+      startKidsSession();
+      runCurrent();
+    }));
+    ctrl.appendChild(g5);
+  }
+}
+
+function setControlsForKids(){
+  ctrl.innerHTML = '';
+  var g1 = ctrlGroup();
+  g1.appendChild(ctrlLabel('Modo niño'));
+  var s = document.createElement('div'); s.className='size-display';
+  s.textContent = logmarToSnellen(current.logmar) + ' · ' + (current.session?current.session.eye:'');
+  g1.appendChild(s);
+  ctrl.appendChild(g1);
+  var g2 = ctrlGroup();
+  g2.appendChild(ctrlLabel('Acciones'));
+  g2.appendChild(ctrlBtn('⏭ Saltar', function(){ recordAnswer('skip', 'skip'); }));
+  g2.appendChild(ctrlBtn('🛑 Terminar', function(){ endKidsSession(); }));
+  g2.appendChild(ctrlBtn('🚪 Salir', function(){ current.kids = false; current.session = null; runCurrent(); }));
+  ctrl.appendChild(g2);
+  var g3 = ctrlGroup();
+  g3.appendChild(ctrlLabel('Ojo'));
+  g3.appendChild(ctrlBtn('OD', function(){ current.oe='OD'; if(current.session)current.session.eye='OD'; runCurrent(); }, current.oe==='OD'));
+  g3.appendChild(ctrlBtn('OI', function(){ current.oe='OI'; if(current.session)current.session.eye='OI'; runCurrent(); }, current.oe==='OI'));
+  ctrl.appendChild(g3);
 }
 
 function setControlsForJaeger(){
@@ -1394,6 +1745,9 @@ function buildMenu(){
       card.innerHTML = '<div class="ico">'+t.icon+'</div><div class="lbl">'+t.name+'</div><div class="desc">'+t.desc+'</div>';
       card.addEventListener('click', function(){
         current.test = t;
+        // Reset kids mode when switching tests
+        current.kids = false;
+        current.session = null;
         document.getElementById('test-menu').classList.remove('open');
         runCurrent();
         autoShowInstructionsIfNew(t);
