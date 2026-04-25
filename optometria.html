@@ -992,32 +992,26 @@ function renderNumbers(opts){
 
 // ── LEA Symbols ──
 var LEA_SYMBOLS = ['🍎','🏠','◯','◻']; // apple, house, circle, square (simplified)
+// LEA symbols — usamos emojis del sistema (reconocibles instantáneamente)
+// Para mantener fidelidad clínica (silueta sin color), aplicamos filtro grayscale
+var LEA_EMOJI = {
+  apple: '🍎',
+  house: '🏠',
+  square: '◼️',
+  circle: '⚫'
+};
 function leaSvgPath(sym) {
-  if (sym === 'apple') {
-    // Manzana clásica LEA — cuerpo con indent superior + tallo + hoja
-    return '<path fill="#000" d="M 50,32 C 35,28 18,38 18,58 C 18,80 32,92 50,92 C 68,92 82,80 82,58 C 82,38 65,28 50,32 Z"/>' +
-           '<path fill="#000" d="M 47,18 Q 50,30 53,18 L 53,32 L 47,32 Z"/>' +
-           '<path fill="#000" d="M 53,22 Q 65,12 72,22 Q 65,30 55,28 Z"/>';
-  }
-  if (sym === 'house') {
-    // Casa LEA — techo y cuerpo del mismo ancho (silueta clara)
-    return '<path fill="#000" d="M 50,10 L 80,42 L 20,42 Z"/>' +
-           '<rect x="22" y="42" width="56" height="50" fill="#000"/>';
-  }
-  if (sym === 'circle') {
-    return '<circle cx="50" cy="50" r="40" fill="#000"/>';
-  }
-  if (sym === 'square') {
-    return '<rect x="15" y="15" width="70" height="70" fill="#000"/>';
-  }
-  return '';
+  // Mantenido para compatibilidad — devuelve emoji
+  return LEA_EMOJI[sym] || '';
 }
 function leaSvg(hPx, sym) {
-  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('width', hPx); svg.setAttribute('height', hPx); svg.setAttribute('viewBox','0 0 100 100');
-  svg.style.display = 'inline-block';
-  svg.innerHTML = leaSvgPath(sym);
-  return svg;
+  var span = document.createElement('span');
+  span.style.fontSize = hPx + 'px';
+  span.style.lineHeight = '1';
+  span.style.display = 'inline-block';
+  span.style.fontFamily = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+  span.textContent = LEA_EMOJI[sym] || '';
+  return span;
 }
 function renderLEA(opts){
   clearDisp();
@@ -1035,8 +1029,7 @@ function renderLEA(opts){
     disp.appendChild(grid);
     var symBtnSize = 50;
     var opts2 = syms.map(function(s){
-      var off = document.createElement('canvas'); off.width = symBtnSize; off.height = symBtnSize;
-      var html = '<svg width="'+symBtnSize+'" height="'+symBtnSize+'" viewBox="0 0 100 100">' + leaSvgPath(s) + '</svg>';
+      var html = '<span style="font-size:'+symBtnSize+'px;line-height:1;font-family:\'Apple Color Emoji\',\'Segoe UI Emoji\',\'Noto Color Emoji\',sans-serif">'+LEA_EMOJI[s]+'</span>';
       return { value:s, html:html };
     });
     disp.appendChild(makeKidsPad('symbols', opts2, function(picked){
