@@ -1132,36 +1132,57 @@ function renderIsolate(){
 
 // ── Jaeger / near vision ──
 var JAEGER_SAMPLES = [
-  { j:1, label:'J1 (0.4 mm)', mm:0.4, text:'En la oscuridad encontramos a veces más luz que en pleno día.' },
-  { j:2, label:'J2 (0.5 mm)', mm:0.5, text:'La curiosidad es la mecha que enciende el aprendizaje.' },
-  { j:3, label:'J3 (0.6 mm)', mm:0.6, text:'Cada amanecer trae consigo nuevas oportunidades.' },
-  { j:5, label:'J5 (0.8 mm)', mm:0.8, text:'La paciencia es la madre de la sabiduría profunda.' },
-  { j:7, label:'J7 (1.0 mm)', mm:1.0, text:'Mira las pequeñas cosas con ojos atentos siempre.' },
-  { j:10, label:'J10 (1.5 mm)', mm:1.5, text:'El silencio dice mucho cuando se sabe escuchar.' },
-  { j:14, label:'J14 (2.0 mm)', mm:2.0, text:'Cada día es una página nueva en tu historia.' },
-  { j:18, label:'J18 (3.5 mm)', mm:3.5, text:'Vive sin miedo ni prisa.' },
-  { j:20, label:'J20 (5.0 mm)', mm:5.0, text:'Sé feliz hoy.' }
+  { j:1, label:'J1', mm:0.4, text:'En la oscuridad encontramos a veces más luz que en pleno día. La paciencia y la curiosidad guían al observador atento que sabe esperar el momento exacto para mirar de nuevo.' },
+  { j:2, label:'J2', mm:0.5, text:'La curiosidad es la mecha que enciende el aprendizaje. Quien aprende a preguntar nunca pierde la sed de descubrir lo que parecía obvio o simple a primera vista.' },
+  { j:3, label:'J3', mm:0.62, text:'Cada amanecer trae consigo nuevas oportunidades para los que despiertan con los ojos abiertos y el corazón listo para empezar la jornada con cuidado.' },
+  { j:4, label:'J4', mm:0.75, text:'La constancia se reconoce en los pequeños detalles diarios y en el modo en que cuidamos nuestras tareas más simples sin descuidar el conjunto.' },
+  { j:5, label:'J5', mm:0.87, text:'La paciencia es la madre de la sabiduría profunda y nos enseña a escuchar antes de hablar y a esperar antes de juzgar a los demás.' },
+  { j:6, label:'J6', mm:1.0, text:'Mira las pequeñas cosas con ojos atentos: una flor, una cara conocida, un libro abierto, todo encierra mucho más de lo que parece a primera vista.' },
+  { j:7, label:'J7', mm:1.12, text:'El silencio dice mucho cuando se sabe escuchar. A veces el mejor consejo aparece en la pausa entre dos palabras dichas con calma y respeto.' },
+  { j:8, label:'J8', mm:1.25, text:'Cada día es una página nueva en tu historia personal. Lo que escribas hoy depende solo del modo en que mires al mundo y de tus elecciones.' },
+  { j:10, label:'J10', mm:1.5, text:'Lee con cuidado, escucha con respeto, habla con sinceridad. Esa es la fórmula sencilla que la experiencia nos repite una y otra vez.' },
+  { j:12, label:'J12', mm:1.87, text:'Vivir bien empieza por mirar con atención y con calma. Lo demás llega con el tiempo y con los pasos que damos cada día.' },
+  { j:14, label:'J14', mm:2.25, text:'No te apresures, observa con calma y sigue tu camino con confianza. La prisa nubla la vista, la calma la afina.' },
+  { j:16, label:'J16', mm:2.75, text:'Mira siempre el horizonte con confianza y con curiosidad. Allí están las respuestas que aún no te has atrevido a buscar.' },
+  { j:18, label:'J18', mm:3.5, text:'Camina paso a paso y disfruta el viaje. Cada paso es un fragmento de tu historia.' },
+  { j:20, label:'J20', mm:5.0, text:'Sé feliz hoy. Sonríe con calma. Vive el momento.' }
 ];
 function renderJaeger(opts){
   clearDisp();
-  // Use 40cm reference distance for near
-  var nearDist = 400;
   var box = document.createElement('div');
-  box.style.maxWidth = '85%';
-  box.style.padding = '20px';
+  box.style.maxWidth = '90%';
+  box.style.padding = '14px';
   box.style.color = '#000';
-  box.style.lineHeight = '1.4';
+  box.style.lineHeight = '1.32';
   box.style.fontFamily = 'Georgia,serif';
+  box.style.overflowY = 'auto';
+  box.style.maxHeight = '100%';
+
+  // Render TODAS las líneas — si quedan por debajo del mínimo del pixel, se forzan a un mínimo legible
+  // y se marcan con un asterisco para que el optometrista sepa que es escala-aproximada
+  var MIN_RENDER_PX = 6;
   JAEGER_SAMPLES.forEach(function(s){
-    // Convert physical mm to pixels
-    var px = s.mm * pxPerMm();
-    if (px < 4) return;
+    var realPx = s.mm * pxPerMm();
+    var renderPx = realPx;
+    var subClinical = false;
+    if (renderPx < MIN_RENDER_PX) { renderPx = MIN_RENDER_PX; subClinical = true; }
     var line = document.createElement('div');
-    line.style.fontSize = px + 'px';
-    line.style.marginBottom = '8px';
-    line.innerHTML = '<span style="font-size:9px;color:#888">' + s.label + ':</span> ' + s.text;
+    line.style.fontSize = renderPx + 'px';
+    line.style.marginBottom = '10px';
+    var labelHtml = '<span style="font-size:10px;color:#999;font-family:Outfit,sans-serif;font-weight:600;margin-right:8px">' + s.label + ' (' + s.mm + 'mm)' + (subClinical ? '*' : '') + '</span>';
+    line.innerHTML = labelHtml + s.text;
     box.appendChild(line);
   });
+  // Footnote
+  var note = document.createElement('div');
+  note.style.fontSize = '9px';
+  note.style.color = '#999';
+  note.style.fontFamily = 'Outfit,sans-serif';
+  note.style.marginTop = '14px';
+  note.style.borderTop = '1px solid #eee';
+  note.style.paddingTop = '6px';
+  note.textContent = '* Tamaño físico real menor a la resolución mínima de la pantalla — escala aproximada. Para evaluación clínica precisa de J1-J3, usar cartilla impresa.';
+  box.appendChild(note);
   disp.appendChild(box);
   setControlsForJaeger();
 }
