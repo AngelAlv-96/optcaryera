@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Optometría · Cabina — Ópticas Car & Era</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 <style>
 :root{
   --bg:#0a0a0e;--surface:#14141a;--surface2:#1d1d26;--border:#2a2a35;
@@ -166,6 +167,30 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 #results .btn-primary{background:var(--accent);color:#000}
 #results .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--white)}
 
+/* Pairing modal */
+#pair{position:fixed;inset:0;background:var(--bg);z-index:95;display:none;flex-direction:column;align-items:center;justify-content:center;padding:calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom))}
+#pair.open{display:flex}
+#pair h1{font-size:18px;color:var(--beige);margin-bottom:18px;text-align:center}
+#pair .modes{display:grid;gap:12px;width:100%;max-width:340px;margin-bottom:18px}
+#pair .mode-btn{background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:18px;text-align:left;color:var(--white);font-size:13px;line-height:1.4}
+#pair .mode-btn:hover{border-color:var(--accent)}
+#pair .mode-btn .ico{font-size:28px;margin-bottom:6px}
+#pair .mode-btn .lbl{font-weight:700;font-size:14px;color:var(--accent);margin-bottom:4px}
+#pair .mode-btn .desc{color:var(--muted);font-size:11px}
+#pair .display-info{text-align:center;color:var(--muted);font-size:12px}
+#pair .pair-code{font-size:64px;font-weight:900;color:var(--accent);letter-spacing:.15em;font-family:monospace;margin:16px 0;text-shadow:0 0 30px rgba(200,240,74,.3)}
+#pair input.code-input{background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:14px;color:var(--white);font-size:24px;text-align:center;letter-spacing:.15em;font-family:monospace;width:200px;text-transform:uppercase;outline:none}
+#pair input.code-input:focus{border-color:var(--accent)}
+#pair .btn-primary{background:var(--accent);color:#000;border-radius:8px;padding:14px;font-weight:700;font-size:13px;width:100%;max-width:340px;margin-top:10px}
+#pair .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--white);border-radius:8px;padding:10px;font-size:12px;margin-top:8px}
+
+/* Connection status indicator */
+.conn-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;flex-shrink:0}
+.conn-dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.conn-dot.err{background:var(--err)}
+.conn-dot.connecting{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
 /* Phone optimization */
 @media (max-width:600px){
   header{font-size:11px;padding:6px 8px}
@@ -231,6 +256,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   <button class="btn-secondary" id="calib-skip" style="display:none">Saltar (modo demo)</button>
 </div>
 
+<!-- ═══ PAREO (modo cabina paired) ═══ -->
+<div id="pair">
+  <div id="pair-step-choose">
+    <h1>📡 Modo cabina sincronizada</h1>
+    <div class="modes">
+      <button class="mode-btn" id="mode-display"><div class="ico">📺</div><div class="lbl">Pantalla en pared</div><div class="desc">Este dispositivo MUESTRA los tests al paciente. Genera un código de pareo.</div></button>
+      <button class="mode-btn" id="mode-control"><div class="ico">📱</div><div class="lbl">Control remoto</div><div class="desc">Este dispositivo CONTROLA la pantalla en pared. Necesita el código.</div></button>
+      <button class="mode-btn" id="mode-standalone"><div class="ico">🖐</div><div class="lbl">Standalone</div><div class="desc">Un solo dispositivo (el optometrista navega manualmente). Modo actual.</div></button>
+    </div>
+  </div>
+  <div id="pair-step-display" style="display:none;text-align:center">
+    <h1>📺 Pantalla en pared</h1>
+    <div class="display-info">Código de pareo:</div>
+    <div class="pair-code" id="pair-code-display">----</div>
+    <div class="display-info">Abre <b>optometria.html</b> en el cel del optometrista,<br>elige "Control remoto" e ingresa este código.</div>
+    <div class="display-info" style="margin-top:14px"><span class="conn-dot connecting" id="pair-conn-dot"></span><span id="pair-conn-status">Esperando control...</span></div>
+    <button class="btn-secondary" id="pair-cancel-display">Cancelar</button>
+  </div>
+  <div id="pair-step-control" style="display:none;text-align:center">
+    <h1>📱 Control remoto</h1>
+    <div class="display-info">Ingresa el código que aparece en la pantalla de pared:</div>
+    <input type="text" class="code-input" id="pair-code-input" maxlength="4" placeholder="ABCD" autocomplete="off">
+    <button class="btn-primary" id="pair-connect-btn">Conectar</button>
+    <button class="btn-secondary" id="pair-cancel-control">Cancelar</button>
+  </div>
+</div>
+
 <!-- ═══ RESULTADOS ═══ -->
 <div id="results">
   <div class="panel">
@@ -273,6 +325,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
       <div class="info" id="current-test-info"></div>
     </div>
     <div class="right">
+      <button class="btn-icon" id="btn-pair" title="Pareo cabina"><span class="conn-dot" id="hdr-conn-dot"></span>📡</button>
       <button class="btn-icon" id="btn-fullscreen" title="Pantalla completa">⛶</button>
       <button class="btn-icon" id="btn-recalib" title="Recalibrar">📐</button>
       <button class="btn-icon" id="btn-help" title="Ayuda del test">?</button>
@@ -1893,6 +1946,219 @@ window.addEventListener('keydown', function(e){
   else if (e.key === 'i' || e.key === 'I') { current.isolate = current.isolate==='letter'?'none':'letter'; runCurrent(); }
   else if (e.key === '?' || e.key === 'h' || e.key === 'H') showInstructions(current.test);
 });
+
+// ═══════════════════════════════════════════════════════════
+// PAREO CABINA (Fase 2) — Display + Control sincronizados
+// ═══════════════════════════════════════════════════════════
+var SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+var SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+var sb = null;
+try { sb = window.supabase.createClient(SUPA_URL, SUPA_KEY); } catch(e) { console.warn('Supabase not available', e); }
+
+var pair = {
+  mode: null,        // 'display' | 'control' | null
+  code: null,
+  channel: null,
+  connected: false,
+  syncSuppress: false // when true, applying remote state — don't re-broadcast
+};
+
+function genPairCode() {
+  // 4 letters, no easily-confused (no I/O/L/Z to avoid 0/2 confusion)
+  var alphabet = 'ABCDEFGHJKMNPQRSTUVWXY';
+  var c = '';
+  for (var i = 0; i < 4; i++) c += alphabet[Math.floor(Math.random()*alphabet.length)];
+  return c;
+}
+
+function setConnDot(state){
+  // state: 'idle' | 'connecting' | 'ok' | 'err'
+  var dots = [document.getElementById('hdr-conn-dot'), document.getElementById('pair-conn-dot')];
+  dots.forEach(function(d){
+    if (!d) return;
+    d.classList.remove('ok','err','connecting');
+    if (state === 'ok') d.classList.add('ok');
+    else if (state === 'err') d.classList.add('err');
+    else if (state === 'connecting') d.classList.add('connecting');
+  });
+}
+
+function startDisplayMode(){
+  if (!sb) { alert('Supabase no disponible — modo paired necesita conexión'); return; }
+  pair.mode = 'display';
+  pair.code = genPairCode();
+  document.getElementById('pair-code-display').textContent = pair.code;
+  document.getElementById('pair-step-choose').style.display = 'none';
+  document.getElementById('pair-step-display').style.display = 'block';
+  setConnDot('connecting');
+  document.getElementById('pair-conn-status').textContent = 'Esperando control...';
+
+  var channelName = 'opt-' + pair.code;
+  pair.channel = sb.channel(channelName, { config: { broadcast: { self: false }}});
+  pair.channel
+    .on('broadcast', { event: 'state' }, function(payload) {
+      pair.syncSuppress = true;
+      applyRemoteState(payload.payload || {});
+      pair.syncSuppress = false;
+    })
+    .on('broadcast', { event: 'hello' }, function(payload) {
+      // Control connected
+      pair.connected = true;
+      setConnDot('ok');
+      document.getElementById('pair-conn-status').textContent = '✓ Control conectado';
+      // Send current state to sync
+      broadcastState();
+      // Auto-close pair modal after 1s
+      setTimeout(function(){ document.getElementById('pair').classList.remove('open'); }, 1200);
+    })
+    .subscribe(function(status){
+      if (status === 'SUBSCRIBED') console.log('[Display] subscribed to', channelName);
+    });
+}
+
+function startControlMode(code){
+  if (!sb) { alert('Supabase no disponible'); return; }
+  if (!code || code.length !== 4) { alert('Código inválido'); return; }
+  pair.mode = 'control';
+  pair.code = code.toUpperCase();
+  setConnDot('connecting');
+
+  var channelName = 'opt-' + pair.code;
+  pair.channel = sb.channel(channelName, { config: { broadcast: { self: false }}});
+  pair.channel
+    .on('broadcast', { event: 'state' }, function(payload) {
+      pair.syncSuppress = true;
+      applyRemoteState(payload.payload || {});
+      pair.syncSuppress = false;
+    })
+    .subscribe(function(status){
+      if (status === 'SUBSCRIBED') {
+        // Send a hello to display
+        pair.channel.send({ type: 'broadcast', event: 'hello', payload: { from: 'control', ts: Date.now() }});
+        pair.connected = true;
+        setConnDot('ok');
+        document.getElementById('pair').classList.remove('open');
+        // Force a state broadcast so display gets initial state from control
+        setTimeout(broadcastState, 300);
+      }
+    });
+}
+
+function endPairMode(){
+  if (pair.channel) {
+    try { pair.channel.unsubscribe(); } catch(e){}
+  }
+  pair.channel = null;
+  pair.mode = null;
+  pair.code = null;
+  pair.connected = false;
+  setConnDot('idle');
+}
+
+function serializeState(){
+  return {
+    testId: current.test ? current.test.id : null,
+    logmar: current.logmar,
+    isolate: current.isolate,
+    randomSeed: current.randomSeed,
+    oe: current.oe,
+    kids: current.kids,
+    fixIdx: current.fixIdx,
+    ishiharaIdx: current.ishiharaIdx,
+    flickerHz: current.flickerHz,
+    jaegerSize: current.jaegerSize,
+    ts: Date.now()
+  };
+}
+
+function applyRemoteState(s){
+  if (s.testId) {
+    var t = TESTS.find(function(tt){ return tt.id === s.testId; });
+    if (t) current.test = t;
+  }
+  if (s.logmar !== undefined) current.logmar = s.logmar;
+  if (s.isolate !== undefined) current.isolate = s.isolate;
+  if (s.randomSeed !== undefined) current.randomSeed = s.randomSeed;
+  if (s.oe !== undefined) current.oe = s.oe;
+  if (s.kids !== undefined) current.kids = s.kids;
+  if (s.fixIdx !== undefined) current.fixIdx = s.fixIdx;
+  if (s.ishiharaIdx !== undefined) current.ishiharaIdx = s.ishiharaIdx;
+  if (s.flickerHz !== undefined) current.flickerHz = s.flickerHz;
+  if (s.jaegerSize !== undefined) current.jaegerSize = s.jaegerSize;
+  runCurrent();
+}
+
+function broadcastState(){
+  if (!pair.channel || !pair.connected || pair.syncSuppress) return;
+  pair.channel.send({ type: 'broadcast', event: 'state', payload: serializeState() });
+}
+
+// Hook broadcastState into runCurrent (after every state change)
+var _origRunCurrent = runCurrent;
+runCurrent = function(){
+  _origRunCurrent.apply(this, arguments);
+  if (pair.mode === 'control') broadcastState();
+};
+
+// ═══ Pareo modal handlers ═══
+document.getElementById('btn-pair').addEventListener('click', function(){
+  if (pair.mode) {
+    if (confirm('¿Desconectar de modo ' + (pair.mode === 'display' ? 'pantalla' : 'control') + '?')) endPairMode();
+    return;
+  }
+  document.getElementById('pair-step-choose').style.display = 'block';
+  document.getElementById('pair-step-display').style.display = 'none';
+  document.getElementById('pair-step-control').style.display = 'none';
+  document.getElementById('pair').classList.add('open');
+});
+document.getElementById('mode-display').addEventListener('click', startDisplayMode);
+document.getElementById('mode-control').addEventListener('click', function(){
+  document.getElementById('pair-step-choose').style.display = 'none';
+  document.getElementById('pair-step-control').style.display = 'block';
+  setTimeout(function(){ document.getElementById('pair-code-input').focus(); }, 100);
+});
+document.getElementById('mode-standalone').addEventListener('click', function(){
+  document.getElementById('pair').classList.remove('open');
+});
+document.getElementById('pair-cancel-display').addEventListener('click', function(){
+  endPairMode();
+  document.getElementById('pair').classList.remove('open');
+});
+document.getElementById('pair-cancel-control').addEventListener('click', function(){
+  document.getElementById('pair').classList.remove('open');
+});
+document.getElementById('pair-connect-btn').addEventListener('click', function(){
+  var code = document.getElementById('pair-code-input').value.trim();
+  startControlMode(code);
+});
+document.getElementById('pair-code-input').addEventListener('keydown', function(e){
+  if (e.key === 'Enter') document.getElementById('pair-connect-btn').click();
+});
+
+// URL parameter quick-open
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var mode = params.get('mode');
+  if (mode === 'display') {
+    setTimeout(function(){
+      document.getElementById('pair-step-choose').style.display = 'none';
+      document.getElementById('pair-step-display').style.display = 'block';
+      document.getElementById('pair').classList.add('open');
+      startDisplayMode();
+    }, 500);
+  } else if (mode === 'control') {
+    var code = params.get('code');
+    if (code) {
+      setTimeout(function(){ startControlMode(code); }, 500);
+    } else {
+      setTimeout(function(){
+        document.getElementById('pair-step-choose').style.display = 'none';
+        document.getElementById('pair-step-control').style.display = 'block';
+        document.getElementById('pair').classList.add('open');
+      }, 500);
+    }
+  }
+})();
 
 // ═══════════════════════════════════════════════════════════
 // INIT
