@@ -42,6 +42,7 @@ Si algo se rompe gravemente:
 ├── banner.jpg          — Banner tienda
 ├── hero-lc.jpg         — Imagen trust section tienda LC (77KB, 1200x670)
 ├── firma-asistencia.html — Página pública: firma digital de reportes/actas (empleados)
+├── optometria.html     — Herramienta clínica de cabina: 25 tests visuales (Snellen, Ishihara, Amsler, etc.) calibrados por pantalla. Acceso desde sidebar (admin/sucursal/gerencia)
 ├── zpl_bridge.py       — Bridge impresión ZPL ⛔ NO TOCAR
 ├── CLAUDE.md           — Este archivo
 ├── js/                 — Módulos JS extraídos de index.html
@@ -413,7 +414,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v275 — Clip webhook: fix crítico de misatribución. Pagos de terminal física (Magnolia + Pinocelli) se registraban como "Link de pago" en ventas con `clip_prid` porque el fallback por monto del webhook agarraba cualquier venta con saldo suficiente + Apartado. Eliminado el fallback — ahora requiere match exacto por folio o prid. Corregidos 7 pagos ($7,347 total): 6 en folio 15767 (Loruhama, Américas) + 1 en folio 11638 (jessica, Pinocelli).
+**Última versión**: v276 — Optometría cabina: nuevo `optometria.html` standalone con 25 tests profesionales (Snellen, Tumbling E, Landolt C, números, LEA pediátrico, HOTV, Jaeger, reloj/abanico astigmático, Ishihara, duocromo, Worth 4, Maddox, RDS, Amsler, Pelli-Robson, fijación, etc.). Calibración pixel/mm con tarjeta de crédito. Acceso desde sidebar (admin + sucursal + gerencia, oculto para laboratorio).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

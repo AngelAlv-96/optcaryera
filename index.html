@@ -1131,6 +1131,10 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           Historia Clínica
         </div>
+        <div class="nav-item" id="nav-optometria" style="display:none" onclick="window.open('optometria.html','_blank')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Optometría
+        </div>
         <div class="nav-item" onclick="go('orden');limpiarOrden()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Orden de Lab.
@@ -5273,6 +5277,7 @@ function setupApp(u) {
       document.getElementById('nav-report-auditoria').style.display = '';
       document.getElementById('nav-report-precio-cambios').style.display = '';
       document.getElementById('nav-ventas-section').style.display = '';
+      document.getElementById('nav-optometria').style.display = '';
     } else if (u.rol === 'laboratorio') {
       document.getElementById('nav-admin-label').style.display = 'none';
       document.getElementById('nav-admin-config').style.display = 'none';
@@ -5294,6 +5299,7 @@ function setupApp(u) {
       document.getElementById('nav-report-contabilidad').style.display = 'none';
       document.getElementById('nav-report-estrategia').style.display = 'none';
       document.getElementById('nav-report-auditoria').style.display = 'none';
+      document.getElementById('nav-optometria').style.display = '';
       try { checkVentasVisibility(u); } catch(e) {}
     }
     if (u.permisos) {

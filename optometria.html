@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0e">
+<title>Optometría · Cabina — Ópticas Car & Era</title>
+<style>
+:root{
+  --bg:#0a0a0e;--surface:#14141a;--surface2:#1d1d26;--border:#2a2a35;
+  --white:#fff;--muted:#7a7a85;--accent:#c8f04a;--beige:#e2c6a6;
+  --warn:#f0b84a;--err:#f04a4a;--ok:#4af078;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--white);user-select:none;-webkit-user-select:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;outline:none}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+header{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12px}
+header .title{font-weight:700;color:var(--beige);font-size:13px}
+header .info{color:var(--muted);font-size:10px}
+header .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.btn-icon{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--white);transition:.15s}
+.btn-icon:hover{background:var(--border)}
+.btn-icon.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* Display area — el lienzo donde aparecen los tests */
+#display{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#fff}
+#display.dark{background:#000;color:#fff}
+#display.duochrome{background:linear-gradient(to right,#d0142c 50%,#0a8a3e 50%)}
+
+/* Footer controls */
+footer{flex-shrink:0;background:var(--surface);border-top:1px solid var(--border);padding:8px;display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap}
+footer .ctrl-group{display:flex;gap:4px;align-items:center;flex-shrink:0;border-right:1px solid var(--border);padding-right:8px;margin-right:4px}
+footer .ctrl-group:last-child{border-right:none}
+footer .ctrl-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+footer .size-display{font-size:14px;font-weight:700;color:var(--accent);min-width:60px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* Test selector grid (overlay) */
+#test-menu{position:fixed;inset:0;background:rgba(10,10,14,.95);backdrop-filter:blur(10px);z-index:50;display:none;flex-direction:column}
+#test-menu.open{display:flex}
+#test-menu header{position:relative}
+#test-menu .menu-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start}
+#test-menu .menu-cat{grid-column:1/-1;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-top:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+#test-menu .menu-cat:first-child{margin-top:0}
+#test-menu .test-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center;transition:.15s;display:flex;flex-direction:column;gap:6px;align-items:center}
+#test-menu .test-card:hover{border-color:var(--accent);background:var(--surface)}
+#test-menu .test-card.active{border-color:var(--accent);background:rgba(200,240,74,.08)}
+#test-menu .test-card .ico{font-size:22px}
+#test-menu .test-card .lbl{font-size:11px;font-weight:600;line-height:1.3}
+#test-menu .test-card .desc{font-size:9px;color:var(--muted);line-height:1.3}
+
+/* Calibration overlay */
+#calib{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;flex-direction:column;padding:16px;overflow-y:auto}
+#calib.open{display:flex}
+#calib h1{font-size:18px;color:var(--beige);margin-bottom:6px}
+#calib h2{font-size:13px;color:var(--accent);margin:14px 0 6px;letter-spacing:.05em;text-transform:uppercase}
+#calib p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+#calib .step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+#calib label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em}
+#calib input[type=number],#calib input[type=range]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--white);font-size:14px}
+#calib .btn-primary{background:var(--accent);color:#000;border-radius:8px;padding:12px 20px;font-weight:700;font-size:13px;width:100%;margin-top:6px}
+#calib .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--white);border-radius:8px;padding:10px 16px;font-size:12px;margin-top:6px}
+#calib-card{height:54mm;border:2px dashed var(--accent);background:rgba(200,240,74,.06);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center;margin:8px 0}
+#calib .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#calib .summary{background:rgba(200,240,74,.06);border:1px solid var(--accent);border-radius:6px;padding:10px;font-size:11px;color:var(--white);margin-top:8px;font-family:monospace;line-height:1.5}
+
+/* Test-specific styles */
+.opto-letter{font-family:'Sloan',Arial,sans-serif;font-weight:900;color:#000;line-height:1;text-align:center;letter-spacing:0.3em}
+.opto-letter.dark{color:#fff}
+.opto-row{display:flex;gap:.3em;justify-content:center;align-items:center}
+.opto-grid{display:flex;flex-direction:column;gap:.2em;align-items:center}
+.opto-isolate{background:rgba(200,200,200,.4);padding:0 .15em;border-radius:4px}
+
+/* Astigmatic clock */
+.astig-clock{position:relative;width:80vmin;height:80vmin;max-width:600px;max-height:600px}
+.astig-line{position:absolute;left:50%;top:50%;background:#000;transform-origin:center}
+
+/* Amsler */
+.amsler{display:grid;background:#000;border:2px solid #000}
+.amsler-cell{width:14px;height:14px;border:0.5px solid #fff;background:#000}
+.amsler-dot{position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%)}
+
+/* Pelli-Robson contrast */
+.contrast-row{display:flex;gap:.3em;justify-content:center;font-family:'Sloan',Arial,sans-serif;font-weight:900;font-size:60px}
+
+/* Worth 4 dots / fixation */
+.dot{border-radius:50%;display:inline-block}
+
+/* Maddox light */
+.maddox-bg{background:#000;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff}
+
+/* Stereogram + RDS */
+canvas.opto-canvas{max-width:100%;max-height:100%;background:#fff}
+
+/* Range slider styling */
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;background:var(--surface2);border-radius:4px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer}
+
+/* Help tooltip */
+.help-text{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:10px;max-width:240px;line-height:1.4}
+#display.dark .help-text{background:rgba(255,255,255,.15)}
+
+/* Phone optimization */
+@media (max-width:600px){
+  header{font-size:11px;padding:6px 8px}
+  header .info{display:none}
+  footer{padding:6px}
+  footer .ctrl-group{padding-right:6px;margin-right:2px}
+  .btn-icon{padding:5px 8px;font-size:10px}
+  footer .size-display{min-width:50px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ CALIBRACIÓN ═══ -->
+<div id="calib">
+  <h1>📐 Calibración</h1>
+  <p>Una sola vez por dispositivo. Sin esto los tamaños no son clínicamente correctos.</p>
+
+  <div class="step">
+    <h2>1. Tamaño físico de pantalla</h2>
+    <p>Pon una <b>tarjeta de crédito o débito</b> sobre la pantalla, alinéala dentro del rectángulo punteado y ajusta el slider hasta que el rectángulo coincida exactamente con el tamaño de la tarjeta.</p>
+    <div id="calib-card">Tarjeta 85.6 × 53.98 mm</div>
+    <label>Ajuste</label>
+    <input type="range" id="calib-slider" min="100" max="500" value="320">
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center" id="calib-density"></div>
+  </div>
+
+  <div class="step">
+    <h2>2. Distancia paciente</h2>
+    <p>Distancia desde la pantalla hasta los ojos del paciente.</p>
+    <div class="row">
+      <div>
+        <label>Distancia</label>
+        <input type="number" id="calib-distance" value="600" min="30" step="10">
+      </div>
+      <div>
+        <label>Unidad</label>
+        <select id="calib-unit" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--white);font-size:14px">
+          <option value="cm" selected>cm</option>
+          <option value="m">m</option>
+          <option value="ft">pies</option>
+          <option value="in">pulgadas</option>
+        </select>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:center">Estándar lejos: 6m / Cerca: 40cm</div>
+  </div>
+
+  <div class="step">
+    <h2>3. Identificación de cabina</h2>
+    <label>Sucursal</label>
+    <select id="calib-suc" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--white);font-size:14px;margin-bottom:8px">
+      <option value="Américas">Américas</option>
+      <option value="Pinocelli">Pinocelli</option>
+      <option value="Magnolia">Magnolia</option>
+    </select>
+    <label>Nombre cabina (opcional)</label>
+    <input type="text" id="calib-cabina" placeholder="Cabina 1" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;color:var(--white);font-size:14px">
+  </div>
+
+  <div class="summary" id="calib-summary"></div>
+  <button class="btn-primary" id="calib-save">✓ Guardar y empezar</button>
+  <button class="btn-secondary" id="calib-skip" style="display:none">Saltar (modo demo)</button>
+</div>
+
+<!-- ═══ MENÚ DE TESTS ═══ -->
+<div id="test-menu">
+  <header>
+    <span class="title">Seleccionar test</span>
+    <div class="right">
+      <button class="btn-icon" id="menu-close">✕ Cerrar</button>
+    </div>
+  </header>
+  <div class="menu-grid" id="menu-grid"></div>
+</div>
+
+<!-- ═══ APP PRINCIPAL ═══ -->
+<div id="app">
+  <header>
+    <button class="btn-icon" id="btn-menu">☰ Tests</button>
+    <div>
+      <div class="title" id="current-test-name">—</div>
+      <div class="info" id="current-test-info"></div>
+    </div>
+    <div class="right">
+      <button class="btn-icon" id="btn-fullscreen" title="Pantalla completa">⛶</button>
+      <button class="btn-icon" id="btn-recalib" title="Recalibrar">📐</button>
+      <button class="btn-icon" id="btn-help" title="Ayuda del test">?</button>
+    </div>
+  </header>
+
+  <div id="display"></div>
+
+  <footer id="controls"></footer>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// CALIBRATION & STATE
+// ═══════════════════════════════════════════════════════════
+var CARD_MM = 85.6; // ISO/IEC 7810 ID-1 card width
+var DEFAULT_DISTANCE_MM = 6000; // 6m for distance tests
+var calib = JSON.parse(localStorage.getItem('opto_calib') || 'null');
+
+function saveCalib() {
+  localStorage.setItem('opto_calib', JSON.stringify(calib));
+}
+
+function pxPerMm() { return calib ? calib.pxPerMm : 3.78; } // 3.78 ~= typical 96dpi
+function distanceMm() { return calib ? calib.distanceMm : DEFAULT_DISTANCE_MM; }
+
+// Calculate pixel size for an angular size at current distance
+function angSizeToPx(arcMinutes, customDistanceMm) {
+  var d = customDistanceMm || distanceMm();
+  var radians = (arcMinutes / 60) * (Math.PI / 180);
+  var sizeMm = d * Math.tan(radians);
+  return sizeMm * pxPerMm();
+}
+
+// Snellen line size: at 20/X, letter spans 5 arc minutes when at the X-foot reference.
+// We want the letter to span (X/20)*5 arc minutes regardless of actual distance D.
+// But what matters clinically is the angular size at the actual viewing distance.
+// LogMAR = log10(arcmin), 0.0 = 1 arcmin (20/20 stroke).
+// Letter total height = 5 * stroke = 5 * 10^logmar arcmin
+function snellenLogmarToHeightPx(logmar) {
+  var arcmin = 5 * Math.pow(10, logmar);
+  return angSizeToPx(arcmin);
+}
+
+// Snellen ratio (e.g. "20/40") to logmar
+function snellenToLogmar(num, den) { return Math.log10(den / num); }
+
+// LogMAR steps (standard chart): 1.0, 0.9, 0.8, ..., -0.3
+var LOGMAR_LINES = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, -0.1, -0.2, -0.3];
+
+// Snellen labels for each logmar
+function logmarToSnellen(logmar) {
+  // 20/X where X = 20 * 10^logmar
+  var den = Math.round(20 * Math.pow(10, logmar));
+  return '20/' + den;
+}
+function logmarToMetric(logmar) {
+  var den = Math.round(6 * Math.pow(10, logmar));
+  return '6/' + den;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CALIBRATION UI
+// ═══════════════════════════════════════════════════════════
+var calibCard = document.getElementById('calib-card');
+var calibSlider = document.getElementById('calib-slider');
+var calibDensity = document.getElementById('calib-density');
+var calibDistance = document.getElementById('calib-distance');
+var calibUnit = document.getElementById('calib-unit');
+var calibSuc = document.getElementById('calib-suc');
+var calibCabina = document.getElementById('calib-cabina');
+var calibSummary = document.getElementById('calib-summary');
+
+function unitToMm(val, unit) {
+  val = Number(val) || 0;
+  if (unit === 'cm') return val * 10;
+  if (unit === 'm') return val * 1000;
+  if (unit === 'ft') return val * 304.8;
+  if (unit === 'in') return val * 25.4;
+  return val;
+}
+
+function updateCalibPreview() {
+  var widthPx = Number(calibSlider.value);
+  var pxMm = widthPx / CARD_MM;
+  calibCard.style.width = widthPx + 'px';
+  var dist = unitToMm(calibDistance.value, calibUnit.value);
+  calibDensity.textContent = pxMm.toFixed(2) + ' px/mm · ' + (96 * (pxMm/3.78)).toFixed(0) + ' DPI';
+  calibSummary.innerHTML =
+    '<b>Resumen:</b><br>' +
+    'Densidad: ' + pxMm.toFixed(2) + ' px/mm<br>' +
+    'Distancia: ' + (dist/1000).toFixed(2) + ' m<br>' +
+    'Letra 20/20 = ' + ((dist * Math.tan((5/60)*Math.PI/180))).toFixed(2) + ' mm ≈ ' + (dist * Math.tan((5/60)*Math.PI/180) * pxMm).toFixed(0) + ' px';
+}
+
+calibSlider.addEventListener('input', updateCalibPreview);
+calibDistance.addEventListener('input', updateCalibPreview);
+calibUnit.addEventListener('change', updateCalibPreview);
+
+document.getElementById('calib-save').addEventListener('click', function(){
+  var widthPx = Number(calibSlider.value);
+  calib = {
+    pxPerMm: widthPx / CARD_MM,
+    distanceMm: unitToMm(calibDistance.value, calibUnit.value),
+    sucursal: calibSuc.value,
+    cabina: calibCabina.value || 'Cabina',
+    calibratedAt: new Date().toISOString()
+  };
+  saveCalib();
+  document.getElementById('calib').classList.remove('open');
+  initApp();
+});
+
+function openCalib() {
+  document.getElementById('calib').classList.add('open');
+  if (calib) {
+    calibSlider.value = Math.round(calib.pxPerMm * CARD_MM);
+    var distMm = calib.distanceMm;
+    if (distMm >= 1000) { calibDistance.value = (distMm/1000); calibUnit.value = 'm'; }
+    else { calibDistance.value = (distMm/10); calibUnit.value = 'cm'; }
+    if (calib.sucursal) calibSuc.value = calib.sucursal;
+    if (calib.cabina) calibCabina.value = calib.cabina;
+  }
+  updateCalibPreview();
+}
+
+document.getElementById('btn-recalib').addEventListener('click', openCalib);
+
+// ═══════════════════════════════════════════════════════════
+// TEST DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+var TESTS = [
+  // ── ACUIDAD VISUAL — LEJOS ──
+  { id:'snellen', cat:'Agudeza visual', name:'Snellen letras', icon:'🔠', desc:'Letras Sloan estándar', render:renderSnellen },
+  { id:'tumblingE', cat:'Agudeza visual', name:'E rotada', icon:'⊞', desc:'Tumbling E (analfabetos/niños)', render:renderTumblingE },
+  { id:'landoltC', cat:'Agudeza visual', name:'Landolt C', icon:'🅒', desc:'Anillos rotos', render:renderLandoltC },
+  { id:'numbers', cat:'Agudeza visual', name:'Números', icon:'🔢', desc:'Para iletrados', render:renderNumbers },
+  { id:'lea', cat:'Agudeza visual', name:'LEA símbolos', icon:'🍎', desc:'Pediátrico (manzana, casa, cuadrado, círculo)', render:renderLEA },
+  { id:'hotv', cat:'Agudeza visual', name:'HOTV', icon:'🔤', desc:'Niños alfabetizados parcial', render:renderHOTV },
+  { id:'isolate', cat:'Agudeza visual', name:'Aislar línea/letra', icon:'⊡', desc:'Mascarilla para evitar memorización', render:renderIsolate },
+
+  // ── ACUIDAD VISUAL — CERCA ──
+  { id:'jaeger', cat:'Visión cercana', name:'Cartilla Jaeger', icon:'📖', desc:'Lectura cerca (~40cm)', render:renderJaeger, near:true },
+  { id:'parrafo', cat:'Visión cercana', name:'Párrafo continuo', icon:'¶', desc:'Texto largo para fatiga', render:renderParrafo, near:true },
+
+  // ── ASTIGMATISMO ──
+  { id:'astigClock', cat:'Astigmatismo', name:'Reloj astigmático', icon:'🕛', desc:'Líneas radiales 12-6 / 3-9', render:renderAstigClock },
+  { id:'astigFan', cat:'Astigmatismo', name:'Abanico astigmático', icon:'🌟', desc:'Variante con abanico de líneas', render:renderAstigFan },
+
+  // ── COLOR / DALTONISMO ──
+  { id:'ishihara', cat:'Color', name:'Ishihara', icon:'🟢', desc:'Pseudoisocromáticos para daltonismo', render:renderIshihara },
+  { id:'colorMatch', cat:'Color', name:'Discriminación cromática', icon:'🎨', desc:'D-15 simplificado', render:renderColorMatch },
+
+  // ── REFRACCIÓN / EQUILIBRIO ──
+  { id:'duochrome', cat:'Refracción', name:'Duocromo rojo-verde', icon:'🟥', desc:'Bicromático para esfera', render:renderDuochrome },
+  { id:'crossCyl', cat:'Refracción', name:'Cilindro cruzado', icon:'⚆', desc:'Targets para JCC', render:renderCrossCyl },
+
+  // ── BINOCULAR / FUSIÓN ──
+  { id:'worth4', cat:'Binocular', name:'Worth 4 luces', icon:'🔴', desc:'Requiere gafas R/V anaglyph', render:renderWorth4 },
+  { id:'maddox', cat:'Binocular', name:'Maddox (luz)', icon:'💡', desc:'Punto de luz para varilla Maddox', render:renderMaddox },
+  { id:'stereo', cat:'Binocular', name:'Estereo (RDS)', icon:'👓', desc:'Random dot stereogram (anaglyph)', render:renderStereo },
+
+  // ── MÁCULA / CAMPO ──
+  { id:'amsler', cat:'Mácula', name:'Rejilla Amsler', icon:'⊞', desc:'Detección de metamorfopsias', render:renderAmsler },
+
+  // ── CONTRASTE ──
+  { id:'pelli', cat:'Contraste', name:'Pelli-Robson', icon:'⬜', desc:'Letras de contraste decreciente', render:renderPelli },
+
+  // ── ACOMODACIÓN / FIJACIÓN ──
+  { id:'fixation', cat:'Fijación', name:'Targets de fijación', icon:'⊕', desc:'Cruces y puntos', render:renderFixation },
+  { id:'flicker', cat:'Otros', name:'Test de parpadeo', icon:'⚡', desc:'Frecuencia crítica', render:renderFlicker },
+
+  // ── HERRAMIENTAS ──
+  { id:'blank', cat:'Herramientas', name:'Pantalla blanca', icon:'⬛', desc:'Para retroiluminación', render:renderBlank },
+  { id:'black', cat:'Herramientas', name:'Pantalla negra', icon:'⬜', desc:'Fondo oscuro', render:renderBlack },
+  { id:'oclude', cat:'Herramientas', name:'Oclusión central', icon:'⊙', desc:'Ojo derecho/izquierdo', render:renderOclude }
+];
+
+var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD' };
+
+// ═══════════════════════════════════════════════════════════
+// HELPER: Sloan letters (10 letters used in clinical testing)
+// ═══════════════════════════════════════════════════════════
+var SLOAN = ['C','D','H','K','N','O','R','S','V','Z'];
+function shuffle(arr, seed) {
+  var a = arr.slice(); var s = seed || Math.random();
+  for (var i = a.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280; var j = Math.floor((s/233280) * (i+1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function lineLetters(n, seed) { return shuffle(SLOAN, seed).slice(0, n).join(''); }
+
+// ═══════════════════════════════════════════════════════════
+// TEST RENDERERS
+// ═══════════════════════════════════════════════════════════
+var disp = document.getElementById('display');
+var ctrl = document.getElementById('controls');
+
+function clearDisp() {
+  disp.innerHTML = '';
+  disp.classList.remove('dark','duochrome');
+}
+
+// ── Snellen letters ──
+function renderSnellen(opts){
+  opts = opts || {};
+  clearDisp();
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+
+  var startLogmar = opts.startLogmar !== undefined ? opts.startLogmar : current.logmar + 0.2;
+  var endLogmar = opts.endLogmar !== undefined ? opts.endLogmar : current.logmar - 0.2;
+
+  if (opts.singleLine || current.isolate === 'line') {
+    var heightPx = snellenLogmarToHeightPx(current.logmar);
+    var line = document.createElement('div');
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (heightPx * 1.05) + 'px';
+    line.textContent = lineLetters(opts.lettersPerLine || 5, current.randomSeed + 0.5);
+    grid.appendChild(line);
+  } else if (opts.singleLetter || current.isolate === 'letter') {
+    var heightPx = snellenLogmarToHeightPx(current.logmar);
+    var letter = document.createElement('div');
+    letter.className = 'opto-letter';
+    letter.style.fontSize = (heightPx * 1.05) + 'px';
+    letter.textContent = SLOAN[Math.floor(((current.randomSeed*47)%10))];
+    grid.appendChild(letter);
+  } else {
+    // Multi-line chart
+    var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= startLogmar; });
+    var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= endLogmar; });
+    if (startIdx < 0) startIdx = 0;
+    if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+    if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
+    for (var i = startIdx; i <= endIdx; i++) {
+      var lm = LOGMAR_LINES[i];
+      var hPx = snellenLogmarToHeightPx(lm);
+      if (hPx < 4) continue;
+      var line = document.createElement('div');
+      line.className = 'opto-row opto-letter';
+      line.style.fontSize = (hPx * 1.05) + 'px';
+      var nLetters = lm > 0.5 ? 4 : 5;
+      line.textContent = lineLetters(nLetters, current.randomSeed + i*0.1);
+      grid.appendChild(line);
+    }
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── Tumbling E ──
+var E_ROTATIONS = [0, 90, 180, 270]; // right, down, left, up (E points to: → ↓ ← ↑)
+function renderTumblingE(opts){
+  clearDisp();
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+
+  if (current.isolate === 'letter') {
+    var heightPx = snellenLogmarToHeightPx(current.logmar);
+    var rot = E_ROTATIONS[Math.floor((current.randomSeed*100) % 4)];
+    var span = document.createElement('div');
+    span.className = 'opto-letter';
+    span.style.fontSize = (heightPx * 1.05) + 'px';
+    span.style.transform = 'rotate(' + rot + 'deg)';
+    span.style.display = 'inline-block';
+    span.textContent = 'E';
+    grid.appendChild(span);
+  } else {
+    // Multi-line
+    var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
+    var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
+    if (startIdx < 0) startIdx = 0;
+    if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+    for (var i = startIdx; i <= endIdx; i++) {
+      var lm = LOGMAR_LINES[i];
+      var hPx = snellenLogmarToHeightPx(lm);
+      if (hPx < 4) continue;
+      var line = document.createElement('div');
+      line.className = 'opto-row';
+      line.style.gap = (hPx * 0.3) + 'px';
+      var n = lm > 0.5 ? 4 : 5;
+      for (var k = 0; k < n; k++) {
+        var rot = E_ROTATIONS[Math.floor(((current.randomSeed*47 + i*k*13) % 4))];
+        var e = document.createElement('span');
+        e.className = 'opto-letter';
+        e.style.fontSize = (hPx * 1.05) + 'px';
+        e.style.transform = 'rotate(' + rot + 'deg)';
+        e.style.display = 'inline-block';
+        e.textContent = 'E';
+        line.appendChild(e);
+      }
+      grid.appendChild(line);
+    }
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── Landolt C ──
+function renderLandoltC(opts){
+  clearDisp();
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+
+  if (current.isolate === 'letter') {
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    var rot = E_ROTATIONS[Math.floor((current.randomSeed*100) % 4)];
+    grid.appendChild(landoltSvg(hPx, rot));
+  } else {
+    for (var i = startIdx; i <= endIdx; i++) {
+      var lm = LOGMAR_LINES[i];
+      var hPx = snellenLogmarToHeightPx(lm);
+      if (hPx < 4) continue;
+      var line = document.createElement('div');
+      line.className = 'opto-row';
+      line.style.gap = (hPx * 0.3) + 'px';
+      var n = lm > 0.5 ? 4 : 5;
+      for (var k = 0; k < n; k++) {
+        var rot = [0,45,90,135,180,225,270,315][Math.floor(((current.randomSeed*47 + i*k*13) % 8))];
+        line.appendChild(landoltSvg(hPx, rot));
+      }
+      grid.appendChild(line);
+    }
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+function landoltSvg(hPx, rotation) {
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', hPx);
+  svg.setAttribute('height', hPx);
+  svg.setAttribute('viewBox','0 0 50 50');
+  svg.style.display = 'inline-block';
+  // Outer circle 50, inner circle 30 (gap = 10), gap rotation
+  var outer = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  outer.setAttribute('cx',25); outer.setAttribute('cy',25); outer.setAttribute('r',25);
+  outer.setAttribute('fill','#000');
+  var inner = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  inner.setAttribute('cx',25); inner.setAttribute('cy',25); inner.setAttribute('r',15);
+  inner.setAttribute('fill','#fff');
+  // Gap (rectangle covering 1/5 of the ring)
+  var gap = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  gap.setAttribute('x',23); gap.setAttribute('y',0); gap.setAttribute('width',4); gap.setAttribute('height',12);
+  gap.setAttribute('fill','#fff');
+  gap.setAttribute('transform','rotate(' + rotation + ' 25 25)');
+  svg.appendChild(outer); svg.appendChild(inner); svg.appendChild(gap);
+  return svg;
+}
+
+// ── Numbers ──
+var DIGITS = ['2','3','4','5','6','7','8','9'];
+function renderNumbers(opts){
+  clearDisp();
+  var grid = document.createElement('div'); grid.className = 'opto-grid';
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+  for (var i = startIdx; i <= endIdx; i++) {
+    var lm = LOGMAR_LINES[i];
+    var hPx = snellenLogmarToHeightPx(lm);
+    if (hPx < 4) continue;
+    var line = document.createElement('div');
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    var n = lm > 0.5 ? 4 : 5;
+    line.textContent = shuffle(DIGITS, current.randomSeed + i*0.1).slice(0,n).join('');
+    grid.appendChild(line);
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── LEA Symbols ──
+var LEA_SYMBOLS = ['🍎','🏠','◯','◻']; // apple, house, circle, square (simplified)
+function leaSvg(hPx, sym) {
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', hPx); svg.setAttribute('height', hPx); svg.setAttribute('viewBox','0 0 100 100');
+  svg.style.display = 'inline-block';
+  var p = document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('fill','#000');
+  if (sym === 'apple') p.setAttribute('d','M50 15 C 30 15, 15 40, 30 70 Q 50 95 70 70 C 85 40, 70 15, 50 15 Z M50 5 C 45 5, 45 12, 50 15');
+  else if (sym === 'house') p.setAttribute('d','M50 10 L 90 45 L 80 45 L 80 90 L 20 90 L 20 45 L 10 45 Z');
+  else if (sym === 'circle') { p.setAttribute('d','M50 10 a40 40 0 1 0 .1 0 Z'); }
+  else if (sym === 'square') p.setAttribute('d','M15 15 L 85 15 L 85 85 L 15 85 Z');
+  svg.appendChild(p);
+  return svg;
+}
+function renderLEA(opts){
+  clearDisp();
+  var grid = document.createElement('div'); grid.className = 'opto-grid';
+  var syms = ['apple','house','circle','square'];
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+  for (var i = startIdx; i <= endIdx; i++) {
+    var hPx = snellenLogmarToHeightPx(LOGMAR_LINES[i]);
+    if (hPx < 4) continue;
+    var line = document.createElement('div');
+    line.className = 'opto-row';
+    line.style.gap = (hPx * 0.3) + 'px';
+    for (var k = 0; k < 4; k++) {
+      var sym = syms[Math.floor(((current.randomSeed*47 + i*k*13) % 4))];
+      line.appendChild(leaSvg(hPx, sym));
+    }
+    grid.appendChild(line);
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── HOTV ──
+var HOTV = ['H','O','T','V'];
+function renderHOTV(opts){
+  clearDisp();
+  var grid = document.createElement('div'); grid.className = 'opto-grid';
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar + 0.2; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= current.logmar - 0.2; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+  for (var i = startIdx; i <= endIdx; i++) {
+    var hPx = snellenLogmarToHeightPx(LOGMAR_LINES[i]);
+    if (hPx < 4) continue;
+    var line = document.createElement('div'); line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    var n = 4;
+    line.textContent = shuffle(HOTV, current.randomSeed + i*0.1).slice(0,n).join('');
+    grid.appendChild(line);
+  }
+  disp.appendChild(grid);
+  setControlsForSize();
+}
+
+// ── Isolate (line/letter) ──
+function renderIsolate(){
+  current.isolate = current.isolate === 'letter' ? 'line' : (current.isolate === 'line' ? 'none' : 'letter');
+  renderSnellen();
+}
+
+// ── Jaeger / near vision ──
+var JAEGER_SAMPLES = [
+  { j:1, label:'J1 (0.4 mm)', mm:0.4, text:'En la oscuridad encontramos a veces más luz que en pleno día.' },
+  { j:2, label:'J2 (0.5 mm)', mm:0.5, text:'La curiosidad es la mecha que enciende el aprendizaje.' },
+  { j:3, label:'J3 (0.6 mm)', mm:0.6, text:'Cada amanecer trae consigo nuevas oportunidades.' },
+  { j:5, label:'J5 (0.8 mm)', mm:0.8, text:'La paciencia es la madre de la sabiduría profunda.' },
+  { j:7, label:'J7 (1.0 mm)', mm:1.0, text:'Mira las pequeñas cosas con ojos atentos siempre.' },
+  { j:10, label:'J10 (1.5 mm)', mm:1.5, text:'El silencio dice mucho cuando se sabe escuchar.' },
+  { j:14, label:'J14 (2.0 mm)', mm:2.0, text:'Cada día es una página nueva en tu historia.' },
+  { j:18, label:'J18 (3.5 mm)', mm:3.5, text:'Vive sin miedo ni prisa.' },
+  { j:20, label:'J20 (5.0 mm)', mm:5.0, text:'Sé feliz hoy.' }
+];
+function renderJaeger(opts){
+  clearDisp();
+  // Use 40cm reference distance for near
+  var nearDist = 400;
+  var box = document.createElement('div');
+  box.style.maxWidth = '85%';
+  box.style.padding = '20px';
+  box.style.color = '#000';
+  box.style.lineHeight = '1.4';
+  box.style.fontFamily = 'Georgia,serif';
+  JAEGER_SAMPLES.forEach(function(s){
+    // Convert physical mm to pixels
+    var px = s.mm * pxPerMm();
+    if (px < 4) return;
+    var line = document.createElement('div');
+    line.style.fontSize = px + 'px';
+    line.style.marginBottom = '8px';
+    line.innerHTML = '<span style="font-size:9px;color:#888">' + s.label + ':</span> ' + s.text;
+    box.appendChild(line);
+  });
+  disp.appendChild(box);
+  setControlsForJaeger();
+}
+function renderParrafo(opts){
+  clearDisp();
+  var box = document.createElement('div');
+  box.style.maxWidth = '80%';
+  box.style.padding = '20px';
+  box.style.color = '#000';
+  box.style.lineHeight = '1.5';
+  box.style.fontFamily = 'Georgia,serif';
+  var px = (current.jaegerSize || 1.0) * pxPerMm();
+  box.style.fontSize = px + 'px';
+  box.textContent = 'En el corazón de la noche, cuando la ciudad duerme y solo se escucha el rumor lejano del viento, la mente alcanza a pensar con una claridad que durante el día le es ajena. Es entonces cuando las ideas más complejas se desenredan, cuando los problemas que parecían imposibles encuentran solución, y cuando recordamos que la calma es el verdadero motor del entendimiento. Por eso los grandes pensadores siempre han buscado el silencio, porque saben que en él se halla la voz que más vale escuchar.';
+  disp.appendChild(box);
+  setControlsForJaeger();
+}
+
+// ── Astigmatic clock ──
+function renderAstigClock(){
+  clearDisp();
+  var clock = document.createElement('div'); clock.className = 'astig-clock';
+  // 30 lines (every 6°) or 12 (every 30°)
+  var nLines = 12;
+  var lineWPx = 4 * pxPerMm() / 10; // ~0.4mm thick
+  for (var i = 0; i < nLines; i++) {
+    var angle = (i * 360 / nLines);
+    var line = document.createElement('div');
+    line.className = 'astig-line';
+    line.style.width = '40vmin';
+    line.style.height = lineWPx + 'px';
+    line.style.transform = 'translate(0,-50%) rotate(' + angle + 'deg)';
+    line.style.transformOrigin = 'left center';
+    line.style.left = '50%';
+    clock.appendChild(line);
+  }
+  // Hour numbers
+  var radius = 42;
+  for (var h = 1; h <= 12; h++) {
+    var ang = (h * 30 - 90) * Math.PI / 180;
+    var num = document.createElement('div');
+    num.style.position = 'absolute';
+    num.style.left = (50 + radius * Math.cos(ang)) + '%';
+    num.style.top = (50 + radius * Math.sin(ang)) + '%';
+    num.style.transform = 'translate(-50%,-50%)';
+    num.style.color = '#666';
+    num.style.fontSize = '14px';
+    num.textContent = h;
+    clock.appendChild(num);
+  }
+  disp.appendChild(clock);
+  setControlsForFixed();
+}
+
+// ── Astigmatic fan ──
+function renderAstigFan(){
+  clearDisp();
+  var fan = document.createElement('div');
+  fan.style.position = 'relative';
+  fan.style.width = '70vmin';
+  fan.style.height = '70vmin';
+  for (var i = 0; i <= 18; i++) {
+    var angle = (i * 10) - 90; // -90 to 90
+    var line = document.createElement('div');
+    line.style.position = 'absolute';
+    line.style.left = '50%';
+    line.style.top = '50%';
+    line.style.width = '40vmin';
+    line.style.height = '3px';
+    line.style.background = '#000';
+    line.style.transformOrigin = 'left center';
+    line.style.transform = 'rotate(' + angle + 'deg)';
+    fan.appendChild(line);
+    if (i % 3 === 0) {
+      var lbl = document.createElement('div');
+      lbl.style.position = 'absolute';
+      lbl.style.left = (50 + 42 * Math.cos(angle*Math.PI/180)) + '%';
+      lbl.style.top = (50 + 42 * Math.sin(angle*Math.PI/180)) + '%';
+      lbl.style.transform = 'translate(-50%,-50%)';
+      lbl.style.color = '#666';
+      lbl.style.fontSize = '12px';
+      lbl.textContent = (90 - i*10) + '°';
+      fan.appendChild(lbl);
+    }
+  }
+  disp.appendChild(fan);
+  setControlsForFixed();
+}
+
+// ── Ishihara (digital generation) ──
+var ISHIHARA_NUMBERS = ['12','8','6','29','57','5','3','15','74','2','45','7'];
+function renderIshihara(){
+  clearDisp();
+  var idx = (current.ishiharaIdx || 0) % ISHIHARA_NUMBERS.length;
+  var num = ISHIHARA_NUMBERS[idx];
+  var canvas = document.createElement('canvas');
+  canvas.className = 'opto-canvas';
+  var size = Math.min(600, window.innerHeight * 0.8);
+  canvas.width = size; canvas.height = size;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  canvas.style.borderRadius = '50%';
+  canvas.style.background = '#fff';
+  var ctx = canvas.getContext('2d');
+  // Background dots (yellow/green tones - normal sees as plate background)
+  // Number dots (red/orange tones - colorblind cannot distinguish from background)
+  drawIshiharaPlate(ctx, size, num);
+  disp.appendChild(canvas);
+  setControlsForIshihara();
+}
+function drawIshiharaPlate(ctx, size, number){
+  var bgColors = ['#dfa66e','#d4a06d','#b8915a','#c39862','#cc9d68','#dba874']; // beige/orange-ish
+  var fgColors = ['#7da97a','#86b083','#6a9a6a','#5f8d63','#71a276','#94b88f']; // greenish
+  // For protan/deutan, swap roles. Standard plate: green on tan background sees number "5" but RG-colorblind sees it merged.
+  // We'll draw text outline first to mask which dots get which color.
+  // Render number into off-screen canvas
+  var off = document.createElement('canvas'); off.width = size; off.height = size;
+  var oc = off.getContext('2d');
+  oc.fillStyle = '#fff'; oc.fillRect(0,0,size,size);
+  oc.fillStyle = '#000';
+  oc.font = 'bold ' + Math.round(size*0.55) + 'px Arial';
+  oc.textAlign = 'center'; oc.textBaseline = 'middle';
+  oc.fillText(number, size/2, size/2);
+  var imgData = oc.getImageData(0,0,size,size);
+  // Generate poisson-disk-like dots (simple grid+jitter)
+  var minR = size * 0.014;
+  var maxR = size * 0.034;
+  var step = maxR * 1.6;
+  for (var y = step; y < size - step; y += step) {
+    for (var x = step; x < size - step; x += step) {
+      var jx = x + (Math.random() - .5) * step * .6;
+      var jy = y + (Math.random() - .5) * step * .6;
+      // Check inside circle
+      var dx = jx - size/2, dy = jy - size/2;
+      if (dx*dx + dy*dy > (size/2 - 5)*(size/2 - 5)) continue;
+      var r = minR + Math.random() * (maxR - minR);
+      var pi = (Math.floor(jy) * size + Math.floor(jx)) * 4;
+      var isFg = imgData.data[pi] < 128; // black pixel means inside number
+      var palette = isFg ? fgColors : bgColors;
+      ctx.fillStyle = palette[Math.floor(Math.random() * palette.length)];
+      ctx.beginPath();
+      ctx.arc(jx, jy, r, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+}
+
+// ── Color matching (D-15 simplified, drag and drop) ──
+function renderColorMatch(){
+  clearDisp();
+  var info = document.createElement('div');
+  info.style.color = '#000'; info.style.padding = '20px';
+  info.innerHTML = '<h2 style="font-family:sans-serif">Test de discriminación cromática</h2><p style="max-width:600px">Muestra una serie de muestras de color en gradiente. El paciente debe ordenarlas (manual con tablet, o solo para mostrar referencia). Versión simplificada D-15.</p>';
+  var box = document.createElement('div');
+  box.style.display = 'flex'; box.style.gap = '4px'; box.style.flexWrap = 'wrap'; box.style.maxWidth = '700px'; box.style.padding = '0 20px';
+  // 15 colors around the color wheel (Munsell-inspired)
+  var colors = [];
+  for (var i = 0; i < 15; i++) {
+    var hue = (i / 15) * 360;
+    colors.push('hsl(' + hue + ', 60%, 55%)');
+  }
+  // Shuffle
+  shuffle(colors, current.randomSeed).forEach(function(c, idx){
+    var swatch = document.createElement('div');
+    swatch.style.width = '50px'; swatch.style.height = '60px'; swatch.style.background = c;
+    swatch.style.border = '1px solid #000'; swatch.style.borderRadius = '4px';
+    swatch.style.fontSize = '11px'; swatch.style.color = '#fff'; swatch.style.padding = '4px';
+    swatch.style.textShadow = '0 0 3px #000';
+    swatch.textContent = (idx+1);
+    box.appendChild(swatch);
+  });
+  info.appendChild(box);
+  disp.appendChild(info);
+  setControlsForFixed();
+}
+
+// ── Duochrome ──
+function renderDuochrome(){
+  clearDisp();
+  disp.classList.add('duochrome');
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+  grid.style.color = '#fff';
+  grid.style.fontFamily = "'Sloan',Arial,sans-serif";
+  grid.style.fontWeight = '900';
+  // Display 2-3 lines
+  var lines = [
+    {lm:0.3, n:4}, {lm:0.0, n:5}, {lm:-0.1, n:5}
+  ];
+  lines.forEach(function(l){
+    var hPx = snellenLogmarToHeightPx(l.lm);
+    if (hPx < 4) return;
+    var line = document.createElement('div');
+    line.className = 'opto-row';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.textContent = lineLetters(l.n, current.randomSeed + l.lm);
+    grid.appendChild(line);
+  });
+  disp.appendChild(grid);
+  setControlsForFixed();
+}
+
+// ── Cross-cylinder targets ──
+function renderCrossCyl(){
+  clearDisp();
+  var box = document.createElement('div');
+  box.style.color = '#000';
+  box.style.fontFamily = 'sans-serif';
+  box.style.textAlign = 'center';
+  // Group of dots to test refraction
+  var dotsGrid = document.createElement('div');
+  dotsGrid.style.display = 'grid';
+  dotsGrid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  dotsGrid.style.gap = '14px';
+  dotsGrid.style.padding = '20px';
+  for (var i = 0; i < 49; i++) {
+    var d = document.createElement('div');
+    d.style.width = '8px'; d.style.height = '8px'; d.style.borderRadius = '50%'; d.style.background = '#000';
+    dotsGrid.appendChild(d);
+  }
+  box.appendChild(dotsGrid);
+  // Lines for axis testing
+  var linesGroup = document.createElement('div');
+  linesGroup.style.marginTop = '24px';
+  linesGroup.innerHTML =
+    '<svg width="220" height="220" viewBox="0 0 220 220">' +
+    '<line x1="40" y1="50" x2="180" y2="50" stroke="#000" stroke-width="2"/>' +
+    '<line x1="40" y1="80" x2="180" y2="80" stroke="#000" stroke-width="2"/>' +
+    '<line x1="40" y1="110" x2="180" y2="110" stroke="#000" stroke-width="2"/>' +
+    '<line x1="40" y1="140" x2="180" y2="140" stroke="#000" stroke-width="2"/>' +
+    '<line x1="40" y1="170" x2="180" y2="170" stroke="#000" stroke-width="2"/>' +
+    '</svg>';
+  box.appendChild(linesGroup);
+  disp.appendChild(box);
+  setControlsForFixed();
+}
+
+// ── Worth 4 dots ──
+function renderWorth4(){
+  clearDisp();
+  disp.classList.add('dark');
+  var box = document.createElement('div');
+  box.style.position = 'relative';
+  box.style.width = '300px';
+  box.style.height = '300px';
+  // Diamond pattern: top red, bottom white, left green, right green
+  var positions = [
+    {top:'10%',left:'50%',color:'#ff0000'},
+    {top:'50%',left:'10%',color:'#00ff00'},
+    {top:'50%',left:'90%',color:'#00ff00'},
+    {top:'90%',left:'50%',color:'#ffffff'}
+  ];
+  positions.forEach(function(p){
+    var dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.position = 'absolute';
+    dot.style.top = p.top; dot.style.left = p.left;
+    dot.style.transform = 'translate(-50%,-50%)';
+    dot.style.width = '60px'; dot.style.height = '60px';
+    dot.style.background = p.color;
+    box.appendChild(dot);
+  });
+  var note = document.createElement('div');
+  note.style.position = 'absolute'; note.style.bottom = '20px'; note.style.left = '50%'; note.style.transform = 'translateX(-50%)';
+  note.style.color = '#888'; note.style.fontSize = '11px'; note.style.fontFamily = 'sans-serif';
+  note.textContent = '🚨 Requiere gafas anaglyph rojo-verde';
+  disp.appendChild(box);
+  disp.appendChild(note);
+  setControlsForFixed();
+}
+
+// ── Maddox light ──
+function renderMaddox(){
+  clearDisp();
+  disp.classList.add('dark');
+  var dot = document.createElement('div');
+  dot.style.width = '14px'; dot.style.height = '14px';
+  dot.style.borderRadius = '50%';
+  dot.style.background = '#fff';
+  dot.style.boxShadow = '0 0 30px #fff,0 0 60px rgba(255,255,255,.5)';
+  disp.appendChild(dot);
+  setControlsForFixed();
+}
+
+// ── Stereo (RDS) ──
+function renderStereo(){
+  clearDisp();
+  var canvas = document.createElement('canvas');
+  canvas.className = 'opto-canvas';
+  var w = 600, h = 400;
+  canvas.width = w; canvas.height = h;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h);
+  // Random dots, with a square region shifted by parallax
+  var dotSize = 3;
+  var density = 0.4;
+  for (var y = 0; y < h; y += dotSize) {
+    for (var x = 0; x < w; x += dotSize) {
+      if (Math.random() > density) continue;
+      // Shape area: rectangle 200x200 in center
+      var inShape = (x > w/2-100 && x < w/2+100 && y > h/2-100 && y < h/2+100);
+      var parallax = inShape ? 6 : 0;
+      // Red channel: original position. Green/Blue: shifted (anaglyph)
+      ctx.fillStyle = 'rgba(255,0,0,1)';
+      ctx.fillRect(x, y, dotSize, dotSize);
+      ctx.fillStyle = 'rgba(0,200,200,1)';
+      ctx.fillRect(x + parallax, y, dotSize, dotSize);
+    }
+  }
+  disp.appendChild(canvas);
+  var note = document.createElement('div');
+  note.style.position = 'absolute'; note.style.bottom = '12px';
+  note.style.color = '#666'; note.style.fontSize = '11px';
+  note.textContent = '🚨 Requiere gafas anaglyph rojo-cian';
+  disp.appendChild(note);
+  setControlsForFixed();
+}
+
+// ── Amsler ──
+function renderAmsler(){
+  clearDisp();
+  disp.classList.add('dark');
+  // 20cm grid at 30cm distance (standard) ~ 20cm = 200mm
+  var gridSizeMm = 200;
+  var gridSizePx = gridSizeMm * pxPerMm();
+  if (gridSizePx > window.innerHeight * 0.85) gridSizePx = window.innerHeight * 0.85;
+  var divisions = 20;
+  var cellPx = gridSizePx / divisions;
+  var grid = document.createElement('div');
+  grid.style.position = 'relative';
+  grid.style.width = gridSizePx + 'px';
+  grid.style.height = gridSizePx + 'px';
+  grid.style.background = '#000';
+  // Grid lines using SVG
+  var svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', gridSizePx); svg.setAttribute('height', gridSizePx);
+  for (var i = 0; i <= divisions; i++) {
+    var line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1', i*cellPx); line.setAttribute('y1', 0);
+    line.setAttribute('x2', i*cellPx); line.setAttribute('y2', gridSizePx);
+    line.setAttribute('stroke','#fff'); line.setAttribute('stroke-width','1');
+    svg.appendChild(line);
+    var line2 = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line2.setAttribute('x1', 0); line2.setAttribute('y1', i*cellPx);
+    line2.setAttribute('x2', gridSizePx); line2.setAttribute('y2', i*cellPx);
+    line2.setAttribute('stroke','#fff'); line2.setAttribute('stroke-width','1');
+    svg.appendChild(line2);
+  }
+  // Center fixation dot
+  var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('cx', gridSizePx/2); dot.setAttribute('cy', gridSizePx/2);
+  dot.setAttribute('r', 5); dot.setAttribute('fill','#fff');
+  svg.appendChild(dot);
+  grid.appendChild(svg);
+  disp.appendChild(grid);
+  setControlsForFixed();
+}
+
+// ── Pelli-Robson ──
+var CONTRAST_LEVELS = [1.0, 0.7, 0.5, 0.35, 0.25, 0.18, 0.13, 0.09, 0.06, 0.045, 0.03, 0.02, 0.014, 0.01];
+function renderPelli(){
+  clearDisp();
+  var box = document.createElement('div');
+  box.className = 'opto-grid';
+  // Larger fixed letters; vary contrast
+  var letterPx = 80; // standard size
+  CONTRAST_LEVELS.slice(0, 8).forEach(function(c, i){
+    var line = document.createElement('div');
+    line.className = 'contrast-row';
+    line.style.fontSize = letterPx + 'px';
+    var gray = Math.round(255 * (1 - c));
+    line.style.color = 'rgb(' + gray + ',' + gray + ',' + gray + ')';
+    line.textContent = lineLetters(3, current.randomSeed + i*0.3);
+    box.appendChild(line);
+  });
+  disp.appendChild(box);
+  setControlsForFixed();
+}
+
+// ── Fixation targets ──
+function renderFixation(){
+  clearDisp();
+  disp.classList.add('dark');
+  var idx = current.fixIdx || 0;
+  var targets = [
+    function(){ var d=document.createElement('div'); d.style.cssText='font-size:80px;color:#fff'; d.textContent='+'; return d; },
+    function(){ var d=document.createElement('div'); d.style.cssText='width:30px;height:30px;border-radius:50%;background:#fff'; return d; },
+    function(){ var d=document.createElement('div'); d.style.cssText='width:60px;height:60px;border:6px solid #fff;border-radius:50%'; return d; },
+    function(){ var d=document.createElement('div'); d.style.cssText='font-size:120px;color:#ff4040'; d.textContent='✕'; return d; },
+    function(){ var d=document.createElement('div'); d.style.cssText='font-size:100px;color:#fff'; d.innerHTML='⊕'; return d; }
+  ];
+  disp.appendChild(targets[idx % targets.length]());
+  setControlsForFixation();
+}
+
+// ── Flicker ──
+var flickerInterval = null;
+function renderFlicker(){
+  clearDisp();
+  disp.classList.add('dark');
+  if (flickerInterval) clearInterval(flickerInterval);
+  var dot = document.createElement('div');
+  dot.style.width = '120px'; dot.style.height = '120px';
+  dot.style.borderRadius = '50%'; dot.style.background = '#fff';
+  disp.appendChild(dot);
+  var freq = current.flickerHz || 10;
+  var on = true;
+  flickerInterval = setInterval(function(){
+    on = !on;
+    dot.style.background = on ? '#fff' : '#000';
+  }, 500/freq);
+  setControlsForFlicker();
+}
+
+// ── Blank screens ──
+function renderBlank(){ clearDisp(); disp.style.background = '#fff'; setControlsForFixed(); }
+function renderBlack(){ clearDisp(); disp.classList.add('dark'); setControlsForFixed(); }
+
+// ── Occlusion (left/right) ──
+function renderOclude(){
+  clearDisp();
+  disp.classList.add('dark');
+  var box = document.createElement('div');
+  box.style.color = '#fff'; box.style.fontSize = '24px'; box.style.textAlign = 'center';
+  box.innerHTML = '<div style="font-size:70px;margin-bottom:14px">' + (current.oe === 'OD' ? '👁 OD' : '👁 OI') + '</div><div>Ocluir el otro ojo</div>';
+  disp.appendChild(box);
+  setControlsForOclude();
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONTROLS BAR (per-test)
+// ═══════════════════════════════════════════════════════════
+function ctrlBtn(label, fn, active){
+  var b = document.createElement('button');
+  b.className = 'btn-icon' + (active ? ' active' : '');
+  b.textContent = label;
+  b.addEventListener('click', fn);
+  return b;
+}
+function ctrlGroup(){
+  var g = document.createElement('div'); g.className = 'ctrl-group'; return g;
+}
+function ctrlLabel(t){
+  var l = document.createElement('div'); l.className = 'ctrl-label'; l.textContent = t; return l;
+}
+
+function setControlsForSize(){
+  ctrl.innerHTML = '';
+  // Tamaño
+  var g1 = ctrlGroup();
+  g1.appendChild(ctrlLabel('Tamaño'));
+  g1.appendChild(ctrlBtn('▼', function(){ stepLogmar(-0.1); }));
+  var disp_ = document.createElement('div'); disp_.className='size-display';
+  disp_.textContent = logmarToSnellen(current.logmar);
+  g1.appendChild(disp_);
+  g1.appendChild(ctrlBtn('▲', function(){ stepLogmar(+0.1); }));
+  ctrl.appendChild(g1);
+  // Aislamiento
+  var g2 = ctrlGroup();
+  g2.appendChild(ctrlLabel('Aislar'));
+  g2.appendChild(ctrlBtn('Línea', function(){ current.isolate = current.isolate==='line'?'none':'line'; runCurrent(); }, current.isolate==='line'));
+  g2.appendChild(ctrlBtn('Letra', function(){ current.isolate = current.isolate==='letter'?'none':'letter'; runCurrent(); }, current.isolate==='letter'));
+  ctrl.appendChild(g2);
+  // Randomize
+  var g3 = ctrlGroup();
+  g3.appendChild(ctrlLabel('Letras'));
+  g3.appendChild(ctrlBtn('🔀 Cambiar', function(){ current.randomSeed = Math.random(); runCurrent(); }));
+  ctrl.appendChild(g3);
+  // OE selector
+  var g4 = ctrlGroup();
+  g4.appendChild(ctrlLabel('Ojo'));
+  g4.appendChild(ctrlBtn('OD', function(){ current.oe='OD'; runCurrent(); }, current.oe==='OD'));
+  g4.appendChild(ctrlBtn('OI', function(){ current.oe='OI'; runCurrent(); }, current.oe==='OI'));
+  g4.appendChild(ctrlBtn('AO', function(){ current.oe='AO'; runCurrent(); }, current.oe==='AO'));
+  ctrl.appendChild(g4);
+}
+
+function setControlsForJaeger(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Tamaño'));
+  g.appendChild(ctrlBtn('▼', function(){ current.jaegerSize = Math.max(0.4, (current.jaegerSize||1.0)-0.1); runCurrent(); }));
+  var s = document.createElement('div'); s.className='size-display'; s.textContent = (current.jaegerSize||1.0).toFixed(1)+' mm'; g.appendChild(s);
+  g.appendChild(ctrlBtn('▲', function(){ current.jaegerSize = Math.min(8.0, (current.jaegerSize||1.0)+0.1); runCurrent(); }));
+  ctrl.appendChild(g);
+}
+
+function setControlsForFixed(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Test'));
+  g.appendChild(ctrlBtn('🔀 Variar', function(){ current.randomSeed = Math.random(); runCurrent(); }));
+  ctrl.appendChild(g);
+  var g2 = ctrlGroup();
+  g2.appendChild(ctrlLabel('Ojo'));
+  g2.appendChild(ctrlBtn('OD', function(){ current.oe='OD'; }, current.oe==='OD'));
+  g2.appendChild(ctrlBtn('OI', function(){ current.oe='OI'; }, current.oe==='OI'));
+  ctrl.appendChild(g2);
+}
+
+function setControlsForIshihara(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Lámina'));
+  g.appendChild(ctrlBtn('◄', function(){ current.ishiharaIdx = Math.max(0, (current.ishiharaIdx||0)-1); runCurrent(); }));
+  var s = document.createElement('div'); s.className='size-display'; s.textContent = ((current.ishiharaIdx||0)+1)+'/'+ISHIHARA_NUMBERS.length; g.appendChild(s);
+  g.appendChild(ctrlBtn('►', function(){ current.ishiharaIdx = Math.min(ISHIHARA_NUMBERS.length-1, (current.ishiharaIdx||0)+1); runCurrent(); }));
+  ctrl.appendChild(g);
+}
+
+function setControlsForFixation(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Target'));
+  g.appendChild(ctrlBtn('Cruz', function(){ current.fixIdx=0; runCurrent(); }));
+  g.appendChild(ctrlBtn('Punto', function(){ current.fixIdx=1; runCurrent(); }));
+  g.appendChild(ctrlBtn('Anillo', function(){ current.fixIdx=2; runCurrent(); }));
+  g.appendChild(ctrlBtn('X roja', function(){ current.fixIdx=3; runCurrent(); }));
+  g.appendChild(ctrlBtn('⊕', function(){ current.fixIdx=4; runCurrent(); }));
+  ctrl.appendChild(g);
+}
+
+function setControlsForFlicker(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Frecuencia'));
+  g.appendChild(ctrlBtn('▼', function(){ current.flickerHz = Math.max(1, (current.flickerHz||10)-1); runCurrent(); }));
+  var s = document.createElement('div'); s.className='size-display'; s.textContent = (current.flickerHz||10)+' Hz'; g.appendChild(s);
+  g.appendChild(ctrlBtn('▲', function(){ current.flickerHz = Math.min(60, (current.flickerHz||10)+1); runCurrent(); }));
+  ctrl.appendChild(g);
+}
+
+function setControlsForOclude(){
+  ctrl.innerHTML = '';
+  var g = ctrlGroup();
+  g.appendChild(ctrlLabel('Ojo'));
+  g.appendChild(ctrlBtn('OD', function(){ current.oe='OD'; runCurrent(); }, current.oe==='OD'));
+  g.appendChild(ctrlBtn('OI', function(){ current.oe='OI'; runCurrent(); }, current.oe==='OI'));
+  ctrl.appendChild(g);
+}
+
+function stepLogmar(delta){
+  current.logmar = Math.max(-0.3, Math.min(1.0, current.logmar + delta));
+  runCurrent();
+}
+
+function runCurrent(){
+  if (!current.test) return;
+  if (flickerInterval) { clearInterval(flickerInterval); flickerInterval = null; }
+  current.test.render();
+  document.getElementById('current-test-name').textContent = current.test.name;
+  var info = current.test.cat + ' · ' + current.test.desc;
+  if (current.test.id === 'snellen' || current.test.id === 'tumblingE' || current.test.id === 'landoltC') {
+    info += ' · ' + logmarToSnellen(current.logmar) + ' (' + logmarToMetric(current.logmar) + ')';
+  }
+  document.getElementById('current-test-info').textContent = info;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MENU
+// ═══════════════════════════════════════════════════════════
+function buildMenu(){
+  var grid = document.getElementById('menu-grid');
+  grid.innerHTML = '';
+  var byCat = {};
+  TESTS.forEach(function(t){ if (!byCat[t.cat]) byCat[t.cat]=[]; byCat[t.cat].push(t); });
+  Object.keys(byCat).forEach(function(cat){
+    var h = document.createElement('div'); h.className='menu-cat'; h.textContent = cat; grid.appendChild(h);
+    byCat[cat].forEach(function(t){
+      var card = document.createElement('div');
+      card.className = 'test-card' + (current.test && current.test.id === t.id ? ' active' : '');
+      card.innerHTML = '<div class="ico">'+t.icon+'</div><div class="lbl">'+t.name+'</div><div class="desc">'+t.desc+'</div>';
+      card.addEventListener('click', function(){
+        current.test = t;
+        document.getElementById('test-menu').classList.remove('open');
+        runCurrent();
+      });
+      grid.appendChild(card);
+    });
+  });
+}
+document.getElementById('btn-menu').addEventListener('click', function(){ buildMenu(); document.getElementById('test-menu').classList.add('open'); });
+document.getElementById('menu-close').addEventListener('click', function(){ document.getElementById('test-menu').classList.remove('open'); });
+
+// ═══════════════════════════════════════════════════════════
+// FULLSCREEN, HELP
+// ═══════════════════════════════════════════════════════════
+document.getElementById('btn-fullscreen').addEventListener('click', function(){
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){});
+  else document.exitFullscreen();
+});
+document.getElementById('btn-help').addEventListener('click', function(){
+  if (!current.test) return;
+  alert(current.test.name + '\n\n' + current.test.desc + '\n\nCategoría: ' + current.test.cat);
+});
+
+// ═══════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('keydown', function(e){
+  if (document.getElementById('calib').classList.contains('open')) return;
+  if (document.getElementById('test-menu').classList.contains('open')) {
+    if (e.key === 'Escape') document.getElementById('test-menu').classList.remove('open');
+    return;
+  }
+  if (e.key === 'ArrowUp') { stepLogmar(+0.1); e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { stepLogmar(-0.1); e.preventDefault(); }
+  else if (e.key === 'm' || e.key === 'M') document.getElementById('btn-menu').click();
+  else if (e.key === 'r' || e.key === 'R') { current.randomSeed = Math.random(); runCurrent(); }
+  else if (e.key === 'f' || e.key === 'F') document.getElementById('btn-fullscreen').click();
+  else if (e.key === 'l' || e.key === 'L') { current.isolate = current.isolate==='line'?'none':'line'; runCurrent(); }
+  else if (e.key === 'i' || e.key === 'I') { current.isolate = current.isolate==='letter'?'none':'letter'; runCurrent(); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function initApp(){
+  current.test = TESTS[0]; // Snellen by default
+  runCurrent();
+}
+
+if (!calib) {
+  openCalib();
+} else {
+  initApp();
+}
+</script>
+</body>
+</html>
