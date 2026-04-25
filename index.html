@@ -2882,6 +2882,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     <select class="ord-input" id="cfg-asesor-suc"><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="_global">Global (todas)</option></select>
                   </div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Comisi&oacute;n %</label><input class="ord-input" id="cfg-asesor-com" type="number" value="2" min="0" max="10" step="0.5" style="width:60px"></div>
+                  <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Inicio (opc.)</label><input class="ord-input" id="cfg-asesor-inicio" type="date" style="width:130px" title="Fecha en que empezó (para pro-rateo de su primera quincena)"></div>
                   <button class="btn btn-p btn-sm" onclick="agregarAsesorConfig()">+ Agregar</button>
                 </div>
               </div>
@@ -16557,6 +16558,7 @@ async function renderAsesoresConfig() {
   var globales = cfg.globales || [];
   var comPcts = cfg.comisiones || {};
   var comDef = cfg.comision_default || 2;
+  var fechaInicios = cfg.fecha_inicio || {};
   var el = document.getElementById('cfg-asesores-list');
   if (!el) return;
   var html = '';
@@ -16567,8 +16569,9 @@ async function renderAsesoresConfig() {
     html += '<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:' + c + ';margin-bottom:4px">' + suc + '</div>';
     names.forEach(function(n) {
       var pct = comPcts[n] !== undefined ? comPcts[n] : comDef;
+      var fInicio = fechaInicios[n];
       html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.03)">';
-      html += '<span style="flex:1;font-size:12px;color:var(--white)">' + n + '</span>';
+      html += '<span style="flex:1;font-size:12px;color:var(--white)">' + n + (fInicio ? '<span style="font-size:9px;color:#e8a84a;margin-left:6px">desde ' + fInicio + '</span>' : '') + '</span>';
       html += '<span style="font-size:11px;color:' + (pct === 1 ? '#e8a84a' : '#72c47e') + ';font-weight:700">' + pct + '%</span>';
       html += '<button onclick="eliminarAsesorConfig(\'' + suc + '\',\'' + n.replace(/'/g,"\\'") + '\')" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:12px;padding:2px 4px" title="Eliminar">✕</button>';
       html += '</div>';
@@ -16594,23 +16597,27 @@ async function agregarAsesorConfig() {
   var nombre = document.getElementById('cfg-asesor-nombre')?.value?.trim();
   var suc = document.getElementById('cfg-asesor-suc')?.value;
   var com = parseFloat(document.getElementById('cfg-asesor-com')?.value) || 2;
+  var inicio = document.getElementById('cfg-asesor-inicio')?.value || '';
   if (!nombre) { toast('Ingresa el nombre del asesor', true); return; }
   await cargarAsesoresConfig();
   var cfg = _asesoresConfig || {};
   if (!cfg.sucursales) cfg.sucursales = {};
   if (!cfg.globales) cfg.globales = [];
   if (!cfg.comisiones) cfg.comisiones = {};
+  if (!cfg.fecha_inicio) cfg.fecha_inicio = {};
   if (suc === '_global') {
     if (!cfg.globales.includes(nombre)) cfg.globales.push(nombre);
   } else {
     if (!cfg.sucursales[suc]) cfg.sucursales[suc] = [];
     if (!cfg.sucursales[suc].includes(nombre)) cfg.sucursales[suc].push(nombre);
     if (com !== (cfg.comision_default || 2)) cfg.comisiones[nombre] = com;
+    if (inicio) cfg.fecha_inicio[nombre] = inicio;
   }
   var { error } = await db.from('app_config').upsert({ id: 'asesores', value: cfg }, { onConflict: 'id' });
   if (error) { toast('Error: ' + error.message, true); return; }
   _asesoresConfig = cfg;
   document.getElementById('cfg-asesor-nombre').value = '';
+  document.getElementById('cfg-asesor-inicio').value = '';
   toast('✓ Asesor agregado: ' + nombre);
   renderAsesoresConfig();
 }
@@ -16627,6 +16634,7 @@ async function eliminarAsesorConfig(suc, nombre) {
     }
   }
   if (cfg.comisiones) delete cfg.comisiones[nombre];
+  if (cfg.fecha_inicio) delete cfg.fecha_inicio[nombre];
   var { error } = await db.from('app_config').upsert({ id: 'asesores', value: cfg }, { onConflict: 'id' });
   if (error) { toast('Error: ' + error.message, true); return; }
   _asesoresConfig = cfg;
@@ -23553,6 +23561,7 @@ async function calcularComisiones() {
   var comPcts = cfg.comisiones || {};
   var comDefault = cfg.comision_default || 2;
   var divisoresFijos = cfg.divisores || {};
+  var fechaInicios = cfg.fecha_inicio || {};
   var numAsesores = divisoresFijos[suc] || asesoresSuc.length;
 
   // Fetch pagos de ventas de esta sucursal en el período
@@ -23577,13 +23586,29 @@ async function calcularComisiones() {
     { lbl: 'Base / asesor', val: '$' + basePorAsesor.toLocaleString('es-MX', {minimumFractionDigits:2}), color: 'var(--beige)' }
   ].map(function(s) { return '<div class="stat"><div class="stat-lbl">' + s.lbl + '</div><div class="stat-val" style="color:' + s.color + '">' + s.val + '</div></div>'; }).join('');
 
-  // Table
+  // Table — pro-rateo si la asesora empezó dentro del periodo
+  var periodoStartMs = new Date(utcStart).getTime();
   var totalComisiones = 0;
   var rows = asesoresSuc.map(function(nombre) {
     var pct = comPcts[nombre] !== undefined ? comPcts[nombre] : comDefault;
-    var comision = basePorAsesor * (pct / 100);
+    var fInicio = fechaInicios[nombre];
+    var asesoraBase = basePorAsesor;
+    var prorateado = null;
+    if (fInicio) {
+      var fInicioMs = new Date(fInicio + 'T00:00:00-06:00').getTime();
+      if (fInicioMs > periodoStartMs) {
+        // Pro-ratear: solo cuenta ingresos desde fecha_inicio
+        var asesoraPagos = pagos.filter(function(p){ return new Date(p.created_at).getTime() >= fInicioMs; });
+        var asesoraCredAb = credAb.filter(function(a){ return new Date(a.created_at).getTime() >= fInicioMs; });
+        var ingresoPropio = asesoraPagos.reduce(function(s,p){ return s + Number(p.monto); }, 0)
+                          + asesoraCredAb.reduce(function(s,a){ return s + Number(a.monto); }, 0);
+        asesoraBase = numAsesores > 0 ? ingresoPropio / numAsesores : 0;
+        prorateado = fInicio;
+      }
+    }
+    var comision = asesoraBase * (pct / 100);
     totalComisiones += comision;
-    return { nombre: nombre, pct: pct, base: basePorAsesor, comision: comision };
+    return { nombre: nombre, pct: pct, base: asesoraBase, comision: comision, prorateado: prorateado };
   });
 
   var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
@@ -23595,7 +23620,7 @@ async function calcularComisiones() {
   html += '</tr></thead><tbody>';
   rows.forEach(function(r) {
     html += '<tr style="border-top:1px solid rgba(255,255,255,0.04)">';
-    html += '<td style="padding:10px 14px;color:var(--white);font-weight:600">' + r.nombre + '</td>';
+    html += '<td style="padding:10px 14px;color:var(--white);font-weight:600">' + r.nombre + (r.prorateado ? '<br><span style="font-size:9px;color:#e8a84a;font-weight:400">desde ' + r.prorateado + ' (pro-rateado)</span>' : '') + '</td>';
     html += '<td style="padding:10px 8px;text-align:right;color:var(--muted)">$' + r.base.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</td>';
     html += '<td style="padding:10px 8px;text-align:center;color:' + (r.pct === 1 ? '#e8a84a' : '#72c47e') + ';font-weight:700">' + r.pct + '%</td>';
     html += '<td style="padding:10px 14px;text-align:right;color:#72c47e;font-weight:700;font-size:15px">$' + r.comision.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</td>';

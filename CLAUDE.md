@@ -414,7 +414,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v276 — Optometría cabina: nuevo `optometria.html` standalone con 25 tests profesionales (Snellen, Tumbling E, Landolt C, números, LEA pediátrico, HOTV, Jaeger, reloj/abanico astigmático, Ishihara, duocromo, Worth 4, Maddox, RDS, Amsler, Pelli-Robson, fijación, etc.). Calibración pixel/mm con tarjeta de crédito. Acceso desde sidebar (admin + sucursal + gerencia, oculto para laboratorio).
+**Última versión**: v277 — Comisiones: campo `fecha_inicio` por asesor para pro-rateo de primera quincena. Cuando se agrega un asesor con fecha de inicio dentro del periodo seleccionado, el cálculo solo cuenta ingresos desde esa fecha. UI en Configuración → Equipo (campo "Inicio (opc.)" al agregar asesor). Aplicado a Edna Karina Rodriguez (Magnolia, inició 2026-04-09).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
