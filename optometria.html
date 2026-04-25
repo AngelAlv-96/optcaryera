@@ -667,6 +667,66 @@ var TESTS = [
     interpret:'Normal: 35-50 Hz. CFF disminuida o asimétrica entre ojos = sospecha neuropatía óptica.'
   }},
 
+  // ── TESTS ESPECIALIZADOS (Smart Optometry-style) ──
+  { id:'schober', cat:'Binocular', name:'Schober', icon:'⊕', desc:'Cruz roja + anillo verde (foria)', render:renderSchober, ins:{
+    purpose:'Detectar y medir forias horizontales y verticales con cruz roja + anillos verdes.',
+    setup:'Px con gafas anaglyph rojo (OD) + verde (OI). Distancia 40cm o 6m según preferencia. Pantalla negra.',
+    procedure:['OD ve la cruz roja, OI ve los anillos verdes concéntricos.','Pregunta: "¿La cruz pasa por el centro de los anillos?"','Si CENTRADA → no hay foria horizontal/vertical.','Si la cruz está a la DERECHA del centro → exoforia.','Si la cruz está a la IZQUIERDA → endoforia.','Si la cruz está ARRIBA del centro → hiperforia OI.','Si está ABAJO → hiperforia OD.'],
+    interpret:'Forias pequeñas (1-2 dioptrías prismáticas) son normales. Mide magnitud con prismas si es sintomática.',
+    warn:'⚠️ Requiere gafas anaglyph rojo-verde.'
+  }},
+  { id:'oknStripes', cat:'Otros', name:'OKN Stripes', icon:'║', desc:'Nistagmus optoquinético (movimiento)', render:renderOKN, ins:{
+    purpose:'Evaluar respuesta optoquinética (OKN) — útil para detectar simulación de ceguera y evaluar visión en bebés.',
+    setup:'Pantalla a ~50cm del paciente. Pídele que mire la pantalla pero NO siga las líneas con los ojos.',
+    procedure:['Las líneas se mueven horizontalmente.','Si el px tiene visión, sus ojos automáticamente harán pequeños movimientos en sacudidas (nistagmus optoquinético) — es REFLEJO, no se puede simular ausencia.','Observa los ojos del px durante 10-20 segundos.'],
+    interpret:'Nistagmus presente = visión funcional. Ausencia con resto del examen positivo = sospecha de simulación. En bebés/niños no verbales, presencia = visión >20/400 mínimo.'
+  }},
+  { id:'fluor', cat:'Herramientas', name:'Luz cobalto azul', icon:'🔵', desc:'Para fluoresceína (córnea, lentes)', render:renderFluor, ins:{
+    purpose:'Iluminación azul cobalto (~470 nm) para excitar fluoresceína sódica — visualiza erosiones corneales, defectos epiteliales, fit de LC.',
+    setup:'Pantalla con brillo máximo. Px con gota de fluoresceína aplicada previamente.',
+    procedure:['Acerca la pantalla a 5-10cm del ojo del px.','Las áreas con fluoresceína teñida brillarán verde-amarillo.','Áreas con erosión, abrasión o ojo seco severo se ven verdes brillantes.','Para lentes de contacto: evalúa el fit observando dónde se acumula la fluoresceína.'],
+    interpret:'Tinción punteada difusa = ojo seco. Tinción focal grande = abrasión o úlcera. Patrón circunferencial = LC mal ajustada.'
+  }},
+  { id:'redDesat', cat:'Color', name:'Desaturación rojo', icon:'🔴', desc:'Asimetría neuro-óptica', render:renderRedDesat, ins:{
+    purpose:'Detectar neuropatía óptica unilateral comparando saturación del color rojo entre ambos ojos.',
+    setup:'Iluminación normal. Distancia 1m.',
+    procedure:['Ocluye un ojo, muestra el cuadro rojo, pregunta "¿De qué color lo ves?"','Repite con el otro ojo y misma pregunta.','Pide al px que compare: "¿Igual de rojo en ambos ojos? ¿O en uno se ve más apagado, rosa, naranja?"'],
+    interpret:'Si un ojo ve el rojo más DESATURADO (apagado/rosa) → sospecha neuritis óptica, neuropatía del nervio óptico u otra patología neuro-oftálmica de ese lado. Confirmar con OCT, campos visuales y/o evaluación neuro.'
+  }},
+  { id:'hirschberg', cat:'Binocular', name:'Hirschberg', icon:'💠', desc:'Reflejo corneal para estrabismo', render:renderHirschberg, ins:{
+    purpose:'Evaluar alineación ocular observando posición del reflejo corneal de una luz puntual. Detecta estrabismo manifiesto.',
+    setup:'Cuarto en penumbra. Px sentado a 50cm. Observador detrás de la pantalla.',
+    procedure:['Pídele al px que mire fijamente el punto de luz brillante.','Observa la posición del reflejo corneal en cada ojo.','Compara entre los dos ojos.'],
+    interpret:'Reflejo CENTRADO en ambas pupilas = ortotropía. Reflejo desplazado en un ojo:\n• Hacia afuera (temporal) → endotropía de ese ojo\n• Hacia adentro (nasal) → exotropía\n• Hacia abajo → hipertropía\nCada mm de desplazamiento ≈ 22 dioptrías prismáticas.'
+  }},
+  { id:'aniseikonia', cat:'Binocular', name:'Aniseiconia', icon:'⬓', desc:'Diferencia de tamaño entre ojos', render:renderAniseikonia, ins:{
+    purpose:'Detectar aniseiconia (diferencia de tamaño percibido entre ambos ojos), común en anisometropía corregida o pseudofaquia.',
+    setup:'Px con gafas anaglyph rojo (OD) + verde (OI). Distancia 50cm. Pantalla negra.',
+    procedure:['OD ve el semicírculo rojo (izquierdo), OI ve el verde (derecho).','Pregunta: "¿Las dos mitades se ven del mismo tamaño?"','Si SÍ → no hay aniseiconia clínicamente significativa.','Si una se ve más GRANDE que la otra → aniseiconia. Mide el % aproximado.'],
+    interpret:'Diferencia >3% = aniseiconia significativa, puede causar fatiga, mareo, supresión. Tratamiento: igualar potencias, usar lentes iseicónicas o LC en el ojo más miope.',
+    warn:'⚠️ Requiere gafas anaglyph rojo-verde.'
+  }},
+  { id:'memRet', cat:'Refracción', name:'MEM target', icon:'📝', desc:'Texto cerca para retinoscopía MEM', render:renderMEM, ins:{
+    purpose:'Target de lectura para retinoscopía MEM (Monocular Estimate Method) — mide el lag de acomodación durante lectura cercana.',
+    setup:'Distancia 40cm. Px con su corrección de cerca habitual o sin corrección. Iluminación normal.',
+    procedure:['Pídele al px que lea el texto en voz alta a 40cm.','Mientras lee, el optometrista usa retinoscopio para observar el reflejo retinal.','Coloca lentes positivos (+0.25, +0.50…) hasta neutralizar el reflejo.','Anota el valor neutralizante = lag acomodativo.'],
+    interpret:'Lag normal: +0.25 a +0.75 D. Lag alto (>+1.00) = insuficiencia acomodativa. Lag bajo o negativo (-0.25) = exceso acomodativo / fatiga.'
+  }},
+
+  // ── CALCULADORAS ──
+  { id:'vertexCalc', cat:'Calculadoras', name:'Vértice', icon:'🧮', desc:'Conversión potencia por cambio de vértice', render:renderVertexCalc, ins:{
+    purpose:'Convertir la potencia de un lente al cambiar la distancia entre el lente y el ojo (vértice).',
+    setup:'Útil al pasar de armazón (vértice ~14mm) a lente de contacto (vértice 0mm) o viceversa.',
+    procedure:['Ingresa la potencia original.','Ingresa el vértice actual y el nuevo (en mm).','El resultado se calcula automáticamente.'],
+    interpret:'Para potencias < ±4.00 D la diferencia es despreciable. Por encima de ±4.00 D la diferencia es clínicamente significativa.'
+  }},
+  { id:'avCalc', cat:'Calculadoras', name:'Conversión AV', icon:'🔄', desc:'Snellen ↔ LogMAR ↔ decimal', render:renderAVCalc, ins:{
+    purpose:'Convertir agudeza visual entre todos los formatos comunes: Snellen pies (20/X), métrico (6/X), LogMAR y decimal.',
+    setup:'Cuando reportes AV en formatos diferentes (paper clínica, software, investigación).',
+    procedure:['Ingresa el valor en cualquier campo.','Los otros tres se calculan automáticamente.'],
+    interpret:'Equivalencias clave: 20/20 = 6/6 = 1.0 decimal = 0.0 LogMAR (visión normal). 20/40 = 6/12 = 0.5 decimal = 0.3 LogMAR. 20/200 = 6/60 = 0.1 decimal = 1.0 LogMAR.'
+  }},
+
   // ── HERRAMIENTAS ──
   { id:'blank', cat:'Herramientas', name:'Pantalla blanca', icon:'⬛', desc:'Para retroiluminación', render:renderBlank, ins:{
     purpose:'Pantalla totalmente blanca para retroiluminar. Útil para revisar pestañeo, lágrimas, transparencia corneal con linterna oblicua.',
@@ -1844,6 +1904,207 @@ function renderFlicker(){
     dot.style.background = on ? '#fff' : '#000';
   }, 500/freq);
   setControlsForFlicker();
+}
+
+// ── Schober (cruz roja + anillos verdes para foria) ──
+function renderSchober(){
+  clearDisp();
+  disp.classList.add('dark');
+  var svgNS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(svgNS,'svg');
+  svg.setAttribute('width','280'); svg.setAttribute('height','280');
+  svg.setAttribute('viewBox','-100 -100 200 200');
+  // Cruz roja (OD con filtro rojo)
+  var hL = document.createElementNS(svgNS,'line');
+  hL.setAttribute('x1',-80); hL.setAttribute('y1',0); hL.setAttribute('x2',80); hL.setAttribute('y2',0);
+  hL.setAttribute('stroke','#ff0000'); hL.setAttribute('stroke-width','3'); svg.appendChild(hL);
+  var vL = document.createElementNS(svgNS,'line');
+  vL.setAttribute('x1',0); vL.setAttribute('y1',-80); vL.setAttribute('x2',0); vL.setAttribute('y2',80);
+  vL.setAttribute('stroke','#ff0000'); vL.setAttribute('stroke-width','3'); svg.appendChild(vL);
+  // Anillos verdes concéntricos (OI con filtro verde)
+  [25, 50, 75].forEach(function(r){
+    var c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx',0); c.setAttribute('cy',0); c.setAttribute('r',r);
+    c.setAttribute('stroke','#00ff00'); c.setAttribute('stroke-width','2.5'); c.setAttribute('fill','none');
+    svg.appendChild(c);
+  });
+  // Punto central
+  var dot = document.createElementNS(svgNS,'circle');
+  dot.setAttribute('cx',0); dot.setAttribute('cy',0); dot.setAttribute('r',2.5);
+  dot.setAttribute('fill','#ffffff');
+  svg.appendChild(dot);
+  disp.appendChild(svg);
+  var note = document.createElement('div');
+  note.style.cssText = 'position:absolute;bottom:12px;color:#666;font-size:11px;font-family:Outfit';
+  note.textContent = '🚨 Requiere gafas anaglyph rojo (OD) + verde (OI)';
+  disp.appendChild(note);
+  setControlsForFixed();
+}
+
+// ── OKN Stripes (movimiento) ──
+var _oknStyle = null;
+function renderOKN(){
+  clearDisp();
+  if (!document.getElementById('okn-keyframes')) {
+    var st = document.createElement('style');
+    st.id = 'okn-keyframes';
+    st.textContent = '@keyframes okn { from { background-position: 0 0; } to { background-position: -120px 0; } }';
+    document.head.appendChild(st);
+  }
+  var box = document.createElement('div');
+  box.style.cssText = 'position:absolute;inset:0;background:repeating-linear-gradient(90deg,#000 0px,#000 30px,#fff 30px,#fff 60px);animation:okn 1.5s linear infinite';
+  disp.appendChild(box);
+  setControlsForFixed();
+}
+
+// ── Luz cobalto azul (fluoresceína) ──
+function renderFluor(){
+  clearDisp();
+  disp.style.background = '#0036ff';
+  setControlsForFixed();
+}
+
+// ── Red Desaturation ──
+function renderRedDesat(){
+  clearDisp();
+  disp.classList.add('dark');
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#ff0000;width:60vmin;height:60vmin;max-width:420px;max-height:420px;border-radius:14px;box-shadow:0 0 40px rgba(255,0,0,.5)';
+  disp.appendChild(box);
+  setControlsForFixed();
+}
+
+// ── Hirschberg (luz puntual brillante) ──
+function renderHirschberg(){
+  clearDisp();
+  disp.classList.add('dark');
+  var dot = document.createElement('div');
+  dot.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 0 60px #fff,0 0 120px rgba(255,255,255,.6)';
+  disp.appendChild(dot);
+  setControlsForFixed();
+}
+
+// ── Aniseiconia ──
+function renderAniseikonia(){
+  clearDisp();
+  disp.classList.add('dark');
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:0;align-items:center';
+  var left = document.createElement('div');
+  left.style.cssText = 'width:180px;height:240px;background:#ff0000;border-radius:240px 0 0 240px;border-right:1px solid #000';
+  var right = document.createElement('div');
+  right.style.cssText = 'width:180px;height:240px;background:#00ff00;border-radius:0 240px 240px 0';
+  wrap.appendChild(left); wrap.appendChild(right);
+  disp.appendChild(wrap);
+  var note = document.createElement('div');
+  note.style.cssText = 'position:absolute;bottom:12px;color:#666;font-size:11px;font-family:Outfit';
+  note.textContent = '🚨 Requiere gafas anaglyph rojo (OD) + verde (OI)';
+  disp.appendChild(note);
+  setControlsForFixed();
+}
+
+// ── MEM Retinoscopy target ──
+function renderMEM(){
+  clearDisp();
+  var box = document.createElement('div');
+  box.style.cssText = 'color:#000;font-family:Georgia,serif;text-align:center;padding:20px;max-width:80%;line-height:1.6';
+  var pxSize = 1.0 * pxPerMm();
+  if (pxSize < 8) pxSize = 8;
+  box.innerHTML = '<div style="font-size:'+pxSize+'px">' +
+    '<p>Lee este texto a 40 cm de distancia mientras el optometrista observa con el retinoscopio.</p>' +
+    '<p>Mantén la vista enfocada en estas palabras durante todo el procedimiento.</p>' +
+    '<p>El optometrista colocará lentes positivos para neutralizar el reflejo retinal.</p>' +
+    '<p>Esta técnica mide el lag acomodativo durante la lectura cercana.</p>' +
+    '</div>';
+  disp.appendChild(box);
+  setControlsForFixed();
+}
+
+// ── Calculadora Vertex ──
+function renderVertexCalc(){
+  clearDisp();
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;padding:24px;border-radius:14px;color:#000;font-family:Outfit,sans-serif;width:90%;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,.1)';
+  box.innerHTML = '<h2 style="font-size:18px;margin-bottom:6px;color:#222">🧮 Conversión por vértice</h2>' +
+    '<p style="font-size:11px;color:#666;margin-bottom:16px">Calcula la potencia equivalente al cambiar la distancia entre el lente y el ojo.</p>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Potencia original (D)</label><input id="vc-power" type="number" step="0.25" placeholder="-5.00" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Vértice antiguo (mm)</label><input id="vc-vold" type="number" step="0.5" value="14" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Vértice nuevo (mm)</label><input id="vc-vnew" type="number" step="0.5" value="0" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Resultado (D)</label><input id="vc-result" readonly style="width:100%;padding:10px;border:2px solid #c8f04a;border-radius:6px;font-size:18px;background:#f5fce7;font-weight:700;color:#222;outline:none"></div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">' +
+      '<button id="vc-preset-lc" style="flex:1;padding:8px;border:1px solid #ccc;background:#f5f5f5;border-radius:6px;font-size:11px;cursor:pointer">Armazón→LC (14→0)</button>' +
+      '<button id="vc-preset-arm" style="flex:1;padding:8px;border:1px solid #ccc;background:#f5f5f5;border-radius:6px;font-size:11px;cursor:pointer">LC→Armazón (0→14)</button>' +
+    '</div>' +
+    '<p style="font-size:10px;color:#999;margin-top:14px">Fórmula: F₂ = F₁ / (1 - d × F₁), donde d = (v_antiguo - v_nuevo) en metros.</p>';
+  disp.appendChild(box);
+  function calc(){
+    var p = parseFloat(document.getElementById('vc-power').value);
+    var vo = parseFloat(document.getElementById('vc-vold').value);
+    var vn = parseFloat(document.getElementById('vc-vnew').value);
+    if (isNaN(p) || isNaN(vo) || isNaN(vn)) { document.getElementById('vc-result').value = ''; return; }
+    var d = (vo - vn) / 1000;
+    var f2 = p / (1 - d * p);
+    document.getElementById('vc-result').value = f2.toFixed(2);
+  }
+  document.getElementById('vc-power').addEventListener('input', calc);
+  document.getElementById('vc-vold').addEventListener('input', calc);
+  document.getElementById('vc-vnew').addEventListener('input', calc);
+  document.getElementById('vc-preset-lc').addEventListener('click', function(){
+    document.getElementById('vc-vold').value = 14;
+    document.getElementById('vc-vnew').value = 0;
+    calc();
+  });
+  document.getElementById('vc-preset-arm').addEventListener('click', function(){
+    document.getElementById('vc-vold').value = 0;
+    document.getElementById('vc-vnew').value = 14;
+    calc();
+  });
+  setControlsForFixed();
+}
+
+// ── Calculadora AV (conversión Snellen ↔ LogMAR ↔ decimal) ──
+function renderAVCalc(){
+  clearDisp();
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;padding:24px;border-radius:14px;color:#000;font-family:Outfit,sans-serif;width:90%;max-width:480px;box-shadow:0 4px 20px rgba(0,0,0,.1)';
+  box.innerHTML = '<h2 style="font-size:18px;margin-bottom:6px;color:#222">🔄 Conversión AV</h2>' +
+    '<p style="font-size:11px;color:#666;margin-bottom:16px">Convierte entre todos los formatos. Ingresa en cualquier campo, los otros se calculan.</p>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Snellen pies (20 / ?)</label><input id="av-snellen" type="number" placeholder="40" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Métrico (6 / ?)</label><input id="av-metric" type="number" step="0.1" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">LogMAR</label><input id="av-logmar" type="number" step="0.01" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+      '<div><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Decimal</label><input id="av-decimal" type="number" step="0.01" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:16px;outline:none"></div>' +
+    '</div>' +
+    '<div style="margin-top:14px;padding:10px;background:#f8f8f8;border-radius:6px;font-size:11px;color:#666">' +
+    '<b>Equivalencias:</b> 20/20 = 6/6 = 1.0 dec = 0.0 LogMAR · 20/40 = 6/12 = 0.5 = 0.3 · 20/200 = 6/60 = 0.1 = 1.0' +
+    '</div>';
+  disp.appendChild(box);
+  function update(lm, except){
+    if (isNaN(lm)) return;
+    if (except !== 'av-snellen') document.getElementById('av-snellen').value = Math.round(20 * Math.pow(10, lm));
+    if (except !== 'av-metric') document.getElementById('av-metric').value = (6 * Math.pow(10, lm)).toFixed(1);
+    if (except !== 'av-logmar') document.getElementById('av-logmar').value = lm.toFixed(2);
+    if (except !== 'av-decimal') document.getElementById('av-decimal').value = Math.pow(10, -lm).toFixed(2);
+  }
+  document.getElementById('av-snellen').addEventListener('input', function(){
+    var d = parseFloat(this.value); if (isNaN(d) || d <= 0) return;
+    update(Math.log10(d/20), 'av-snellen');
+  });
+  document.getElementById('av-metric').addEventListener('input', function(){
+    var d = parseFloat(this.value); if (isNaN(d) || d <= 0) return;
+    update(Math.log10(d/6), 'av-metric');
+  });
+  document.getElementById('av-logmar').addEventListener('input', function(){
+    var lm = parseFloat(this.value); if (isNaN(lm)) return;
+    update(lm, 'av-logmar');
+  });
+  document.getElementById('av-decimal').addEventListener('input', function(){
+    var d = parseFloat(this.value); if (isNaN(d) || d <= 0) return;
+    update(-Math.log10(d), 'av-decimal');
+  });
+  setControlsForFixed();
 }
 
 // ── Blank screens ──
