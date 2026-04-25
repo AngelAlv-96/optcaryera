@@ -803,6 +803,23 @@ function shuffle(arr, seed) {
 }
 function lineLetters(n, seed) { return shuffle(SLOAN, seed).slice(0, n).join(''); }
 
+// Genera N elementos del array sin repeticiones consecutivas (si N > arr.length, hace tiling con shuffle)
+function pickLineNoConsecutiveDups(arr, n, seed) {
+  var s = seed || Math.random();
+  var result = [];
+  var pool = shuffle(arr, s);
+  while (result.length < n) {
+    for (var i = 0; i < pool.length && result.length < n; i++) {
+      if (result.length === 0 || result[result.length-1] !== pool[i]) {
+        result.push(pool[i]);
+      }
+    }
+    s = (s * 9301 + 49297) % 233280;
+    pool = shuffle(arr, s);
+  }
+  return result;
+}
+
 // ═══════════════════════════════════════════════════════════
 // TEST RENDERERS
 // ═══════════════════════════════════════════════════════════
@@ -840,7 +857,7 @@ function pickRandomFromArray(arr, seed) {
 }
 
 // ── Snellen letters ──
-function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel){
+function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel, lineNum){
   var hPx = snellenLogmarToHeightPx(logmar);
   if (hPx < 4) hPx = 4;
   var n = lettersPerLine || (logmar > 0.5 ? 4 : 5);
@@ -853,7 +870,8 @@ function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel){
     var snellen20 = logmarToSnellen(logmar);
     var snellen6 = logmarToMetric(logmar);
     var dec = Math.pow(10, -logmar).toFixed(2);
-    label.innerHTML = '<span class="a">' + snellen20 + '</span><span class="b">' + snellen6 + ' · ' + dec + '</span>';
+    var lineNumHtml = lineNum ? '<span style="display:inline-block;background:#444;color:#fff;font-size:10px;font-weight:700;border-radius:50%;width:18px;height:18px;line-height:18px;text-align:center;margin-bottom:3px">' + lineNum + '</span><br>' : '';
+    label.innerHTML = lineNumHtml + '<span class="a">' + snellen20 + '</span><span class="b">' + snellen6 + ' · ' + dec + '</span>';
     var lettersEl = document.createElement('div');
     lettersEl.className = 'snellen-letters opto-letter';
     lettersEl.style.fontSize = (hPx * 1.05) + 'px';
@@ -955,7 +973,9 @@ function renderSnellen(opts){
     if (hPx < 4) continue;
     if (totalHeight + hPx * 1.4 > availH) continue;
     totalHeight += hPx * 1.4;
-    grid.appendChild(makeSnellenLineEl(lm, lm > 0.5 ? 4 : 5, current.randomSeed + i*0.1, true));
+    // Línea N = posición en LOGMAR_LINES + 1 (1=20/200, 11=20/20, 14=20/10)
+    var lineNum = i + 1;
+    grid.appendChild(makeSnellenLineEl(lm, lm > 0.5 ? 4 : 5, current.randomSeed + i*0.1, true, lineNum));
   }
   disp.appendChild(grid);
   setControlsForSize();
@@ -1063,8 +1083,9 @@ function renderTumblingE(opts){
       line.className = 'opto-row';
       line.style.gap = (hPx * 0.3) + 'px';
       var n = lm > 0.5 ? 4 : 5;
+      var rots = pickLineNoConsecutiveDups(E_ROTATIONS, n, current.randomSeed + i*0.1);
       for (var k = 0; k < n; k++) {
-        var rot = E_ROTATIONS[Math.floor(((current.randomSeed*47 + i*k*13) % 4))];
+        var rot = rots[k];
         var e = document.createElement('span');
         e.className = 'opto-letter';
         e.style.fontSize = (hPx * 1.05) + 'px';
@@ -1123,6 +1144,7 @@ function renderLandoltC(opts){
     var rot = E_ROTATIONS[Math.floor((current.randomSeed*100) % 4)];
     grid.appendChild(landoltSvg(hPx, rot));
   } else {
+    var landoltAll = [0,45,90,135,180,225,270,315];
     for (var i = startIdx; i <= endIdx; i++) {
       var lm = LOGMAR_LINES[i];
       var hPx = snellenLogmarToHeightPx(lm);
@@ -1131,9 +1153,9 @@ function renderLandoltC(opts){
       line.className = 'opto-row';
       line.style.gap = (hPx * 0.3) + 'px';
       var n = lm > 0.5 ? 4 : 5;
+      var rots = pickLineNoConsecutiveDups(landoltAll, n, current.randomSeed + i*0.1);
       for (var k = 0; k < n; k++) {
-        var rot = [0,45,90,135,180,225,270,315][Math.floor(((current.randomSeed*47 + i*k*13) % 8))];
-        line.appendChild(landoltSvg(hPx, rot));
+        line.appendChild(landoltSvg(hPx, rots[k]));
       }
       grid.appendChild(line);
     }
@@ -1289,9 +1311,9 @@ function renderLEA(opts){
     var line = document.createElement('div');
     line.className = 'opto-row';
     line.style.gap = (hPx * 0.3) + 'px';
+    var picks = pickLineNoConsecutiveDups(syms, 4, current.randomSeed + i*0.1);
     for (var k = 0; k < 4; k++) {
-      var sym = syms[Math.floor(((current.randomSeed*47 + i*k*13) % 4))];
-      line.appendChild(leaSvg(hPx, sym));
+      line.appendChild(leaSvg(hPx, picks[k]));
     }
     grid.appendChild(line);
   }
