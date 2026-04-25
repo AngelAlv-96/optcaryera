@@ -2,14 +2,20 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Optometría · Cabina — Ópticas Car & Era</title>
 <style>
 :root{
   --bg:#0a0a0e;--surface:#14141a;--surface2:#1d1d26;--border:#2a2a35;
   --white:#fff;--muted:#7a7a85;--accent:#c8f04a;--beige:#e2c6a6;
   --warn:#f0b84a;--err:#f04a4a;--ok:#4af078;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-left:env(safe-area-inset-left,0px);
+  --safe-right:env(safe-area-inset-right,0px);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;font-family:'Outfit',system-ui,sans-serif;background:var(--bg);color:var(--white);user-select:none;-webkit-user-select:none}
@@ -17,8 +23,8 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 input,select{font-family:inherit;outline:none}
 
 /* ── Layout ── */
-#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
-header{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:12px}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;padding-left:var(--safe-left);padding-right:var(--safe-right)}
+header{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:calc(8px + var(--safe-top)) 12px 8px;display:flex;align-items:center;gap:10px;font-size:12px}
 header .title{font-weight:700;color:var(--beige);font-size:13px}
 header .info{color:var(--muted);font-size:10px}
 header .right{margin-left:auto;display:flex;gap:6px;align-items:center}
@@ -32,16 +38,16 @@ header .right{margin-left:auto;display:flex;gap:6px;align-items:center}
 #display.duochrome{background:linear-gradient(to right,#d0142c 50%,#0a8a3e 50%)}
 
 /* Footer controls */
-footer{flex-shrink:0;background:var(--surface);border-top:1px solid var(--border);padding:8px;display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap}
+footer{flex-shrink:0;background:var(--surface);border-top:1px solid var(--border);padding:8px 8px calc(8px + var(--safe-bottom));display:flex;align-items:center;gap:6px;overflow-x:auto;flex-wrap:nowrap}
 footer .ctrl-group{display:flex;gap:4px;align-items:center;flex-shrink:0;border-right:1px solid var(--border);padding-right:8px;margin-right:4px}
 footer .ctrl-group:last-child{border-right:none}
 footer .ctrl-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 footer .size-display{font-size:14px;font-weight:700;color:var(--accent);min-width:60px;text-align:center;font-variant-numeric:tabular-nums}
 
 /* Test selector grid (overlay) */
-#test-menu{position:fixed;inset:0;background:rgba(10,10,14,.95);backdrop-filter:blur(10px);z-index:50;display:none;flex-direction:column}
+#test-menu{position:fixed;inset:0;background:rgba(10,10,14,.95);backdrop-filter:blur(10px);z-index:50;display:none;flex-direction:column;padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);padding-left:var(--safe-left);padding-right:var(--safe-right)}
 #test-menu.open{display:flex}
-#test-menu header{position:relative}
+#test-menu header{position:relative;padding-top:8px}
 #test-menu .menu-grid{flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;align-content:start}
 #test-menu .menu-cat{grid-column:1/-1;font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-top:8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
 #test-menu .menu-cat:first-child{margin-top:0}
@@ -53,7 +59,7 @@ footer .size-display{font-size:14px;font-weight:700;color:var(--accent);min-widt
 #test-menu .test-card .desc{font-size:9px;color:var(--muted);line-height:1.3}
 
 /* Calibration overlay */
-#calib{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;flex-direction:column;padding:16px;overflow-y:auto}
+#calib{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;flex-direction:column;padding:calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));overflow-y:auto;-webkit-overflow-scrolling:touch}
 #calib.open{display:flex}
 #calib h1{font-size:18px;color:var(--beige);margin-bottom:6px}
 #calib h2{font-size:13px;color:var(--accent);margin:14px 0 6px;letter-spacing:.05em;text-transform:uppercase}
@@ -102,6 +108,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
 /* Help tooltip */
 .help-text{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:10px;max-width:240px;line-height:1.4}
 #display.dark .help-text{background:rgba(255,255,255,.15)}
+
+/* Instructions overlay */
+#instructions{position:fixed;inset:0;background:rgba(10,10,14,.92);backdrop-filter:blur(8px);z-index:80;display:none;align-items:center;justify-content:center;padding:calc(20px + var(--safe-top)) calc(20px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left))}
+#instructions.open{display:flex}
+#instructions .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;max-width:520px;width:100%;max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#instructions h2{font-size:18px;color:var(--beige);margin-bottom:6px}
+#instructions .sub{font-size:11px;color:var(--accent);margin-bottom:16px;text-transform:uppercase;letter-spacing:.06em}
+#instructions h3{font-size:12px;color:var(--accent);margin:14px 0 6px;letter-spacing:.04em;text-transform:uppercase}
+#instructions p{font-size:13px;color:var(--white);line-height:1.55;margin-bottom:8px}
+#instructions ul{list-style:disc;padding-left:20px;margin-bottom:8px}
+#instructions li{font-size:13px;color:var(--white);line-height:1.5;margin-bottom:4px}
+#instructions .btn-close{display:block;width:100%;background:var(--accent);color:#000;border-radius:8px;padding:12px;font-weight:700;font-size:13px;margin-top:14px}
+#instructions .warn{background:rgba(240,180,74,.1);border:1px solid var(--warn);color:var(--warn);padding:10px;border-radius:8px;font-size:12px;margin-top:8px}
 
 /* Phone optimization */
 @media (max-width:600px){
@@ -166,6 +185,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   <div class="summary" id="calib-summary"></div>
   <button class="btn-primary" id="calib-save">✓ Guardar y empezar</button>
   <button class="btn-secondary" id="calib-skip" style="display:none">Saltar (modo demo)</button>
+</div>
+
+<!-- ═══ INSTRUCCIONES ═══ -->
+<div id="instructions">
+  <div class="panel">
+    <h2 id="ins-title">—</h2>
+    <div class="sub" id="ins-sub">—</div>
+    <div id="ins-body"></div>
+    <button class="btn-close" id="ins-close">Entendido — empezar</button>
+  </div>
 </div>
 
 <!-- ═══ MENÚ DE TESTS ═══ -->
@@ -323,49 +352,170 @@ document.getElementById('btn-recalib').addEventListener('click', openCalib);
 // ═══════════════════════════════════════════════════════════
 var TESTS = [
   // ── ACUIDAD VISUAL — LEJOS ──
-  { id:'snellen', cat:'Agudeza visual', name:'Snellen letras', icon:'🔠', desc:'Letras Sloan estándar', render:renderSnellen },
-  { id:'tumblingE', cat:'Agudeza visual', name:'E rotada', icon:'⊞', desc:'Tumbling E (analfabetos/niños)', render:renderTumblingE },
-  { id:'landoltC', cat:'Agudeza visual', name:'Landolt C', icon:'🅒', desc:'Anillos rotos', render:renderLandoltC },
-  { id:'numbers', cat:'Agudeza visual', name:'Números', icon:'🔢', desc:'Para iletrados', render:renderNumbers },
-  { id:'lea', cat:'Agudeza visual', name:'LEA símbolos', icon:'🍎', desc:'Pediátrico (manzana, casa, cuadrado, círculo)', render:renderLEA },
-  { id:'hotv', cat:'Agudeza visual', name:'HOTV', icon:'🔤', desc:'Niños alfabetizados parcial', render:renderHOTV },
-  { id:'isolate', cat:'Agudeza visual', name:'Aislar línea/letra', icon:'⊡', desc:'Mascarilla para evitar memorización', render:renderIsolate },
+  { id:'snellen', cat:'Agudeza visual', name:'Snellen letras', icon:'🔠', desc:'Letras Sloan estándar', render:renderSnellen, ins:{
+    purpose:'Medir agudeza visual con letras estándar a distancia.',
+    setup:'Distancia 6m (o lo que tengas calibrado). Ocluir un ojo a la vez (OD primero, luego OI). Iluminación ambiente normal.',
+    procedure:['Pide al px que lea cada línea en voz alta empezando por la más grande.','Baja una línea cada vez con ▼ o ↓.','Cuando falle 50% de letras de una línea, la línea anterior es su agudeza.','Usa "🔀 Cambiar" para evitar memorización al repetir.'],
+    interpret:'Normal: 20/20 (6/6). Reportar como "20/X". Si solo cuenta dedos a 1m, anotar "CD/1m".'
+  }},
+  { id:'tumblingE', cat:'Agudeza visual', name:'E rotada', icon:'⊞', desc:'Tumbling E (analfabetos/niños)', render:renderTumblingE, ins:{
+    purpose:'Agudeza visual cuando el px no lee (niños, analfabetos, otros idiomas).',
+    setup:'Igual que Snellen: distancia calibrada, ocluir ojo a ojo.',
+    procedure:['Pídele al px que apunte con la mano hacia donde "miran las patas de la E".','La E tiene 4 orientaciones (↑↓←→).','Acepta señalar con la mano o decir "arriba/abajo/derecha/izquierda".','Mismo criterio: 50% correcto = línea válida.'],
+    interpret:'Mismo registro que Snellen (20/X). Útil con niños desde 3-4 años.'
+  }},
+  { id:'landoltC', cat:'Agudeza visual', name:'Landolt C', icon:'🅒', desc:'Anillos rotos', render:renderLandoltC, ins:{
+    purpose:'Agudeza visual estandarizada internacionalmente (ISO 8596). Sin componente cultural.',
+    setup:'Igual que Snellen.',
+    procedure:['El px indica donde está la abertura del anillo (8 posiciones: ↑ ↗ → ↘ ↓ ↙ ← ↖).','Igual que Tumbling E pero con más opciones de orientación.'],
+    interpret:'Misma escala 20/X. Considerado el "gold standard" en investigación.'
+  }},
+  { id:'numbers', cat:'Agudeza visual', name:'Números', icon:'🔢', desc:'Para iletrados parciales', render:renderNumbers, ins:{
+    purpose:'Agudeza visual con números cuando el px reconoce números pero no letras.',
+    setup:'Igual que Snellen.',
+    procedure:['Pide al px que lea los números en voz alta.','Solo se usan dígitos 2-9 (1 y 0 son ambiguos).'],
+    interpret:'Misma escala 20/X.'
+  }},
+  { id:'lea', cat:'Agudeza visual', name:'LEA símbolos', icon:'🍎', desc:'Pediátrico (manzana, casa, círculo, cuadrado)', render:renderLEA, ins:{
+    purpose:'Agudeza visual en niños desde 2-3 años, antes de que reconozcan letras o números.',
+    setup:'Distancia 3m generalmente (más cerca para que el niño coopere). Calibrar la distancia adecuada.',
+    procedure:['Antes del test, muestra los 4 símbolos cerca y pide al niño que los nombre (manzana/casa/círculo/cuadrado, o el nombre que él use).','Empieza con la línea más grande, baja gradualmente.','Acepta cualquier nombre que el niño use consistentemente.'],
+    interpret:'Normal a los 4 años: 20/30. A los 5 años: 20/25. A los 6+ años: 20/20.'
+  }},
+  { id:'hotv', cat:'Agudeza visual', name:'HOTV', icon:'🔤', desc:'Niños alfabetizados parcial', render:renderHOTV, ins:{
+    purpose:'Agudeza visual en niños que conocen algunas letras pero no todas.',
+    setup:'Distancia configurable. Antes del test, muestra una tarjeta de respuesta con H, O, T, V para que el niño pueda señalar en lugar de decir.',
+    procedure:['Pide al niño que diga o señale qué letra ve.','Solo 4 letras (sin sesgo cultural) — fácil de memorizar.','Usa randomizar 🔀 entre líneas.'],
+    interpret:'Misma escala que Snellen. Estándar pediátrico para niños 3-5 años.'
+  }},
+  { id:'isolate', cat:'Agudeza visual', name:'Aislar línea/letra', icon:'⊡', desc:'Mascarilla anti-memorización', render:renderIsolate, ins:{
+    purpose:'Aislar una sola línea o letra cuando el px ya memorizó la cartilla, o para evaluar ambliopía con efecto crowding.',
+    setup:'Funciona como variación de Snellen.',
+    procedure:['Toca el botón para alternar entre: aislar línea, aislar letra, normal.','En modo "letra": solo se ve UNA letra centrada.','Útil en niños con ambliopía: la AV con letra aislada suele ser mejor que con línea completa.'],
+    interpret:'Diferencia >2 líneas entre aislada y completa = posible ambliopía con efecto crowding.'
+  }},
 
   // ── ACUIDAD VISUAL — CERCA ──
-  { id:'jaeger', cat:'Visión cercana', name:'Cartilla Jaeger', icon:'📖', desc:'Lectura cerca (~40cm)', render:renderJaeger, near:true },
-  { id:'parrafo', cat:'Visión cercana', name:'Párrafo continuo', icon:'¶', desc:'Texto largo para fatiga', render:renderParrafo, near:true },
+  { id:'jaeger', cat:'Visión cercana', name:'Cartilla Jaeger', icon:'📖', desc:'Lectura cerca (~40cm)', render:renderJaeger, near:true, ins:{
+    purpose:'Medir agudeza visual de cerca. Detectar presbicia.',
+    setup:'Distancia 40cm (medir con regla o cinta). Calibrar el dispositivo a 40cm primero. Iluminación normal de lectura.',
+    procedure:['Px lee desde el texto más grande (J20) hacia el más pequeño.','La línea más pequeña que lea correctamente es su Jaeger.','Hacer con ambos ojos abiertos primero, luego uno a la vez si hay duda.'],
+    interpret:'Normal: J1-J2 (≈ 20/20 cerca). Presbicia incipiente: J5-J7. Presbicia avanzada: J10+. Si <40 años y >J3, sospecha refracción no compensada.'
+  }},
+  { id:'parrafo', cat:'Visión cercana', name:'Párrafo continuo', icon:'¶', desc:'Texto largo para fatiga', render:renderParrafo, near:true, ins:{
+    purpose:'Evaluar fatiga visual y comodidad de lectura sostenida.',
+    setup:'40cm. Pídele al px que lea durante 1-2 minutos.',
+    procedure:['Ajusta el tamaño del texto al equivalente Jaeger que el px maneje.','Observa si entrecierra los ojos, se aleja, se acerca o pierde la línea.','Ajusta tamaño con ▲▼.'],
+    interpret:'Si pierde línea, salta palabras o se queja de visión borrosa = posible insuficiencia acomodativa o convergencia.'
+  }},
 
   // ── ASTIGMATISMO ──
-  { id:'astigClock', cat:'Astigmatismo', name:'Reloj astigmático', icon:'🕛', desc:'Líneas radiales 12-6 / 3-9', render:renderAstigClock },
-  { id:'astigFan', cat:'Astigmatismo', name:'Abanico astigmático', icon:'🌟', desc:'Variante con abanico de líneas', render:renderAstigFan },
+  { id:'astigClock', cat:'Astigmatismo', name:'Reloj astigmático', icon:'🕛', desc:'Líneas radiales 12-6 / 3-9', render:renderAstigClock, ins:{
+    purpose:'Detectar astigmatismo y orientar el meridiano (eje).',
+    setup:'Px con su corrección esférica (sin cilindro). Ocluir un ojo. Distancia 6m.',
+    procedure:['Pregunta: "¿Hay alguna línea que se ve más oscura, nítida o gruesa que las demás?"','Si TODAS se ven igual de claras → no hay astigmatismo o ya está corregido.','Si una se ve más oscura → ese meridiano corresponde al eje del cilindro.','Anota la hora del reloj (ej. 2-8 = eje 60°, 3-9 = eje 90°).'],
+    interpret:'Conversión hora → eje: hora × 30 = eje en grados (12→0°/180°, 3→90°, 6→0°/180°). Para refractar: cilindro NEGATIVO con eje en la línea más nítida.'
+  }},
+  { id:'astigFan', cat:'Astigmatismo', name:'Abanico astigmático', icon:'🌟', desc:'Variante con abanico graduado', render:renderAstigFan, ins:{
+    purpose:'Igual que reloj astigmático pero con escala en grados directos.',
+    setup:'Px con corrección esférica, oclusión, 6m.',
+    procedure:['Px reporta qué línea se ve más nítida.','Lee directamente el grado del eje.'],
+    interpret:'Igual que reloj astigmático.'
+  }},
 
   // ── COLOR / DALTONISMO ──
-  { id:'ishihara', cat:'Color', name:'Ishihara', icon:'🟢', desc:'Pseudoisocromáticos para daltonismo', render:renderIshihara },
-  { id:'colorMatch', cat:'Color', name:'Discriminación cromática', icon:'🎨', desc:'D-15 simplificado', render:renderColorMatch },
+  { id:'ishihara', cat:'Color', name:'Ishihara', icon:'🟢', desc:'Pseudoisocromáticos', render:renderIshihara, ins:{
+    purpose:'Detectar discromatopsia rojo-verde (deuteranopía / protanopía).',
+    setup:'Iluminación natural blanca. Px monocular o binocular, sin lentes coloreados. 75cm aprox.',
+    procedure:['Muestra una lámina a la vez con ◄►.','Pídele que diga el número (o trace con dedo si no lee números).','Tiempo límite: 3-5 segundos por lámina.','Anota cuántas correctas y cuántas falla.'],
+    interpret:'Normal: lee >12/14 láminas. Deuteranopía/protanopía: confunde rojos con verdes (típicamente <8/14). Aviso: las láminas digitales son menos precisas que las impresas — usa solo como tamizaje.',
+    warn:'Resultado anormal → confirmar con láminas Ishihara impresas o test de Farnsworth.'
+  }},
+  { id:'colorMatch', cat:'Color', name:'Discriminación cromática', icon:'🎨', desc:'D-15 simplificado', render:renderColorMatch, ins:{
+    purpose:'Evaluar capacidad de discriminar tonos cercanos (Munsell-like).',
+    setup:'Iluminación blanca, sin lentes coloreados.',
+    procedure:['Esta versión es solo de referencia visual.','Para D-15 real, usa el set físico de fichas que el px ordene en gradiente.','Útil para mostrar al px qué se le está pidiendo.'],
+    interpret:'Errores específicos en azul-verde = tritanopía (rara). Errores rojo-verde = más común.'
+  }},
 
   // ── REFRACCIÓN / EQUILIBRIO ──
-  { id:'duochrome', cat:'Refracción', name:'Duocromo rojo-verde', icon:'🟥', desc:'Bicromático para esfera', render:renderDuochrome },
-  { id:'crossCyl', cat:'Refracción', name:'Cilindro cruzado', icon:'⚆', desc:'Targets para JCC', render:renderCrossCyl },
+  { id:'duochrome', cat:'Refracción', name:'Duocromo rojo-verde', icon:'🟥', desc:'Bicromático para esfera', render:renderDuochrome, ins:{
+    purpose:'Refinar la esfera durante refracción subjetiva. Confirmar foco al final.',
+    setup:'Px con su graduación tentativa puesta. Ocluir un ojo. Distancia normal.',
+    procedure:['Pregunta: "¿Las letras se ven más nítidas en el fondo ROJO o en el VERDE?"','ROJO más nítido → necesita MÁS PLUS (menos miopía / más hipermetropía). Suma +0.25.','VERDE más nítido → necesita MÁS MINUS (más miopía / menos hipermetropía). Resta -0.25.','IGUAL en ambos → equilibrio cromático ✓ buena graduación esférica.','Para hipermétropes con acomodación activa, prefiere VERDE ligeramente (no atrofiar acomodación).'],
+    interpret:'Equilibrio = punto de mejor visión. Diferencia notable = ajustar esfera en pasos de 0.25.'
+  }},
+  { id:'crossCyl', cat:'Refracción', name:'Cilindro cruzado', icon:'⚆', desc:'Targets para JCC', render:renderCrossCyl, ins:{
+    purpose:'Refinar EJE y POTENCIA del cilindro con cilindro cruzado de Jackson (JCC) en mano.',
+    setup:'Px con cilindro tentativo puesto. JCC en mano del optometrista. Ocluir un ojo.',
+    procedure:['Para EJE: alinea JCC con eje del cilindro tentativo. Voltea (posición 1 y 2) y pregunta cuál se ve más nítida. Ajusta eje 5° hacia el lado preferido. Repite hasta empate.','Para POTENCIA: alinea JCC con cilindro tentativo. Voltea preguntando cuál es más clara. Si prefiere posición con eje del JCC alineado al cilindro = aumentar potencia (-0.25). Si prefiere la opuesta = disminuir.','Usa los puntos o las líneas según preferencia del optometrista.'],
+    interpret:'Cuando ambas posiciones se ven iguales = eje y potencia óptimos.'
+  }},
 
   // ── BINOCULAR / FUSIÓN ──
-  { id:'worth4', cat:'Binocular', name:'Worth 4 luces', icon:'🔴', desc:'Requiere gafas R/V anaglyph', render:renderWorth4 },
-  { id:'maddox', cat:'Binocular', name:'Maddox (luz)', icon:'💡', desc:'Punto de luz para varilla Maddox', render:renderMaddox },
-  { id:'stereo', cat:'Binocular', name:'Estereo (RDS)', icon:'👓', desc:'Random dot stereogram (anaglyph)', render:renderStereo },
+  { id:'worth4', cat:'Binocular', name:'Worth 4 luces', icon:'🔴', desc:'Requiere gafas R/V anaglyph', render:renderWorth4, ins:{
+    purpose:'Evaluar fusión binocular y supresión.',
+    setup:'Px con gafas anaglyph: filtro ROJO en OD, filtro VERDE en OI. Distancia variable: 40cm para fusión cercana, 6m para lejos.',
+    procedure:['Pregunta: "¿Cuántas luces ves?"','4 luces (1 rojo, 2 verdes, 1 mixta) = FUSIÓN NORMAL ✓','2 luces rojas = supresión OI','3 luces verdes = supresión OD','5 luces (3 verdes + 2 rojas) = DIPLOPÍA','Luces parpadeantes/alternantes = fusión inestable'],
+    interpret:'Diplopia → puede ser estrabismo manifiesto. Supresión → ambliopía o estrabismo con supresión.',
+    warn:'⚠️ Requiere gafas anaglyph físicas (filtros rojo y verde) para funcionar.'
+  }},
+  { id:'maddox', cat:'Binocular', name:'Maddox (luz)', icon:'💡', desc:'Punto de luz para varilla Maddox', render:renderMaddox, ins:{
+    purpose:'Detectar y medir forias y tropias (desviaciones latentes/manifiestas).',
+    setup:'Pantalla negra con punto de luz. Ojo derecho con varilla de Maddox horizontal o vertical. 6m.',
+    procedure:['OD ve una LÍNEA (creada por la varilla), OI ve un PUNTO.','Pregunta: "¿La línea pasa exactamente por el punto, encima o debajo?"','LÍNEA y PUNTO alineados → no hay foria','Línea encima del punto → hipoforia','Línea debajo del punto → hiperforia','Línea a la derecha → exoforia','Línea a la izquierda → endoforia','Mide con prismas la magnitud.'],
+    interpret:'Forias pequeñas (1-2 dioptrías prismáticas) son normales. >4 dioptrías sintomáticas requieren tratamiento.'
+  }},
+  { id:'stereo', cat:'Binocular', name:'Estereo (RDS)', icon:'👓', desc:'Random dot stereogram (anaglyph)', render:renderStereo, ins:{
+    purpose:'Evaluar estereopsis (visión 3D) — sensibilidad a la profundidad.',
+    setup:'Px con gafas anaglyph rojo-cian. Distancia 40cm a 1m.',
+    procedure:['Pregunta: "¿Ves un cuadrado/forma flotando frente al fondo?"','Si dice SÍ y lo apunta correctamente = estereopsis presente.','Si NO ve nada = sin estereopsis (ambliopía, estrabismo, supresión).'],
+    interpret:'Normal: detecta el target con facilidad. Para medir estereoagudeza precisa, usar test de Titmus o TNO con estímulos calibrados.',
+    warn:'⚠️ Requiere gafas anaglyph rojo-cian.'
+  }},
 
   // ── MÁCULA / CAMPO ──
-  { id:'amsler', cat:'Mácula', name:'Rejilla Amsler', icon:'⊞', desc:'Detección de metamorfopsias', render:renderAmsler },
+  { id:'amsler', cat:'Mácula', name:'Rejilla Amsler', icon:'⊞', desc:'Detección de metamorfopsias', render:renderAmsler, ins:{
+    purpose:'Detectar alteraciones maculares: metamorfopsias (líneas torcidas), escotomas centrales (zonas faltantes), micropsia/macropsia.',
+    setup:'Distancia 30-40cm. Px con su graduación de cerca. UN OJO A LA VEZ (ocluir).',
+    procedure:['Pídele que mire FIJAMENTE el punto blanco central.','Sin mover los ojos, pregunta:','"¿Ves todas las esquinas del cuadro?" (campo central)','"¿Las líneas se ven rectas o torcidas/onduladas?" (metamorfopsias)','"¿Hay algún punto borroso, oscuro o faltante?" (escotomas)','Repite con el otro ojo.'],
+    interpret:'Líneas onduladas = sospecha DMRE húmeda u otra patología macular. Escotomas centrales = compromiso macular o nervio óptico. Reportar en historial cualquier alteración.'
+  }},
 
   // ── CONTRASTE ──
-  { id:'pelli', cat:'Contraste', name:'Pelli-Robson', icon:'⬜', desc:'Letras de contraste decreciente', render:renderPelli },
+  { id:'pelli', cat:'Contraste', name:'Pelli-Robson', icon:'⬜', desc:'Letras de contraste decreciente', render:renderPelli, ins:{
+    purpose:'Medir sensibilidad al contraste — detección de problemas neurales/cataratas más allá de lo que mide Snellen.',
+    setup:'Distancia 1m (más cercana que Snellen). Iluminación constante. Px con su mejor graduación.',
+    procedure:['Pídele que lea cada trío de letras desde el más oscuro hacia el más claro.','El último trío en que lea correctamente 2 de 3 letras es su sensibilidad al contraste.','Cada trío representa 0.15 log de contraste decreciente.'],
+    interpret:'Normal adulto joven: log 1.95 (15º trío). Disminuida en cataratas, glaucoma, esclerosis múltiple, neuropatía óptica. Útil cuando AV Snellen es normal pero hay queja visual.'
+  }},
 
   // ── ACOMODACIÓN / FIJACIÓN ──
-  { id:'fixation', cat:'Fijación', name:'Targets de fijación', icon:'⊕', desc:'Cruces y puntos', render:renderFixation },
-  { id:'flicker', cat:'Otros', name:'Test de parpadeo', icon:'⚡', desc:'Frecuencia crítica', render:renderFlicker },
+  { id:'fixation', cat:'Fijación', name:'Targets de fijación', icon:'⊕', desc:'Cruces y puntos', render:renderFixation, ins:{
+    purpose:'Targets para evaluar fijación, motilidad, cover test, retinoscopía.',
+    setup:'Distancia variable según el examen.',
+    procedure:['Selecciona el target con los botones (cruz, punto, anillo, X roja, ⊕).','Cruz blanca: para retinoscopía y refracción.','X roja: para Brückner test, evaluación de pupilas.','Anillo: target de fijación accommodativa.','Punto: para Maddox.','⊕: para cover test y motilidad.']
+  }},
+  { id:'flicker', cat:'Otros', name:'Test de parpadeo', icon:'⚡', desc:'Frecuencia crítica de fusión', render:renderFlicker, ins:{
+    purpose:'Frecuencia Crítica de Fusión (CFF) — detectar neuropatías ópticas tempranas.',
+    setup:'Pantalla oscura, distancia ~1m, oclusión monocular.',
+    procedure:['Empieza en frecuencia baja (3-5 Hz) — px ve parpadeo.','Sube ▲ hasta que el px diga que el parpadeo desaparece (luz constante).','Ese punto es su CFF.','Compara entre OD y OI.'],
+    interpret:'Normal: 35-50 Hz. CFF disminuida o asimétrica entre ojos = sospecha neuropatía óptica.'
+  }},
 
   // ── HERRAMIENTAS ──
-  { id:'blank', cat:'Herramientas', name:'Pantalla blanca', icon:'⬛', desc:'Para retroiluminación', render:renderBlank },
-  { id:'black', cat:'Herramientas', name:'Pantalla negra', icon:'⬜', desc:'Fondo oscuro', render:renderBlack },
-  { id:'oclude', cat:'Herramientas', name:'Oclusión central', icon:'⊙', desc:'Ojo derecho/izquierdo', render:renderOclude }
+  { id:'blank', cat:'Herramientas', name:'Pantalla blanca', icon:'⬛', desc:'Para retroiluminación', render:renderBlank, ins:{
+    purpose:'Pantalla totalmente blanca para retroiluminar. Útil para revisar pestañeo, lágrimas, transparencia corneal con linterna oblicua.',
+    procedure:['Solo muestra blanco puro.','Ajusta brillo del dispositivo al máximo si vas a evaluar transparencias.']
+  }},
+  { id:'black', cat:'Herramientas', name:'Pantalla negra', icon:'⬜', desc:'Fondo oscuro', render:renderBlack, ins:{
+    purpose:'Pantalla negra para usar como fondo. Útil para Maddox, Worth 4 luces, evaluación de pupilas en oscuridad relativa.',
+    procedure:['Solo muestra negro.']
+  }},
+  { id:'oclude', cat:'Herramientas', name:'Oclusión central', icon:'⊙', desc:'Recordatorio OD/OI', render:renderOclude, ins:{
+    purpose:'Recordatorio visual de qué ojo se está examinando. No es un oclusor real.',
+    procedure:['Selecciona OD u OI.','Apoyo visual para el optometrista durante el examen.']
+  }}
 ];
 
 var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD' };
@@ -1246,6 +1396,7 @@ function buildMenu(){
         current.test = t;
         document.getElementById('test-menu').classList.remove('open');
         runCurrent();
+        autoShowInstructionsIfNew(t);
       });
       grid.appendChild(card);
     });
@@ -1261,16 +1412,69 @@ document.getElementById('btn-fullscreen').addEventListener('click', function(){
   if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function(){});
   else document.exitFullscreen();
 });
+function showInstructions(test, autoOpen) {
+  if (!test || !test.ins) return;
+  document.getElementById('ins-title').textContent = test.name;
+  document.getElementById('ins-sub').textContent = test.cat + ' · ' + test.desc;
+  var body = document.getElementById('ins-body');
+  body.innerHTML = '';
+  if (test.ins.purpose) {
+    var h3 = document.createElement('h3'); h3.textContent = 'Para qué sirve';
+    var p = document.createElement('p'); p.textContent = test.ins.purpose;
+    body.appendChild(h3); body.appendChild(p);
+  }
+  if (test.ins.setup) {
+    var h3 = document.createElement('h3'); h3.textContent = 'Preparación';
+    var p = document.createElement('p'); p.textContent = test.ins.setup;
+    body.appendChild(h3); body.appendChild(p);
+  }
+  if (test.ins.procedure && test.ins.procedure.length) {
+    var h3 = document.createElement('h3'); h3.textContent = 'Procedimiento';
+    var ul = document.createElement('ul');
+    test.ins.procedure.forEach(function(s){
+      var li = document.createElement('li'); li.textContent = s; ul.appendChild(li);
+    });
+    body.appendChild(h3); body.appendChild(ul);
+  }
+  if (test.ins.interpret) {
+    var h3 = document.createElement('h3'); h3.textContent = 'Interpretación';
+    var p = document.createElement('p'); p.textContent = test.ins.interpret;
+    body.appendChild(h3); body.appendChild(p);
+  }
+  if (test.ins.warn) {
+    var w = document.createElement('div'); w.className = 'warn'; w.textContent = test.ins.warn;
+    body.appendChild(w);
+  }
+  document.getElementById('instructions').classList.add('open');
+}
+
 document.getElementById('btn-help').addEventListener('click', function(){
-  if (!current.test) return;
-  alert(current.test.name + '\n\n' + current.test.desc + '\n\nCategoría: ' + current.test.cat);
+  showInstructions(current.test);
 });
+document.getElementById('ins-close').addEventListener('click', function(){
+  document.getElementById('instructions').classList.remove('open');
+});
+
+// Auto-show instructions on first activation of each test (per-device, dismissible)
+function autoShowInstructionsIfNew(test) {
+  if (!test || !test.ins) return;
+  var seen = JSON.parse(localStorage.getItem('opto_seen') || '{}');
+  if (!seen[test.id]) {
+    showInstructions(test, true);
+    seen[test.id] = Date.now();
+    localStorage.setItem('opto_seen', JSON.stringify(seen));
+  }
+}
 
 // ═══════════════════════════════════════════════════════════
 // KEYBOARD SHORTCUTS
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('keydown', function(e){
   if (document.getElementById('calib').classList.contains('open')) return;
+  if (document.getElementById('instructions').classList.contains('open')) {
+    if (e.key === 'Escape' || e.key === 'Enter') document.getElementById('instructions').classList.remove('open');
+    return;
+  }
   if (document.getElementById('test-menu').classList.contains('open')) {
     if (e.key === 'Escape') document.getElementById('test-menu').classList.remove('open');
     return;
@@ -1282,6 +1486,7 @@ window.addEventListener('keydown', function(e){
   else if (e.key === 'f' || e.key === 'F') document.getElementById('btn-fullscreen').click();
   else if (e.key === 'l' || e.key === 'L') { current.isolate = current.isolate==='line'?'none':'line'; runCurrent(); }
   else if (e.key === 'i' || e.key === 'I') { current.isolate = current.isolate==='letter'?'none':'letter'; runCurrent(); }
+  else if (e.key === '?' || e.key === 'h' || e.key === 'H') showInstructions(current.test);
 });
 
 // ═══════════════════════════════════════════════════════════
