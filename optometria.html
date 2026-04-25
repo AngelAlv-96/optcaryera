@@ -9,6 +9,15 @@
 <title>Optometría · Cabina — Ópticas Car & Era</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
 <style>
+@font-face{
+  font-family:'OpticianSans';
+  src:url('https://cdn.jsdelivr.net/gh/anthonyfok/optician-sans@master/Optician-Sans.woff2') format('woff2'),
+      url('https://cdn.jsdelivr.net/gh/anthonyfok/optician-sans@master/Optician-Sans.ttf') format('truetype');
+  font-display:swap;
+  font-weight:normal;
+}
+</style>
+<style>
 :root{
   --bg:#0a0a0e;--surface:#14141a;--surface2:#1d1d26;--border:#2a2a35;
   --white:#fff;--muted:#7a7a85;--accent:#c8f04a;--beige:#e2c6a6;
@@ -75,11 +84,43 @@ footer .size-display{font-size:14px;font-weight:700;color:var(--accent);min-widt
 #calib .summary{background:rgba(200,240,74,.06);border:1px solid var(--accent);border-radius:6px;padding:10px;font-size:11px;color:var(--white);margin-top:8px;font-family:monospace;line-height:1.5}
 
 /* Test-specific styles */
-.opto-letter{font-family:'Sloan',Arial,sans-serif;font-weight:900;color:#000;line-height:1;text-align:center;letter-spacing:0.3em}
+.opto-letter{font-family:'OpticianSans','Sloan','Helvetica Neue',Arial,sans-serif;font-weight:400;color:#000;line-height:1;text-align:center;letter-spacing:.5em}
 .opto-letter.dark{color:#fff}
-.opto-row{display:flex;gap:.3em;justify-content:center;align-items:center}
-.opto-grid{display:flex;flex-direction:column;gap:.2em;align-items:center}
+.opto-row{display:flex;gap:.5em;justify-content:center;align-items:center}
+.opto-grid{display:flex;flex-direction:column;gap:.25em;align-items:center}
 .opto-isolate{background:rgba(200,200,200,.4);padding:0 .15em;border-radius:4px}
+
+/* Snellen line with side labels */
+.snellen-line{display:flex;align-items:center;justify-content:center;gap:14px}
+.snellen-label{font-family:'Outfit',sans-serif;font-size:11px;color:#999;font-weight:600;min-width:90px;text-align:right;line-height:1.25}
+.snellen-label .a{display:block;font-size:13px;color:#444;font-weight:700}
+.snellen-label .b{display:block;font-size:9px;color:#888;font-weight:400}
+.snellen-letters{flex-shrink:0}
+
+/* Elevator mode big buttons */
+.elev-pad{position:absolute;bottom:18px;left:0;right:0;display:flex;gap:14px;justify-content:center;z-index:6}
+.elev-btn{padding:18px 28px;font-size:18px;font-weight:700;border-radius:14px;border:2px solid #333;background:#fff;color:#000;min-width:130px;box-shadow:0 4px 10px rgba(0,0,0,.15);transition:.15s}
+.elev-btn.ok{background:#4af078;border-color:#2a8a44}
+.elev-btn.no{background:#f04a4a;border-color:#8a2a2a;color:#fff}
+.elev-btn:active{transform:scale(.95)}
+
+/* AV registry panel */
+#av-panel{position:fixed;inset:0;background:rgba(10,10,14,.92);backdrop-filter:blur(8px);z-index:88;display:none;align-items:center;justify-content:center;padding:20px}
+#av-panel.open{display:flex}
+#av-panel .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto}
+#av-panel h2{font-size:16px;color:var(--beige);margin-bottom:14px}
+#av-panel .av-row{display:grid;grid-template-columns:50px 1fr 1fr 90px 30px;gap:8px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--border);font-size:12px}
+#av-panel .av-row .eye{font-weight:700;color:var(--accent);font-family:Outfit}
+#av-panel .av-row .test{color:var(--muted);font-size:10px}
+#av-panel .av-row .val{font-weight:700;color:var(--white)}
+#av-panel .av-row .ts{color:var(--muted);font-size:10px}
+#av-panel .av-row button{background:transparent;color:var(--err);font-size:14px;cursor:pointer}
+#av-panel .empty{text-align:center;color:var(--muted);padding:30px;font-size:12px}
+#av-panel .actions{display:flex;gap:8px;margin-top:14px}
+#av-panel .actions .btn{flex:1;padding:11px;border-radius:8px;font-weight:700;font-size:12px}
+#av-panel .actions .btn-primary{background:var(--accent);color:#000}
+#av-panel .actions .btn-secondary{background:var(--surface2);border:1px solid var(--border);color:var(--white)}
+#av-panel .pat-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--white);font-size:13px;width:100%;margin-bottom:10px;outline:none}
 
 /* Astigmatic clock */
 .astig-clock{position:relative;width:80vmin;height:80vmin;max-width:600px;max-height:600px}
@@ -254,6 +295,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   <div class="summary" id="calib-summary"></div>
   <button class="btn-primary" id="calib-save">✓ Guardar y empezar</button>
   <button class="btn-secondary" id="calib-skip" style="display:none">Saltar (modo demo)</button>
+</div>
+
+<!-- ═══ REGISTRO AV (sesión examen) ═══ -->
+<div id="av-panel">
+  <div class="panel">
+    <h2 id="av-title">📋 Registro de agudeza visual</h2>
+    <input type="text" class="pat-input" id="av-paciente" placeholder="Nombre del paciente (opcional)" autocomplete="off">
+    <div id="av-list"></div>
+    <div class="actions">
+      <button class="btn btn-secondary" id="av-close">Cerrar</button>
+      <button class="btn btn-secondary" id="av-clear">🗑 Limpiar</button>
+      <button class="btn btn-primary" id="av-copy">📋 Copiar</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ PAREO (modo cabina paired) ═══ -->
@@ -627,7 +682,11 @@ var TESTS = [
   }}
 ];
 
-var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD', kids:false, session:null };
+var current = { test:null, logmar:0.5, isolate:'none', randomSeed:0, oe:'OD', kids:false, session:null, snellenMode:'multi', elev:null };
+
+// AV registry — persisted in localStorage per session
+var avRegistry = JSON.parse(localStorage.getItem('opto_avreg') || '[]');
+var avPaciente = localStorage.getItem('opto_avpac') || '';
 
 // Tests that support interactive (kids) mode
 var KIDS_TESTS = ['tumblingE','landoltC','lea','hotv','numbers'];
@@ -781,55 +840,164 @@ function pickRandomFromArray(arr, seed) {
 }
 
 // ── Snellen letters ──
+function makeSnellenLineEl(logmar, lettersPerLine, seed, withLabel){
+  var hPx = snellenLogmarToHeightPx(logmar);
+  if (hPx < 4) hPx = 4;
+  var n = lettersPerLine || (logmar > 0.5 ? 4 : 5);
+  var letters = lineLetters(n, seed);
+  if (withLabel) {
+    var row = document.createElement('div');
+    row.className = 'snellen-line';
+    var label = document.createElement('div');
+    label.className = 'snellen-label';
+    var snellen20 = logmarToSnellen(logmar);
+    var snellen6 = logmarToMetric(logmar);
+    var dec = Math.pow(10, -logmar).toFixed(2);
+    label.innerHTML = '<span class="a">' + snellen20 + '</span><span class="b">' + snellen6 + ' · ' + dec + '</span>';
+    var lettersEl = document.createElement('div');
+    lettersEl.className = 'snellen-letters opto-letter';
+    lettersEl.style.fontSize = (hPx * 1.05) + 'px';
+    lettersEl.textContent = letters;
+    row.appendChild(label);
+    row.appendChild(lettersEl);
+    return row;
+  } else {
+    var line = document.createElement('div');
+    line.className = 'opto-row opto-letter';
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.textContent = letters;
+    return line;
+  }
+}
+
 function renderSnellen(opts){
   opts = opts || {};
   clearDisp();
-  var grid = document.createElement('div');
-  grid.className = 'opto-grid';
 
-  var startLogmar = opts.startLogmar !== undefined ? opts.startLogmar : current.logmar + 0.2;
-  var endLogmar = opts.endLogmar !== undefined ? opts.endLogmar : current.logmar - 0.2;
-
-  if (opts.singleLine || current.isolate === 'line') {
-    var heightPx = snellenLogmarToHeightPx(current.logmar);
+  // ELEVATOR MODE: single line + 2 big buttons
+  if (current.snellenMode === 'elevator') {
+    if (!current.elev) startElevator();
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
+    var hPx = snellenLogmarToHeightPx(current.logmar);
+    if (hPx < 12) hPx = 12;
     var line = document.createElement('div');
     line.className = 'opto-row opto-letter';
-    line.style.fontSize = (heightPx * 1.05) + 'px';
-    line.textContent = lineLetters(opts.lettersPerLine || 5, current.randomSeed + 0.5);
+    line.style.fontSize = (hPx * 1.05) + 'px';
+    line.style.marginBottom = '120px';
+    line.textContent = lineLetters(5, current.randomSeed + 0.7);
     grid.appendChild(line);
-  } else if (opts.singleLetter || current.isolate === 'letter') {
+    disp.appendChild(grid);
+    var pad = document.createElement('div'); pad.className = 'elev-pad';
+    var bOk = document.createElement('button');
+    bOk.className = 'elev-btn ok';
+    bOk.innerHTML = '✓ Vio bien';
+    bOk.addEventListener('click', function(){ elevatorAdvance(true); });
+    var bNo = document.createElement('button');
+    bNo.className = 'elev-btn no';
+    bNo.innerHTML = '✗ Falló';
+    bNo.addEventListener('click', function(){ elevatorAdvance(false); });
+    pad.appendChild(bOk); pad.appendChild(bNo);
+    disp.appendChild(pad);
+    // Score bar with elev info
+    var bar = document.createElement('div');
+    bar.className = 'score-bar';
+    bar.innerHTML =
+      '<div class="item"><span class="num">' + logmarToSnellen(current.logmar) + '</span><span class="lbl">Línea</span></div>' +
+      '<div class="item"><span class="num">' + current.oe + '</span><span class="lbl">Ojo</span></div>' +
+      '<div class="item"><span class="num">' + (current.elev.bestSnellen || '—') + '</span><span class="lbl">Mejor</span></div>';
+    disp.appendChild(bar);
+    setControlsForSize();
+    return;
+  }
+
+  // SINGLE-LINE MODE: una sola línea grande, full screen
+  if (current.snellenMode === 'single' || current.isolate === 'line') {
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
+    grid.appendChild(makeSnellenLineEl(current.logmar, opts.lettersPerLine || 5, current.randomSeed + 0.5, false));
+    disp.appendChild(grid);
+    setControlsForSize();
+    return;
+  }
+
+  // SINGLE LETTER (isolate)
+  if (current.isolate === 'letter') {
+    var grid = document.createElement('div');
+    grid.className = 'opto-grid';
     var heightPx = snellenLogmarToHeightPx(current.logmar);
     var letter = document.createElement('div');
     letter.className = 'opto-letter';
     letter.style.fontSize = (heightPx * 1.05) + 'px';
     letter.textContent = SLOAN[Math.floor(((current.randomSeed*47)%10))];
     grid.appendChild(letter);
-  } else {
-    // Multi-line chart — adaptive to viewport
-    var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= startLogmar; });
-    var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= endLogmar; });
-    if (startIdx < 0) startIdx = 0;
-    if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
-    if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
-    var availH = (disp.clientHeight || window.innerHeight - 130) - 16;
-    var totalHeight = 0;
-    for (var i = startIdx; i <= endIdx; i++) {
-      var lm = LOGMAR_LINES[i];
-      var hPx = snellenLogmarToHeightPx(lm);
-      if (hPx < 4) continue;
-      // Skip lines that don't fit
-      if (totalHeight + hPx * 1.2 > availH) continue;
-      totalHeight += hPx * 1.2;
-      var line = document.createElement('div');
-      line.className = 'opto-row opto-letter';
-      line.style.fontSize = (hPx * 1.05) + 'px';
-      var nLetters = lm > 0.5 ? 4 : 5;
-      line.textContent = lineLetters(nLetters, current.randomSeed + i*0.1);
-      grid.appendChild(line);
-    }
+    disp.appendChild(grid);
+    setControlsForSize();
+    return;
+  }
+
+  // MULTI-LINE CHART with side labels
+  var grid = document.createElement('div');
+  grid.className = 'opto-grid';
+  grid.style.gap = '16px';
+  var startLogmar = current.logmar + 0.2;
+  var endLogmar = current.logmar - 0.4;
+  var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= startLogmar; });
+  var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= endLogmar; });
+  if (startIdx < 0) startIdx = 0;
+  if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
+  if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
+  var availH = (disp.clientHeight || window.innerHeight - 130) - 16;
+  var totalHeight = 0;
+  for (var i = startIdx; i <= endIdx; i++) {
+    var lm = LOGMAR_LINES[i];
+    var hPx = snellenLogmarToHeightPx(lm);
+    if (hPx < 4) continue;
+    if (totalHeight + hPx * 1.4 > availH) continue;
+    totalHeight += hPx * 1.4;
+    grid.appendChild(makeSnellenLineEl(lm, lm > 0.5 ? 4 : 5, current.randomSeed + i*0.1, true));
   }
   disp.appendChild(grid);
   setControlsForSize();
+}
+
+// Elevator mode logic — adaptive AV measurement
+function startElevator() {
+  current.elev = {
+    correctRow: 0, wrongRow: 0,
+    bestLogmar: null, bestSnellen: null,
+    history: []
+  };
+}
+function elevatorAdvance(correct) {
+  if (!current.elev) startElevator();
+  current.elev.history.push({ logmar: current.logmar, correct: correct, ts: Date.now() });
+  current.randomSeed = Math.random();
+  if (correct) {
+    current.elev.correctRow++;
+    current.elev.wrongRow = 0;
+    current.elev.bestLogmar = current.logmar;
+    current.elev.bestSnellen = logmarToSnellen(current.logmar);
+    if (current.logmar > -0.3) current.logmar = Math.max(-0.3, current.logmar - 0.1);
+    runCurrent();
+  } else {
+    current.elev.wrongRow++;
+    current.elev.correctRow = 0;
+    if (current.elev.wrongRow >= 2) {
+      // Final AV = best line passed
+      var av = current.elev.bestLogmar !== null ? current.elev.bestLogmar : current.logmar;
+      var snellen = logmarToSnellen(av);
+      if (confirm('Examen terminado.\nMejor agudeza: ' + snellen + '\n\n¿Registrar como AV de ' + current.oe + '?')) {
+        recordAV(av);
+      }
+      current.snellenMode = 'multi';
+      current.elev = null;
+      runCurrent();
+    } else {
+      current.logmar = Math.min(1.0, current.logmar + 0.1);
+      runCurrent();
+    }
+  }
 }
 
 // ── Tumbling E ──
@@ -1688,6 +1856,105 @@ function ctrlLabel(t){
   var l = document.createElement('div'); l.className = 'ctrl-label'; l.textContent = t; return l;
 }
 
+// ═══════════════════════════════════════════════════════════
+// AV REGISTRY (registro rápido de agudeza visual)
+// ═══════════════════════════════════════════════════════════
+function recordAV(logmar) {
+  if (logmar === undefined) logmar = current.logmar;
+  var entry = {
+    eye: current.oe,
+    testId: current.test ? current.test.id : '',
+    testName: current.test ? current.test.name : '',
+    logmar: logmar,
+    snellen: logmarToSnellen(logmar),
+    metric: logmarToMetric(logmar),
+    decimal: Math.pow(10, -logmar).toFixed(2),
+    ts: Date.now()
+  };
+  avRegistry.push(entry);
+  localStorage.setItem('opto_avreg', JSON.stringify(avRegistry));
+  // Toast
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--ok);color:#000;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;z-index:200;animation:flash .3s';
+  toast.textContent = '✓ AV registrada: ' + entry.eye + ' ' + entry.snellen;
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 1800);
+}
+
+function showAVPanel() {
+  var list = document.getElementById('av-list');
+  list.innerHTML = '';
+  document.getElementById('av-paciente').value = avPaciente;
+  if (avRegistry.length === 0) {
+    list.innerHTML = '<div class="empty">Sin registros aún. Usa el botón "✓ Registrar AV" durante un test para guardar la agudeza alcanzada.</div>';
+  } else {
+    avRegistry.forEach(function(e, idx){
+      var r = document.createElement('div');
+      r.className = 'av-row';
+      var time = new Date(e.ts).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+      r.innerHTML =
+        '<span class="eye">' + e.eye + '</span>' +
+        '<span class="val">' + e.snellen + '</span>' +
+        '<span class="test">' + (e.testName || '') + '</span>' +
+        '<span class="ts">' + time + '</span>' +
+        '<button data-idx="' + idx + '" title="Borrar">×</button>';
+      list.appendChild(r);
+    });
+    list.querySelectorAll('button[data-idx]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var i = parseInt(b.getAttribute('data-idx'));
+        avRegistry.splice(i, 1);
+        localStorage.setItem('opto_avreg', JSON.stringify(avRegistry));
+        showAVPanel();
+      });
+    });
+  }
+  document.getElementById('av-panel').classList.add('open');
+}
+
+document.getElementById('av-close').addEventListener('click', function(){ document.getElementById('av-panel').classList.remove('open'); });
+document.getElementById('av-clear').addEventListener('click', function(){
+  if (avRegistry.length && confirm('¿Borrar todos los registros?')) {
+    avRegistry = [];
+    localStorage.setItem('opto_avreg', JSON.stringify(avRegistry));
+    showAVPanel();
+  }
+});
+document.getElementById('av-copy').addEventListener('click', function(){
+  if (!avRegistry.length) return;
+  var pac = (document.getElementById('av-paciente').value || '').trim();
+  var lines = [];
+  if (pac) lines.push('Paciente: ' + pac);
+  lines.push('Examen: ' + new Date().toLocaleDateString('es-MX'));
+  // Group by eye, take last per eye
+  var byEye = {};
+  avRegistry.forEach(function(e){ byEye[e.eye] = e; });
+  Object.keys(byEye).sort().forEach(function(eye){
+    var e = byEye[eye];
+    lines.push(eye + ': ' + e.snellen + ' (' + e.metric + ' · decimal ' + e.decimal + ')');
+  });
+  // Full history
+  lines.push('');
+  lines.push('Historial:');
+  avRegistry.forEach(function(e){
+    var time = new Date(e.ts).toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+    lines.push('  [' + time + '] ' + e.eye + ' ' + e.snellen + ' (' + e.testName + ')');
+  });
+  var text = lines.join('\n');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function(){
+      alert('✓ Copiado al portapapeles');
+    });
+  } else {
+    var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    alert('✓ Copiado al portapapeles');
+  }
+});
+document.getElementById('av-paciente').addEventListener('input', function(){
+  avPaciente = this.value;
+  localStorage.setItem('opto_avpac', avPaciente);
+});
+
 function setControlsForSize(){
   ctrl.innerHTML = '';
   // Tamaño
@@ -1729,6 +1996,21 @@ function setControlsForSize(){
     }));
     ctrl.appendChild(g5);
   }
+  // Modo Snellen (multi/single/elevator) — solo para Snellen letras
+  if (current.test && current.test.id === 'snellen') {
+    var g6 = ctrlGroup();
+    g6.appendChild(ctrlLabel('Modo'));
+    g6.appendChild(ctrlBtn('Cartilla', function(){ current.snellenMode='multi'; current.elev=null; runCurrent(); }, current.snellenMode==='multi'));
+    g6.appendChild(ctrlBtn('Una línea', function(){ current.snellenMode='single'; current.elev=null; runCurrent(); }, current.snellenMode==='single'));
+    g6.appendChild(ctrlBtn('🛗 Examen', function(){ current.snellenMode='elevator'; current.logmar=0.5; startElevator(); runCurrent(); }, current.snellenMode==='elevator'));
+    ctrl.appendChild(g6);
+  }
+  // Registrar AV + Reporte
+  var g7 = ctrlGroup();
+  g7.appendChild(ctrlLabel('Registro'));
+  g7.appendChild(ctrlBtn('✓ AV ' + current.oe, function(){ recordAV(); }));
+  g7.appendChild(ctrlBtn('📋 ' + (avRegistry.length || ''), function(){ showAVPanel(); }));
+  ctrl.appendChild(g7);
 }
 
 function setControlsForKids(){
