@@ -752,16 +752,21 @@ function renderSnellen(opts){
     letter.textContent = SLOAN[Math.floor(((current.randomSeed*47)%10))];
     grid.appendChild(letter);
   } else {
-    // Multi-line chart
+    // Multi-line chart — adaptive to viewport
     var startIdx = LOGMAR_LINES.findIndex(function(l){ return l <= startLogmar; });
     var endIdx = LOGMAR_LINES.findIndex(function(l){ return l <= endLogmar; });
     if (startIdx < 0) startIdx = 0;
     if (endIdx < 0) endIdx = LOGMAR_LINES.length - 1;
     if (startIdx > endIdx) { var t = startIdx; startIdx = endIdx; endIdx = t; }
+    var availH = (disp.clientHeight || window.innerHeight - 130) - 16;
+    var totalHeight = 0;
     for (var i = startIdx; i <= endIdx; i++) {
       var lm = LOGMAR_LINES[i];
       var hPx = snellenLogmarToHeightPx(lm);
       if (hPx < 4) continue;
+      // Skip lines that don't fit
+      if (totalHeight + hPx * 1.2 > availH) continue;
+      totalHeight += hPx * 1.2;
       var line = document.createElement('div');
       line.className = 'opto-row opto-letter';
       line.style.fontSize = (hPx * 1.05) + 'px';
@@ -1502,12 +1507,16 @@ function renderPelli(){
   clearDisp();
   var box = document.createElement('div');
   box.className = 'opto-grid';
-  // Larger fixed letters; vary contrast
-  var letterPx = 80; // standard size
-  CONTRAST_LEVELS.slice(0, 8).forEach(function(c, i){
+  box.style.padding = '8px 0';
+  // Adaptive sizing: fit all lines in available height
+  var nLines = 8;
+  var availH = (disp.clientHeight || window.innerHeight - 130) - 32;
+  var letterPx = Math.max(28, Math.min(80, Math.floor(availH / (nLines * 1.25))));
+  CONTRAST_LEVELS.slice(0, nLines).forEach(function(c, i){
     var line = document.createElement('div');
     line.className = 'contrast-row';
     line.style.fontSize = letterPx + 'px';
+    line.style.lineHeight = '1.15';
     var gray = Math.round(255 * (1 - c));
     line.style.color = 'rgb(' + gray + ',' + gray + ',' + gray + ')';
     line.textContent = lineLetters(3, current.randomSeed + i*0.3);
