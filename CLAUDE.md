@@ -414,7 +414,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v278 — Telegram plugin: variante C de fallo identificada y documentada (zombie pollers). Diagnóstico de 30s ahora cubre 3 variantes: A=cache roto (pending>0), B=stdio inbound colgado, C=múltiples bun.exe peleando por polling. Memoria actualizada para reconocer cualquiera al instante.
+**Última versión**: v279 — Sistema de autorización: ahora usa plantilla Twilio aprobada `autorizacion_admin` (SID HXee442652c35a9eaaa3eb0e17a048c193, Quick Reply Sí/No). Las solicitudes de autorización llegan al admin aunque la ventana 24h de WhatsApp esté cerrada. Fallback a freeform si la plantilla falla.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

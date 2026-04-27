@@ -114,6 +114,17 @@ async function authEnviarCodigo() {
       sucursal: suc,
       estado: 'pendiente'
     });
+    // Plantilla aprobada: HXee442652c35a9eaaa3eb0e17a048c193 (autorizacion_admin)
+    // Variables: {1}=nombre+suc, {2}=tipo+desc, {3}=motivo, {4}=código
+    // Usar plantilla → llega siempre, aunque la ventana 24h esté cerrada.
+    var AUTH_TEMPLATE_SID = 'HXee442652c35a9eaaa3eb0e17a048c193';
+    var templateVars = {
+      '1': nombre + ' (' + suc + ')',
+      '2': tipo + ': ' + desc,
+      '3': motivo || 'Sin motivo',
+      '4': _authCodigo
+    };
+    // Texto fallback (freeform) por si la plantilla falla o no está aprobada
     var msg = '🔐 AUTORIZACIÓN\n'
       + '👤 ' + nombre + ' (' + suc + ')\n'
       + '📋 ' + tipo + ': ' + desc + '\n'
@@ -140,19 +151,36 @@ async function authEnviarCodigo() {
       } catch(e) {}
       for (var _ap = 0; _ap < _authPhones.length; _ap++) {
         try {
+          // Intentar primero con plantilla (atraviesa ventana 24h)
           var _authRes = await fetch('/.netlify/functions/whatsapp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'send',
               phone: _authPhones[_ap],
-              message: msg,
+              template: AUTH_TEMPLATE_SID,
+              template_variables: templateVars,
               auth: { id: currentUser?.id || 'sistema', pass: currentUser?.pass || '' }
             })
           });
           var _authResData = await _authRes.json();
-          if (!_authRes.ok) console.error('[Auth WA] Error enviando a ' + _authPhones[_ap] + ':', _authResData);
-          else console.log('[Auth WA] Enviado a ' + _authPhones[_ap]);
+          if (!_authRes.ok) {
+            console.warn('[Auth WA] Plantilla falló, intentando freeform a ' + _authPhones[_ap] + ':', _authResData);
+            // Fallback a freeform (solo funciona dentro de ventana 24h)
+            var _ffRes = await fetch('/.netlify/functions/whatsapp', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'send',
+                phone: _authPhones[_ap],
+                message: msg,
+                auth: { id: currentUser?.id || 'sistema', pass: currentUser?.pass || '' }
+              })
+            });
+            if (!_ffRes.ok) console.error('[Auth WA] Freeform también falló:', await _ffRes.json());
+          } else {
+            console.log('[Auth WA] Plantilla enviada a ' + _authPhones[_ap]);
+          }
         } catch(_sendErr) { console.error('[Auth WA] Fetch error:', _sendErr.message); }
       }
     }
