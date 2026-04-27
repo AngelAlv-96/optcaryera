@@ -414,7 +414,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v277 — Comisiones: campo `fecha_inicio` por asesor para pro-rateo de primera quincena. Cuando se agrega un asesor con fecha de inicio dentro del periodo seleccionado, el cálculo solo cuenta ingresos desde esa fecha. UI en Configuración → Equipo (campo "Inicio (opc.)" al agregar asesor). Aplicado a Edna Karina Rodriguez (Magnolia, inició 2026-04-09).
+**Última versión**: v278 — Telegram plugin: variante C de fallo identificada y documentada (zombie pollers). Diagnóstico de 30s ahora cubre 3 variantes: A=cache roto (pending>0), B=stdio inbound colgado, C=múltiples bun.exe peleando por polling. Memoria actualizada para reconocer cualquiera al instante.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
