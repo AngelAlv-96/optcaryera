@@ -22353,12 +22353,9 @@ function filtrarPromos() {
 }
 
 function renderPromoList(list) {
-  const hoy = new Date().toISOString().slice(0, 10);
   const esSucursal = currentUser?.rol === 'sucursal';
   document.getElementById('promo-list').innerHTML = list.length ? list.map(p => {
     const t = PROMO_TIPOS[p.tipo] || { label: p.tipo, icon: '🏷', color: '#888' };
-    const vigente = p.activa && (!p.fecha_inicio || p.fecha_inicio <= hoy) && (!p.fecha_fin || p.fecha_fin >= hoy);
-    const expirada = p.fecha_fin && p.fecha_fin < hoy;
     const usosAgotados = p.max_usos && p.usos_actuales >= p.max_usos;
     let valorTxt = '';
     if (p.tipo === 'porcentaje' || p.tipo === 'descuento_staff') valorTxt = `${p.valor}%`;
@@ -22368,14 +22365,11 @@ function renderPromoList(list) {
     else if (p.tipo === 'material_a_peso') valorTxt = `Material a $${Number(p.precio_paquete).toFixed(0)} · Arm ≥$${Number(p.monto_minimo).toFixed(0)}`;
     else if (p.tipo === 'material_1') valorTxt = `Arm ≥$${Number(p.monto_min_armazon||1200).toFixed(0)}`;
     else if (p.tipo === 'paquete_fijo') valorTxt = `$${Number(p.precio_paquete||0).toFixed(0)}`;
-    const fechas = (p.fecha_inicio || p.fecha_fin) ? `${p.fecha_inicio || '∞'} → ${p.fecha_fin || '∞'}` : 'Sin vigencia';
     const cats = p.categorias?.length ? p.categorias.join(', ') : 'Todas';
     let statusBadge = '';
     if (!p.activa) statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(136,136,136,0.15);color:#888;border-radius:8px;font-weight:600">Inactiva</span>';
-    else if (expirada) statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(224,128,128,0.12);color:#e08080;border-radius:8px;font-weight:600">Expirada</span>';
     else if (usosAgotados) statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(224,128,128,0.12);color:#e08080;border-radius:8px;font-weight:600">Usos agotados</span>';
-    else if (vigente) statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(114,196,126,0.12);color:#72c47e;border-radius:8px;font-weight:600">Vigente</span>';
-    else statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(212,184,74,0.12);color:#d4b84a;border-radius:8px;font-weight:600">Programada</span>';
+    else statusBadge = '<span style="font-size:9px;padding:2px 8px;background:rgba(114,196,126,0.12);color:#72c47e;border-radius:8px;font-weight:600">Activa</span>';
     if (esSucursal) {
       return `<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:14px 16px;${!p.activa ? 'opacity:0.5;' : ''}">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -22390,7 +22384,6 @@ function renderPromoList(list) {
           <div style="font-size:18px;font-weight:800;color:${t.color}">${valorTxt}</div>
         </div>
         ${p.descripcion ? `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">${p.descripcion}</div>` : ''}
-        <div style="font-size:10px;color:var(--muted)">📅 ${fechas}</div>
         ${p.notas ? `<div style="font-size:10px;color:var(--muted);margin-top:4px;font-style:italic">📝 ${p.notas}</div>` : ''}
       </div>`;
     }
@@ -22411,7 +22404,6 @@ function renderPromoList(list) {
         <div style="font-size:18px;font-weight:800;color:${t.color}">${valorTxt}</div>
       </div>
       <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:8px;flex-wrap:wrap">
-        <span>📅 ${fechas}</span>
         <span>📁 ${cats}</span>
         <span>📊 ${p.usos_actuales || 0}${p.max_usos ? '/' + p.max_usos : ''} usos</span>
         ${p.folios_lab > 1 ? `<span>📋 ${p.folios_lab} folios lab</span>` : ''}
