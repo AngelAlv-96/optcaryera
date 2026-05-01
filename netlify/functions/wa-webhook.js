@@ -44,23 +44,24 @@ function getActivePromos() {
   var month = mx.getMonth() + 1; // 1-based
   var year = mx.getFullYear();
 
-  // Abril 15-30, 2026 (3x1 terminó el 14 de abril)
-  if (year === 2026 && month === 4) {
-    return 'PROMOCIÓN VIGENTE (ABRIL 15-30):\n' +
+  // Abril 15 - Mayo 15, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta 15 de mayo)
+  if (year === 2026 && (month === 4 || month === 5)) {
+    return 'PROMOCIÓN VIGENTE (HASTA EL 15 DE MAYO):\n' +
       '🎁 2x1 en lentes completos: compras 2 lentes completos y pagas solo 1. El PRECIO DEPENDE DE LO QUE ELIJAS: armazón + graduación + material + tratamientos. Cada cliente paga distinto según sus elecciones — NO hay un precio fijo de la promo.\n' +
       '☀️ ADICIONAL dentro de la promo: un lente solar graduado EXTRA por $499 (este $499 es un par adicional — armazón solar + graduación sencilla CR-39 incluidos en ese precio fijo). Es un "bono" encima del 2x1, no es lo mismo que la promo principal.\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
       '🕒 Lentes listos desde 35 minutos (laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Se puede COMPARTIR entre máximo 2 personas.\n' +
-      'Válida hasta el 30 de abril.\n\n' +
-      '🧒 PROMO ESPECIAL DÍA DEL NIÑO (ABRIL 15-30):\n' +
+      'Válida hasta el 15 de mayo de 2026.\n\n' +
+      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios todavía dicen "hasta el 30 de abril" porque la promoción se extendió. Si el cliente pregunta "¿pero el anuncio decía 30 de abril, ya se acabó?" → responde con SEGURIDAD: "La promoción se extendió hasta el 15 de mayo, sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
+      '🧒 PROMO ESPECIAL DÍA DEL NIÑO (vigente hasta el 15 de mayo):\n' +
       '• 30% de descuento EXCLUSIVAMENTE sobre el armazón (NO sobre micas ni tratamientos — esos se cobran a precio normal).\n' +
       '• Solo para niños hasta 15 años de edad.\n' +
       '• Requiere compra de LENTE COMPLETO CON GRADUACIÓN (no aplica a armazón suelto sin graduación ni a armazones de moda sin Rx).\n' +
       '• SÍ se puede combinar con la promo 2x1 (se puede aprovechar ambas).\n' +
       '• NO se combina con otras promos (ej: 3x1 ya no aplica).\n' +
-      '• Vigencia: del 15 al 30 de abril de 2026.\n' +
+      '• Vigencia: hasta el 15 de mayo de 2026.\n' +
       '• NUNCA inventes detalles no listados aquí (marcas específicas, modelos con descuento extra, porcentajes diferentes, otras edades, combinaciones adicionales). Si preguntan algo no cubierto: "Para revisar los detalles exactos pásate a sucursal, ahí te arman la cotización."\n' +
       '⚡ REGLA OBLIGATORIA DE DETECCIÓN: Si el cliente menciona CUALQUIERA de estos términos → niño, niña, niños, mi hijo, mi hija, bebé, menor, chamaco, chavito, infantil, escuela, edad del niño/a → DEBES mencionar la promo del Día del Niño (30% armazón) en tu respuesta, combinada con 2x1 si aplica. NO la ocultes. Si el niño tiene 15 años o menos Y va a comprar lente completo con graduación, es una venta perdida si no la mencionas. Ejemplo obligatorio: "Además tenemos promo especial del Día del Niño: 30% de descuento en el armazón para menores de 15 años con lente graduado (combinable con 2x1)." ESTO ES PRIORIDAD CRÍTICA, no lo olvides.\n\n' +
       '⚠️ REGLAS CRÍTICAS AL HABLAR DE PRECIOS EN ESTA PROMO (no las rompas):\n' +
