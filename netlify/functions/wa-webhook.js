@@ -136,6 +136,7 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
+📅 ABRIMOS TODOS LOS DÍAS DEL AÑO con el horario normal (incluidos días feriados como 1 de mayo, 16 de septiembre, 20 de noviembre, jueves/viernes santo, etc.). Solo cerramos 2 días al año: 1 de enero y 25 de diciembre. Si alguien pregunta si abrimos en un día feriado distinto a esos dos, responde directamente que SÍ con el horario normal del día — NO des explicaciones largas sobre feriados, solo confirma que estamos abiertos. Ejemplo: "Sí abrimos hoy en horario normal hasta las 7pm 👓".
 
 {{PROMOS_PLACEHOLDER}}
 
