@@ -5774,13 +5774,21 @@ async function loadLab() {
       .order('created_at', { ascending: false });
     if (currentUser?.rol === 'sucursal') query = query.eq('sucursal', currentUser.sucursal);
 
-    if (/^\d+$/.test(q)) {
-      const { data: pacTel } = await db.from('pacientes')
-        .select('id').ilike('telefono', `%${q}%`).limit(200);
-      const telIds = (pacTel || []).map(p => p.id);
-      if (telIds.length > 0) {
-        query = query.or(`notas_laboratorio.ilike.%Folio: ${q}%,paciente_id.in.(${telIds.join(',')})`);
+    // Folio-like: pure digits ("11683"), digits+sufijo ("11683-3"), o ONL/AME prefijos ("ONL-1234")
+    const _isFolioLike = /\d/.test(q) && /^[A-Z0-9-]+$/i.test(q);
+    if (_isFolioLike) {
+      if (/^\d+$/.test(q)) {
+        // Solo dígitos puros — buscar también por teléfono
+        const { data: pacTel } = await db.from('pacientes')
+          .select('id').ilike('telefono', `%${q}%`).limit(200);
+        const telIds = (pacTel || []).map(p => p.id);
+        if (telIds.length > 0) {
+          query = query.or(`notas_laboratorio.ilike.%Folio: ${q}%,paciente_id.in.(${telIds.join(',')})`);
+        } else {
+          query = query.ilike('notas_laboratorio', `%Folio: ${q}%`);
+        }
       } else {
+        // Folio con guión o prefijo (11683-3, ONL-1234) — solo buscar por folio
         query = query.ilike('notas_laboratorio', `%Folio: ${q}%`);
       }
     } else {
