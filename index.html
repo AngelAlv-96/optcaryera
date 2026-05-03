@@ -4992,7 +4992,20 @@ try {
             auth: { id: currentUser?.id, pass: currentUser?.pass }
           })
         });
-        const json = await res.json();
+        // Robust parsing: si la respuesta no es JSON (timeout de Netlify, error 502/504, etc),
+        // mostrar mensaje claro en vez de crashear con "Unexpected token..."
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); }
+        catch (parseErr) {
+          var snippet = (text || '').slice(0, 120);
+          var hint = res.status === 504 ? ' (timeout del servidor — el dato pudo haberse guardado, refresca para verificar)' :
+                     res.status === 502 ? ' (error de gateway — pudo haberse guardado, refresca)' :
+                     res.status >= 500 ? ' (error del servidor — verificar si se guardó)' :
+                     ' (respuesta inválida del servidor)';
+          console.warn('[SecureQuery] Non-JSON response from dbwrite. Status:', res.status, 'Body:', snippet);
+          return { data: null, error: { message: 'HTTP ' + res.status + hint + ': ' + snippet } };
+        }
         if (json.error) return { data: json.data || null, error: { message: json.error } };
         return { data: json.data, error: null };
       } catch (e) {
