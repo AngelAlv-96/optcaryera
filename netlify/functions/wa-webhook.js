@@ -694,10 +694,11 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   var config = await getClariConfig();
   // Fecha y hora actual en Cd. Juárez para contexto
   var nowMx = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  var todayWeekday = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', weekday: 'long' });
   // Inject dynamic promos into knowledge (promo_override from cmdPromo takes priority)
   var promoText = config.promo_override || getActivePromos();
   var knowledgeWithPromos = config.knowledge.replace('{{PROMOS_PLACEHOLDER}}', promoText);
-  var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL: ' + nowMx + '\nUsa esta información para responder preguntas sobre horarios (ej: si es domingo, el horario es 11am-5pm, no 10am-7pm).\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
+  var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Get conversation history early (needed for order follow-up detection)
   var history = await getConversationHistory(phone);

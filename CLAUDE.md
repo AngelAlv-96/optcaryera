@@ -414,7 +414,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v279 — Sistema de autorización: ahora usa plantilla Twilio aprobada `autorizacion_admin` (SID HXee442652c35a9eaaa3eb0e17a048c193, Quick Reply Sí/No). Las solicitudes de autorización llegan al admin aunque la ventana 24h de WhatsApp esté cerrada. Fallback a freeform si la plantilla falla.
+**Última versión**: v280 — Clari fix anchoring del día de la semana: reescrita la instrucción de fecha en `wa-webhook.js` y `meta-webhook.js` para que el modelo no aluciné "domingo" cuando es otro día. Caso real: el bot dijo "5pm hoy domingo" un lunes 4:50pm porque el ejemplo del prompt mencionaba "domingo" y el modelo se ancló ahí. Ahora dice explícito "HOY ES {DÍA}. NUNCA inventes el día. Si HOY no es domingo, NO digas 'hoy domingo'."
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
