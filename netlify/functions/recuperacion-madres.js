@@ -9,10 +9,16 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
-const MAX_PER_RUN = 50;
+// Bajo a 10/run para que UNA invocación termine dentro del timeout de Netlify (~26s Pro).
+// Si la función no completa, curl timeoutea pero la instancia sigue corriendo en background;
+// disparar otra crea instancias paralelas con dedup vacío y duplica envíos.
+const MAX_PER_RUN = 10;
 const DEDUP_DAYS = 60;
 
 const TEMPLATE_SID = 'HX15df7b773fe9297d2d4271bad8200eae';
+const TAG = 'Recup-Madres';
+const LOCK_KEY = 'recup_madres_lock';
+const LOCK_TTL_SEC = 90;
 
 async function supaREST(method, path, body) {
   const opts = {
@@ -39,6 +45,58 @@ function normalizePhone(phone) {
   if (num.length === 10) num = '521' + num;
   if (num.length === 12 && num.startsWith('52') && num[2] !== '1') num = '521' + num.slice(2);
   return num;
+}
+
+// Lock con TTL — evita que dos invocaciones corran al mismo tiempo
+async function lockAcquire() {
+  try {
+    const cur = await supaREST('GET', `app_config?id=eq.${LOCK_KEY}&select=value`);
+    if (cur && cur[0]) {
+      const val = JSON.parse(cur[0].value || '{}');
+      const startedAt = new Date(val.started_at || 0).getTime();
+      if (Date.now() - startedAt < LOCK_TTL_SEC * 1000) return false;
+    }
+  } catch (e) { /* lock no existe aún, intentamos crear */ }
+  try {
+    const body = { id: LOCK_KEY, value: JSON.stringify({ started_at: new Date().toISOString() }) };
+    // Upsert: si ya existe por race condition, falla y devolvemos false
+    const opts = {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(body)
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/app_config`, opts);
+    if (!res.ok) return false;
+    return true;
+  } catch (e) { return false; }
+}
+
+async function lockRelease() {
+  try {
+    await supaREST('PATCH', `app_config?id=eq.${LOCK_KEY}`, {
+      value: JSON.stringify({ started_at: new Date(0).toISOString() })
+    });
+  } catch (e) { /* fail silent */ }
+}
+
+// Dedup PER-FONO inmediatamente antes de enviar.
+// fail-closed: si la query falla, asumimos que ya fue contactado (mejor falso negativo que duplicado).
+async function alreadyContacted(phone) {
+  const since = new Date(Date.now() - DEDUP_DAYS * 86400000).toISOString();
+  try {
+    const r = await supaREST('GET',
+      `clari_conversations?phone=eq.${phone}&content=ilike.*${TAG}*&created_at=gte.${since}&select=id&limit=1`
+    );
+    return Array.isArray(r) && r.length > 0;
+  } catch (e) {
+    console.error(`[RECUP-MADRES] Dedup query failed for ${phone}, fail-closed:`, e.message);
+    return true; // fail-closed
+  }
 }
 
 async function sendTemplate(to, templateSid, variables) {
@@ -127,9 +185,16 @@ exports.handler = async function(event) {
     return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Fuera de horario (10am-8pm CST)' }) };
   }
 
-  try {
-    const now = new Date();
+  // Lock para evitar invocaciones paralelas
+  if (!dryRun) {
+    const got = await lockAcquire();
+    if (!got) {
+      console.log('[RECUP-MADRES] Otra instancia en curso (lock activo). Saliendo.');
+      return { statusCode: 200, body: JSON.stringify({ ok: true, enviados: 0, mensaje: 'Otra instancia ya está corriendo (lock)' }) };
+    }
+  }
 
+  try {
     let contactList = [];
     try {
       const cfgResp = await supaREST('GET', "app_config?id=eq.recuperacion_madres_contacts&select=value");
@@ -150,79 +215,87 @@ exports.handler = async function(event) {
       nombre: c.nombre || 'amigo',
       phone: normalizePhone(c.phone)
     }));
-    const phones = candidates.map(c => c.phone);
-
-    const alreadySent = new Set();
-    const dedupFrom = new Date(now);
-    dedupFrom.setDate(dedupFrom.getDate() - DEDUP_DAYS);
-
-    for (let i = 0; i < phones.length; i += 20) {
-      const batch = phones.slice(i, i + 20);
-      const phoneFilter = batch.map(p => `"${p}"`).join(',');
-      try {
-        const msgs = await supaREST('GET',
-          `clari_conversations?phone=in.(${phoneFilter})&content=ilike.*Recup-Madres*&created_at=gte.${dedupFrom.toISOString()}&select=phone&limit=200`
-        );
-        if (msgs) msgs.forEach(m => alreadySent.add(m.phone));
-      } catch (e) { /* continue */ }
-    }
-
-    console.log(`[RECUP-MADRES] ${alreadySent.size} ya contactados`);
-
-    const toSend = candidates.filter(c => !alreadySent.has(c.phone));
-    const limited = toSend.slice(0, MAX_PER_RUN);
-
-    console.log(`[RECUP-MADRES] ${toSend.length} elegibles, enviando ${limited.length}`);
 
     if (dryRun) {
+      // En dry run, contar cuántos faltan haciendo dedup per-phone (más lento pero exacto)
+      let yaContactados = 0;
+      const muestraPendientes = [];
+      for (const c of candidates) {
+        const already = await alreadyContacted(c.phone);
+        if (already) { yaContactados++; }
+        else if (muestraPendientes.length < 10) {
+          muestraPendientes.push({ nombre: (c.nombre || 'amigo').split(' ')[0], phone: '...' + c.phone.slice(-4) });
+        }
+      }
+      const pendientes = candidates.length - yaContactados;
       return {
         statusCode: 200,
         body: JSON.stringify({
           ok: true, dryRun: true,
-          total: contactList.length,
-          yaEnviados: alreadySent.size,
-          elegibles: toSend.length,
-          enviarEstaVez: limited.length,
-          muestra: limited.slice(0, 10).map(c => ({ nombre: c.nombre, phone: '...' + c.phone.slice(-4) }))
+          total: candidates.length,
+          yaContactados,
+          pendientes,
+          enviarEstaVez: Math.min(pendientes, MAX_PER_RUN),
+          muestraPendientes
         }, null, 2)
       };
     }
 
     let enviados = 0;
-    for (const c of limited) {
+    let saltados = 0;
+    let errores = 0;
+
+    for (const c of candidates) {
+      if (enviados >= MAX_PER_RUN) break;
+
+      // Dedup PER-FONO antes de enviar (no en batch al inicio)
+      const already = await alreadyContacted(c.phone);
+      if (already) { saltados++; continue; }
+
       const nombre = (c.nombre || 'amigo').split(' ')[0];
       const ok = await sendTemplate(c.phone, TEMPLATE_SID, { '1': nombre });
 
       if (ok) {
+        // CRÍTICO: guardar historial INMEDIATAMENTE para que la siguiente
+        // invocación vea este número como ya enviado.
         await saveToHistory(c.phone, 'assistant',
-          `[Recup-Madres] Mensaje de recuperación enviado a ${nombre}`
+          `[${TAG}] Mensaje de recuperación enviado a ${nombre}`
         );
         enviados++;
         console.log(`[RECUP-MADRES] ✓ ${nombre} (..${c.phone.slice(-4)})`);
+      } else {
+        errores++;
       }
 
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
-    console.log(`[RECUP-MADRES] Completado: ${enviados}/${limited.length}`);
+    console.log(`[RECUP-MADRES] Completado: enviados=${enviados}, saltados=${saltados}, errores=${errores}`);
 
     if (enviados > 0) {
+      const restantes = candidates.length - (await (async () => {
+        // contar cuántos están ya contactados ahora (rápido por sample, costoso por exacto)
+        // Para no agregar latencia al final, solo reportamos enviados-en-esta-tanda
+        return 0;
+      })());
       await sendAdminWA(
-        `📊 *Recuperación Día de las Madres — Resumen*\n\n` +
-        `✅ Enviados: ${enviados}/${limited.length}\n` +
-        `⏭ Restantes: ${toSend.length - limited.length}\n` +
-        `🚫 Ya contactados: ${alreadySent.size}\n\n` +
+        `📊 *Recuperación Día de las Madres — Tanda*\n\n` +
+        `✅ Enviados esta vez: ${enviados}\n` +
+        `⏭ Saltados (ya contactados): ${saltados}\n` +
+        `❌ Errores: ${errores}\n\n` +
         `👀 Las respuestas llegarán a Clari automáticamente.`
       );
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ ok: true, enviados, total: limited.length, restantes: toSend.length - limited.length })
+      body: JSON.stringify({ ok: true, enviados, saltados, errores })
     };
 
   } catch (err) {
     console.error('[RECUP-MADRES] Fatal:', err.message);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+  } finally {
+    if (!dryRun) await lockRelease();
   }
 };

@@ -10,7 +10,9 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
-const MAX_PER_RUN = 30;
+// Bajado a 10/run: si MAX_PER_RUN es alto, la función timeoutea en Netlify (~26s)
+// pero curl ya regresó, y disparar la siguiente crea instancias paralelas con dedup vacío → duplicados.
+const MAX_PER_RUN = 10;
 
 // Days after positive response to send follow-up
 const FOLLOWUP_MIN_DAYS = 2;
@@ -198,6 +200,20 @@ exports.handler = async function(event) {
     // Extract sucursal from original [Review] entry for each phone
     let enviados = 0;
     for (const phone of toSend) {
+      // Re-check dedup PER-FONO inmediatamente antes de enviar (race protection)
+      try {
+        const recheck = await supaREST('GET',
+          `clari_conversations?phone=eq.${phone}&content=ilike.*[Review Followup]*&select=id&limit=1`
+        );
+        if (recheck && recheck.length > 0) {
+          console.log(`[REVIEW-FOLLOWUP] ⚠ Skip ${phone.slice(-4)} — ya tiene follow-up (race check)`);
+          continue;
+        }
+      } catch (e) {
+        console.warn('[REVIEW-FOLLOWUP] Re-check falló, salto por seguridad:', e.message);
+        continue;
+      }
+
       // Find the original [Review] entry to get sucursal
       let sucursal = '';
       try {

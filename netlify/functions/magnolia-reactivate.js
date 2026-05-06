@@ -11,7 +11,9 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
-const MAX_PER_RUN = 30;
+// Bajado a 10/run: si MAX_PER_RUN es alto, la función timeoutea en Netlify (~26s)
+// pero curl ya regresó, y disparar la siguiente crea instancias paralelas con dedup vacío → duplicados.
+const MAX_PER_RUN = 10;
 const DEDUP_DAYS = 30;
 
 // Template SID — crear en Twilio Console: magnolia_reactivacion
@@ -219,6 +221,21 @@ exports.handler = async function(event) {
     let enviados = 0;
     for (const c of toSend) {
       const nombre = (c.name || 'Cliente').split(' ')[0];
+
+      // Re-check dedup PER-FONO inmediatamente antes de enviar (race protection)
+      try {
+        const recheck = await supaREST('GET',
+          `clari_conversations?phone=eq.${c.phone}&content=ilike.*Magnolia-Reactivation*&created_at=gte.${dedupFrom.toISOString()}&select=id&limit=1`
+        );
+        if (recheck && recheck.length > 0) {
+          console.log(`[MAGNOLIA-REACTIVATE] ⚠ Skip ${c.phone.slice(-4)} — ya enviado (race check)`);
+          continue;
+        }
+      } catch (e) {
+        console.warn('[MAGNOLIA-REACTIVATE] Re-check falló, salto por seguridad:', e.message);
+        continue;
+      }
+
       let ok = false;
 
       if (TEMPLATE_SID) {

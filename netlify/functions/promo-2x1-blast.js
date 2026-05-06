@@ -258,7 +258,11 @@ exports.handler = async function(event) {
           console.log(`[PROMO-2X1] ⚠ Skip ${c.phone.slice(-4)} — ya enviado (race check)`);
           continue;
         }
-      } catch (e) { /* continue */ }
+      } catch (e) {
+        // Fail-closed: si la dedup query falla, NO enviamos (mejor falso negativo que duplicado)
+        console.warn(`[PROMO-2X1] Re-check falló para ${c.phone.slice(-4)}, salto por seguridad:`, e.message);
+        continue;
+      }
 
       const result = await sendTemplate(c.phone, templateSid);
 

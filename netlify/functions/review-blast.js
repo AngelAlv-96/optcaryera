@@ -218,10 +218,10 @@ exports.handler = async function(event) {
       };
     }
 
-    // Envío real — procesar en lotes con 1s entre cada mensaje
-    // Netlify functions tienen ~26s timeout, suficiente para ~20 mensajes
-    // Si hay más, procesa el primer lote y responde cuántos faltan (ejecutar de nuevo)
-    const BATCH_LIMIT = 25;
+    // Envío real — procesar en lotes pequeños con 1s entre cada mensaje
+    // Netlify functions tienen ~26s timeout. Bajado a 10 para que UNA invocación termine
+    // bien dentro del límite y no haya instancias paralelas tras timeout (causa duplicados).
+    const BATCH_LIMIT = 10;
     const batch = toSend.slice(0, BATCH_LIMIT);
     const remaining = toSend.length - batch.length;
 
@@ -244,7 +244,12 @@ exports.handler = async function(event) {
           resultados.push({ folio: v.folio, nombre, sucursal, status: 'ya_encuestado' });
           continue;
         }
-      } catch (e) { /* si falla la verificación, intentar enviar de todas formas */ }
+      } catch (e) {
+        // Fail-closed: si la dedup query falla, NO enviamos (mejor falso negativo que duplicado)
+        console.warn(`[REVIEW-BLAST] Re-check falló para ${phone.slice(-4)}, salto por seguridad:`, e.message);
+        resultados.push({ folio: v.folio, nombre, sucursal, status: 'skip_recheck_error' });
+        continue;
+      }
 
       const ok = await sendTemplate(tel, TEMPLATE_SID, { '1': nombre });
 

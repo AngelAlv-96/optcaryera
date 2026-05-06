@@ -13,7 +13,9 @@ const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 // Template SID — se llena después de crear en Twilio Console
 const TEMPLATE_SID = process.env.PROMO_FOLLOWUP_TEMPLATE_SID || 'HXa4f1d07c41ebb02e5a4639afbf1cbede';
 
-const MAX_PER_RUN = 50;
+// Bajado a 10/run: si MAX_PER_RUN es alto, la función timeoutea en Netlify (~26s)
+// pero curl ya regresó, y disparar la siguiente crea instancias paralelas con dedup vacío → duplicados.
+const MAX_PER_RUN = 10;
 const DEDUP_TAG = '[Promo-Followup-Abril]';
 
 async function supaREST(method, path, body) {
@@ -171,6 +173,20 @@ exports.handler = async function(event) {
       if (dryRun) {
         console.log(`[DRY] ${phone} | ${firstName} (${c.name})`);
         sent++;
+        continue;
+      }
+
+      // Re-check dedup PER-FONO inmediatamente antes de enviar (race protection)
+      try {
+        const recheck = await supaREST('GET',
+          `clari_conversations?phone=eq.${phone}&content=ilike.*${encodeURIComponent(DEDUP_TAG)}*&select=id&limit=1`
+        );
+        if (recheck && recheck.length > 0) {
+          console.log(`[PROMO-FOLLOWUP] ⚠ Skip ${phone.slice(-4)} — ya enviado (race check)`);
+          continue;
+        }
+      } catch (e) {
+        console.warn('[PROMO-FOLLOWUP] Re-check falló, salto por seguridad:', e.message);
         continue;
       }
 

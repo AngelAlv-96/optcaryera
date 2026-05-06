@@ -10,7 +10,9 @@ const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
 const BLAST_KEY = process.env.BLAST_KEY || 'caryera2026';
 
-const MAX_PER_RUN = 50;
+// Bajado a 10/run: si MAX_PER_RUN es alto, la función timeoutea en Netlify (~26s)
+// pero curl ya regresó, y disparar la siguiente crea instancias paralelas con dedup vacío → duplicados.
+const MAX_PER_RUN = 10;
 const DEDUP_DAYS = 60;
 const TAG = 'PIN-Fase3';
 const CONFIG_KEY = 'pin_fase3_contacts';
@@ -209,6 +211,20 @@ exports.handler = async function(event) {
       resultados[group].total++;
 
       if (!templateSid) continue;
+
+      // Re-check dedup PER-FONO inmediatamente antes de enviar (race protection)
+      try {
+        const recheck = await supaREST('GET',
+          `clari_conversations?phone=eq.${c.phone}&content=ilike.*Reactivacion*&created_at=gte.${dedupFrom.toISOString()}&select=id&limit=1`
+        );
+        if (recheck && recheck.length > 0) {
+          console.log(`[${TAG}] ⚠ Skip ${c.phone.slice(-4)} — ya contactado (race check)`);
+          continue;
+        }
+      } catch (e) {
+        console.warn(`[${TAG}] Re-check falló, salto por seguridad:`, e.message);
+        continue;
+      }
 
       const ok = await sendTemplate(c.phone, templateSid, { '1': nombre });
       if (ok) {
