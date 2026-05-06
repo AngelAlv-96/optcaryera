@@ -1,6 +1,11 @@
 # Claude Code (config local por máquina)
 .claude/
 
+# Tokens y credenciales locales (NO commitear)
+.env
+.env.local
+.env.*.local
+
 # Dependencies
 node_modules/
 
