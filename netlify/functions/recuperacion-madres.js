@@ -241,6 +241,26 @@ exports.handler = async function(event) {
       };
     }
 
+    // Pre-filtro batch: una sola query trae TODOS los teléfonos ya contactados
+    // (mucho más rápido que dedup per-fono al iterar, sobre todo cuando ya hay cientos contactados).
+    // El re-check per-fono dentro del loop sigue como race protection.
+    const since = new Date(Date.now() - DEDUP_DAYS * 86400000).toISOString();
+    const alreadySet = new Set();
+    try {
+      const phones = candidates.map(c => c.phone);
+      for (let i = 0; i < phones.length; i += 50) {
+        const batch = phones.slice(i, i + 50);
+        const phoneFilter = batch.map(p => `"${p}"`).join(',');
+        const msgs = await supaREST('GET',
+          `clari_conversations?phone=in.(${phoneFilter})&content=ilike.*${TAG}*&created_at=gte.${since}&select=phone&limit=1000`
+        );
+        if (msgs) msgs.forEach(m => alreadySet.add(m.phone));
+      }
+      console.log(`[RECUP-MADRES] Pre-filtro: ${alreadySet.size} ya contactados de ${candidates.length}`);
+    } catch (e) {
+      console.warn('[RECUP-MADRES] Pre-filtro batch falló, caemos a per-fono:', e.message);
+    }
+
     let enviados = 0;
     let saltados = 0;
     let errores = 0;
@@ -248,7 +268,10 @@ exports.handler = async function(event) {
     for (const c of candidates) {
       if (enviados >= MAX_PER_RUN) break;
 
-      // Dedup PER-FONO antes de enviar (no en batch al inicio)
+      // Pre-filtro: si ya está en el set del batch query, skip rápido (sin nueva query)
+      if (alreadySet.has(c.phone)) { saltados++; continue; }
+
+      // Re-check PER-FONO (race protection — captura sends que ocurrieron después del batch)
       const already = await alreadyContacted(c.phone);
       if (already) { saltados++; continue; }
 
