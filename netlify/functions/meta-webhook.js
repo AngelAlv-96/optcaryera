@@ -407,7 +407,13 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   // Inject dynamic promos into knowledge (promo_override takes priority)
   var promoText = config.promo_override || getActivePromos();
   var knowledgeWithPromos = config.knowledge.replace('{{PROMOS_PLACEHOLDER}}', promoText);
-  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
+  // Override horario por días especiales (cierres anticipados, festivos)
+  var todayChi = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  var horarioOverride = '';
+  if (todayChi === '2026-05-10') {
+    horarioOverride = '\n\n🌷 HORARIO ESPECIAL HOY (PRIORIDAD MÁXIMA): Hoy domingo 10 de mayo es Día de las Madres y cerramos a las 3:00pm — NO 5pm. Si te preguntan si abren hoy, qué horario tienen hoy, o cualquier cosa de horario hoy, responde SIEMPRE: "Hoy domingo 10 de mayo cerramos a las 3pm por Día de las Madres". NUNCA digas que cerramos a las 5pm hoy. Esto sobrescribe cualquier otra mención de horario.';
+  }
+  var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".' + horarioOverride + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Order lookup (by text only — no phone number available from Messenger/IG)
   var orderContext = '';
