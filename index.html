@@ -27028,7 +27028,10 @@ function amGenZPL(row) {
 }
 
 
-async function amImprimirEtiqueta(row) {
+async function amImprimirEtiqueta(row, qty) {
+  qty = parseInt(qty) || 1;
+  if (qty < 1) qty = 1;
+  if (qty > 200) qty = 200;
   var dot = document.getElementById('am-print-dot');
   var txt = document.getElementById('am-print-txt');
   if (!_amPrinterConnected || !amPrinter) {
@@ -27036,6 +27039,7 @@ async function amImprimirEtiqueta(row) {
     return;
   }
   var zpl = amGenZPL(row);
+  if (qty > 1) zpl = zpl.replace('^XZ', '^PQ' + qty + '^XZ');
   try {
     var r = await fetch(AM_BP_URL + '/print', {
       method: 'POST',
@@ -27051,8 +27055,8 @@ async function amImprimirEtiqueta(row) {
     var data = await r.json();
     if (!r.ok || !data.ok) throw new Error(data.error || 'Error impresora');
     if (dot) { dot.style.background = '#c8f04a'; setTimeout(function(){ if(dot) dot.style.background='#4af0c8'; }, 800); }
-    if (txt) txt.textContent = '✓ ' + row.marca + ' ' + row.modelo;
-    toast('🖨 Etiqueta: ' + row.modelo);
+    if (txt) txt.textContent = '✓ ' + row.marca + ' ' + row.modelo + (qty > 1 ? ' ×' + qty : '');
+    toast('🖨 ' + (qty > 1 ? qty + ' etiquetas: ' : 'Etiqueta: ') + row.modelo);
   } catch(e) {
     if (dot) dot.style.background = '#f04a6a';
     if (txt) txt.textContent = 'Error: ' + (e.message||e);
@@ -27062,6 +27066,15 @@ async function amImprimirEtiqueta(row) {
 
 async function amReimprimirEtiqueta(i) {
   if (amRows[i]) await amImprimirEtiqueta(amRows[i]);
+}
+
+async function amReimprimirCantidad(i) {
+  if (!amRows[i]) return;
+  var inp = document.getElementById('am-qty-' + i);
+  var qty = parseInt(inp && inp.value) || 0;
+  if (qty < 1) { toast('Cantidad inválida (1-200)', true); if (inp) inp.focus(); return; }
+  if (qty > 200) { qty = 200; if (inp) inp.value = 200; }
+  await amImprimirEtiqueta(amRows[i], qty);
 }
 
 async function amTestPrint() {
@@ -27113,8 +27126,10 @@ function amRenderTabla() {
       '<td style="padding:5px 6px">' + inpN('48px',r.stock,  'stock', 'parseInt')  + '</td>' +
       '<td style="padding:5px 7px"><span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;' + (estS[st]||estS.nuevo) + '">' + (estL[st]||'Nuevo') + '</span></td>' +
       '<td style="padding:5px 6px;white-space:nowrap">' +
-        '<button onclick="amReimprimirEtiqueta(' + i + ')" title="Reimprimir" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:3px 4px;border-radius:4px" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'">🖨</button>' +
-        '<button onclick="amDelRow(' + i + ')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:3px 4px;border-radius:4px" onmouseover="this.style.color=\'#f04a6a\';this.style.background=\'rgba(240,74,106,.1)\'" onmouseout="this.style.color=\'var(--muted)\';this.style.background=\'none\'">✕</button>' +
+        '<button onclick="amReimprimirEtiqueta(' + i + ')" title="Reimprimir 1" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:3px 4px;border-radius:4px" onmouseover="this.style.color=\'var(--accent)\'" onmouseout="this.style.color=\'var(--muted)\'">🖨</button>' +
+        '<input type="number" id="am-qty-' + i + '" min="1" max="200" placeholder="N" title="Cantidad" onkeydown="if(event.key===\'Enter\'){event.preventDefault();event.stopPropagation();amReimprimirCantidad(' + i + ');}" style="width:38px;background:transparent;border:1px solid rgba(255,255,255,.1);border-radius:5px;color:var(--white);font-size:11px;padding:3px 4px;outline:none;text-align:center;margin-left:2px">' +
+        '<button onclick="amReimprimirCantidad(' + i + ')" title="Imprimir N etiquetas del mismo código" style="background:rgba(200,240,74,.08);border:1px solid rgba(200,240,74,.2);color:#c8f04a;cursor:pointer;font-size:10px;padding:3px 7px;border-radius:5px;margin-left:2px;font-weight:700">×N</button>' +
+        '<button onclick="amDelRow(' + i + ')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:3px 4px;border-radius:4px;margin-left:2px" onmouseover="this.style.color=\'#f04a6a\';this.style.background=\'rgba(240,74,106,.1)\'" onmouseout="this.style.color=\'var(--muted)\';this.style.background=\'none\'">✕</button>' +
       '</td>' +
     '</tr>';
   }).join('');
