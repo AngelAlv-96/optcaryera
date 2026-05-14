@@ -969,6 +969,30 @@ async function sendWhatsAppReply(to, text) {
   }
 }
 
+// Envía plantilla aprobada (atraviesa ventana 24h). Si falla, cae a freeform con fallbackText.
+async function sendWhatsAppTemplate(to, templateSid, vars, fallbackText) {
+  var toNum = to.replace(/[\s\-\(\)\+]/g, '');
+  if (toNum.length === 10) toNum = '521' + toNum;
+  if (toNum.length === 12 && toNum.startsWith('52') && toNum[2] !== '1') toNum = '521' + toNum.slice(2);
+  try {
+    var params = new URLSearchParams();
+    params.append('From', TWILIO_WA);
+    params.append('To', 'whatsapp:+' + toNum);
+    params.append('ContentSid', templateSid);
+    if (vars && Object.keys(vars).length) params.append('ContentVariables', JSON.stringify(vars));
+    var res = await fetch(TWILIO_API_URL, {
+      method: 'POST',
+      headers: { 'Authorization': twilioAuth(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    if (res.ok) return true;
+    var body = await res.text();
+    console.warn('[Template Send] Failed ' + templateSid + ' to ' + toNum + ': ' + body.slice(0, 200));
+  } catch(e) { console.warn('[Template Send] Error: ' + e.message); }
+  if (fallbackText) { try { await sendWhatsAppReply(to, fallbackText); } catch(e) {} }
+  return false;
+}
+
 // ── PARSE TWILIO WEBHOOK (form-urlencoded) ──
 function parseBody(raw) {
   var params = {};
@@ -1210,8 +1234,9 @@ async function _resolveAbsenceAlert(uid, empName, empSuc, fecha, horaLocal) {
       admPhones = w.admin_phones || [];
     }
     var msg = '✅ *Corrección asistencia*\n📅 ' + fecha + '\n👤 ' + empName + '\n🏪 ' + empSuc + '\n\nYa registró entrada a las ' + horaLocal + '. La alerta anterior queda resuelta.';
+    var corrVars = { '1': fecha, '2': empName, '3': empSuc, '4': horaLocal };
     for (var a = 0; a < admPhones.length; a++) {
-      try { await sendWhatsAppReply(admPhones[a], msg); } catch(e){}
+      try { await sendWhatsAppTemplate(admPhones[a], 'HX58f623eec625eb47d8b7bd03aff2abd7', corrVars, msg); } catch(e){}
     }
     var remaining = pend.filter(function(p){ return !(p.uid === uid && p.fecha === fecha); });
     await supaFetch('app_config?on_conflict=id', {
@@ -1397,8 +1422,10 @@ async function cmdAsistencia(phone, action, profileName) {
           if (cfgWA && cfgWA[0] && cfgWA[0].value) {
             var waCfg = typeof cfgWA[0].value === 'string' ? JSON.parse(cfgWA[0].value) : cfgWA[0].value;
             var admPhones = waCfg.admin_phones || [];
+            var retFallback = '⚠️ *Retardo*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n⏰ ' + horaLocal + ' (' + retardoMin + ' min tarde)';
+            var retVars = { '1': empName, '2': empSuc, '3': horaLocal, '4': String(retardoMin) };
             for (var i = 0; i < admPhones.length; i++) {
-              await sendWhatsAppReply(admPhones[i], '⚠️ *Retardo*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n⏰ ' + horaLocal + ' (' + retardoMin + ' min tarde)');
+              await sendWhatsAppTemplate(admPhones[i], 'HX85d725cc02628385e8c7f75f32c26c99', retVars, retFallback);
             }
           }
         } catch(e) { console.warn('[Asistencia] Admin notify error:', e.message); }
@@ -1478,8 +1505,10 @@ async function cmdAsistencia(phone, action, profileName) {
           if (cfgWA2 && cfgWA2[0] && cfgWA2[0].value) {
             var waCfg2 = typeof cfgWA2[0].value === 'string' ? JSON.parse(cfgWA2[0].value) : cfgWA2[0].value;
             var admPhones2 = waCfg2.admin_phones || [];
+            var actaFallback = '📋 *Acta de falta enviada*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n📅 Faltas: ' + faltasDias.join(', ') + '\n\nSe envio link de firma automaticamente.';
+            var actaVars = { '1': empName, '2': empSuc, '3': faltasDias.join(', ') };
             for (var a2 = 0; a2 < admPhones2.length; a2++) {
-              await sendWhatsAppReply(admPhones2[a2], '📋 *Acta de falta enviada*\n👤 ' + empName + '\n🏪 ' + empSuc + '\n📅 Faltas: ' + faltasDias.join(', ') + '\n\nSe envio link de firma automaticamente.');
+              await sendWhatsAppTemplate(admPhones2[a2], 'HX4583d4e52a7f97e0ba920f3ab52e677a', actaVars, actaFallback);
             }
           }
         }

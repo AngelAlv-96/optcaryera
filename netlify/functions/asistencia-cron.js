@@ -48,6 +48,32 @@ async function sendWA(to, text) {
   });
 }
 
+// Envía plantilla aprobada (atraviesa ventana 24h). Si falla, cae a freeform con fallbackText.
+async function sendWATemplate(to, templateSid, vars, fallbackText) {
+  var toNum = to.replace(/[\s\-\(\)\+]/g, '');
+  if (toNum.length === 10) toNum = '521' + toNum;
+  try {
+    var params = new URLSearchParams();
+    params.append('From', TWILIO_WA);
+    params.append('To', 'whatsapp:+' + toNum);
+    params.append('ContentSid', templateSid);
+    if (vars && Object.keys(vars).length) params.append('ContentVariables', JSON.stringify(vars));
+    var res = await fetch(TWILIO_API, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(TWILIO_SID + ':' + TWILIO_TOKEN).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+    if (res.ok) return true;
+    var body = await res.text();
+    console.warn('[Template Send] Failed ' + templateSid + ' to ' + toNum + ': ' + body.slice(0, 200));
+  } catch(e) { console.warn('[Template Send] Error: ' + e.message); }
+  if (fallbackText) { try { await sendWA(to, fallbackText); } catch(e) {} }
+  return false;
+}
+
 exports.handler = async function() {
   console.log('[Asistencia Cron] Starting...');
 
@@ -108,8 +134,9 @@ exports.handler = async function() {
             // Send correction
             var entH = new Date(rec0.entrada).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:true });
             var msg = '✅ *Corrección asistencia*\n📅 ' + item.fecha + '\n👤 ' + (item.nombre || item.uid) + '\n🏪 ' + (item.sucursal || 'N/A') + '\n\nYa tiene entrada registrada a las ' + entH + '. La alerta anterior queda resuelta.';
+            var corrVars = { '1': item.fecha, '2': (item.nombre || item.uid), '3': (item.sucursal || 'N/A'), '4': entH };
             for (var ap = 0; ap < adminPhonesGlobal.length; ap++) {
-              try { await sendWA(adminPhonesGlobal[ap], msg); } catch(e){}
+              try { await sendWATemplate(adminPhonesGlobal[ap], 'HX58f623eec625eb47d8b7bd03aff2abd7', corrVars, msg); } catch(e){}
               if (ap < adminPhonesGlobal.length - 1) await new Promise(function(r){ setTimeout(r, 1200); });
             }
             console.log('[Asistencia Cron] Sent correction for ' + item.uid + ' (' + item.fecha + ')');
@@ -215,7 +242,8 @@ exports.handler = async function() {
       absentNames.push(emp.nombre + ' (' + emp.sucursal + ')');
 
       // Send reminder to employee
-      await sendWA(emp.phone, '⏰ Recordatorio: No has registrado tu entrada de hoy.\n\nEnvía *entrada* para registrarte.\n\nSi no vas a asistir, avisa a tu supervisor.');
+      var recFallback = '⏰ Recordatorio: No has registrado tu entrada de hoy.\n\nEnvía *entrada* para registrarte.\n\nSi no vas a asistir, avisa a tu supervisor.';
+      await sendWATemplate(emp.phone, 'HXe0980c7826540b349f599e3c2f7a1884', { '1': emp.nombre }, recFallback);
 
       // Small delay between messages
       if (i < absent.length - 1) await new Promise(function(r) { setTimeout(r, 1500); });
@@ -226,9 +254,10 @@ exports.handler = async function() {
       var adminMsg = '⚠️ *Ausencias sin aviso*\n📅 ' + fechaLocal + '\n\n';
       adminMsg += absent.length + ' empleado(s) sin registro de entrada:\n\n';
       absentNames.forEach(function(n) { adminMsg += '• ' + n + '\n'; });
+      var ausVars = { '1': fechaLocal, '2': String(absent.length), '3': absentNames.join(', ') };
 
       for (var a = 0; a < adminPhones.length; a++) {
-        await sendWA(adminPhones[a], adminMsg);
+        await sendWATemplate(adminPhones[a], 'HXb2505c839e32603cc70cc602b62be57b', ausVars, adminMsg);
         if (a < adminPhones.length - 1) await new Promise(function(r) { setTimeout(r, 1500); });
       }
     }
@@ -344,7 +373,8 @@ async function checkSignatureRequests(employees, fechaLocal) {
       // Send WA
       var link = SITE_URL + '/firma-asistencia?token=' + token;
       var msg = '📋 *Reporte de asistencia*\n\nHola ' + emp.nombre + ', tu reporte del ' + periodoInicio + ' al ' + periodoFin + ' esta listo.\n\nRevisalo y firmalo aqui:\n👉 ' + link + '\n\nEl link expira en 48 horas.';
-      await sendWA(emp.phone, msg);
+      var firmaVars = { '1': emp.nombre, '2': periodoInicio, '3': periodoFin, '4': link };
+      await sendWATemplate(emp.phone, 'HX49c1d5cd7048ca9dc650d1e8670c7b24', firmaVars, msg);
 
       console.log('[Firma Cron] Sent signature request to ' + emp.nombre + ' (' + periodoInicio + ' - ' + periodoFin + ')');
 

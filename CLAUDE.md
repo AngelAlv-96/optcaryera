@@ -416,7 +416,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v281 — Fix crítico dedup en TODAS las funciones blast: MAX_PER_RUN bajado a 10 + re-check per-fono inmediatamente antes de cada envío + catch fail-closed. Bug raíz descubierto en Recuperación Día de las Madres (2026-05-06): MAX_PER_RUN=50 hacía que la función Netlify timeoutee a 26s pero curl ya regresaba; al disparar la siguiente curl arrancaba una segunda instancia con dedup vacío, ambas mandaban a las mismas 50 personas. 207 contactos recibieron 2-3 veces el mismo mensaje. 12 funciones parchadas: recuperacion-madres, lc/vip/ame-fase3-reactivate, pin-*, magnolia-reactivate, promo-followup, promo-2x1-blast, review-blast, review-followup.
+**Última versión**: v282 — 6 plantillas WA UTILITY de asistencia creadas vía Twilio Content API + helper template-first/freeform-fallback en `wa-webhook.js` y `asistencia-cron.js`. Cubre alertas que se perdían cuando la ventana 24h estaba cerrada: retardo_empleado, ausencias_sin_aviso_v2, correccion_asistencia, acta_falta_enviada, recordatorio_entrada (✅ aprobada), reporte_asistencia_firma. Autorizaciones (incluyendo cancelaciones) ya estaban cubiertas por `autorizacion_admin` (HXee44...193). Lección Meta: nunca terminar body de template en variable — el v1 de ausencias terminaba en `{{3}}` y fue rechazado.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
@@ -477,6 +477,7 @@ El changelog detallado de v138 a v259 vive en [`CHANGELOG.md`](CHANGELOG.md) (no
 
 ## ⏰ RELOJ CHECADOR / ASISTENCIA
 - **Archivos**: `wa-webhook.js` (bot WA entrada/salida/comida/regreso + lookback faltas), `asistencia-cron.js` (recordatorios), `js/mod-asistencia.js` (UI)
+- **Plantillas WA UTILITY** (atraviesan ventana 24h, fallback automático a freeform si Twilio falla): `retardo_empleado` HX85d725cc02628385e8c7f75f32c26c99 (admin, vars nombre/suc/hora/min), `ausencias_sin_aviso_v2` HXb2505c839e32603cc70cc602b62be57b (admin, vars fecha/n/lista), `correccion_asistencia` HX58f623eec625eb47d8b7bd03aff2abd7 (admin, vars fecha/nombre/suc/hora), `acta_falta_enviada` HX4583d4e52a7f97e0ba920f3ab52e677a (admin, vars nombre/suc/fechas), `recordatorio_entrada` HXe0980c7826540b349f599e3c2f7a1884 (empleado, var nombre), `reporte_asistencia_firma` HX49c1d5cd7048ca9dc650d1e8670c7b24 (empleado, vars nombre/inicio/fin/link). Helpers: `sendWhatsAppTemplate(to,sid,vars,fallbackText)` en wa-webhook.js y `sendWATemplate(...)` en asistencia-cron.js.
 - **DB**: `asistencia` (registros diarios), `asistencia_firmas` (actas/reportes con token firma), `app_config` ids: `horarios_asistencia`, `empleados_telefono`, `expedientes_empleados`
 - **`horarios_asistencia` estructura**: `{ default: { lun: {entrada,salida}, ... }, override: { uid: { dia: null|{entrada,salida}|{alternating,ref,parity} } }, tolerancia_min, empleados_extra }`
 - **Día de descanso**: `override[uid][dia] = null` → el sistema lo salta en lookback, cron y UI
