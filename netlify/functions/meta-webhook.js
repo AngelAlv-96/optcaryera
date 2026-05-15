@@ -44,6 +44,12 @@ function getActivePromos() {
   // Abril 15 - Mayo 15, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta 15 de mayo)
   if (year === 2026 && (month === 4 || month === 5)) {
     return 'PROMOCIÓN VIGENTE (HASTA EL 15 DE MAYO):\n' +
+      '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
+      '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
+      '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
+      '• El 2x1 NO aplica a accesorios, soluciones, ni a armazones sueltos sin graduación.\n' +
+      '• Si el cliente confunde "lentes" con "lentes de contacto" y pregunta si el 2x1 aplica a LC → aclara: "El 2x1 es para lentes oftálmicos (armazón con graduación). Los lentes de contacto se cotizan aparte por caja según la marca."\n' +
+      '• Si el cliente quiere combinar lentes oftálmicos + LC: 2x1 aplica solo a los oftálmicos, y los LC se cotizan por separado.\n\n' +
       '🎁 2x1 en lentes completos: compras 2 lentes completos y pagas solo 1. El PRECIO DEPENDE DE LO QUE ELIJAS: armazón + graduación + material + tratamientos. Cada cliente paga distinto según sus elecciones — NO hay un precio fijo de la promo.\n' +
       '☀️ ADICIONAL dentro de la promo: un lente solar graduado EXTRA por $499 (este $499 es un par adicional — armazón solar + graduación sencilla CR-39 incluidos en ese precio fijo). Es un "bono" encima del 2x1, no es lo mismo que la promo principal.\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
@@ -73,6 +79,7 @@ function getActivePromos() {
   }
 
   return 'PROMOCIÓN VIGENTE:\n' +
+    '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional por $499 (par extra dentro de la promo).\n' +
     '👨‍⚕️ Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
