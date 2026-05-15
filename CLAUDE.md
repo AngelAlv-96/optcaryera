@@ -418,7 +418,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v283 — Fix crítico de prompt: Clari decía que el 2x1 aplicaba a lentes de contacto (casos reales 2026-05-10 y 2026-05-12 en Messenger). Root: el prompt decía "2x1 en lentes completos" sin excluir explícitamente LC, y "lentes" en español es ambigua. Fix: bloque ⛔ ALCANCE DE LA PROMO 2x1 al INICIO del knowledge en `wa-webhook.js` y `meta-webhook.js` que lista qué aplica (oftálmicos completos) y qué NO (LC, accesorios, soluciones, armazones sin Rx). Lección: anteponer siempre "ALCANCE: aplica/NO aplica" antes de mecánica en knowledge de promos.
+**Última versión**: v284 — Nueva promo MAESTROS (20% extra sobre 2x1 o bifocales/progresivos, vigente hasta 18-may) + extensión 2x1 y Día del Niño hasta 31-may. Restricción 2x1+maestros: solo UN par bifocal/progresivo, el segundo visión sencilla. Requiere credencial docente. Bloque agregado en `getActivePromos()` de wa-webhook.js y meta-webhook.js con detección obligatoria por keywords (maestro/docente/profesor/SEP/magisterio/etc).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
