@@ -20422,15 +20422,14 @@ async function guardarAsignarPromoRetroactiva() {
         paciente_nombre: slot.paciente_nombre,
         armazon: armIt ? armIt.descripcion : null,
         material: matIt ? matIt.descripcion : null,
-        armazon_idx: -1,  // retroactiva, no aplica idx del carrito vivo
+        armazon_idx: -1,
         material_idx: -1,
         aro_px: !!slot.aro_px,
-        usado: true  // marcamos usado=true para que NO aparezca en "Completar par pendiente"
+        usado: true
       };
     });
 
-    // INSERT venta_promociones
-    var { error: vpErr } = await db.from('venta_promociones').insert({
+    var payload = {
       venta_id: v.id,
       promocion_id: promo.id,
       nombre_promo: promo.nombre,
@@ -20438,8 +20437,25 @@ async function guardarAsignarPromoRetroactiva() {
       descuento_aplicado: Number(v.descuento) || 0,
       folios_generados: foliosGenerados,
       folios_detalle: foliosDetalle
+    };
+    console.log('[Asg Promo] Payload:', payload);
+
+    // INSERT venta_promociones — usar fetch directo a dbwrite para capturar respuesta cruda
+    var insertRes = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'venta_promociones', action: 'insert', data: payload,
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
     });
-    if (vpErr) throw new Error(vpErr.message);
+    var insertText = await insertRes.text();
+    console.log('[Asg Promo] dbwrite response:', insertRes.status, insertText);
+    var insertJson;
+    try { insertJson = JSON.parse(insertText); } catch(e) { insertJson = { error: 'No JSON: ' + insertText.slice(0, 200) }; }
+    if (!insertRes.ok || insertJson.error) {
+      throw new Error('dbwrite ' + insertRes.status + ': ' + (insertJson.error || insertText.slice(0, 200)));
+    }
 
     // UPDATE venta_items.folio_asignado para los items asignados a slots no-principales
     for (var idx = 0; idx < _asgPromoSlots.length; idx++) {
