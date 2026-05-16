@@ -20942,6 +20942,18 @@ async function cargarDatosCaja() {
   const { data: retiros } = await qRetiros.order('created_at');
   const ventasActivas = allVentas.filter(v => v.estado !== 'Cancelada');
   const canceladas = allVentas.filter(v => v.estado === 'Cancelada');
+  // Neutralizar mismo-día cancelaciones: el pago original + el retiro de devolución se compensan.
+  // Excluir ambos del cuadre de caja para que no aparezca "Efectivo recibido" cuando ya se devolvió.
+  // Cancelaciones de días anteriores (la venta no está en allVentas) mantienen su retiro visible.
+  const _cancelledVentaIds = new Set(canceladas.map(v => v.id));
+  const _cancelledFolios = new Set(canceladas.map(v => String(v.folio || '')).filter(Boolean));
+  const pagosFinal = pagosFiltered.filter(p => !_cancelledVentaIds.has(p.venta_id));
+  const retirosFinal = (retiros || []).filter(r => {
+    if (!r.observaciones) return true;
+    const m = r.observaciones.match(/Devoluci[oó]n cancelaci[oó]n\s+(\S+)/);
+    if (!m) return true;
+    return !_cancelledFolios.has(m[1]);
+  });
   let credAbonos = [];
   try {
     const { data: ca } = await db.from('creditos_abonos').select('*, creditos_clientes(folio_sicar, paciente_id, pacientes(nombre, apellidos))').gte('created_at', _cajaFromTime).lte('created_at', utcEnd).order('created_at');
@@ -20955,7 +20967,7 @@ async function cargarDatosCaja() {
     var { count: olc } = await olQuery;
     _olCount = olc || 0;
   } catch(e) {}
-  cajaDayData = { ventas: ventasActivas, pagos: pagosFiltered, canceladas, retiros: retiros || [], creditoAbonos: credAbonos, _ordenesLabCount: _olCount };
+  cajaDayData = { ventas: ventasActivas, pagos: pagosFinal, canceladas, retiros: retirosFinal, creditoAbonos: credAbonos, _ordenesLabCount: _olCount };
   renderCajaResumen();
 }
 
