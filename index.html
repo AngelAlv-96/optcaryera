@@ -5457,8 +5457,10 @@ function toast(msg, err=false) {
     if (!overlay) {
       overlay = document.createElement('div');
       overlay.id = 'error-overlay';
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999999;display:flex;align-items:center;justify-content:center;padding:20px';
       document.body.appendChild(overlay);
+    } else {
+      overlay.style.zIndex = '999999';
     }
     overlay.innerHTML = `<div style="background:var(--surface2);border:2px solid #e08080;border-radius:14px;padding:28px 32px;max-width:420px;width:100%;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.5)">
       <div style="font-size:32px;margin-bottom:10px">⚠️</div>
@@ -20268,9 +20270,20 @@ function renderAsignarPromoSlots() {
   if (!promo) return;
   var foliosLab = promo.folios_lab || 2;
   var items = _asgPromoVenta.items || [];
-  // No tenemos categoria en venta_items, así que asumimos: usuario elige libremente cualquier item para armazón/material
-  var itemOpts = items.map(it => `<option value="${it.id}">${it.descripcion} · $${Number(it.subtotal).toFixed(2)}${it.folio_asignado ? ' (folio ' + it.folio_asignado + ')' : ''}</option>`).join('');
   var titularNombre = ((_asgPromoVenta.pacientes?.nombre || '') + ' ' + (_asgPromoVenta.pacientes?.apellidos || '')).trim();
+  // Helper: build dropdown excluding items already used in OTHER slots
+  function buildItemOpts(currentSlotIdx, role) {
+    return items.map(function(it) {
+      var usedElsewhere = _asgPromoSlots.some(function(sl, si) {
+        if (si === currentSlotIdx) return false;
+        return sl.armazon_item_id === it.id || sl.material_item_id === it.id;
+      });
+      var isSelected = (role === 'arm' && _asgPromoSlots[currentSlotIdx]?.armazon_item_id === it.id)
+                    || (role === 'mat' && _asgPromoSlots[currentSlotIdx]?.material_item_id === it.id);
+      var disabled = usedElsewhere && !isSelected;
+      return `<option value="${it.id}"${isSelected ? ' selected' : ''}${disabled ? ' disabled' : ''}>${it.descripcion} · $${Number(it.subtotal).toFixed(2)}${disabled ? ' (usado en otro par)' : ''}</option>`;
+    }).join('');
+  }
   // Inicializar slots si no existen
   if (_asgPromoSlots.length !== foliosLab) {
     _asgPromoSlots = [];
@@ -20302,14 +20315,14 @@ function renderAsignarPromoSlots() {
       <div style="display:flex;flex-direction:column;gap:5px">
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
-          <select onchange="_asgPromoSlots[${s}].armazon_item_id=this.value" style="flex:1;${inputSt}">
-            <option value="">— Armazón —</option>${itemOpts.replace(/value="([^"]+)"/g, function(m, id) { return id === slot.armazon_item_id ? `value="${id}" selected` : `value="${id}"`; })}
+          <select onchange="_asgPromoSlots[${s}].armazon_item_id=this.value;renderAsignarPromoSlots()" style="flex:1;${inputSt}">
+            <option value="">— Armazón —</option>${buildItemOpts(s, 'arm')}
           </select>
         </div>
         <div style="display:flex;align-items:center;gap:5px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔬</span>
-          <select onchange="_asgPromoSlots[${s}].material_item_id=this.value" style="flex:1;${inputSt}">
-            <option value="">— Material (opcional) —</option>${itemOpts.replace(/value="([^"]+)"/g, function(m, id) { return id === slot.material_item_id ? `value="${id}" selected` : `value="${id}"`; })}
+          <select onchange="_asgPromoSlots[${s}].material_item_id=this.value;renderAsignarPromoSlots()" style="flex:1;${inputSt}">
+            <option value="">— Material (opcional) —</option>${buildItemOpts(s, 'mat')}
           </select>
         </div>
         <div style="display:flex;align-items:center;gap:5px">
@@ -20389,16 +20402,23 @@ async function guardarAsignarPromoRetroactiva() {
   }
   // Validar que cada item del carrito se use máximo una vez
   var usedItems = {};
+  var conflictos = [];
+  var itemDescById = {};
+  (_asgPromoVenta.items || []).forEach(it => itemDescById[it.id] = it.descripcion);
   for (var i = 0; i < _asgPromoSlots.length; i++) {
     var s = _asgPromoSlots[i];
     if (s.armazon_item_id) {
-      if (usedItems[s.armazon_item_id]) { toast('Un mismo item está asignado a 2 pares', true); return; }
+      if (usedItems[s.armazon_item_id]) conflictos.push('"' + itemDescById[s.armazon_item_id] + '" está en más de un par');
       usedItems[s.armazon_item_id] = true;
     }
     if (s.material_item_id) {
-      if (usedItems[s.material_item_id]) { toast('Un mismo item está asignado a 2 pares', true); return; }
+      if (usedItems[s.material_item_id]) conflictos.push('"' + itemDescById[s.material_item_id] + '" está en más de un par');
       usedItems[s.material_item_id] = true;
     }
+  }
+  if (conflictos.length) {
+    alert('⚠️ Items repetidos:\n\n' + conflictos.join('\n') + '\n\nCada item del carrito solo puede asignarse a UN par. Si solo hay 1 material en el carrito, solo un par lleva lentes — el otro queda como armazón sin lentes.');
+    return;
   }
 
   _actionBusy['asgPromo'] = true;
