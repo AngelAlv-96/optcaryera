@@ -7446,13 +7446,14 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     db.from('cortes_caja').select('*, creditos_abonos:desglose_metodos').eq('fecha', today).eq('estado','cortada'),
     db.from('ordenes_laboratorio').select('id,sucursal').gte('created_at',utcStart).lte('created_at',utcEnd).ilike('notas_laboratorio','%Folio: GTA-%'),
     db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
-    db.from('venta_pagos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd),
+    db.from('venta_pagos').select('monto,ventas(estado)').gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('creditos_abonos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd)
   ]);
   ventasHoy = ventasHoy || [];
   cortesHoy = cortesHoy || [];
   garantiasHoy = garantiasHoy || [];
-  pagosHoyDash = pagosHoyDash || [];
+  // Excluir pagos de ventas canceladas (el monto se devolvió, no debe contar en cobrado)
+  pagosHoyDash = (pagosHoyDash || []).filter(function(p){ return p.ventas?.estado !== 'Cancelada'; });
   abonosHoyDash = abonosHoyDash || [];
   var totalVentas = ventasHoy.reduce(function(s,v){return s+Number(v.total)},0);
   var totalCobradoHoy = pagosHoyDash.reduce(function(s,p){return s+Number(p.monto)},0) + abonosHoyDash.reduce(function(s,a){return s+Number(a.monto)},0);
@@ -7553,10 +7554,11 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
   if (!section) return;
   try {
     var [{data:pagosHoy},{data:abonosHoy}] = await Promise.all([
-      db.from('venta_pagos').select('monto,metodo_pago,recibido_por,created_at,ventas(folio,sucursal,pacientes(nombre,apellidos))').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(30),
+      db.from('venta_pagos').select('monto,metodo_pago,recibido_por,created_at,ventas(folio,sucursal,estado,pacientes(nombre,apellidos))').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(30),
       db.from('creditos_abonos').select('monto,metodo_pago,registrado_por,sucursal,created_at').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(15)
     ]);
-    pagosHoy = pagosHoy || [];
+    // Excluir pagos de ventas canceladas (el efectivo se devolvió, no debe contar como ingreso)
+    pagosHoy = (pagosHoy || []).filter(function(p){ return p.ventas?.estado !== 'Cancelada'; });
     abonosHoy = abonosHoy || [];
     var totalIngresado = pagosHoy.reduce(function(s,p){return s+Number(p.monto)},0) + abonosHoy.reduce(function(s,a){return s+Number(a.monto)},0);
 
