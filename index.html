@@ -20271,17 +20271,23 @@ function renderAsignarPromoSlots() {
   var foliosLab = promo.folios_lab || 2;
   var items = _asgPromoVenta.items || [];
   var titularNombre = ((_asgPromoVenta.pacientes?.nombre || '') + ' ' + (_asgPromoVenta.pacientes?.apellidos || '')).trim();
-  // Helper: build dropdown excluding items already used in OTHER slots
+  // Helper: build dropdown
+  // - Armazones: solo asignable a UN par (deshabilitar si está en otro slot)
+  // - Materiales: el cajero a veces ringa 1 material para ambos pares (mismo Rx/material).
+  //   Permitir que el mismo material se asigne a múltiples slots desde esta ventana retroactiva.
   function buildItemOpts(currentSlotIdx, role) {
     return items.map(function(it) {
-      var usedElsewhere = _asgPromoSlots.some(function(sl, si) {
-        if (si === currentSlotIdx) return false;
-        return sl.armazon_item_id === it.id || sl.material_item_id === it.id;
+      var usedInArmazon = _asgPromoSlots.some(function(sl, si) {
+        return si !== currentSlotIdx && sl.armazon_item_id === it.id;
       });
       var isSelected = (role === 'arm' && _asgPromoSlots[currentSlotIdx]?.armazon_item_id === it.id)
                     || (role === 'mat' && _asgPromoSlots[currentSlotIdx]?.material_item_id === it.id);
-      var disabled = usedElsewhere && !isSelected;
-      return `<option value="${it.id}"${isSelected ? ' selected' : ''}${disabled ? ' disabled' : ''}>${it.descripcion} · $${Number(it.subtotal).toFixed(2)}${disabled ? ' (usado en otro par)' : ''}</option>`;
+      // Disable solo si:
+      //  - rol armazón: ya está usado como armazón en otro slot
+      //  - rol material: ya está usado como armazón en otro slot (no puede ser ambas cosas)
+      // Materiales se pueden compartir entre slots (no deshabilitar por uso en otro material slot)
+      var disabled = usedInArmazon && !isSelected;
+      return `<option value="${it.id}"${isSelected ? ' selected' : ''}${disabled ? ' disabled' : ''}>${it.descripcion} · $${Number(it.subtotal).toFixed(2)}${disabled ? ' (asignado como armazón)' : ''}</option>`;
     }).join('');
   }
   // Inicializar slots si no existen
@@ -20400,24 +20406,26 @@ async function guardarAsignarPromoRetroactiva() {
     alert(alertMsg);
     return;
   }
-  // Validar que cada item del carrito se use máximo una vez
-  var usedItems = {};
-  var conflictos = [];
+  // Validar conflictos: un armazón solo puede ir a UN slot.
+  // Un material puede compartirse entre slots (ej: cajero ringa 1 material para ambos pares mismo Rx).
+  // Un mismo item NO puede ser armazón en un slot Y material en otro.
+  var armUsed = {}, matUsed = {}, conflictos = [];
   var itemDescById = {};
   (_asgPromoVenta.items || []).forEach(it => itemDescById[it.id] = it.descripcion);
   for (var i = 0; i < _asgPromoSlots.length; i++) {
     var s = _asgPromoSlots[i];
     if (s.armazon_item_id) {
-      if (usedItems[s.armazon_item_id]) conflictos.push('"' + itemDescById[s.armazon_item_id] + '" está en más de un par');
-      usedItems[s.armazon_item_id] = true;
+      if (armUsed[s.armazon_item_id]) conflictos.push('"' + itemDescById[s.armazon_item_id] + '" está como armazón en más de un par');
+      if (matUsed[s.armazon_item_id]) conflictos.push('"' + itemDescById[s.armazon_item_id] + '" no puede ser armazón y material a la vez');
+      armUsed[s.armazon_item_id] = true;
     }
     if (s.material_item_id) {
-      if (usedItems[s.material_item_id]) conflictos.push('"' + itemDescById[s.material_item_id] + '" está en más de un par');
-      usedItems[s.material_item_id] = true;
+      if (armUsed[s.material_item_id]) conflictos.push('"' + itemDescById[s.material_item_id] + '" no puede ser material y armazón a la vez');
+      matUsed[s.material_item_id] = true;
     }
   }
   if (conflictos.length) {
-    alert('⚠️ Items repetidos:\n\n' + conflictos.join('\n') + '\n\nCada item del carrito solo puede asignarse a UN par. Si solo hay 1 material en el carrito, solo un par lleva lentes — el otro queda como armazón sin lentes.');
+    alert('⚠️ Asignación inválida:\n\n' + conflictos.join('\n'));
     return;
   }
 
