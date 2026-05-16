@@ -418,7 +418,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v285 — Fix caja: cancelaciones mismo-día dejaban efectivo fantasma en el resumen (caso folio 11723 Pinocelli). El pago original y el retiro de devolución se anulan matemáticamente pero ambos se mostraban, confundiendo al cajero. Fix en `cargarDatosCaja()` (index.html): filtrar pagos de ventas canceladas Y retiros con observaciones que matcheen `Devolución cancelación <folio>` cuando el folio está en canceladas de hoy. Cancelaciones cross-day mantienen el retiro visible.
+**Última versión**: v286 — UI nueva "Asignar promo retroactiva" en detalle de venta: botón 🏷 aparece si la venta no tiene `venta_promociones` y no está cancelada. Modal con dropdown de promos activas multi-folio + por cada slot (armazón/material/paciente/aro_px) + checkbox para crear órdenes de lab. Caso de uso: cashier cobró 2x1 con descuento manual pero olvidó registrar la promo formalmente — ahora se puede asignar después sin necesidad de borrar y recrear la venta.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 

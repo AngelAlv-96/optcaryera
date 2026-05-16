@@ -4870,6 +4870,32 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
   </div>
 </div>
 
+<!-- MODAL ASIGNAR PROMO RETROACTIVA -->
+<div class="m-overlay" id="m-asignar-promo" style="z-index:10002">
+  <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige)">🏷 Asignar promo retroactiva</h3>
+      <button onclick="cerrarAsignarPromo()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer">&times;</button>
+    </div>
+    <div id="asg-promo-venta-info" style="font-size:11px;color:var(--muted);margin-bottom:10px"></div>
+    <div class="fg" style="margin-bottom:10px">
+      <label style="font-size:10px">Promoción</label>
+      <select id="asg-promo-sel" onchange="renderAsignarPromoSlots()" style="width:100%;padding:8px 10px;font-size:12px"></select>
+    </div>
+    <div id="asg-promo-slots" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+    <div style="background:rgba(212,184,74,0.06);border:1px solid rgba(212,184,74,0.15);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px;color:var(--white)">
+        <input type="checkbox" id="asg-crear-lab" checked style="accent-color:#72c47e;width:14px;height:14px">
+        Crear órdenes de laboratorio para los pares con material asignado (usando Rx más reciente del paciente)
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-g btn-sm" onclick="cerrarAsignarPromo()">Cancelar</button>
+      <button class="btn btn-p btn-sm" id="btn-guardar-asg-promo" onclick="guardarAsignarPromoRetroactiva()">Guardar asignación</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CITA -->
 <div class="m-overlay" id="m-cita">
   <div class="modal">
@@ -20186,11 +20212,299 @@ function renderDetalleVenta() {
   if (_pendingPairs.length > 0) {
     acts.push(`<button class="btn btn-sm" onclick="completarParPendiente('${v.id}')" style="background:rgba(212,184,74,0.15);border:1px solid rgba(212,184,74,0.3);color:#d4b84a;font-weight:700;display:flex;align-items:center;gap:4px">🔬 Completar par pendiente (${_pendingPairs.length})</button>`);
   }
+  // Botón "Asignar promo retroactiva" — solo si la venta NO tiene venta_promociones registrada y NO está cancelada
+  if (v.estado !== 'Cancelada' && (!v.promos || v.promos.length === 0)) {
+    acts.push(`<button class="btn btn-sm" onclick="abrirAsignarPromoRetroactiva('${v.id}')" style="background:rgba(196,162,101,0.15);border:1px solid rgba(196,162,101,0.3);color:var(--beige);font-weight:700;display:flex;align-items:center;gap:4px">🏷 Asignar promo</button>`);
+  }
   if (currentUser?.rol==='admin') acts.push(`<button class="btn btn-g btn-sm" onclick="borrarVentaCompleta('${v.id}','${v.folio}')" style="color:#e08080">🗑 Borrar</button>`);
   acts.push('<button class="btn btn-g btn-sm" onclick="cerrarDetalleVenta()">Cerrar</button>');
   document.getElementById('mvta-acciones').innerHTML=acts.join('');
 }
 function cerrarDetalleVenta() { document.getElementById('m-vta-detalle').classList.remove('open'); vtaDetalleId=null; vtaDetalleData=null; }
+
+// ── ASIGNAR PROMO RETROACTIVA ──────────────────────────────────────
+// Permite registrar la promo en una venta que ya se cerró sin promoción formal.
+// Caso típico: cashier cobró una 2x1 aplicando el descuento manualmente pero olvidó
+// asignar el segundo par a otro paciente. Crea venta_promociones + folios_detalle,
+// actualiza venta_items.folio_asignado y opcionalmente crea órdenes de lab.
+var _asgPromoVenta = null;
+var _asgPromoSlots = []; // [{ armazon_item_id, material_item_id, paciente_id, paciente_nombre, aro_px }]
+var _asgPromosActivas = [];
+
+async function abrirAsignarPromoRetroactiva(ventaId) {
+  try {
+    var { data: v } = await db.from('ventas').select('*, pacientes(id, nombre, apellidos)').eq('id', ventaId).single();
+    if (!v) { toast('Venta no encontrada', true); return; }
+    var { data: items } = await db.from('venta_items').select('*').eq('venta_id', ventaId).order('created_at');
+    _asgPromoVenta = { ...v, items: items || [] };
+
+    // Cargar promos activas con folios_lab > 1 (las que pueden tener pares)
+    var { data: promos } = await db.from('promociones').select('id, nombre, tipo, folios_lab, addon_config').eq('activa', true).order('folios_lab', { ascending: false });
+    _asgPromosActivas = (promos || []).filter(p => (p.folios_lab || 1) > 1);
+    if (!_asgPromosActivas.length) { toast('No hay promos activas multi-folio', true); return; }
+
+    var sel = document.getElementById('asg-promo-sel');
+    sel.innerHTML = _asgPromosActivas.map(p => `<option value="${p.id}">${p.nombre} (${p.folios_lab} pares)</option>`).join('');
+
+    document.getElementById('asg-promo-venta-info').innerHTML =
+      `📋 Folio <strong>${v.folio}</strong> · ${v.sucursal} · Total $${Number(v.total).toFixed(2)} (descuento $${Number(v.descuento || 0).toFixed(2)})<br>` +
+      `Paciente titular: <strong>${(v.pacientes?.nombre || '') + ' ' + (v.pacientes?.apellidos || '')}</strong>`;
+
+    renderAsignarPromoSlots();
+    document.getElementById('m-asignar-promo').classList.add('open');
+  } catch(e) { toast('Error: ' + e.message, true); }
+}
+
+function cerrarAsignarPromo() {
+  document.getElementById('m-asignar-promo').classList.remove('open');
+  _asgPromoVenta = null;
+  _asgPromoSlots = [];
+}
+
+function renderAsignarPromoSlots() {
+  if (!_asgPromoVenta) return;
+  var promoId = document.getElementById('asg-promo-sel').value;
+  var promo = _asgPromosActivas.find(p => p.id === promoId);
+  if (!promo) return;
+  var foliosLab = promo.folios_lab || 2;
+  var items = _asgPromoVenta.items || [];
+  // No tenemos categoria en venta_items, así que asumimos: usuario elige libremente cualquier item para armazón/material
+  var itemOpts = items.map(it => `<option value="${it.id}">${it.descripcion} · $${Number(it.subtotal).toFixed(2)}${it.folio_asignado ? ' (folio ' + it.folio_asignado + ')' : ''}</option>`).join('');
+  var titularNombre = ((_asgPromoVenta.pacientes?.nombre || '') + ' ' + (_asgPromoVenta.pacientes?.apellidos || '')).trim();
+  // Inicializar slots si no existen
+  if (_asgPromoSlots.length !== foliosLab) {
+    _asgPromoSlots = [];
+    for (var i = 0; i < foliosLab; i++) {
+      _asgPromoSlots.push({
+        armazon_item_id: '',
+        material_item_id: '',
+        paciente_id: i === 0 ? (_asgPromoVenta.pacientes?.id || '') : '',
+        paciente_nombre: i === 0 ? titularNombre : '',
+        aro_px: false
+      });
+    }
+  }
+  var inputSt = 'padding:5px 7px;font-size:11px;background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:5px;color:var(--white)';
+  var cont = document.getElementById('asg-promo-slots');
+  cont.innerHTML = _asgPromoSlots.map((slot, s) => {
+    var isPrincipal = s === 0;
+    var bgColor = isPrincipal ? 'rgba(114,196,126,0.04)' : 'rgba(212,184,74,0.03)';
+    var borderColor = isPrincipal ? 'rgba(114,196,126,0.25)' : 'rgba(212,184,74,0.2)';
+    var subFolio = isPrincipal ? _asgPromoVenta.folio : (_asgPromoVenta.folio + '-' + (s + 1));
+    return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:${isPrincipal ? '#72c47e' : 'var(--beige)'}">${isPrincipal ? '📌' : '📎'} Folio ${subFolio}</span>
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:#d4b84a">
+          <input type="checkbox" ${slot.aro_px ? 'checked' : ''} onchange="_asgPromoSlots[${s}].aro_px=this.checked"
+            style="accent-color:#d4b84a;width:12px;height:12px"> ARO PX
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
+          <select onchange="_asgPromoSlots[${s}].armazon_item_id=this.value" style="flex:1;${inputSt}">
+            <option value="">— Armazón —</option>${itemOpts.replace(/value="([^"]+)"/g, function(m, id) { return id === slot.armazon_item_id ? `value="${id}" selected` : `value="${id}"`; })}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:10px;width:14px;flex-shrink:0">🔬</span>
+          <select onchange="_asgPromoSlots[${s}].material_item_id=this.value" style="flex:1;${inputSt}">
+            <option value="">— Material (opcional) —</option>${itemOpts.replace(/value="([^"]+)"/g, function(m, id) { return id === slot.material_item_id ? `value="${id}" selected` : `value="${id}"`; })}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px">
+          <span style="font-size:10px;width:14px;flex-shrink:0">👤</span>
+          ${isPrincipal
+            ? `<span style="flex:1;font-size:11px;color:var(--white)">${slot.paciente_nombre || titularNombre} (titular)</span>`
+            : `<div style="flex:1;position:relative">
+                <input type="text" id="asg-px-input-${s}" value="${slot.paciente_nombre || ''}" placeholder="Buscar paciente..."
+                  style="width:100%;${inputSt}"
+                  oninput="_buscarPxAsignarPromo(${s},this.value)" onfocus="this.select()">
+                <div id="asg-px-res-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10003;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius:6px;max-height:140px;overflow-y:auto;margin-top:2px"></div>
+              </div>
+              ${slot.paciente_id ? `<button onclick="_limpiarPxAsignarPromo(${s})" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:11px;padding:0">✕</button>` : ''}`
+          }
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+var _asgPxSearchTimeout = null;
+function _buscarPxAsignarPromo(slotIdx, query) {
+  clearTimeout(_asgPxSearchTimeout);
+  var resEl = document.getElementById('asg-px-res-' + slotIdx);
+  if (!query || query.length < 2) { resEl.style.display = 'none'; return; }
+  _asgPxSearchTimeout = setTimeout(async function() {
+    var { data } = await db.from('pacientes').select('id, nombre, apellidos, telefono')
+      .or(`nombre.ilike.%${query}%,apellidos.ilike.%${query}%,telefono.ilike.%${query}%`).limit(6);
+    if (!data?.length) { resEl.innerHTML = '<div style="padding:6px 8px;font-size:10px;color:var(--muted)">Sin resultados</div>'; resEl.style.display = ''; return; }
+    resEl.innerHTML = data.map(p => {
+      var nm = ((p.nombre || '') + ' ' + (p.apellidos || '')).trim().replace(/'/g, "\\'");
+      return `<div onclick="_selPxAsignarPromo(${slotIdx},'${p.id}','${nm}')" style="padding:6px 8px;cursor:pointer;font-size:11px;color:var(--white);border-bottom:1px solid rgba(255,255,255,0.04)"><strong>${p.nombre || ''} ${p.apellidos || ''}</strong>${p.telefono ? ' · ' + p.telefono : ''}</div>`;
+    }).join('');
+    resEl.style.display = '';
+  }, 250);
+}
+
+function _selPxAsignarPromo(slotIdx, pxId, pxNombre) {
+  _asgPromoSlots[slotIdx].paciente_id = pxId;
+  _asgPromoSlots[slotIdx].paciente_nombre = pxNombre;
+  document.getElementById('asg-px-res-' + slotIdx).style.display = 'none';
+  var inp = document.getElementById('asg-px-input-' + slotIdx);
+  if (inp) inp.value = pxNombre;
+}
+
+function _limpiarPxAsignarPromo(slotIdx) {
+  _asgPromoSlots[slotIdx].paciente_id = '';
+  _asgPromoSlots[slotIdx].paciente_nombre = '';
+  renderAsignarPromoSlots();
+}
+
+async function guardarAsignarPromoRetroactiva() {
+  var btn = document.getElementById('btn-guardar-asg-promo');
+  if (_actionBusy['asgPromo']) { toast('Procesando...', true); return; }
+  if (!_asgPromoVenta) { toast('Sin venta', true); return; }
+  var promoId = document.getElementById('asg-promo-sel').value;
+  var promo = _asgPromosActivas.find(p => p.id === promoId);
+  if (!promo) { toast('Selecciona una promo', true); return; }
+
+  // Validar que cada slot tenga armazón Y paciente
+  for (var i = 0; i < _asgPromoSlots.length; i++) {
+    var s = _asgPromoSlots[i];
+    if (!s.armazon_item_id) { toast('Falta armazón en folio ' + (i + 1), true); return; }
+    if (!s.paciente_id) { toast('Falta paciente en folio ' + (i + 1), true); return; }
+  }
+  // Validar que cada item del carrito se use máximo una vez
+  var usedItems = {};
+  for (var i = 0; i < _asgPromoSlots.length; i++) {
+    var s = _asgPromoSlots[i];
+    if (s.armazon_item_id) {
+      if (usedItems[s.armazon_item_id]) { toast('Un mismo item está asignado a 2 pares', true); return; }
+      usedItems[s.armazon_item_id] = true;
+    }
+    if (s.material_item_id) {
+      if (usedItems[s.material_item_id]) { toast('Un mismo item está asignado a 2 pares', true); return; }
+      usedItems[s.material_item_id] = true;
+    }
+  }
+
+  _actionBusy['asgPromo'] = true;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    var v = _asgPromoVenta;
+    var items = v.items || [];
+    var itemById = {}; items.forEach(it => itemById[it.id] = it);
+
+    // Construir folios_detalle y folios_generados
+    var foliosGenerados = [];
+    var foliosDetalle = _asgPromoSlots.map((slot, idx) => {
+      var subFolio = idx === 0 ? v.folio : (v.folio + '-' + (idx + 1));
+      foliosGenerados.push(subFolio);
+      var armIt = slot.armazon_item_id ? itemById[slot.armazon_item_id] : null;
+      var matIt = slot.material_item_id ? itemById[slot.material_item_id] : null;
+      return {
+        folio: subFolio,
+        slot_label: String(idx + 1),
+        paciente_id: slot.paciente_id,
+        paciente_nombre: slot.paciente_nombre,
+        armazon: armIt ? armIt.descripcion : null,
+        material: matIt ? matIt.descripcion : null,
+        armazon_idx: -1,  // retroactiva, no aplica idx del carrito vivo
+        material_idx: -1,
+        aro_px: !!slot.aro_px,
+        usado: true  // marcamos usado=true para que NO aparezca en "Completar par pendiente"
+      };
+    });
+
+    // INSERT venta_promociones
+    var { error: vpErr } = await db.from('venta_promociones').insert({
+      venta_id: v.id,
+      promocion_id: promo.id,
+      nombre_promo: promo.nombre,
+      tipo_promo: promo.tipo,
+      descuento_aplicado: Number(v.descuento) || 0,
+      folios_generados: foliosGenerados,
+      folios_detalle: foliosDetalle
+    });
+    if (vpErr) throw new Error(vpErr.message);
+
+    // UPDATE venta_items.folio_asignado para los items asignados a slots no-principales
+    for (var idx = 0; idx < _asgPromoSlots.length; idx++) {
+      var slot = _asgPromoSlots[idx];
+      var subFolio = idx === 0 ? v.folio : (v.folio + '-' + (idx + 1));
+      if (slot.armazon_item_id) {
+        await db.from('venta_items').update({ folio_asignado: subFolio }).eq('id', slot.armazon_item_id);
+      }
+      if (slot.material_item_id) {
+        await db.from('venta_items').update({ folio_asignado: subFolio }).eq('id', slot.material_item_id);
+      }
+    }
+
+    // Opcional: crear órdenes de lab para slots no-principales con material asignado
+    var crearLab = document.getElementById('asg-crear-lab')?.checked;
+    var labCreadas = 0;
+    if (crearLab) {
+      for (var idx = 0; idx < _asgPromoSlots.length; idx++) {
+        var slot = _asgPromoSlots[idx];
+        // Skip principal (ya tiene su orden de lab creada en la venta original)
+        if (idx === 0) continue;
+        if (!slot.material_item_id) continue;  // sin material, no hay graduación
+        var armIt = slot.armazon_item_id ? itemById[slot.armazon_item_id] : null;
+        var matIt = slot.material_item_id ? itemById[slot.material_item_id] : null;
+        if (!armIt || !matIt) continue;
+        // Traer Rx más reciente del paciente
+        var { data: hcArr } = await db.from('historias_clinicas')
+          .select('od_esfera,od_cilindro,od_eje,od_add,oi_esfera,oi_cilindro,oi_eje,oi_add,dip,tipo_lente')
+          .eq('paciente_id', slot.paciente_id)
+          .order('created_at', { ascending: false }).limit(1);
+        var rx = (hcArr && hcArr.length) ? hcArr[0] : {};
+        var subFolio = v.folio + '-' + (idx + 1);
+        var labOrden = {
+          paciente_id: slot.paciente_id,
+          estado_lab: 'Enviado al lab',
+          sucursal: v.sucursal || '',
+          armazon: armIt.descripcion,
+          tipo_lente: rx.tipo_lente === 'Visión Sencilla' ? 'VS' : (rx.tipo_lente === 'Bifocal' ? 'BIFOCAL' : (rx.tipo_lente === 'Progresivo' ? 'PROG' : 'VS')),
+          material: matIt.descripcion,
+          tratamiento: '',
+          tinte: 'Sin tinte',
+          od_esfera: rx.od_esfera || '',
+          od_cilindro: rx.od_cilindro || '',
+          od_eje: rx.od_eje || '',
+          od_add: rx.od_add || '',
+          oi_esfera: rx.oi_esfera || '',
+          oi_cilindro: rx.oi_cilindro || '',
+          oi_eje: rx.oi_eje || '',
+          oi_add: rx.oi_add || '',
+          notas_laboratorio: 'Folio: ' + subFolio + ' | Promo retroactiva: ' + promo.nombre + (rx.dip ? ' | DIP: ' + rx.dip : '') + (slot.aro_px ? ' | ARO PX' : '') + ' | Urgencia: Normal'
+        };
+        var { error: olErr } = await db.from('ordenes_laboratorio').insert(labOrden);
+        if (olErr) {
+          // Fallback sin columnas de Rx
+          if (olErr.message && (olErr.message.includes('column') || olErr.code === '42703')) {
+            var fbObj = { ...labOrden };
+            ['od_esfera','od_cilindro','od_eje','od_add','oi_esfera','oi_cilindro','oi_eje','oi_add'].forEach(k => delete fbObj[k]);
+            await db.from('ordenes_laboratorio').insert(fbObj);
+          } else {
+            console.warn('[Asg promo lab orden]', olErr);
+            continue;
+          }
+        }
+        labCreadas++;
+      }
+    }
+
+    toast('✓ Promo asignada · ' + foliosGenerados.length + ' folios' + (labCreadas ? ' · ' + labCreadas + ' órdenes de lab creadas' : ''));
+    cerrarAsignarPromo();
+    await verDetalleVenta(v.id);
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  } finally {
+    _actionBusy['asgPromo'] = false;
+    btn.disabled = false; btn.textContent = 'Guardar asignación';
+  }
+}
 
 async function completarParPendiente(ventaId) {
   var v = vtaDetalleData;
