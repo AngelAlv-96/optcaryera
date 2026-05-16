@@ -20240,9 +20240,10 @@ async function abrirAsignarPromoRetroactiva(ventaId) {
     var { data: items } = await db.from('venta_items').select('*').eq('venta_id', ventaId).order('created_at');
     _asgPromoVenta = { ...v, items: items || [] };
 
-    // Cargar promos activas con folios_lab > 1 (las que pueden tener pares)
+    // Cargar promos activas tipo NxM (2x1, 3x1, etc) — son las que necesitan asignación de pares.
+    // Excluir paquete_fijo y otros tipos que no usan slots (precio fijo por bundle).
     var { data: promos } = await db.from('promociones').select('id, nombre, tipo, folios_lab, addon_config').eq('activa', true).order('folios_lab', { ascending: false });
-    _asgPromosActivas = (promos || []).filter(p => (p.folios_lab || 1) > 1);
+    _asgPromosActivas = (promos || []).filter(p => (p.folios_lab || 1) > 1 && p.tipo === 'nxm');
     if (!_asgPromosActivas.length) { toast('No hay promos activas multi-folio', true); return; }
 
     var sel = document.getElementById('asg-promo-sel');
