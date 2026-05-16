@@ -20316,13 +20316,19 @@ function renderAsignarPromoSlots() {
           <span style="font-size:10px;width:14px;flex-shrink:0">👤</span>
           ${isPrincipal
             ? `<span style="flex:1;font-size:11px;color:var(--white)">${slot.paciente_nombre || titularNombre} (titular)</span>`
-            : `<div style="flex:1;position:relative">
-                <input type="text" id="asg-px-input-${s}" value="${slot.paciente_nombre || ''}" placeholder="Buscar paciente..."
-                  style="width:100%;${inputSt}"
-                  oninput="_buscarPxAsignarPromo(${s},this.value)" onfocus="this.select()">
-                <div id="asg-px-res-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10003;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius:6px;max-height:140px;overflow-y:auto;margin-top:2px"></div>
-              </div>
-              ${slot.paciente_id ? `<button onclick="_limpiarPxAsignarPromo(${s})" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:11px;padding:0">✕</button>` : ''}`
+            : (slot.paciente_id
+              ? `<div style="flex:1;display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(114,196,126,0.1);border:1px solid rgba(114,196,126,0.25);border-radius:5px">
+                  <span style="font-size:11px;color:#72c47e;font-weight:600">✓ ${slot.paciente_nombre}</span>
+                </div>
+                <button onclick="_limpiarPxAsignarPromo(${s})" style="background:none;border:1px solid rgba(224,128,128,0.3);border-radius:4px;color:#e08080;cursor:pointer;font-size:10px;padding:2px 6px">Cambiar</button>`
+              : `<div style="flex:1;position:relative">
+                  <input type="text" id="asg-px-input-${s}" value="" placeholder="Escribe nombre y haz click en el resultado..."
+                    style="width:100%;${inputSt};border-color:rgba(224,168,74,0.4)"
+                    oninput="_buscarPxAsignarPromo(${s},this.value)" onfocus="this.select()">
+                  <div style="font-size:9px;color:#e0a84a;margin-top:2px">⚠️ Falta seleccionar paciente del listado</div>
+                  <div id="asg-px-res-${s}" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:10003;background:var(--surface);border:1px solid rgba(255,255,255,0.12);border-radius:6px;max-height:140px;overflow-y:auto;margin-top:2px"></div>
+                </div>`
+            )
           }
         </div>
       </div>
@@ -20350,9 +20356,8 @@ function _buscarPxAsignarPromo(slotIdx, query) {
 function _selPxAsignarPromo(slotIdx, pxId, pxNombre) {
   _asgPromoSlots[slotIdx].paciente_id = pxId;
   _asgPromoSlots[slotIdx].paciente_nombre = pxNombre;
-  document.getElementById('asg-px-res-' + slotIdx).style.display = 'none';
-  var inp = document.getElementById('asg-px-input-' + slotIdx);
-  if (inp) inp.value = pxNombre;
+  renderAsignarPromoSlots();
+  toast('✓ Paciente seleccionado: ' + pxNombre);
 }
 
 function _limpiarPxAsignarPromo(slotIdx) {
@@ -20370,10 +20375,17 @@ async function guardarAsignarPromoRetroactiva() {
   if (!promo) { toast('Selecciona una promo', true); return; }
 
   // Validar que cada slot tenga armazón Y paciente
+  var faltantes = [];
   for (var i = 0; i < _asgPromoSlots.length; i++) {
     var s = _asgPromoSlots[i];
-    if (!s.armazon_item_id) { toast('Falta armazón en folio ' + (i + 1), true); return; }
-    if (!s.paciente_id) { toast('Falta paciente en folio ' + (i + 1), true); return; }
+    if (!s.armazon_item_id) faltantes.push('Folio ' + (i + 1) + ': falta armazón');
+    if (!s.paciente_id) faltantes.push('Folio ' + (i + 1) + ': falta seleccionar paciente del listado');
+  }
+  if (faltantes.length) {
+    var alertMsg = '⚠️ Faltan datos:\n' + faltantes.join('\n');
+    console.warn('[Asg Promo]', alertMsg, _asgPromoSlots);
+    alert(alertMsg);
+    return;
   }
   // Validar que cada item del carrito se use máximo una vez
   var usedItems = {};
@@ -20499,7 +20511,8 @@ async function guardarAsignarPromoRetroactiva() {
     cerrarAsignarPromo();
     await verDetalleVenta(v.id);
   } catch(e) {
-    toast('Error: ' + e.message, true);
+    console.error('[Asg Promo] Error:', e);
+    alert('Error al guardar promo: ' + (e.message || e) + '\n\nRevisa consola del navegador para más detalles.');
   } finally {
     _actionBusy['asgPromo'] = false;
     btn.disabled = false; btn.textContent = 'Guardar asignación';
