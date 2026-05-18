@@ -418,7 +418,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v286 — UI nueva "Asignar promo retroactiva" en detalle de venta: botón 🏷 aparece si la venta no tiene `venta_promociones` y no está cancelada. Modal con dropdown de promos activas multi-folio + por cada slot (armazón/material/paciente/aro_px) + checkbox para crear órdenes de lab. Caso de uso: cashier cobró 2x1 con descuento manual pero olvidó registrar la promo formalmente — ahora se puede asignar después sin necesidad de borrar y recrear la venta.
+**Última versión**: v287 — Fix sidebar: el highlight de nav-item estaba desfasado (click "Clari WhatsApp" iluminaba "Cambios de Precio"). Root: `go()` usaba un `map` hardcodeado de IDs→índice pero la sidebar tenía 2 items extras no contemplados (`nav-optometria` idx 5 + `nav-report-precio-cambios` idx 27). Fix: reemplazo el map con búsqueda por atributo onclick — `find(n => n.getAttribute('onclick').indexOf("go('" + id + "')") >= 0)`. Robusto a reorderings/adiciones futuras.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
