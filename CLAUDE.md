@@ -281,6 +281,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Serie se determina por CIL: ≤-2.00=S1, ≤-4.00=S2, ≤-6.00=S3
 - Estimado de compra en Reporte de Materiales usa listas oficiales (con serie por CIL) con fallback a historial
 - **Compras guardadas son editables**: modal detalle con inputs inline (material, cantidad, precio), agregar/eliminar items, recálculo de subtotales/total en tiempo real, botón "Guardar cambios" persiste a DB
+- **Alias de tratamiento para impresión** (v288, Reporte de Materiales): admin/gerencia pueden renombrar el tratamiento (no el material) para mostrar/imprimir un nombre custom — el sistema "aprende" persistiendo en `app_config` id=`tratamiento_print_aliases` (JSON con keys lowercase). Botón ✏ junto a cada header. Cuando hay alias activo: badge naranja "EDITADO" (visible para todos, tooltip muestra el original) + botón ↩ "Revertir" rápido (solo admin/gerencia). NO afecta DB de órdenes ni ningún flujo interno — solo display + print. Auto-preserva prefijo "Foto " si el tratamiento original contenía "foto" (Foto AR/Blue Light/Cromático/Colors) y el alias no lo menciona. Función clave: `_aplicarTratAlias(normTrat)` en `loadReporteMateriales()`. Print extrae automáticamente vía `data-mat-group` ya aliased.
 
 ## 💳 PAGOS EN LÍNEA (CLIP)
 - Portal pacientes (`portal.html`) tiene botón "Pagar en línea" con selector de monto (Total/Mitad/Otro)
@@ -418,7 +419,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v288 — Alias de tratamiento para impresión en Reporte de Materiales. Admin/gerencia pueden renombrar el tratamiento (ej "Anti Blue" → "Blue Free") solo para display y print, sin tocar la DB de órdenes. Persiste en `app_config` id=`tratamiento_print_aliases`. Botón ✏ junto a cada header de material. Dejar en blanco = reset al nombre original.
+**Última versión**: v288b — Alias de tratamiento editable en Reporte de Materiales (verificado funcionando). Admin/gerencia renombran el tratamiento (ej "Anti Blue" → "Blue Free") solo para display y print, sin tocar la DB de órdenes. Persiste en `app_config` id=`tratamiento_print_aliases`. Botón ✏ junto a cada header de material. Cuando hay alias activo: badge naranja "EDITADO" (visible para todos, tooltip con original) + botón ↩ "Revertir" para reset rápido. Auto-preserva el prefijo "Foto" cuando el tratamiento original contiene "foto" (Foto AR/Blue Light/Cromático/Colors).
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
