@@ -14583,7 +14583,15 @@ async function _loadTratAliases() {
 function _aplicarTratAlias(normTrat) {
   if (!normTrat) return normTrat;
   var key = normTrat.trim().toLowerCase();
-  return _tratAliasMap[key] || normTrat;
+  var alias = _tratAliasMap[key];
+  if (!alias) return normTrat;
+  // Si el tratamiento original contenía "foto" (Foto AR, Foto Blue Light, Fotocromático, etc),
+  // preservar ese prefijo en el display — Angel pidió que "foto" no se pierda al renombrar.
+  // Solo se prepone si el alias no menciona ya "foto".
+  if (/foto/i.test(normTrat) && !/foto/i.test(alias)) {
+    return 'Foto ' + alias;
+  }
+  return alias;
 }
 
 function initReporteMateriales() {
