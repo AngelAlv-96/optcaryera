@@ -14787,12 +14787,24 @@ async function loadReporteMateriales() {
 
       var _origTratForBtn = matOrigTrat[mat] || '';
       var _canEditAlias = (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') && _origTratForBtn;
-      var _editBtn = _canEditAlias
-        ? `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratForBtn.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Editar nombre para impresión (alias)">✏</span>`
-        : '';
+      var _hasAlias = _origTratForBtn && _tratAliasMap[_origTratForBtn.trim().toLowerCase()];
+      var _origTratEsc = _origTratForBtn.replace(/'/g, "\\'");
+      var _aliasIndicator = '';
+      var _editBtn = '';
+      if (_hasAlias) {
+        // Indicador "editado" + tooltip con original (visible para todos)
+        _aliasIndicator = `<span style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(232,168,74,0.18);color:#e8a84a;border-radius:8px;font-weight:600;letter-spacing:0.05em" title="Original: ${_origTratForBtn.replace(/"/g, '&quot;')}">EDITADO</span>`;
+      }
+      if (_canEditAlias) {
+        _editBtn = `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Editar nombre para impresión (alias)">✏</span>`;
+        if (_hasAlias) {
+          // Botón de revertir rápido (solo si hay alias activo)
+          _editBtn += `<span onclick="event.stopPropagation();revertirAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#e08080;font-size:11px;margin-left:4px;padding:1px 5px;border:1px solid rgba(224,128,128,0.3);border-radius:4px" title="Revertir al nombre original">↩ Revertir</span>`;
+        }
+      }
       tipoContent += `<div style="margin-bottom:12px;margin-left:12px" data-mat-group="${mat}">
         <div style="background:#000;border-radius:6px;padding:6px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:600;font-size:13px;color:#fff;display:flex;align-items:center">${mat}${_editBtn}</span>
+          <span style="font-weight:600;font-size:13px;color:#fff;display:flex;align-items:center;flex-wrap:wrap">${mat}${_aliasIndicator}${_editBtn}</span>
           <span style="font-size:11px;color:#ccc">${formatPares(totalParesMat)}</span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -14903,28 +14915,24 @@ async function loadReporteMateriales() {
   }
 }
 
-async function editarAliasTratamiento(origTrat) {
+async function revertirAliasTratamiento(origTrat) {
   if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
-    toast('Solo admin/gerencia pueden editar alias', true);
+    toast('Solo admin/gerencia pueden revertir alias', true);
     return;
   }
+  if (!confirm('¿Revertir "' + origTrat + '" al nombre original? El alias actual se borrará.')) return;
+  await _guardarTratAliasMap(origTrat, '', true);
+}
+
+async function _guardarTratAliasMap(origTrat, nuevoAlias, esReset) {
   var key = origTrat.trim().toLowerCase();
-  var currentAlias = _tratAliasMap[key] || '';
-  var nuevoAlias = prompt(
-    'Editar nombre para impresión:\n\nTratamiento original: ' + origTrat + '\n\nNombre para impresión (deja en blanco para usar el original):',
-    currentAlias
-  );
-  if (nuevoAlias === null) return; // cancelado
-  nuevoAlias = nuevoAlias.trim();
   try {
-    // Cargar map actual desde DB para evitar pisar cambios concurrentes
     var { data: cur } = await db.from('app_config').select('value').eq('id', 'tratamiento_print_aliases').single();
     var mapDB = {};
     if (cur?.value) {
       try { mapDB = typeof cur.value === 'string' ? JSON.parse(cur.value) : cur.value; } catch(e) { mapDB = {}; }
     }
-    if (!nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase()) {
-      // Reset: borrar la entrada
+    if (esReset || !nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase()) {
       delete mapDB[key];
     } else {
       mapDB[key] = nuevoAlias;
@@ -14944,11 +14952,26 @@ async function editarAliasTratamiento(origTrat) {
     var resJson = await res.json();
     if (!res.ok || resJson.error) throw new Error(resJson.error || ('HTTP ' + res.status));
     _tratAliasMap = mapDB;
-    toast('✓ ' + (nuevoAlias ? 'Alias guardado: ' + origTrat + ' → ' + nuevoAlias : 'Alias borrado (usa nombre original)'));
+    toast(esReset || !nuevoAlias ? '↩ Revertido a "' + origTrat + '"' : '✓ Alias guardado: ' + origTrat + ' → ' + nuevoAlias);
     await loadReporteMateriales();
   } catch(e) {
-    toast('Error guardando alias: ' + e.message, true);
+    toast('Error: ' + e.message, true);
   }
+}
+
+async function editarAliasTratamiento(origTrat) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
+    toast('Solo admin/gerencia pueden editar alias', true);
+    return;
+  }
+  var key = origTrat.trim().toLowerCase();
+  var currentAlias = _tratAliasMap[key] || '';
+  var nuevoAlias = prompt(
+    'Editar nombre para impresión:\n\nTratamiento original: ' + origTrat + '\n\nNombre para impresión (deja en blanco para usar el original):',
+    currentAlias
+  );
+  if (nuevoAlias === null) return; // cancelado
+  await _guardarTratAliasMap(origTrat, nuevoAlias.trim(), false);
 }
 
 function imprimirReporteMateriales() {
