@@ -14566,11 +14566,31 @@ function mostrarFoliosSurtido(el) {
   }, 50);
 }
 
+var _tratAliasMap = {}; // { "anti blue": "Blue Free", ... } — alias display para el tratamiento (no afecta DB de órdenes)
+
+async function _loadTratAliases() {
+  try {
+    var { data } = await db.from('app_config').select('value').eq('id', 'tratamiento_print_aliases').single();
+    if (data?.value) {
+      var v = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      _tratAliasMap = v || {};
+    } else {
+      _tratAliasMap = {};
+    }
+  } catch(e) { _tratAliasMap = {}; }
+}
+
+function _aplicarTratAlias(normTrat) {
+  if (!normTrat) return normTrat;
+  var key = normTrat.trim().toLowerCase();
+  return _tratAliasMap[key] || normTrat;
+}
+
 function initReporteMateriales() {
   const hoy = hoyLocal();
   document.getElementById('rep-fecha-ini').value = hoy;
   document.getElementById('rep-fecha-fin').value = hoy;
-  loadReporteMateriales();
+  _loadTratAliases().then(loadReporteMateriales);
 }
 
 async function loadReporteMateriales() {
@@ -14671,7 +14691,9 @@ async function loadReporteMateriales() {
     if (normTrat.toLowerCase().includes('foto colors') && _tinte.includes('Foto Colors:')) {
       _fcolorLabel = ' (' + _tinte.replace('Foto Colors:', '').trim() + ')';
     }
-    const matTrat = normTrat ? `${normMat} · ${normTrat}${_fcolorLabel}` : normMat;
+    // Aplicar alias de tratamiento (solo display) — original queda en o.tratamiento para la lógica del sistema
+    var tratDisplay = _aplicarTratAlias(normTrat);
+    const matTrat = tratDisplay ? `${normMat} · ${tratDisplay}${_fcolorLabel}` : normMat;
     const tipo = TIPO_ABREV[o.tipo_lente] || o.tipo_lente || 'Visión Sencilla';
     const odEsf = (o.od_esfera || '').trim();
     const odCil = (o.od_cilindro || '').trim();
@@ -14686,27 +14708,30 @@ async function loadReporteMateriales() {
     const _folio = getFolioFromOrder(o) || 'S/F';
 
     if (!soloOjo || soloOjo === 'OD') {
-      if (odEsf) ojos.push({ tipo, mat: matTrat, esf: odEsf, cil: odCil || '—', add: odAdd || '', folio: _folio, ojo: 'OD' });
+      if (odEsf) ojos.push({ tipo, mat: matTrat, origTrat: normTrat, esf: odEsf, cil: odCil || '—', add: odAdd || '', folio: _folio, ojo: 'OD' });
     }
     if (!soloOjo || soloOjo === 'OI') {
-      if (oiEsf) ojos.push({ tipo, mat: matTrat, esf: oiEsf, cil: oiCil || '—', add: oiAdd || '', folio: _folio, ojo: 'OI' });
+      if (oiEsf) ojos.push({ tipo, mat: matTrat, origTrat: normTrat, esf: oiEsf, cil: oiCil || '—', add: oiAdd || '', folio: _folio, ojo: 'OI' });
     }
-    if (!odEsf && !oiEsf) ojos.push({ tipo, mat: matTrat, esf: 'S/G', cil: '—', add: '', folio: _folio, ojo: '' });
+    if (!odEsf && !oiEsf) ojos.push({ tipo, mat: matTrat, origTrat: normTrat, esf: 'S/G', cil: '—', add: '', folio: _folio, ojo: '' });
   }
 
   for (var mi = 0; mi < _manualMateriales.length; mi++) {
     var m = _manualMateriales[mi];
     var mMat = m.material;
     var mTrat = m.tratamiento;
-    var mMatTrat = mTrat ? mMat + ' · ' + mTrat : mMat;
+    var mTratDisplay = _aplicarTratAlias(mTrat);
+    var mMatTrat = mTratDisplay ? mMat + ' · ' + mTratDisplay : mMat;
     var mTipo = TIPO_ABREV[m.tipo] || m.tipo || 'Visión Sencilla';
-    ojos.push({ tipo: mTipo, mat: mMatTrat, esf: m.esf, cil: m.cil || '—', add: m.add || '', manual: true, manId: m.id });
+    ojos.push({ tipo: mTipo, mat: mMatTrat, origTrat: mTrat, esf: m.esf, cil: m.cil || '—', add: m.add || '', manual: true, manId: m.id });
   }
 
   const tipos = {};
+  const matOrigTrat = {}; // mat string → origTrat (para el botón de editar alias)
   for (const o of ojos) {
     if (!tipos[o.tipo]) tipos[o.tipo] = {};
     if (!tipos[o.tipo][o.mat]) tipos[o.tipo][o.mat] = {};
+    if (!matOrigTrat[o.mat]) matOrigTrat[o.mat] = o.origTrat || '';
     const gradKey = (o.cil && o.cil !== '—' ? `${o.esf}/${o.cil}` : o.esf) + (o.add ? `+${o.add}` : '');
     if (!tipos[o.tipo][o.mat][gradKey]) tipos[o.tipo][o.mat][gradKey] = { esf: o.esf, cil: o.cil, add: o.add, totalOjos: 0, hasManual: false, manIds: [], folios: [] };
     tipos[o.tipo][o.mat][gradKey].totalOjos += 1;
@@ -14760,9 +14785,14 @@ async function loadReporteMateriales() {
       totalParesTipo += totalParesMat;
       totalParesFinal += totalParesMat;
 
+      var _origTratForBtn = matOrigTrat[mat] || '';
+      var _canEditAlias = (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') && _origTratForBtn;
+      var _editBtn = _canEditAlias
+        ? `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratForBtn.replace(/'/g, "\\'")}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Editar nombre para impresión (alias)">✏</span>`
+        : '';
       tipoContent += `<div style="margin-bottom:12px;margin-left:12px" data-mat-group="${mat}">
         <div style="background:#000;border-radius:6px;padding:6px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-weight:600;font-size:13px;color:#fff">${mat}</span>
+          <span style="font-weight:600;font-size:13px;color:#fff;display:flex;align-items:center">${mat}${_editBtn}</span>
           <span style="font-size:11px;color:#ccc">${formatPares(totalParesMat)}</span>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -14870,6 +14900,54 @@ async function loadReporteMateriales() {
   } catch(renderErr) {
     console.error('[Reporte Materiales] RENDER ERROR:', renderErr);
     content.innerHTML = '<p style="color:#e08080;padding:20px">Error de renderizado: ' + renderErr.message + '</p>';
+  }
+}
+
+async function editarAliasTratamiento(origTrat) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
+    toast('Solo admin/gerencia pueden editar alias', true);
+    return;
+  }
+  var key = origTrat.trim().toLowerCase();
+  var currentAlias = _tratAliasMap[key] || '';
+  var nuevoAlias = prompt(
+    'Editar nombre para impresión:\n\nTratamiento original: ' + origTrat + '\n\nNombre para impresión (deja en blanco para usar el original):',
+    currentAlias
+  );
+  if (nuevoAlias === null) return; // cancelado
+  nuevoAlias = nuevoAlias.trim();
+  try {
+    // Cargar map actual desde DB para evitar pisar cambios concurrentes
+    var { data: cur } = await db.from('app_config').select('value').eq('id', 'tratamiento_print_aliases').single();
+    var mapDB = {};
+    if (cur?.value) {
+      try { mapDB = typeof cur.value === 'string' ? JSON.parse(cur.value) : cur.value; } catch(e) { mapDB = {}; }
+    }
+    if (!nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase()) {
+      // Reset: borrar la entrada
+      delete mapDB[key];
+    } else {
+      mapDB[key] = nuevoAlias;
+    }
+    var saveAction = cur ? 'update' : 'insert';
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'app_config',
+        action: saveAction,
+        data: saveAction === 'insert' ? { id: 'tratamiento_print_aliases', value: JSON.stringify(mapDB) } : { value: JSON.stringify(mapDB) },
+        filters: saveAction === 'update' ? [{ col: 'id', op: 'eq', val: 'tratamiento_print_aliases' }] : undefined,
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+    var resJson = await res.json();
+    if (!res.ok || resJson.error) throw new Error(resJson.error || ('HTTP ' + res.status));
+    _tratAliasMap = mapDB;
+    toast('✓ ' + (nuevoAlias ? 'Alias guardado: ' + origTrat + ' → ' + nuevoAlias : 'Alias borrado (usa nombre original)'));
+    await loadReporteMateriales();
+  } catch(e) {
+    toast('Error guardando alias: ' + e.message, true);
   }
 }
 

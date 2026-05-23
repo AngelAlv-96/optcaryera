@@ -418,7 +418,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v287 — Fix sidebar: el highlight de nav-item estaba desfasado (click "Clari WhatsApp" iluminaba "Cambios de Precio"). Root: `go()` usaba un `map` hardcodeado de IDs→índice pero la sidebar tenía 2 items extras no contemplados (`nav-optometria` idx 5 + `nav-report-precio-cambios` idx 27). Fix: reemplazo el map con búsqueda por atributo onclick — `find(n => n.getAttribute('onclick').indexOf("go('" + id + "')") >= 0)`. Robusto a reorderings/adiciones futuras.
+**Última versión**: v288 — Alias de tratamiento para impresión en Reporte de Materiales. Admin/gerencia pueden renombrar el tratamiento (ej "Anti Blue" → "Blue Free") solo para display y print, sin tocar la DB de órdenes. Persiste en `app_config` id=`tratamiento_print_aliases`. Botón ✏ junto a cada header de material. Dejar en blanco = reset al nombre original.
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
