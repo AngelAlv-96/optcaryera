@@ -4610,20 +4610,36 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
       </div>
     </div>
 
-    <!-- Paso 2: PIN -->
+    <!-- Paso "Tareas pendientes" — bloqueo si hay tareas que completar antes -->
+    <div id="ms-step-tareas" style="display:none">
+      <div style="text-align:center;padding:4px 0 8px;font-size:34px">⚠️</div>
+      <div style="text-align:center;font-size:14px;font-weight:700;color:var(--white);margin-bottom:6px">Antes de cobrar tu sobre</div>
+      <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:14px">Completa estas tareas pendientes primero:</div>
+      <div id="ms-tareas-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:6px"></div>
+      <div class="m-actions">
+        <button class="btn btn-g" onclick="cerrarMiSobre()">Cerrar</button>
+      </div>
+    </div>
+
+    <!-- Paso 2: PIN (capturar O crear) -->
     <div id="ms-step-2" style="display:none">
       <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:12px;text-align:center">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Empleado</div>
         <div id="ms-emp-nombre" style="font-size:18px;font-weight:700;color:var(--beige);margin-top:4px"></div>
       </div>
+      <div id="ms-pin-info" style="display:none;font-size:11px;color:#86d795;background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.15);border-radius:8px;padding:10px 12px;margin-bottom:10px;line-height:1.4"></div>
       <div class="fg">
-        <label style="font-size:11px;color:var(--muted)">PIN (4 dígitos)</label>
-        <input type="password" id="ms-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="••••" style="font-size:26px;font-weight:700;text-align:center;letter-spacing:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:14px;color:var(--white);font-family:'Outfit',sans-serif;outline:none;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')_miSobreStep2Confirmar()">
-        <div id="ms-pin-error" style="display:none;font-size:11px;color:#e08080;margin-top:6px;text-align:center"></div>
+        <label id="ms-pin-label" style="font-size:11px;color:var(--muted)">PIN (4 dígitos)</label>
+        <input type="password" id="ms-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="••••" style="font-size:26px;font-weight:700;text-align:center;letter-spacing:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:14px;color:var(--white);font-family:'Outfit',sans-serif;outline:none;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter'){var c=document.getElementById('ms-pin-confirm');if(c&&c.style.display!=='none')c.focus();else _miSobreStep2Confirmar()}">
       </div>
+      <div class="fg" id="ms-pin-confirm-wrap" style="display:none">
+        <label style="font-size:11px;color:var(--muted)">Confirma tu PIN</label>
+        <input type="password" id="ms-pin-confirm" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="••••" style="font-size:26px;font-weight:700;text-align:center;letter-spacing:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:14px;color:var(--white);font-family:'Outfit',sans-serif;outline:none;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')_miSobreStep2Confirmar()">
+      </div>
+      <div id="ms-pin-error" style="display:none;font-size:11px;color:#e08080;margin-top:6px;text-align:center"></div>
       <div class="m-actions">
         <button class="btn btn-g" onclick="_miSobreBack()">← Atrás</button>
-        <button class="btn btn-p" onclick="_miSobreStep2Confirmar()">Confirmar</button>
+        <button class="btn btn-p" id="ms-pin-confirm-btn" onclick="_miSobreStep2Confirmar()">Confirmar</button>
       </div>
     </div>
 
@@ -24337,24 +24353,79 @@ async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
 }
 
 // Estado del flujo
-var _msState = { asesor: null, suc: null, periodo: null, comision: 0 };
+var _msState = { asesor: null, suc: null, periodo: null, comision: 0, pinMode: 'enter' };
+
+// Chequea tareas que bloquean el cobro del sobre (extensible)
+async function _msTareasBloqueantes(suc) {
+  var tareas = [];
+  // 1) Conteo físico de inventario vencido (>=10 días sin hacer)
+  try {
+    var { data: cfgUC } = await db.from('app_config').select('value').eq('id', 'inventario_ultimo_conteo').single();
+    var ucObj = (cfgUC && cfgUC.value) ? (typeof cfgUC.value === 'string' ? JSON.parse(cfgUC.value) : cfgUC.value) : {};
+    var sucNorm = (suc || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+    var ultFecha = ucObj[suc] || ucObj[sucNorm] || '';
+    var dias = ultFecha ? Math.floor((Date.now() - new Date(ultFecha).getTime()) / 86400000) : 999;
+    if (dias >= 10) {
+      tareas.push({
+        emoji: '📋',
+        titulo: 'Conteo físico de inventario',
+        descripcion: ultFecha ? ('Último conteo hace ' + dias + ' días — vencido') : 'Nunca se ha registrado un conteo',
+        accion: 'abrirConteoFisico',
+        cta: 'Hacer ahora'
+      });
+    }
+  } catch(e) { console.warn('[Mi sobre] check conteo:', e); }
+  return tareas;
+}
 
 async function abrirMiSobre() {
   if (currentUser?.rol !== 'sucursal') { toast('Solo empleados de sucursal', true); return; }
+  await _msLoadOverride();
   if (!_msEsVentana()) { toast('La ventana de cobro está cerrada hoy', true); return; }
   var periodo = _msPeriodoActivo();
   if (!periodo) return;
   var suc = currentUser?.sucursal;
+
+  // Reset modal
+  document.getElementById('ms-step-1').style.display = 'none';
+  document.getElementById('ms-step-2').style.display = 'none';
+  document.getElementById('ms-step-3').style.display = 'none';
+  document.getElementById('ms-step-tareas').style.display = 'none';
+  document.getElementById('ms-pin').value = '';
+  document.getElementById('ms-pin-confirm').value = '';
+  document.getElementById('ms-pin-error').style.display = 'none';
+  document.getElementById('m-mi-sobre').classList.add('open');
+
+  // Bloqueo por tareas pendientes (antes de identificar al asesor)
+  var tareas = await _msTareasBloqueantes(suc);
+  if (tareas.length > 0) {
+    document.getElementById('ms-sub').textContent = 'Hay tareas pendientes para tu sucursal';
+    var listEl = document.getElementById('ms-tareas-list');
+    listEl.innerHTML = tareas.map(function(t){
+      return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface2);border:1px solid rgba(245,158,11,0.25);border-radius:10px">'
+        + '<span style="font-size:26px">' + t.emoji + '</span>'
+        + '<div style="flex:1">'
+        + '<div style="font-size:13px;font-weight:700;color:var(--white)">' + t.titulo + '</div>'
+        + '<div style="font-size:11px;color:#e8a84a;margin-top:2px">' + t.descripcion + '</div>'
+        + '</div>'
+        + '<button class="btn btn-p" onclick="cerrarMiSobre();' + t.accion + '()" style="font-size:12px;padding:8px 12px;white-space:nowrap">' + t.cta + ' →</button>'
+        + '</div>';
+    }).join('');
+    document.getElementById('ms-step-tareas').style.display = '';
+    return;
+  }
+
   await cargarAsesoresConfig();
   var asesoresSuc = (_asesoresConfig?.sucursales || {})[suc] || [];
-  if (asesoresSuc.length === 0) { toast('No hay asesores configurados para esta sucursal', true); return; }
+  if (asesoresSuc.length === 0) { toast('No hay asesores configurados para esta sucursal', true); cerrarMiSobre(); return; }
+
   // Filtrar quienes ya cobraron este período
   var { data: pagados } = await db.from('comisiones_pagadas').select('asesor').eq('sucursal', suc).eq('periodo', periodo.periodo);
   var pagadosSet = new Set((pagados || []).map(function(p){ return p.asesor; }));
   var pendientes = asesoresSuc.filter(function(a){ return !pagadosSet.has(a); });
-  if (pendientes.length === 0) { toast('Todos los sobres de este período ya se cobraron', true); return; }
+  if (pendientes.length === 0) { toast('Todos los sobres de este período ya se cobraron', true); cerrarMiSobre(); return; }
 
-  _msState = { asesor: null, suc: suc, periodo: periodo, comision: 0 };
+  _msState = { asesor: null, suc: suc, periodo: periodo, comision: 0, pinMode: 'enter' };
 
   // Step 1: dropdown asesores
   var sel = document.getElementById('ms-asesor');
@@ -24362,12 +24433,7 @@ async function abrirMiSobre() {
   sel.value = '';
 
   document.getElementById('ms-step-1').style.display = '';
-  document.getElementById('ms-step-2').style.display = 'none';
-  document.getElementById('ms-step-3').style.display = 'none';
-  document.getElementById('ms-pin').value = '';
-  document.getElementById('ms-pin-error').style.display = 'none';
   document.getElementById('ms-sub').textContent = 'Identifícate para ver tu sobre';
-  document.getElementById('m-mi-sobre').classList.add('open');
   setTimeout(function(){ sel.focus(); }, 100);
 }
 
@@ -24380,17 +24446,60 @@ function _miSobreBack() {
   document.getElementById('ms-step-2').style.display = 'none';
   document.getElementById('ms-step-1').style.display = '';
   document.getElementById('ms-pin').value = '';
+  document.getElementById('ms-pin-confirm').value = '';
   document.getElementById('ms-pin-error').style.display = 'none';
 }
 
-function _miSobreStep1Continuar() {
+// Guarda PIN nuevo (merge-safe: re-lee antes de escribir)
+async function _msSavePin(asesor, pin) {
+  var hash = await _msSha256(pin + ':' + asesor);
+  var pins = await _msGetPins();
+  pins[asesor] = hash;
+  var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
+  if (existing.data) {
+    var { error } = await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
+    if (error) throw new Error(error.message || error);
+  } else {
+    var { error: errIns } = await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
+    if (errIns) throw new Error(errIns.message || errIns);
+  }
+}
+
+async function _miSobreStep1Continuar() {
   var asesor = document.getElementById('ms-asesor').value;
   if (!asesor) { toast('Selecciona tu nombre', true); return; }
   _msState.asesor = asesor;
   document.getElementById('ms-emp-nombre').textContent = asesor;
+
+  // Detectar si el asesor ya tiene PIN o necesita crearlo
+  var pins = await _msGetPins();
+  var tienePin = !!pins[asesor];
+  _msState.pinMode = tienePin ? 'enter' : 'create';
+
+  var infoEl = document.getElementById('ms-pin-info');
+  var labelEl = document.getElementById('ms-pin-label');
+  var confirmWrap = document.getElementById('ms-pin-confirm-wrap');
+  var btn = document.getElementById('ms-pin-confirm-btn');
+
+  if (_msState.pinMode === 'create') {
+    infoEl.innerHTML = '🆕 <b>Primera vez que cobras</b><br>Crea un PIN de 4 dígitos — lo usarás siempre que cobres tu sobre. Memorízalo, no lo compartas.';
+    infoEl.style.display = '';
+    labelEl.textContent = 'Crea tu PIN (4 dígitos)';
+    confirmWrap.style.display = '';
+    btn.textContent = 'Crear y continuar →';
+  } else {
+    infoEl.style.display = 'none';
+    labelEl.textContent = 'Tu PIN (4 dígitos)';
+    confirmWrap.style.display = 'none';
+    btn.textContent = 'Confirmar';
+  }
+
+  document.getElementById('ms-pin').value = '';
+  document.getElementById('ms-pin-confirm').value = '';
+  document.getElementById('ms-pin-error').style.display = 'none';
   document.getElementById('ms-step-1').style.display = 'none';
   document.getElementById('ms-step-2').style.display = '';
-  document.getElementById('ms-sub').textContent = 'Captura tu PIN para continuar';
+  document.getElementById('ms-sub').textContent = tienePin ? 'Captura tu PIN para continuar' : 'Crea tu PIN para continuar';
   setTimeout(function(){ document.getElementById('ms-pin').focus(); }, 100);
 }
 
@@ -24399,11 +24508,35 @@ async function _miSobreStep2Confirmar() {
   var errEl = document.getElementById('ms-pin-error');
   errEl.style.display = 'none';
   if (!/^[0-9]{4}$/.test(pin)) { errEl.textContent = 'El PIN debe ser de 4 dígitos numéricos'; errEl.style.display = ''; return; }
-  var pins = await _msGetPins();
-  var hashEsperado = pins[_msState.asesor];
-  if (!hashEsperado) { errEl.textContent = 'No tienes PIN configurado. Pídele al admin que lo configure.'; errEl.style.display = ''; return; }
-  var hashIngresado = await _msSha256(pin + ':' + _msState.asesor);
-  if (hashIngresado !== hashEsperado) { errEl.textContent = 'PIN incorrecto'; errEl.style.display = ''; return; }
+
+  // Si está creando el PIN: validar confirmación + guardar
+  if (_msState.pinMode === 'create') {
+    var pinConf = (document.getElementById('ms-pin-confirm').value || '').trim();
+    if (!/^[0-9]{4}$/.test(pinConf)) { errEl.textContent = 'Confirma tu PIN (4 dígitos)'; errEl.style.display = ''; return; }
+    if (pin !== pinConf) { errEl.textContent = 'Los PINs no coinciden — intenta de nuevo'; errEl.style.display = ''; document.getElementById('ms-pin-confirm').value = ''; document.getElementById('ms-pin-confirm').focus(); return; }
+    if (pin === '0000' || pin === '1234' || /^(\d)\1{3}$/.test(pin)) { errEl.textContent = 'Elige un PIN menos obvio (no 0000, 1234, ni 4 iguales)'; errEl.style.display = ''; return; }
+    try {
+      await _msSavePin(_msState.asesor, pin);
+      toast('✓ PIN creado — lo usarás siempre que cobres');
+    } catch(e) {
+      errEl.textContent = 'No se pudo guardar el PIN: ' + (e.message || e);
+      errEl.style.display = '';
+      return;
+    }
+    // Continúa al step 3 directamente sin re-validar (acabamos de guardarlo)
+  } else {
+    // Modo enter: validar contra hash guardado
+    var pins = await _msGetPins();
+    var hashEsperado = pins[_msState.asesor];
+    if (!hashEsperado) {
+      // Edge case: el PIN fue borrado entre que abrió el modal y dio click — pasar a modo create
+      _msState.pinMode = 'create';
+      _miSobreStep1Continuar();
+      return;
+    }
+    var hashIngresado = await _msSha256(pin + ':' + _msState.asesor);
+    if (hashIngresado !== hashEsperado) { errEl.textContent = 'PIN incorrecto'; errEl.style.display = ''; return; }
+  }
 
   // Verificar de nuevo que NO haya cobrado (race safe)
   var { data: yaCobrado } = await db.from('comisiones_pagadas').select('id,fecha_pago').eq('sucursal', _msState.suc).eq('periodo', _msState.periodo.periodo).eq('asesor', _msState.asesor).limit(1);
