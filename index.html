@@ -4073,6 +4073,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           </div>
           <div id="com-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px"></div>
           <div id="com-table" style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden"></div>
+          <div id="com-sobres-pagados" style="margin-top:16px"></div>
           <div id="com-detalle" style="margin-top:16px"></div>
         </div>
       </div>
@@ -24877,6 +24878,106 @@ async function _msGuardarOverride() {
   }
 }
 
+// ═══ Panel auditoría: sobres cobrados en el período seleccionado ═══
+async function _cargarSobresCobrados(periodo) {
+  var el = document.getElementById('com-sobres-pagados');
+  if (!el) return;
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { el.innerHTML = ''; return; }
+  try {
+    var { data, error } = await db.from('comisiones_pagadas')
+      .select('id,sucursal,asesor,metodo,monto,fecha_pago,pagado_por,created_at,retiro_caja_id')
+      .eq('periodo', periodo)
+      .order('sucursal').order('created_at');
+    if (error) throw error;
+    data = data || [];
+
+    if (data.length === 0) {
+      el.innerHTML = '<details style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden">'
+        + '<summary style="padding:12px 16px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted)">📋 Sobres cobrados — 0 en ' + periodo + '</summary>'
+        + '<div style="padding:16px;color:var(--muted);font-size:11px;text-align:center">Nadie ha cobrado todavía en este período.</div>'
+        + '</details>';
+      return;
+    }
+
+    var totalCaja = data.filter(function(r){return r.metodo==='caja';}).reduce(function(s,r){return s+Number(r.monto);},0);
+    var totalTransfer = data.filter(function(r){return r.metodo==='transferencia';}).reduce(function(s,r){return s+Number(r.monto);},0);
+    var total = totalCaja + totalTransfer;
+
+    // Agrupar por sucursal
+    var bySuc = {};
+    data.forEach(function(r){ (bySuc[r.sucursal] = bySuc[r.sucursal] || []).push(r); });
+
+    var isAdmin = currentUser?.rol === 'admin';
+    var html = '<details open style="background:var(--surface);border:1px solid rgba(114,196,126,0.18);border-radius:12px;overflow:hidden">';
+    html += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--beige);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+      + '<span>📋 Sobres cobrados (' + data.length + ')</span>'
+      + '<span style="font-size:11px;color:var(--muted);font-weight:400">'
+      + '💵 caja: <b style="color:#86d795">$' + totalCaja.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</b>'
+      + ' · 💸 transfer: <b style="color:#60a5fa">$' + totalTransfer.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</b>'
+      + ' · total: <b style="color:var(--beige)">$' + total.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</b>'
+      + '</span></summary>';
+    html += '<div style="padding:0 12px 12px">';
+
+    Object.keys(bySuc).sort().forEach(function(suc){
+      var subRows = bySuc[suc];
+      var subTotal = subRows.reduce(function(s,r){return s+Number(r.monto);},0);
+      html += '<div style="margin-top:10px;display:flex;justify-content:space-between;align-items:baseline;padding:6px 4px;border-bottom:1px solid rgba(226,198,166,0.12)">'
+        + '<div style="font-size:11px;font-weight:700;color:var(--beige);text-transform:uppercase;letter-spacing:.05em">' + suc + ' (' + subRows.length + ')</div>'
+        + '<div style="font-size:11px;color:var(--muted)">subtotal: <b style="color:var(--beige)">$' + subTotal.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</b></div>'
+        + '</div>';
+      subRows.forEach(function(r){
+        var hora = '';
+        try { hora = new Date(r.created_at).toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:false }); } catch(_){}
+        var metBadge = r.metodo === 'transferencia'
+          ? '<span style="background:rgba(96,165,250,0.15);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">💸 Transfer</span>'
+          : '<span style="background:rgba(114,196,126,0.15);color:#86d795;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;white-space:nowrap">💵 Caja</span>';
+        var undoBtn = '';
+        if (isAdmin) {
+          var esc = (r.asesor || '').replace(/'/g, "\\'");
+          undoBtn = '<button onclick="_sobreDeshacer(' + r.id + ',\'' + r.metodo + '\',\'' + esc + '\',' + Number(r.monto) + ',\'' + (r.retiro_caja_id || '') + '\')" title="Deshacer este cobro" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:12px;padding:2px 6px;opacity:0.55" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.55">🗑</button>';
+        }
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,0.03);font-size:12px;flex-wrap:wrap">'
+          + '<div style="flex:1;min-width:140px;color:var(--white);font-weight:600">' + r.asesor + '</div>'
+          + metBadge
+          + '<div style="min-width:80px;text-align:right;color:#86d795;font-weight:700">$' + Number(r.monto).toFixed(2) + '</div>'
+          + '<div style="min-width:120px;text-align:right;color:var(--muted);font-size:10px">' + (r.fecha_pago||'') + ' · ' + hora + '</div>'
+          + '<div style="min-width:90px;text-align:right;color:var(--muted);font-size:10px">por ' + (r.pagado_por || '—') + '</div>'
+          + undoBtn
+          + '</div>';
+      });
+    });
+
+    html += '</div></details>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div style="padding:12px;color:#e08080;font-size:11px;background:rgba(224,128,128,0.06);border-radius:8px">Error cargando sobres: ' + (e.message || e) + '</div>';
+  }
+}
+
+async function _sobreDeshacer(id, metodo, asesor, monto, retiroId) {
+  var msg;
+  if (metodo === 'transferencia') {
+    msg = '¿Deshacer pago por transferencia a ' + asesor + ' ($' + monto.toFixed(2) + ')?\n\n• El sobre volverá a estar pendiente para ese asesor\n• Si ya le mandaste el dinero por banco, recupéralo o coordínate con él';
+  } else {
+    msg = '⚠️ DESHACER COBRO DE CAJA — ' + asesor + ' ($' + monto.toFixed(2) + ')\n\n• Se borrará el retiro de caja correspondiente\n• El efectivo esperado de caja SUBIRÁ $' + monto.toFixed(2) + '\n• El sobre vuelve a estar pendiente\n• Asegúrate de que el efectivo físico esté en el cajón\n\n¿Continuar?';
+  }
+  if (!confirm(msg)) return;
+  try {
+    // 1) Borrar comisiones_pagadas (debe ir primero por el FK)
+    var { error: errC } = await db.from('comisiones_pagadas').delete().eq('id', id);
+    if (errC) throw new Error('No se pudo borrar el cobro: ' + (errC.message || errC));
+    // 2) Si era caja, borrar también el retiros_caja vinculado
+    if (metodo === 'caja' && retiroId && retiroId !== '' && retiroId !== 'null') {
+      var { error: errR } = await db.from('retiros_caja').delete().eq('id', retiroId);
+      if (errR) toast('⚠️ Sobre borrado pero el retiro de caja no — bórralo manualmente desde Caja', true);
+    }
+    toast('✓ Cobro deshecho: ' + asesor);
+    calcularComisiones();
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  }
+}
+
 // ═══ ADMIN: pagar sobres por transferencia bancaria (no toca caja) ═══
 function _ptPeriodoActualDefault() {
   // Default = última quincena terminada (la que toca pagar)
@@ -25174,6 +25275,9 @@ async function calcularComisiones() {
   }
   detalleHtml += '</div></details>';
   document.getElementById('com-detalle').innerHTML = detalleHtml;
+
+  // Panel auditoría de sobres cobrados (admin/gerencia)
+  _cargarSobresCobrados(qVal);
 }
 
 </script>
