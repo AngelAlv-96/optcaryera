@@ -419,7 +419,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 
 ## 📊 VERSIÓN ACTIVA: v259
 
-**Última versión**: v288b — Alias de tratamiento editable en Reporte de Materiales (verificado funcionando). Admin/gerencia renombran el tratamiento (ej "Anti Blue" → "Blue Free") solo para display y print, sin tocar la DB de órdenes. Persiste en `app_config` id=`tratamiento_print_aliases`. Botón ✏ junto a cada header de material. Cuando hay alias activo: badge naranja "EDITADO" (visible para todos, tooltip con original) + botón ↩ "Revertir" para reset rápido. Auto-preserva el prefijo "Foto" cuando el tratamiento original contiene "foto" (Foto AR/Blue Light/Cromático/Colors).
+**Última versión**: v289 — Sistema "📩 Mi sobre" para cobro discreto de comisiones por empleado desde dashboard sucursal. Tarjeta verde aparece solo días 1-3 y 16-18 (configurable). Flujo: dropdown asesores → PIN 4 dígitos (SHA-256) → muestra monto + valida efectivo en caja → registra `comisiones_pagadas` (tabla nueva, UNIQUE) + `retiros_caja` con tag `[SOBRE]`. Admin: botón "🔐 PINs" configura PINs por empleado, botón "👁 Visibilidad" abre modal para forzar Abrir/Cerrar la ventana por N días (`app_config` id=`sobre_override`, auto-expira al pasar la fecha). Anterior v288b: alias de tratamiento editable en Reporte de Materiales (Admin/gerencia renombran tratamiento solo para display y print, persiste en `app_config` id=`tratamiento_print_aliases`, badge "EDITADO" + botón ↩ Revertir, auto-preserva prefijo "Foto").
 
 ### 📚 Historial de cambios → `CHANGELOG.md`
 
@@ -533,6 +533,28 @@ El changelog detallado de v138 a v259 vive en [`CHANGELOG.md`](CHANGELOG.md) (no
 - **`_rtSuppressUntil`** (v226): timestamp que suprime refreshes de Realtime después de escrituras locales. Previene race condition donde Realtime trae datos stale y "revierte" estados en la UI. Se setea a `Date.now() + 5000` (5s) en cada escritura a ordenes_laboratorio (10s para batch). Se verifica al entrar a `_rtHandleChange` y después del debounce
 - **⚠️ REGLA**: toda función que escriba a `ordenes_laboratorio` DEBE hacer `_rtSuppressUntil = Date.now() + 5000` antes del write
 - **Clari chat**: tiene su propio Realtime separado (desde v144), no se toca
+
+## 📩 MI SOBRE (cobro de comisiones por empleado, v288)
+- **Tarjeta dashboard sucursal**: aparece como banner verde "📩 Mi sobre disponible" al INICIO de `dash-body`. Visible SOLO en ventana: días 1-3 (cobra Q2 mes anterior) y 16-18 (cobra Q1 mes actual). Fuera de ventana: invisible, no ocupa espacio. Solo rol `sucursal`. Si todos los asesores ya cobraron ese período → no aparece.
+- **Control admin de visibilidad** (v289): botón "👁 Visibilidad" en topbar de Comisiones (admin only) abre modal `m-sobre-override` con 3 opciones: Auto / Mantener ABIERTO hasta DD/MM (extender) / Mantener CERRADO hasta DD/MM (suspender). Persistido en `app_config` id=`sobre_override` JSON `{tipo:'open'|'close', hasta:'YYYY-MM-DD', set_by, set_at}`. Auto-expira al pasar la fecha (`_msLoadOverride()` lo limpia en memoria). El override afecta a todas las sucursales por igual. Cargado en `_loadDashMiSobre()` antes de evaluar la ventana y en `initComisiones()` para refrescar el botón
+- **Flujo modal `abrirMiSobre()`** (3 pasos):
+  1. Dropdown de asesores de la sucursal (excluye los que ya cobraron ese período)
+  2. PIN 4 dígitos (SHA-256 con sal `pin+':'+nombre`) — input password, autofocus, Enter confirma
+  3. Muestra período + monto + valida efectivo en caja → botón "💵 Cobrar de caja" o mensaje "pide a admin transferencia"
+- **DB**:
+  - **Tabla `comisiones_pagadas`** (UNIQUE sucursal+asesor+periodo): id, sucursal, asesor, periodo ("2026-05-Q1"), monto, fecha_pago, pagado_por, retiro_caja_id (FK a retiros_caja), created_at. RLS: anon SELECT, service_role ALL
+  - **`app_config` id=`empleados_pins`**: JSON `{ "Nombre Asesor": "<sha256 hex>" }`
+- **Cobro `_ejecutarCobroSobre()`** (order matters):
+  1. Re-verifica que no esté pagado ya (UNIQUE constraint protege contra race)
+  2. Re-verifica efectivo en DB con `_msFetchCajaState(suc)` (independiente de `cajaData` global — funciona desde dashboard sin entrar a caja)
+  3. Inserta `comisiones_pagadas` primero (marker)
+  4. Inserta `retiros_caja` con `observaciones='[SOBRE] {asesor} - {periodo}'` y `registrado_por={asesor}`
+  5. Link `retiro_caja_id` al `comisiones_pagadas` (best-effort)
+  6. Si paso 4 falla → compensa borrando el `comisiones_pagadas`
+- **Helper `_msFetchCajaState(suc)`**: query directo a DB para caja abierta de hoy + pagos+abonos+retiros del día, sin depender de estado global de view-caja. Devuelve `{caja, efectivo}`. Usado por modal cuando se abre desde dashboard
+- **Admin PINs**: botón "🔐 PINs" en topbar de view-comisiones (solo admin). Modal lista todos los asesores configurados en `asesores_config.sucursales`, input PIN por cada uno (vacío = sin cambio), 🗑 borra PIN individual. Hash SHA-256 con sal por asesor (mismo PIN para 2 personas distintas → hashes distintos)
+- **Filtros en retiros**: retiros con observación `[SOBRE] *` cuentan como retiro MXN normal (afectan cuadre de caja). Aparecen en historial de retiros con asesor como `registrado_por` para auditoría
+- **⚠️ LECCIÓN v288**: el flujo de cobro debe ser self-contained desde dashboard — NUNCA depender de `cajaData` o `cajaDayData` globales, porque solo se cargan al entrar a view-caja. Usar `_msFetchCajaState(suc)` que consulta DB directo. Aplica a cualquier feature que necesite estado de caja desde otra vista.
 
 ## 🎯 MÓDULO ESTRATEGIA (mod-estrategia.js)
 - **5 tabs**: Meta del Mes, KPIs, Histórico, Márgenes, Plan 90 Días

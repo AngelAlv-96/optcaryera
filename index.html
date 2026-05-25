@@ -4053,7 +4053,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
       <div class="view" id="view-comisiones">
         <div class="topbar">
           <div class="topbar-left"><h2>Comisiones</h2><p>Cálculo quincenal por sucursal</p></div>
-          <div class="topbar-right"><button class="btn btn-g btn-sm" onclick="calcularComisiones()">🔄</button></div>
+          <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="abrirSobreOverride()" id="btn-com-test" style="display:none" title="Forzar abrir/cerrar la tarjeta 'Mi sobre' por N días">👁 Visibilidad: Auto</button>
+            <button class="btn btn-g btn-sm" onclick="abrirPinsConfig()" id="btn-com-pins" style="display:none">🔐 PINs</button>
+            <button class="btn btn-g btn-sm" onclick="calcularComisiones()">🔄</button>
+          </div>
         </div>
         <div class="body">
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:end">
@@ -4582,6 +4586,120 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
     <div class="m-actions">
       <button class="btn btn-g" onclick="cerrarRetiro()">Cancelar</button>
       <button class="btn btn-p" onclick="registrarRetiro()" id="retiro-btn-guardar" style="background:#e08080">💸 Registrar retiro</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MI SOBRE (cobro de comisión por empleado) ═══ -->
+<div class="m-overlay" id="m-mi-sobre" style="z-index:10001">
+  <div class="modal" style="width:min(420px,100%)">
+    <h3 id="ms-titulo" style="margin-bottom:4px">📩 Mi sobre</h3>
+    <p id="ms-sub" style="font-size:11px;color:var(--muted);margin-bottom:16px">Identifícate para ver tu sobre</p>
+
+    <!-- Paso 1: identificación -->
+    <div id="ms-step-1">
+      <div class="fg">
+        <label style="font-size:11px;color:var(--muted)">¿Quién eres?</label>
+        <select id="ms-asesor" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:11px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:14px;outline:none;width:100%">
+          <option value="">— Selecciona tu nombre —</option>
+        </select>
+      </div>
+      <div class="m-actions">
+        <button class="btn btn-g" onclick="cerrarMiSobre()">Cancelar</button>
+        <button class="btn btn-p" onclick="_miSobreStep1Continuar()">Continuar →</button>
+      </div>
+    </div>
+
+    <!-- Paso 2: PIN -->
+    <div id="ms-step-2" style="display:none">
+      <div style="background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:12px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Empleado</div>
+        <div id="ms-emp-nombre" style="font-size:18px;font-weight:700;color:var(--beige);margin-top:4px"></div>
+      </div>
+      <div class="fg">
+        <label style="font-size:11px;color:var(--muted)">PIN (4 dígitos)</label>
+        <input type="password" id="ms-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" autocomplete="off" placeholder="••••" style="font-size:26px;font-weight:700;text-align:center;letter-spacing:8px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:14px;color:var(--white);font-family:'Outfit',sans-serif;outline:none;width:100%;box-sizing:border-box" onkeydown="if(event.key==='Enter')_miSobreStep2Confirmar()">
+        <div id="ms-pin-error" style="display:none;font-size:11px;color:#e08080;margin-top:6px;text-align:center"></div>
+      </div>
+      <div class="m-actions">
+        <button class="btn btn-g" onclick="_miSobreBack()">← Atrás</button>
+        <button class="btn btn-p" onclick="_miSobreStep2Confirmar()">Confirmar</button>
+      </div>
+    </div>
+
+    <!-- Paso 3: cobro -->
+    <div id="ms-step-3" style="display:none">
+      <div style="background:linear-gradient(135deg,rgba(114,196,126,0.08),rgba(114,196,126,0.02));border:1px solid rgba(114,196,126,0.18);border-radius:10px;padding:14px 16px;margin-bottom:12px;text-align:center">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Período</div>
+        <div id="ms-cobro-periodo" style="font-size:13px;color:var(--white);margin-top:2px"></div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:10px">Monto disponible</div>
+        <div id="ms-cobro-monto" style="font-size:30px;font-weight:800;color:#72c47e;margin-top:2px">$0.00</div>
+      </div>
+      <div id="ms-cobro-info" style="font-size:11px;color:var(--muted);padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:12px"></div>
+      <div id="ms-cobro-warn" style="display:none;font-size:11px;color:#e08080;padding:8px 12px;background:rgba(224,128,128,0.06);border:1px solid rgba(224,128,128,0.15);border-radius:8px;margin-bottom:12px"></div>
+      <div class="m-actions">
+        <button class="btn btn-g" onclick="cerrarMiSobre()">Cerrar</button>
+        <button class="btn btn-p" onclick="_ejecutarCobroSobre()" id="ms-cobro-btn" style="background:linear-gradient(135deg,#15803d,#16a34a)">💵 Cobrar de caja</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SOBRE OVERRIDE (admin) — control de visibilidad ═══ -->
+<div class="m-overlay" id="m-sobre-override" style="z-index:10001">
+  <div class="modal" style="width:min(440px,100%)">
+    <h3 style="margin-bottom:4px">👁 Visibilidad de "Mi sobre"</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Por default la tarjeta aparece solo días 1-3 y 16-18. Aquí puedes forzar abrirla o cerrarla por algunos días.</p>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;cursor:pointer;border:1px solid transparent">
+        <input type="radio" name="so-tipo" value="auto" onchange="_msOverrideUpdatePreview()" style="margin-top:3px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--white)">🔄 Auto (default)</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Visible solo días 1-3 y 16-18 de cada mes.</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;cursor:pointer;border:1px solid transparent">
+        <input type="radio" name="so-tipo" value="open" onchange="_msOverrideUpdatePreview()" style="margin-top:3px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#86d795">👁 Mantener ABIERTO hasta…</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Extender la ventana. Útil si pagas tarde o quieres que sigan cobrando unos días extra.</div>
+        </div>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;cursor:pointer;border:1px solid transparent">
+        <input type="radio" name="so-tipo" value="close" onchange="_msOverrideUpdatePreview()" style="margin-top:3px">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:#e8a84a">🔒 Mantener CERRADO hasta…</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Suspender. Útil si esa quincena se va a pagar más tarde y no quieres que la vean aún.</div>
+        </div>
+      </label>
+    </div>
+
+    <div class="fg">
+      <label style="font-size:11px;color:var(--muted)">Hasta el día (inclusive)</label>
+      <input type="date" id="so-hasta" onchange="_msOverrideUpdatePreview()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:14px;outline:none;width:100%;box-sizing:border-box">
+    </div>
+
+    <div id="so-preview" style="font-size:12px;padding:10px 12px;background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.12);border-radius:8px;margin-top:8px;color:#86d795;line-height:1.5"></div>
+
+    <div class="m-actions">
+      <button class="btn btn-g" onclick="cerrarSobreOverride()">Cancelar</button>
+      <button class="btn btn-p" onclick="_msGuardarOverride()" id="so-save-btn">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONFIG PINs (admin) ═══ -->
+<div class="m-overlay" id="m-pins-config" style="z-index:10001">
+  <div class="modal" style="width:min(520px,100%);max-height:85vh;overflow-y:auto">
+    <h3 style="margin-bottom:4px">🔐 PINs de empleados</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px">PIN de 4 dígitos por empleado. Vacío = sin PIN (no puede cobrar). El PIN se guarda encriptado.</p>
+    <div id="pins-list" style="display:flex;flex-direction:column;gap:8px">
+      <div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Cargando…</div>
+    </div>
+    <div class="m-actions">
+      <button class="btn btn-g" onclick="cerrarPinsConfig()">Cerrar</button>
+      <button class="btn btn-p" onclick="guardarPinsConfig()" id="pins-save-btn">💾 Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -7223,6 +7341,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   setTimeout(function(){ _loadDashEntregasVencidas(porRevisar > 0 || listos > 0); }, 80);
   setTimeout(function(){ _loadDashMetaWidget(suc); }, 100);
   setTimeout(function(){ _loadDashPrecioCambios(porRevisar > 0 || listos > 0); }, 110);
+  setTimeout(function(){ _loadDashMiSobre(suc); }, 130);
 
   // Urgentes
   if (urgentes.length > 0) {
@@ -7294,6 +7413,100 @@ async function _loadDashEntregasVencidas(cardExists) {
       }
     }
   } catch(e) { console.warn('Entregas vencidas load:', e); }
+}
+
+// ═══ MI SOBRE — tarjeta discreta en dashboard sucursal ═══
+// Visible solo días 16-18 (cobro Q1 del mes actual) y 1-3 (cobro Q2 del mes anterior).
+// Admin puede forzar ABRIR o CERRAR por N días vía app_config id=sobre_override.
+
+var _msOverride = null; // { tipo:'open'|'close', hasta:'YYYY-MM-DD' } o null=auto
+
+async function _msLoadOverride() {
+  try {
+    var { data } = await db.from('app_config').select('value').eq('id', 'sobre_override').single();
+    if (data && data.value) {
+      var v = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+      var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+      // Auto-expira: si la fecha hasta ya pasó, ignorar el override
+      if (v && v.tipo && v.hasta && v.hasta >= hoy) _msOverride = v;
+      else _msOverride = null;
+    } else _msOverride = null;
+  } catch(e) { _msOverride = null; }
+  return _msOverride;
+}
+
+function _msEsVentana() {
+  try {
+    var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+    var d = parseInt(hoy.split('-')[2], 10);
+    var enVentanaAuto = (d >= 1 && d <= 3) || (d >= 16 && d <= 18);
+    if (_msOverride && _msOverride.hasta && hoy <= _msOverride.hasta) {
+      if (_msOverride.tipo === 'open') return true;
+      if (_msOverride.tipo === 'close') return false;
+    }
+    return enVentanaAuto;
+  } catch(e) { return false; }
+}
+
+function _msPeriodoActivo() {
+  // Devuelve {year, month, q, label, periodo} del período cobrable hoy
+  var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  var parts = hoy.split('-');
+  var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+  if (d >= 1 && d <= 3) {
+    // Cobrar Q2 del mes anterior
+    m = m - 1; if (m === 0) { m = 12; y = y - 1; }
+    return { year: y, month: m, q: 'Q2', label: _msMesNombre(m) + ' 16-fin, ' + y, periodo: y + '-' + String(m).padStart(2,'0') + '-Q2' };
+  }
+  if (d >= 16 && d <= 18) {
+    return { year: y, month: m, q: 'Q1', label: _msMesNombre(m) + ' 1-15, ' + y, periodo: y + '-' + String(m).padStart(2,'0') + '-Q1' };
+  }
+  // Override "open" fuera de ventana natural: asumir la quincena más reciente terminada
+  if (_msOverride && _msOverride.tipo === 'open' && _msOverride.hasta && hoy <= _msOverride.hasta) {
+    if (d >= 16) return { year: y, month: m, q: 'Q1', label: _msMesNombre(m) + ' 1-15, ' + y, periodo: y + '-' + String(m).padStart(2,'0') + '-Q1' };
+    m = m - 1; if (m === 0) { m = 12; y = y - 1; }
+    return { year: y, month: m, q: 'Q2', label: _msMesNombre(m) + ' 16-fin, ' + y, periodo: y + '-' + String(m).padStart(2,'0') + '-Q2' };
+  }
+  return null;
+}
+
+function _msMesNombre(m) {
+  var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return meses[m - 1] || '';
+}
+
+async function _loadDashMiSobre(suc) {
+  try {
+    // Solo rol sucursal, dentro de ventana, y empleado existe en config
+    if (currentUser?.rol !== 'sucursal') return;
+    await _msLoadOverride();
+    if (!_msEsVentana()) return;
+    var periodo = _msPeriodoActivo();
+    if (!periodo) return;
+    await cargarAsesoresConfig();
+    var asesoresSuc = (_asesoresConfig?.sucursales || {})[suc] || [];
+    if (asesoresSuc.length === 0) return;
+    // Verificar si al menos uno todavía no ha cobrado
+    var { data: pagados } = await db.from('comisiones_pagadas').select('asesor').eq('sucursal', suc).eq('periodo', periodo.periodo);
+    var pagadosSet = new Set((pagados || []).map(function(p){ return p.asesor; }));
+    var pendientes = asesoresSuc.filter(function(a){ return !pagadosSet.has(a); });
+    if (pendientes.length === 0) return; // todos cobraron, no mostrar nada
+
+    var row = '<div id="dash-mi-sobre-row" style="display:flex;align-items:center;gap:10px;padding:12px 14px;margin-top:10px;background:linear-gradient(135deg,rgba(114,196,126,0.08),rgba(114,196,126,0.02));border:1px solid rgba(114,196,126,0.25);border-radius:10px;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'\'" onclick="abrirMiSobre()">'
+      + '<span style="font-size:22px">📩</span>'
+      + '<div style="flex:1">'
+      + '<div style="font-size:13px;font-weight:700;color:#86d795">Mi sobre disponible</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:1px">Toca para abrir e identificarte</div>'
+      + '</div>'
+      + '<span style="font-size:11px;color:#86d795">→</span>'
+      + '</div>';
+
+    // Insertar al inicio del dash-body (antes de stats)
+    var dashBody = document.getElementById('dash-body');
+    if (dashBody && !document.getElementById('dash-mi-sobre-row')) {
+      dashBody.insertAdjacentHTML('afterbegin', row);
+    }
+  } catch(e) { console.warn('[Mi sobre] load:', e); }
 }
 
 async function _loadDashPrecioCambios(cardExists) {
@@ -24038,7 +24251,483 @@ async function _lcAutoRegistrar(ventaId, ventaSucursal, canalVenta) {
   } catch(e) { console.warn('[LC CRM] Error auto-registro:', e.message); }
 }
 
+// ═══════════════════════════════════════════════════════
+// MI SOBRE — Sistema de cobro de comisiones por empleado
+// (frontend del flujo iniciado desde dashboard via abrirMiSobre)
+// ═══════════════════════════════════════════════════════
+
+async function _msSha256(str) {
+  var buf = new TextEncoder().encode(str);
+  var hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+}
+
+async function _msGetPins() {
+  try {
+    var { data } = await db.from('app_config').select('value').eq('id', 'empleados_pins').single();
+    if (!data || !data.value) return {};
+    return typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+  } catch(e) { return {}; }
+}
+
+// Carga la caja abierta + datos del día directo desde DB (independiente del view de caja)
+async function _msFetchCajaState(suc) {
+  var today = hoyLocal();
+  var { data: cajas } = await db.from('cortes_caja').select('*').eq('fecha', today).eq('sucursal', suc).order('created_at', { ascending: false }).limit(1);
+  var caja = cajas && cajas[0];
+  if (!caja || caja.estado !== 'abierta') return { caja: null, efectivo: 0 };
+  // Datos del día (mismo cálculo que registrarRetiro)
+  var utcStart = new Date(today + 'T00:00:00-06:00').toISOString();
+  var utcEnd = new Date(today + 'T23:59:59.999-06:00').toISOString();
+  var [pagosRes, credAbRes, retirosRes] = await Promise.all([
+    db.from('venta_pagos').select('monto,metodo_pago,ventas!inner(sucursal,estado)').gte('created_at', utcStart).lte('created_at', utcEnd),
+    db.from('creditos_abonos').select('monto,metodo_pago').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc),
+    db.from('retiros_caja').select('monto,observaciones').eq('corte_id', caja.id)
+  ]);
+  var pagos = (pagosRes.data || []).filter(function(p){ return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada'; });
+  var efectivoPagos = pagos.filter(function(p){ return p.metodo_pago === 'Efectivo'; }).reduce(function(s,p){ return s + Number(p.monto); }, 0);
+  var efectivoCreditos = (credAbRes.data || []).filter(function(a){ return (a.metodo_pago || '').toLowerCase() === 'efectivo'; }).reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  var retirosMXN = (retirosRes.data || []).filter(function(r){ return !(r.observaciones || '').startsWith('Retiro USD'); }).reduce(function(s,r){ return s + Number(r.monto); }, 0);
+  var fondo = Number(caja.fondo_inicial) || 0;
+  return { caja: caja, efectivo: fondo + efectivoPagos + efectivoCreditos - retirosMXN };
+}
+
+// Calcula comisión de UN asesor para un período (refactor de calcularComisiones)
+async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
+  var parts = periodoStr.split('-');
+  var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), q = parts[2];
+  var lastDay = new Date(y, m, 0).getDate();
+  var desde, hasta;
+  if (q === 'Q1') { desde = y + '-' + String(m).padStart(2,'0') + '-01'; hasta = y + '-' + String(m).padStart(2,'0') + '-15'; }
+  else { desde = y + '-' + String(m).padStart(2,'0') + '-16'; hasta = y + '-' + String(m).padStart(2,'0') + '-' + lastDay; }
+  var utcStart = new Date(desde + 'T00:00:00-06:00').toISOString();
+  var utcEnd = new Date(hasta + 'T23:59:59.999-06:00').toISOString();
+
+  await cargarAsesoresConfig();
+  var cfg = _asesoresConfig || {};
+  var asesoresSuc = (cfg.sucursales || {})[suc] || [];
+  var comPcts = cfg.comisiones || {};
+  var comDefault = cfg.comision_default || 2;
+  var divisoresFijos = cfg.divisores || {};
+  var fechaInicios = cfg.fecha_inicio || {};
+  var numAsesores = divisoresFijos[suc] || asesoresSuc.length;
+
+  var { data: pagos } = await db.from('venta_pagos').select('*, ventas(sucursal, estado, asesor)').gte('created_at', utcStart).lte('created_at', utcEnd);
+  pagos = (pagos || []).filter(function(p){ return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada'; });
+  var { data: credAb } = await db.from('creditos_abonos').select('*').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
+  credAb = credAb || [];
+
+  var totalIngreso = pagos.reduce(function(s,p){ return s + Number(p.monto); }, 0) + credAb.reduce(function(s,a){ return s + Number(a.monto); }, 0);
+  var basePorAsesor = numAsesores > 0 ? totalIngreso / numAsesores : 0;
+  var pct = comPcts[asesorNombre] !== undefined ? comPcts[asesorNombre] : comDefault;
+  var fInicio = fechaInicios[asesorNombre];
+  var asesoraBase = basePorAsesor;
+  var prorateado = null;
+  if (fInicio) {
+    var fInicioMs = new Date(fInicio + 'T00:00:00-06:00').getTime();
+    var periodoStartMs = new Date(utcStart).getTime();
+    if (fInicioMs > periodoStartMs) {
+      var ingreso = pagos.filter(function(p){ return new Date(p.created_at).getTime() >= fInicioMs; }).reduce(function(s,p){ return s + Number(p.monto); }, 0)
+                  + credAb.filter(function(a){ return new Date(a.created_at).getTime() >= fInicioMs; }).reduce(function(s,a){ return s + Number(a.monto); }, 0);
+      asesoraBase = numAsesores > 0 ? ingreso / numAsesores : 0;
+      prorateado = fInicio;
+    }
+  }
+  return { base: asesoraBase, pct: pct, comision: Math.round(asesoraBase * (pct/100) * 100) / 100, prorateado: prorateado };
+}
+
+// Estado del flujo
+var _msState = { asesor: null, suc: null, periodo: null, comision: 0 };
+
+async function abrirMiSobre() {
+  if (currentUser?.rol !== 'sucursal') { toast('Solo empleados de sucursal', true); return; }
+  if (!_msEsVentana()) { toast('La ventana de cobro está cerrada hoy', true); return; }
+  var periodo = _msPeriodoActivo();
+  if (!periodo) return;
+  var suc = currentUser?.sucursal;
+  await cargarAsesoresConfig();
+  var asesoresSuc = (_asesoresConfig?.sucursales || {})[suc] || [];
+  if (asesoresSuc.length === 0) { toast('No hay asesores configurados para esta sucursal', true); return; }
+  // Filtrar quienes ya cobraron este período
+  var { data: pagados } = await db.from('comisiones_pagadas').select('asesor').eq('sucursal', suc).eq('periodo', periodo.periodo);
+  var pagadosSet = new Set((pagados || []).map(function(p){ return p.asesor; }));
+  var pendientes = asesoresSuc.filter(function(a){ return !pagadosSet.has(a); });
+  if (pendientes.length === 0) { toast('Todos los sobres de este período ya se cobraron', true); return; }
+
+  _msState = { asesor: null, suc: suc, periodo: periodo, comision: 0 };
+
+  // Step 1: dropdown asesores
+  var sel = document.getElementById('ms-asesor');
+  sel.innerHTML = '<option value="">— Selecciona tu nombre —</option>' + pendientes.map(function(a){ return '<option value="' + a + '">' + a + '</option>'; }).join('');
+  sel.value = '';
+
+  document.getElementById('ms-step-1').style.display = '';
+  document.getElementById('ms-step-2').style.display = 'none';
+  document.getElementById('ms-step-3').style.display = 'none';
+  document.getElementById('ms-pin').value = '';
+  document.getElementById('ms-pin-error').style.display = 'none';
+  document.getElementById('ms-sub').textContent = 'Identifícate para ver tu sobre';
+  document.getElementById('m-mi-sobre').classList.add('open');
+  setTimeout(function(){ sel.focus(); }, 100);
+}
+
+function cerrarMiSobre() {
+  document.getElementById('m-mi-sobre').classList.remove('open');
+  _msState = { asesor: null, suc: null, periodo: null, comision: 0 };
+}
+
+function _miSobreBack() {
+  document.getElementById('ms-step-2').style.display = 'none';
+  document.getElementById('ms-step-1').style.display = '';
+  document.getElementById('ms-pin').value = '';
+  document.getElementById('ms-pin-error').style.display = 'none';
+}
+
+function _miSobreStep1Continuar() {
+  var asesor = document.getElementById('ms-asesor').value;
+  if (!asesor) { toast('Selecciona tu nombre', true); return; }
+  _msState.asesor = asesor;
+  document.getElementById('ms-emp-nombre').textContent = asesor;
+  document.getElementById('ms-step-1').style.display = 'none';
+  document.getElementById('ms-step-2').style.display = '';
+  document.getElementById('ms-sub').textContent = 'Captura tu PIN para continuar';
+  setTimeout(function(){ document.getElementById('ms-pin').focus(); }, 100);
+}
+
+async function _miSobreStep2Confirmar() {
+  var pin = (document.getElementById('ms-pin').value || '').trim();
+  var errEl = document.getElementById('ms-pin-error');
+  errEl.style.display = 'none';
+  if (!/^[0-9]{4}$/.test(pin)) { errEl.textContent = 'El PIN debe ser de 4 dígitos numéricos'; errEl.style.display = ''; return; }
+  var pins = await _msGetPins();
+  var hashEsperado = pins[_msState.asesor];
+  if (!hashEsperado) { errEl.textContent = 'No tienes PIN configurado. Pídele al admin que lo configure.'; errEl.style.display = ''; return; }
+  var hashIngresado = await _msSha256(pin + ':' + _msState.asesor);
+  if (hashIngresado !== hashEsperado) { errEl.textContent = 'PIN incorrecto'; errEl.style.display = ''; return; }
+
+  // Verificar de nuevo que NO haya cobrado (race safe)
+  var { data: yaCobrado } = await db.from('comisiones_pagadas').select('id,fecha_pago').eq('sucursal', _msState.suc).eq('periodo', _msState.periodo.periodo).eq('asesor', _msState.asesor).limit(1);
+  if (yaCobrado && yaCobrado.length > 0) {
+    document.getElementById('ms-step-2').style.display = 'none';
+    document.getElementById('ms-step-3').style.display = '';
+    document.getElementById('ms-cobro-periodo').textContent = _msState.periodo.label;
+    document.getElementById('ms-cobro-monto').textContent = '—';
+    document.getElementById('ms-cobro-info').textContent = '✅ Este sobre ya se cobró el ' + (yaCobrado[0].fecha_pago || '');
+    document.getElementById('ms-cobro-btn').style.display = 'none';
+    return;
+  }
+
+  // Calcular comisión
+  var res;
+  try { res = await _msCalcComisionAsesor(_msState.suc, _msState.periodo.periodo, _msState.asesor); }
+  catch(e) { errEl.textContent = 'Error al calcular: ' + (e.message || e); errEl.style.display = ''; return; }
+  _msState.comision = res.comision;
+
+  document.getElementById('ms-step-2').style.display = 'none';
+  document.getElementById('ms-step-3').style.display = '';
+  document.getElementById('ms-cobro-periodo').textContent = _msState.periodo.label + (res.prorateado ? ' (pro-rateado desde ' + res.prorateado + ')' : '');
+  document.getElementById('ms-cobro-monto').textContent = '$' + _msState.comision.toLocaleString('es-MX', {minimumFractionDigits:2});
+  var btn = document.getElementById('ms-cobro-btn');
+  var infoEl = document.getElementById('ms-cobro-info');
+  var warnEl = document.getElementById('ms-cobro-warn');
+  warnEl.style.display = 'none';
+
+  if (_msState.comision <= 0) {
+    infoEl.textContent = 'Sin ingresos en este período, no hay sobre que cobrar.';
+    btn.style.display = 'none';
+    return;
+  }
+
+  // Validar caja abierta + efectivo (directo desde DB, no depende de cajaData global)
+  var cajaSt = await _msFetchCajaState(_msState.suc);
+  if (!cajaSt.caja) {
+    infoEl.textContent = 'La caja no está abierta hoy. Abre la caja y vuelve a intentar.';
+    btn.style.display = 'none';
+    return;
+  }
+  _msState.cajaId = cajaSt.caja.id;
+  var efectivoDisp = cajaSt.efectivo;
+
+  if (efectivoDisp < _msState.comision) {
+    infoEl.textContent = 'Efectivo en caja: $' + efectivoDisp.toLocaleString('es-MX', {minimumFractionDigits:2});
+    warnEl.textContent = '❌ No hay suficiente efectivo en caja. Pídele al admin que te lo abone por transferencia.';
+    warnEl.style.display = '';
+    btn.style.display = 'none';
+    return;
+  }
+
+  infoEl.innerHTML = '✓ Efectivo en caja: <b style="color:#72c47e">$' + efectivoDisp.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</b><br>'
+    + 'Quedará después del cobro: <b>$' + (efectivoDisp - _msState.comision).toLocaleString('es-MX', {minimumFractionDigits:2}) + '</b>';
+  btn.style.display = '';
+}
+
+async function _ejecutarCobroSobre() {
+  if (_actionBusy['ejecutarCobroSobre']) return;
+  _actionBusy['ejecutarCobroSobre'] = true;
+  var btn = document.getElementById('ms-cobro-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando…'; }
+  var monto = _msState.comision;
+  var asesor = _msState.asesor;
+  var suc = _msState.suc;
+  var periodo = _msState.periodo.periodo;
+  try {
+    // 1) Re-verificar que NO esté pagado ya (race)
+    var { data: ya } = await db.from('comisiones_pagadas').select('id').eq('sucursal', suc).eq('periodo', periodo).eq('asesor', asesor).limit(1);
+    if (ya && ya.length > 0) throw new Error('Este sobre ya fue cobrado');
+
+    // 2) Re-verificar efectivo en DB (directo, no usa estado global)
+    var cajaSt = await _msFetchCajaState(suc);
+    if (!cajaSt.caja) throw new Error('La caja no está abierta');
+    var disponible = cajaSt.efectivo;
+    if (monto > disponible + 0.01) throw new Error('Saldo insuficiente. Disponible: $' + disponible.toFixed(2));
+    var cajaIdToUse = cajaSt.caja.id;
+
+    var today = hoyLocal();
+
+    // 3) Insertar comisiones_pagadas PRIMERO (constraint UNIQUE bloquea duplicados)
+    var { data: cpRow, error: cpErr } = await db.from('comisiones_pagadas').insert({
+      sucursal: suc,
+      asesor: asesor,
+      periodo: periodo,
+      monto: monto,
+      fecha_pago: today,
+      pagado_por: asesor
+    }).select('id').single();
+    if (cpErr) throw new Error('No se pudo registrar el cobro: ' + (cpErr.message || cpErr));
+    var cpId = cpRow.id;
+
+    // 4) Insertar retiros_caja con observación tag
+    var obs = '[SOBRE] ' + asesor + ' - ' + periodo;
+    var { data: retRow, error: retErr } = await db.from('retiros_caja').insert({
+      corte_id: cajaIdToUse,
+      sucursal: suc,
+      fecha: today,
+      monto: Math.round(monto * 100) / 100,
+      observaciones: obs,
+      registrado_por: asesor
+    }).select('id').single();
+    if (retErr) {
+      // Compensar: borrar el comisiones_pagadas para que pueda reintentar
+      try { await db.from('comisiones_pagadas').delete().eq('id', cpId); } catch(_){}
+      throw new Error('No se pudo registrar el retiro de caja: ' + (retErr.message || retErr));
+    }
+
+    // 5) Link retiro_caja_id (best effort)
+    try { await db.from('comisiones_pagadas').update({ retiro_caja_id: retRow.id }).eq('id', cpId); } catch(_){}
+
+    // 6) Realtime suppress + UI refresh
+    if (typeof _rtSuppressUntil !== 'undefined') _rtSuppressUntil = Date.now() + 5000;
+    if (typeof _cajaEfectivoActual !== 'undefined') _cajaEfectivoActual = Math.max(0, _cajaEfectivoActual - monto);
+    if (typeof _checkAlertaEfectivoFlotante === 'function') _checkAlertaEfectivoFlotante();
+
+    // 7) Imprimir ticket si existe función
+    try {
+      if (typeof imprimirTicketRetiro === 'function') {
+        imprimirTicketRetiro(suc, today, monto, obs, disponible - monto);
+      }
+    } catch(_){}
+
+    toast('✓ Sobre cobrado: $' + monto.toFixed(2));
+    cerrarMiSobre();
+    // Refresh dashboard data si estamos en dashboard
+    if (typeof cargarDatosCaja === 'function') { try { await cargarDatosCaja(); } catch(_){} }
+    var row = document.getElementById('dash-mi-sobre-row');
+    if (row) row.remove();
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  } finally {
+    _actionBusy['ejecutarCobroSobre'] = false;
+    if (btn) { btn.disabled = false; btn.innerHTML = '💵 Cobrar de caja'; }
+  }
+}
+
+// ═══ ADMIN: configurar PINs de empleados ═══
+async function abrirPinsConfig() {
+  if (currentUser?.rol !== 'admin') { toast('Solo admin', true); return; }
+  await cargarAsesoresConfig();
+  var todos = [];
+  var sucs = (_asesoresConfig?.sucursales || {});
+  Object.keys(sucs).forEach(function(suc){
+    (sucs[suc] || []).forEach(function(a){ if (todos.indexOf(a) < 0) todos.push({ nombre: a, suc: suc }); });
+  });
+  var pins = await _msGetPins();
+  var listEl = document.getElementById('pins-list');
+  if (todos.length === 0) {
+    listEl.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">No hay asesores configurados. Agrégalos primero desde Config → Asesores.</div>';
+  } else {
+    listEl.innerHTML = todos.map(function(t){
+      var tienePin = !!pins[t.nombre];
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px">'
+        + '<div style="flex:1">'
+        + '<div style="font-size:13px;font-weight:600;color:var(--white)">' + t.nombre + '</div>'
+        + '<div style="font-size:10px;color:var(--muted)">' + t.suc + (tienePin ? ' · <span style="color:#72c47e">✓ PIN configurado</span>' : ' · <span style="color:#e8a84a">sin PIN</span>') + '</div>'
+        + '</div>'
+        + '<input type="password" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="' + (tienePin ? '••••' : 'nuevo') + '" data-asesor="' + t.nombre + '" class="pin-input" style="width:80px;text-align:center;letter-spacing:4px;font-size:16px;font-weight:700;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;outline:none">'
+        + (tienePin ? '<button onclick="_pinResetUno(\'' + t.nombre.replace(/'/g, "\\'") + '\')" title="Borrar PIN" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:14px;padding:4px 8px">🗑</button>' : '')
+        + '</div>';
+    }).join('');
+  }
+  document.getElementById('m-pins-config').classList.add('open');
+}
+
+function cerrarPinsConfig() {
+  document.getElementById('m-pins-config').classList.remove('open');
+}
+
+async function _pinResetUno(asesor) {
+  if (!confirm('¿Borrar el PIN de ' + asesor + '? No podrá cobrar sobres hasta que se configure uno nuevo.')) return;
+  var pins = await _msGetPins();
+  delete pins[asesor];
+  try {
+    var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
+    if (existing.data) {
+      await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
+    } else {
+      await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
+    }
+    toast('PIN de ' + asesor + ' eliminado');
+    abrirPinsConfig();
+  } catch(e) { toast('Error: ' + (e.message || e), true); }
+}
+
+async function guardarPinsConfig() {
+  var btn = document.getElementById('pins-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+  try {
+    var inputs = document.querySelectorAll('#pins-list .pin-input');
+    var pins = await _msGetPins();
+    var cambios = 0;
+    for (var i = 0; i < inputs.length; i++) {
+      var inp = inputs[i];
+      var val = (inp.value || '').trim();
+      var asesor = inp.getAttribute('data-asesor');
+      if (!val) continue; // sin cambio
+      if (!/^[0-9]{4}$/.test(val)) throw new Error('PIN inválido para ' + asesor + ' (4 dígitos)');
+      var hash = await _msSha256(val + ':' + asesor);
+      pins[asesor] = hash;
+      cambios++;
+    }
+    if (cambios === 0) { toast('Sin cambios'); return; }
+    var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
+    if (existing.data) {
+      await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
+    } else {
+      await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
+    }
+    toast('✓ ' + cambios + ' PIN(s) guardado(s)');
+    cerrarPinsConfig();
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar cambios'; }
+  }
+}
+
+// ═══ ADMIN: control de visibilidad de la tarjeta "Mi sobre" ═══
+function _msRefreshOverrideBtn() {
+  var btn = document.getElementById('btn-com-test');
+  if (!btn) return;
+  if (_msOverride && _msOverride.tipo === 'open') {
+    btn.innerHTML = '👁 Abierto hasta ' + _msFmtFechaCorta(_msOverride.hasta);
+    btn.style.background = 'rgba(114,196,126,0.18)';
+    btn.style.color = '#86d795';
+    btn.style.borderColor = 'rgba(114,196,126,0.35)';
+  } else if (_msOverride && _msOverride.tipo === 'close') {
+    btn.innerHTML = '🔒 Suspendido hasta ' + _msFmtFechaCorta(_msOverride.hasta);
+    btn.style.background = 'rgba(224,128,128,0.15)';
+    btn.style.color = '#e08080';
+    btn.style.borderColor = 'rgba(224,128,128,0.3)';
+  } else {
+    btn.innerHTML = '👁 Visibilidad: Auto';
+    btn.style.background = '';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
+
+function _msFmtFechaCorta(ymd) {
+  if (!ymd) return '';
+  var p = ymd.split('-');
+  return p[2] + '/' + p[1];
+}
+
+async function abrirSobreOverride() {
+  if (currentUser?.rol !== 'admin') { toast('Solo admin', true); return; }
+  await _msLoadOverride();
+  // Preset valores actuales
+  var tipo = (_msOverride && _msOverride.tipo) || 'auto';
+  var hasta = (_msOverride && _msOverride.hasta) || '';
+  // Default sugerido: hoy + 3 días
+  if (!hasta) {
+    var hoy = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' }) + 'T00:00:00');
+    hoy.setDate(hoy.getDate() + 3);
+    hasta = hoy.toISOString().slice(0, 10);
+  }
+  document.querySelectorAll('input[name="so-tipo"]').forEach(function(r){ r.checked = (r.value === tipo); });
+  document.getElementById('so-hasta').value = hasta;
+  _msOverrideUpdatePreview();
+  document.getElementById('m-sobre-override').classList.add('open');
+}
+
+function cerrarSobreOverride() {
+  document.getElementById('m-sobre-override').classList.remove('open');
+}
+
+function _msOverrideUpdatePreview() {
+  var tipo = (document.querySelector('input[name="so-tipo"]:checked') || {}).value || 'auto';
+  var hastaInput = document.getElementById('so-hasta');
+  var hasta = hastaInput.value;
+  var prev = document.getElementById('so-preview');
+  hastaInput.disabled = (tipo === 'auto');
+  hastaInput.style.opacity = (tipo === 'auto') ? '0.45' : '1';
+  if (tipo === 'auto') {
+    prev.innerHTML = '✓ La tarjeta aparecerá automáticamente los días <b>1-3</b> y <b>16-18</b> de cada mes.';
+    prev.style.color = '#86d795';
+  } else if (tipo === 'open') {
+    prev.innerHTML = '👁 La tarjeta estará VISIBLE para todas las sucursales hasta <b>' + (hasta || '—') + '</b>.<br>Después de esa fecha vuelve a modo Auto.';
+    prev.style.color = '#86d795';
+  } else {
+    prev.innerHTML = '🔒 La tarjeta estará OCULTA aunque caiga en días 1-3 o 16-18, hasta <b>' + (hasta || '—') + '</b>.<br>Útil si la quincena se va a pagar más tarde de lo normal.';
+    prev.style.color = '#e8a84a';
+  }
+}
+
+async function _msGuardarOverride() {
+  var btn = document.getElementById('so-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando…'; }
+  try {
+    var tipo = (document.querySelector('input[name="so-tipo"]:checked') || {}).value || 'auto';
+    var hasta = document.getElementById('so-hasta').value;
+    if (tipo !== 'auto' && !/^\d{4}-\d{2}-\d{2}$/.test(hasta)) throw new Error('Selecciona una fecha válida');
+    if (tipo !== 'auto') {
+      var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+      if (hasta < hoy) throw new Error('La fecha debe ser hoy o posterior');
+    }
+    var payload = (tipo === 'auto') ? null : { tipo: tipo, hasta: hasta, set_by: currentUser?.nombre || '', set_at: new Date().toISOString() };
+    var existing = await db.from('app_config').select('id').eq('id', 'sobre_override').single();
+    if (existing.data) {
+      await db.from('app_config').update({ value: payload ? JSON.stringify(payload) : null }).eq('id', 'sobre_override');
+    } else {
+      await db.from('app_config').insert({ id: 'sobre_override', value: payload ? JSON.stringify(payload) : null });
+    }
+    _msOverride = payload;
+    _msRefreshOverrideBtn();
+    toast('✓ Visibilidad actualizada: ' + (tipo === 'auto' ? 'Auto' : (tipo === 'open' ? 'Abierto' : 'Cerrado') + ' hasta ' + hasta));
+    cerrarSobreOverride();
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Guardar'; }
+  }
+}
+
 function initComisiones() {
+  // Mostrar botones admin
+  var pinsBtn = document.getElementById('btn-com-pins');
+  if (pinsBtn) pinsBtn.style.display = (currentUser?.rol === 'admin') ? '' : 'none';
+  var testBtn = document.getElementById('btn-com-test');
+  if (testBtn) testBtn.style.display = (currentUser?.rol === 'admin') ? '' : 'none';
+  _msLoadOverride().then(_msRefreshOverrideBtn);
   var sel = document.getElementById('com-quincena');
   if (!sel) return;
   sel.innerHTML = '';
