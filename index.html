@@ -4054,6 +4054,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <div class="topbar">
           <div class="topbar-left"><h2>Comisiones</h2><p>Cálculo quincenal por sucursal</p></div>
           <div class="topbar-right">
+            <button class="btn btn-g btn-sm" onclick="abrirPagoTransfer()" id="btn-com-transfer" style="display:none" title="Marcar sobres como pagados por transferencia bancaria (no toca caja)">💸 Transfer</button>
             <button class="btn btn-g btn-sm" onclick="abrirSobreOverride()" id="btn-com-test" style="display:none" title="Forzar abrir/cerrar la tarjeta 'Mi sobre' por N días">👁 Visibilidad: Auto</button>
             <button class="btn btn-g btn-sm" onclick="abrirPinsConfig()" id="btn-com-pins" style="display:none">🔐 PINs</button>
             <button class="btn btn-g btn-sm" onclick="calcularComisiones()">🔄</button>
@@ -4657,6 +4658,27 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <button class="btn btn-g" onclick="cerrarMiSobre()">Cerrar</button>
         <button class="btn btn-p" onclick="_ejecutarCobroSobre()" id="ms-cobro-btn" style="background:linear-gradient(135deg,#15803d,#16a34a)">💵 Cobrar de caja</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PAGO POR TRANSFERENCIA (admin) — marca sobres como pagados sin tocar caja ═══ -->
+<div class="m-overlay" id="m-pago-transfer" style="z-index:10001">
+  <div class="modal" style="width:min(560px,100%);max-height:85vh;overflow-y:auto">
+    <h3 style="margin-bottom:4px">💸 Pagar comisión por transferencia</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:14px">Marca sobres como pagados por transferencia bancaria. <b style="color:#e8a84a">No descuenta de caja</b> — solo registra que ya pagaste fuera del sistema.</p>
+
+    <div class="fg">
+      <label style="font-size:11px;color:var(--muted)">Período</label>
+      <select id="pt-periodo" onchange="_ptCargarLista()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none;width:100%;box-sizing:border-box"></select>
+    </div>
+
+    <div id="pt-lista" style="display:flex;flex-direction:column;gap:10px;margin-top:12px;min-height:80px">
+      <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Cargando…</div>
+    </div>
+
+    <div class="m-actions">
+      <button class="btn btn-g" onclick="cerrarPagoTransfer()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -24624,7 +24646,8 @@ async function _ejecutarCobroSobre() {
       periodo: periodo,
       monto: monto,
       fecha_pago: today,
-      pagado_por: asesor
+      pagado_por: asesor,
+      metodo: 'caja'
     }).select('id').single();
     if (cpErr) throw new Error('No se pudo registrar el cobro: ' + (cpErr.message || cpErr));
     var cpId = cpRow.id;
@@ -24854,12 +24877,152 @@ async function _msGuardarOverride() {
   }
 }
 
+// ═══ ADMIN: pagar sobres por transferencia bancaria (no toca caja) ═══
+function _ptPeriodoActualDefault() {
+  // Default = última quincena terminada (la que toca pagar)
+  var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  var p = hoy.split('-');
+  var y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+  if (d >= 16) {
+    return y + '-' + String(m).padStart(2,'0') + '-Q1';
+  } else {
+    m = m - 1; if (m === 0) { m = 12; y = y - 1; }
+    return y + '-' + String(m).padStart(2,'0') + '-Q2';
+  }
+}
+
+async function abrirPagoTransfer() {
+  if (currentUser?.rol !== 'admin') { toast('Solo admin', true); return; }
+  // Llenar dropdown período (últimos 6 meses x 2 quincenas)
+  var sel = document.getElementById('pt-periodo');
+  sel.innerHTML = '';
+  var now = new Date();
+  for (var i = 0; i < 6; i++) {
+    var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    var y = d.getFullYear(), mIdx = d.getMonth();
+    var mName = d.toLocaleDateString('es-MX', { month: 'long' });
+    var lastDay = new Date(y, mIdx + 1, 0).getDate();
+    sel.innerHTML += '<option value="' + y + '-' + String(mIdx+1).padStart(2,'0') + '-Q1">' + mName + ' 1-15, ' + y + '</option>';
+    sel.innerHTML += '<option value="' + y + '-' + String(mIdx+1).padStart(2,'0') + '-Q2">' + mName + ' 16-' + lastDay + ', ' + y + '</option>';
+  }
+  sel.value = _ptPeriodoActualDefault();
+  document.getElementById('m-pago-transfer').classList.add('open');
+  _ptCargarLista();
+}
+
+function cerrarPagoTransfer() {
+  document.getElementById('m-pago-transfer').classList.remove('open');
+}
+
+async function _ptCargarLista() {
+  var listEl = document.getElementById('pt-lista');
+  listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Calculando comisiones…</div>';
+  var periodo = document.getElementById('pt-periodo').value;
+  try {
+    await cargarAsesoresConfig();
+    var sucs = Object.keys(_asesoresConfig?.sucursales || {});
+    if (sucs.length === 0) { listEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">No hay sucursales configuradas</div>'; return; }
+    // Traer todos los ya pagados de este período (cualquier método)
+    var { data: pagados } = await db.from('comisiones_pagadas').select('asesor,sucursal,metodo,fecha_pago').eq('periodo', periodo);
+    var pagadosMap = {};
+    (pagados || []).forEach(function(p){ pagadosMap[p.sucursal + '|' + p.asesor] = p; });
+
+    var html = '';
+    var totalPendientes = 0;
+    for (var i = 0; i < sucs.length; i++) {
+      var suc = sucs[i];
+      var asesoresSuc = _asesoresConfig.sucursales[suc] || [];
+      if (asesoresSuc.length === 0) continue;
+
+      var rowsHtml = '';
+      var sucTienePendientes = false;
+
+      for (var j = 0; j < asesoresSuc.length; j++) {
+        var asesor = asesoresSuc[j];
+        var pagado = pagadosMap[suc + '|' + asesor];
+        if (pagado) {
+          // Ya pagado: mostrar pequeño con método y fecha
+          var metodoLbl = pagado.metodo === 'transferencia' ? '💸 transferencia' : '💵 caja';
+          rowsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(114,196,126,0.04);border:1px solid rgba(114,196,126,0.12);border-radius:8px;opacity:0.7">'
+            + '<span style="font-size:14px">✓</span>'
+            + '<div style="flex:1;font-size:12px;color:var(--muted)">' + asesor + ' <span style="font-size:10px">· pagado ' + metodoLbl + ' · ' + (pagado.fecha_pago || '') + '</span></div>'
+            + '</div>';
+          continue;
+        }
+        // Pendiente: calcular comisión
+        var res;
+        try { res = await _msCalcComisionAsesor(suc, periodo, asesor); }
+        catch(e) { res = { comision: 0, error: e.message }; }
+        sucTienePendientes = true;
+        if (res.comision <= 0) {
+          rowsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:8px">'
+            + '<span style="font-size:16px">—</span>'
+            + '<div style="flex:1;font-size:13px;color:var(--muted)">' + asesor + ' <span style="font-size:10px">(sin comisión este período)</span></div>'
+            + '</div>';
+        } else {
+          totalPendientes++;
+          var esc = asesor.replace(/'/g, "\\'");
+          rowsHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.04);border-radius:8px">'
+            + '<div style="flex:1">'
+            + '<div style="font-size:13px;font-weight:600;color:var(--white)">' + asesor + '</div>'
+            + '<div style="font-size:11px;color:#86d795;font-weight:700;margin-top:2px">$' + res.comision.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</div>'
+            + '</div>'
+            + '<button class="btn btn-p" onclick="_ptPagarAsesor(\'' + suc + '\',\'' + esc + '\',\'' + periodo + '\',' + res.comision + ')" style="font-size:12px;padding:8px 12px;background:linear-gradient(135deg,#15803d,#16a34a);white-space:nowrap">💸 Marcar pagado</button>'
+            + '</div>';
+        }
+      }
+
+      if (sucTienePendientes || rowsHtml.length > 0) {
+        html += '<div style="margin-bottom:6px"><div style="font-size:11px;font-weight:700;color:var(--beige);text-transform:uppercase;letter-spacing:.05em;padding:4px 4px 6px">' + suc + '</div>'
+          + '<div style="display:flex;flex-direction:column;gap:6px">' + rowsHtml + '</div></div>';
+      }
+    }
+
+    if (totalPendientes === 0) {
+      listEl.innerHTML = '<div style="padding:30px 14px;text-align:center;color:#86d795;font-size:13px">✅ No hay sobres pendientes en este período</div>' + (html ? '<div style="margin-top:14px">' + html + '</div>' : '');
+    } else {
+      listEl.innerHTML = html;
+    }
+  } catch(e) {
+    listEl.innerHTML = '<div style="padding:20px;color:#e08080;font-size:12px">Error: ' + (e.message || e) + '</div>';
+  }
+}
+
+async function _ptPagarAsesor(suc, asesor, periodo, monto) {
+  if (!confirm('¿Marcar $' + monto.toFixed(2) + ' como pagado por transferencia a ' + asesor + ' (' + suc + ')?\n\nEsto NO descuenta de caja — solo registra que ya pagaste fuera del sistema.')) return;
+  try {
+    // Verificar que no esté pagado ya
+    var { data: ya } = await db.from('comisiones_pagadas').select('id').eq('sucursal', suc).eq('periodo', periodo).eq('asesor', asesor).limit(1);
+    if (ya && ya.length > 0) { toast('Este sobre ya fue registrado', true); _ptCargarLista(); return; }
+
+    var today = hoyLocal();
+    var { error } = await db.from('comisiones_pagadas').insert({
+      sucursal: suc,
+      asesor: asesor,
+      periodo: periodo,
+      monto: Math.round(monto * 100) / 100,
+      fecha_pago: today,
+      pagado_por: currentUser?.nombre || 'Admin',
+      metodo: 'transferencia',
+      retiro_caja_id: null
+    });
+    if (error) throw new Error(error.message || error);
+    toast('✓ Pago por transferencia registrado: ' + asesor + ' — $' + monto.toFixed(2));
+    _ptCargarLista();
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  }
+}
+
 function initComisiones() {
   // Mostrar botones admin
+  var isAdmin = currentUser?.rol === 'admin';
   var pinsBtn = document.getElementById('btn-com-pins');
-  if (pinsBtn) pinsBtn.style.display = (currentUser?.rol === 'admin') ? '' : 'none';
+  if (pinsBtn) pinsBtn.style.display = isAdmin ? '' : 'none';
   var testBtn = document.getElementById('btn-com-test');
-  if (testBtn) testBtn.style.display = (currentUser?.rol === 'admin') ? '' : 'none';
+  if (testBtn) testBtn.style.display = isAdmin ? '' : 'none';
+  var transferBtn = document.getElementById('btn-com-transfer');
+  if (transferBtn) transferBtn.style.display = isAdmin ? '' : 'none';
   _msLoadOverride().then(_msRefreshOverrideBtn);
   var sel = document.getElementById('com-quincena');
   if (!sel) return;
