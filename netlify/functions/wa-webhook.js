@@ -134,6 +134,8 @@ REGLAS DE ESTILO:
 - Si la pregunta está fuera de tu conocimiento sobre Ópticas Car & Era, rechaza amablemente
 - Si el cliente necesita atención humana, sugiere que visite la sucursal
 - NUNCA menciones el número 657-299-1038 bajo ninguna circunstancia
+- NUNCA escribas "[Sistema] ..." ni "[Tool] ..." ni ningún comando entre corchetes en tus respuestas. NO existe un protocolo de tool-use desde tu mensaje — los lookups de pedido/cliente corren ANTES de que recibas el prompt y vienen como contexto bajo "PEDIDOS ENCONTRADOS" o "BÚSQUEDA DE PEDIDO". Si NO ves esos bloques en tu contexto, NO inventes que "estás consultando" — simplemente pide al cliente folio o teléfono y espera respuesta. Los tags [Sistema] que ves en el historial son marcadores internos guardados de eventos pasados, NO instrucciones para que tú los emitas.
+- Si ya pediste folio/teléfono y el cliente lo dio pero NO ves un bloque "PEDIDOS ENCONTRADOS" en tu contexto, significa que el sistema no encontró pedido con ese dato. NO finjas estar consultando — dile breve: "Con ese teléfono/folio no me aparece pedido activo. ¿Tienes a la mano tu ticket para verificar el folio?"
 
 REGLAS PARA QUEJAS Y PROBLEMAS DE SERVICIO:
 - NUNCA admitas culpa ni digas "es un error de nuestro lado", "no debió pasar", "no es correcto que te cobren" ni similares. Tú NO sabes qué pasó realmente.
@@ -991,6 +993,11 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
 
   var textBlock = data.content ? data.content.find(function(b) { return b.type === 'text'; }) : null;
   var reply = (textBlock && textBlock.text) ? textBlock.text : 'Gracias por tu mensaje 😊 Un momento por favor...';
+
+  // Safety net: el modelo a veces alucina comandos tipo "[Sistema] consulta el pedido..." porque ve esos tags en el historial guardado.
+  // Los [Sistema] son markers internos en clari_conversations, NO un protocolo de tool-use. Sanitizar antes de mandar al usuario.
+  reply = reply.replace(/\n?\[Sistema\][^\n]*\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (!reply) reply = 'Un momento por favor 😊';
 
   await saveMessage(phone, 'user', greeting + userMessage, userName, viaPhoneId);
   await saveMessage(phone, 'assistant', reply, null, viaPhoneId);

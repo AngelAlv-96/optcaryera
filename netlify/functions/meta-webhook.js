@@ -130,6 +130,8 @@ REGLAS DE ESTILO:
 - Si la pregunta está fuera de tu conocimiento sobre Ópticas Car & Era, rechaza amablemente
 - Si el cliente necesita atención humana, sugiere que visite la sucursal
 - NUNCA menciones el número 657-299-1038 bajo ninguna circunstancia
+- NUNCA escribas "[Sistema] ..." ni "[Tool] ..." ni ningún comando entre corchetes en tus respuestas. NO existe un protocolo de tool-use desde tu mensaje — los lookups de pedido/cliente corren ANTES de que recibas el prompt y vienen como contexto bajo "PEDIDOS ENCONTRADOS" o "BÚSQUEDA DE PEDIDO". Si NO ves esos bloques en tu contexto, NO inventes que "estás consultando" — simplemente pide al cliente folio o teléfono y espera respuesta. Los tags [Sistema] que ves en el historial son marcadores internos guardados de eventos pasados, NO instrucciones para que tú los emitas.
+- Si ya pediste folio/teléfono y el cliente lo dio pero NO ves un bloque "PEDIDOS ENCONTRADOS" en tu contexto, significa que el sistema no encontró pedido con ese dato. NO finjas estar consultando — dile breve: "Con ese teléfono/folio no me aparece pedido activo. ¿Tienes a la mano tu ticket para verificar el folio?"
 - Si el cliente quiere comprar lentes de contacto, invítalo a escribirnos por WhatsApp al 656-311-0094 donde puede enviar fotos de su receta o caja de LC para cotización rápida
 
 REGLAS PARA QUEJAS Y PROBLEMAS DE SERVICIO:
@@ -347,7 +349,24 @@ async function getClariConfig() {
 
 // ── ORDER STATUS LOOKUP ──
 async function lookupOrdersByText(text) {
-  // Try by folio
+  // Try by phone (10-digit MX mobile). Strip any leading 521/52/1 country code.
+  // Buscar números de 10-13 dígitos seguidos (permite que el cliente tipee "656 218 0134" o "521 656 218 0134")
+  var digitsOnly = text.replace(/[\s\-\(\)\.+]/g, '');
+  var phoneMatch = digitsOnly.match(/\b(\d{10,13})\b/);
+  if (phoneMatch) {
+    var raw = phoneMatch[1];
+    // Normalize: keep last 10 digits (drop 521 / 52 / 1 prefixes if present)
+    var cleanPhone = raw.slice(-10);
+    if (cleanPhone.length === 10) {
+      var patientsByPhone = await supaFetch('pacientes?telefono=ilike.*' + cleanPhone + '*&select=id,nombre,apellidos,telefono&limit=5');
+      if (patientsByPhone && patientsByPhone.length > 0) {
+        var phoneIds = patientsByPhone.map(function(p) { return p.id; });
+        var ordersByPhone = await supaFetch('ordenes_laboratorio?paciente_id=in.(' + phoneIds.join(',') + ')&estado_lab=neq.Entregado&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=10');
+        if (ordersByPhone && ordersByPhone.length > 0) return ordersByPhone;
+      }
+    }
+  }
+  // Try by folio (4-6 digit number — comprueba SOLO si no es un teléfono ya descartado arriba)
   var folioMatch = text.match(/\b(\d{4,6})\b/);
   if (folioMatch) {
     var folio = folioMatch[1];
@@ -475,7 +494,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   }
   var systemPrompt = config.personality.replace(/Respondes por WhatsApp\.?/, channelNote) + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".' + horarioOverride + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
-  // Order lookup (by text only — no phone number available from Messenger/IG)
+  // Order lookup (by text + phone tipeado por el cliente en el mensaje — no senderId, los IDs de FB/IG no son teléfonos)
   var orderContext = '';
   if (isAskingAboutOrder(userMessage)) {
     var orders = await lookupOrdersByText(userMessage);
@@ -558,6 +577,11 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
 
   var textBlock = data.content ? data.content.find(function(b) { return b.type === 'text'; }) : null;
   var reply = (textBlock && textBlock.text) ? textBlock.text : 'Gracias por tu mensaje 😊 Un momento por favor...';
+
+  // Safety net: el modelo a veces alucina comandos tipo "[Sistema] consulta el pedido..." pensando que existe un protocolo de tool-use.
+  // No hay tal protocolo en Messenger/IG, los lookups corren ANTES del prompt. Sanitizar para no enviarle ese texto interno al usuario.
+  reply = reply.replace(/\n?\[Sistema\][^\n]*\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (!reply) reply = 'Un momento por favor 😊';
 
   await saveMessage(senderId, 'user', greeting + userMessage, userName, channel);
   await saveMessage(senderId, 'assistant', reply, null, channel);
