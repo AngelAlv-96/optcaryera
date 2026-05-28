@@ -44,8 +44,20 @@ function getActivePromos() {
   var month = mx.getMonth() + 1; // 1-based
   var year = mx.getFullYear();
 
-  // Hot Sale Aplazo: 25 mayo - 2 junio 2026 (auto-expira tras esa fecha)
+  // Hot Sale Car & Era + Aplazo: 25 mayo - 2 junio 2026 (auto-expira tras esa fecha)
   var hotSaleActive = now >= new Date('2026-05-25T00:00:00-06:00') && now <= new Date('2026-06-02T23:59:59-06:00');
+  var hotSaleCarEra = hotSaleActive ? ('🔥 HOT SALE CAR & ERA (25 mayo – 2 junio 2026) — ANÚNCIALA COMO LA PROMO HEADLINE durante estos 9 días, antes que cualquier otra:\n' +
+    '• Combo: 2x1 en lentes completos + lente solar graduado adicional por solo $499.\n' +
+    '• INCLUIDO sin costo extra dentro del precio Hot Sale (esta es la diferencia con el 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.\n' +
+    '• ⚠️ "Armazones seleccionados" — NO todos los modelos aplican. Es una línea curada para el Hot Sale. Si el cliente pregunta por un armazón específico ("¿este modelo entra?", "vi uno X marca"): "Los armazones del Hot Sale son una línea seleccionada, pásate a sucursal a ver cuáles están en la promo." NUNCA prometas que cualquier armazón aplica al precio Hot Sale.\n' +
+    '• Upgrades con costo aparte (NO incluidos): graduación bifocal o progresiva, material policarbonato o alto índice, tratamientos adicionales (blue light, transitions, polarizado).\n' +
+    '• ⛔ NO se combina con otras promociones: NI maestros 20%, NI Día del Niño 30%, NI descuento Aplazo Hot Sale 25%. Es UNA u OTRA, no se apilan. (El cliente puede elegir Hot Sale o irse por el 2x1 estándar combinado con otras promos, pero no juntar Hot Sale + descuento adicional.)\n' +
+    '• Vigencia: del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun).\n' +
+    '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con el Hot Sale. Ejemplo de respuesta: "Ahorita tenemos Hot Sale: 2x1 en lentes + lente solar graduado adicional por solo $499, micas antirreflejante incluidas, armazones seleccionados. Vigente hasta el 2 de junio." (2-3 líneas máximo).\n' +
+    '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio del Hot Sale": confirma con seguridad, NO dudes ni niegues, está vigente.\n' +
+    '• Si el cliente pregunta si el armazón que YA TIENE aplica al Hot Sale: "El Hot Sale incluye armazón seleccionado, micas y AR — si traes tu armazón propio o quieres uno fuera de la lista seleccionada, te conviene más el 2x1 estándar. Pásate a sucursal y te cotizan ambas opciones."\n' +
+    '• Después del 2 de junio regresa el 2x1 estándar (sin armazón Hot Sale, AR opcional con costo).\n' +
+    '• ⚠️ NO CONFUNDIR con el Hot Sale APLAZO (otra promo paralela): el Hot Sale Car & Era es ESTE combo (armazón + micas + AR + solar $499); el Hot Sale Aplazo es un descuento de la plataforma de pagos Aplazo para sus clientes nuevos (código HS2026). Son DOS Hot Sales en paralelo. Si el cliente menciona "código HS2026" o pagar con Aplazo → es Aplazo. Si menciona armazones / 2x1 / micas / solar → es Hot Sale Car & Era.\n\n') : '';
   var hotSaleAplazo = hotSaleActive ? ('\n\n🔥 HOT SALE APLAZO (25 mayo – 2 junio 2026) — DESCUENTO DIRECTO DE APLAZO, NO DE LA ÓPTICA:\n' +
     '• Aplazo (la plataforma de pagos a plazos) está corriendo su promo Hot Sale: 25% de descuento para CLIENTES NUEVOS de Aplazo (subió de 15% a 25%) + 3 quincenas sin intereses en compras desde $2,000.\n' +
     '• Código: HS2026 (lo aplica el cliente directo en su Aplazo). Vigencia: 25 mayo – 2 junio 2026.\n' +
@@ -56,7 +68,7 @@ function getActivePromos() {
 
   // Abril 15 - Mayo 31, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta 31 de mayo. Maestros hasta 18 de mayo.)
   if (year === 2026 && (month === 4 || month === 5)) {
-    return 'PROMOCIÓN VIGENTE (HASTA EL 31 DE MAYO):\n' +
+    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (HASTA EL 31 DE MAYO):\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
       '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
@@ -100,7 +112,7 @@ function getActivePromos() {
   }
 
   // Fallback (fuera de abril 2026 o antes del deploy)
-  return 'PROMOCIÓN VIGENTE:\n' +
+  return hotSaleCarEra + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional por $499 (par extra dentro de la promo).\n' +
