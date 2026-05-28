@@ -31,6 +31,27 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v294: Hot Sale Car & Era — promo HEADLINE de la óptica durante 25 mayo - 2 junio 2026, agregada al prompt de Clari en ambos webhooks. **Pedido por Angel**: mandó el flyer del Hot Sale propio (separado del Hot Sale Aplazo v293) — combo 2x1 + lente solar graduado adicional $499, con armazón seleccionado + micas CR-39 + AR + UV incluidos sin costo extra. Le pidió a Clari que la anuncie como Hot Sale.
+
+**Implementación**:
+- Nuevo bloque `hotSaleCarEra` en `getActivePromos()` de `wa-webhook.js` y `meta-webhook.js`. Reusa el mismo `hotSaleActive` (date guard 25 may - 2 jun 2026) que ya existía para Hot Sale Aplazo.
+- **Prependido** (NO appended como hotSaleAplazo) al return string en ambas ramas (rama abril-mayo activa + fallback). Esto pone el Hot Sale al INICIO del bloque de promociones que Clari lee, para que lo trate como headline.
+- Tras el 2 de junio el bloque queda como string vacío y desaparece sin intervención manual.
+
+**Contenido del bloque**:
+- Combo: 2x1 lentes completos + lente solar graduado adicional por $499.
+- Incluido sin costo extra (diferencia con 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.
+- Caveat "armazones seleccionados": NO todos los modelos. Línea curada. Si preguntan por modelo específico, redirigir a sucursal.
+- Upgrades con costo aparte: bifocal/progresivo, policarbonato/alto índice, blue light/transitions/polarizado.
+- ⛔ NO combina con otras promos (maestros 20%, Día del Niño 30%, Aplazo HS2026 25%). Una u otra.
+- Vigencia: 25 mayo - 2 junio 2026 (9 días).
+- Cuándo anuncia: ante preguntas genéricas ("qué promos tienen", "qué hay del 2x1", "precios") arranca con Hot Sale en 2-3 líneas. Después del 2 de junio regresa al 2x1 estándar.
+- Confirmación de flyer: si el cliente menciona haberlo visto, confirma con seguridad.
+
+**Distinción explícita Hot Sale Car & Era vs Hot Sale Aplazo** (CRÍTICO en el prompt): los dos se llaman "Hot Sale" pero son cosas distintas. Car & Era = combo de la óptica (armazón + micas + AR + solar). Aplazo = descuento de la plataforma de pagos para clientes nuevos (código HS2026, no de la óptica). El prompt instruye a Clari: si el cliente menciona código HS2026 / pagar con Aplazo → es Aplazo. Si menciona armazones / 2x1 / micas / solar → es Car & Era. Son dos promos paralelas durante el mismo periodo.
+
+**Nota sobre el flyer**: el footer dice "Válido del 25 de mayo al 02 de junio de 2025" — typo, debería ser 2026. El prompt usa 2026 explícito en la fecha.
+
 Cambios v293: Dos cambios al prompt de Clari (wa-webhook.js + meta-webhook.js).
 
 **(1) Promo Hot Sale Aplazo temporal (25 mayo - 2 junio 2026)**:
