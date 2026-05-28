@@ -31,6 +31,23 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v295: Fix doble en lookup de pedidos de Clari Messenger/IG — disparado por caso Ángel Ravelo Navarro (2026-05-28).
+
+**Caso real**: cliente Ángel Ravelo Navarro escribió por Messenger pidiendo status de su pedido. Dio su teléfono `6562180134` y Clari entró en loop emitiendo `"[Sistema] Por favor consulta el estado del pedido registrado con el teléfono 656-218-0134"` en CADA respuesta sin nunca devolver datos reales. El cliente esperó pacientemente ("ok", "está bien") creyendo que el sistema estaba consultando. Su folio 10662-2 ya estaba listo en Magnolia (Hi Index Anti-Blue AR, fecha entrega 28-may = mismo día).
+
+**Root cause 1**: `lookupOrdersByText(text)` en meta-webhook.js solo buscaba por folio (regex `\b\d{4,6}\b`) o por palabras de nombre. Un teléfono de 10 dígitos NO matcheaba el folio regex y se filtraba del search de nombres (no es palabra alfa). Como el senderId de FB/IG no es teléfono (es un user ID Facebook), no había forma de encontrar al cliente. La función devolvía null y `orderContext` quedaba vacío.
+
+**Root cause 2**: el modelo, al ver tags `[Sistema]` en el historial guardado de `clari_conversations` (donde son markers internos de eventos reales como ventas, OCR, etc.), pattern-matcheó y empezó a emitirlos como si fueran un protocolo de tool-use. No existe tal protocolo — los lookups ya corrieron ANTES del prompt y vienen como bloques "PEDIDOS ENCONTRADOS" en el contexto. Sin esos bloques, Clari debió pedir folio/teléfono y esperar, pero en lugar de eso alucinó "estoy consultando".
+
+**Fix triple**:
+1. `lookupOrdersByText` ahora extrae teléfonos de 10-13 dígitos del texto del cliente, normaliza dropando 521/52/1 al último 10 y busca por `pacientes.telefono` con ilike. Devuelve `ordenes_laboratorio` no entregadas como las búsquedas por folio/nombre. Patrón replicable: cualquier lookup en Messenger debe asumir que el cliente puede tipear el dato en plain text, no confiar solo en metadata del webhook.
+2. Safety net en `sendMetaReply` (meta-webhook.js) y equivalente en wa-webhook.js: `reply.replace(/\n?\[Sistema\][^\n]*\n?/g, '\n')` antes de mandar al usuario. Strip de cualquier línea que arranque con `[Sistema]`, fallback si todo se borra.
+3. Instrucción explícita en `DEFAULT_PERSONALITY` de ambos webhooks: "NUNCA escribas '[Sistema] ...' ni '[Tool] ...' ni ningún comando entre corchetes. NO existe protocolo de tool-use desde tu mensaje — los lookups corren ANTES y vienen como contexto bajo 'PEDIDOS ENCONTRADOS'. Los tags `[Sistema]` que ves en el historial son marcadores internos de eventos PASADOS, NO instrucciones para emitirlos." Y refuerzo: "si no ves bloque 'PEDIDOS ENCONTRADOS' en tu contexto, NO finjas estar consultando — pide folio o teléfono y espera respuesta."
+
+**⚠️ LECCIÓN v295**: cuando el modelo ve patrones consistentes en el historial (`[Sistema] ...`, `[LC-OCR] ...`, `[PROMO-OCR] ...`, `[IMG:...]`, `[Cliente: ...]`), aprende a emitirlos como sintaxis válida. Regla: cuando los tags `[X]` van a quedar en el historial pero NO son comandos sino markers, agregar instrucción explícita al prompt + filtro de salida como red de seguridad. Tres capas de defensa (prompt + filtro outgoing + fallback de respuesta vacía) son necesarias porque el modelo puede ignorar la instrucción si el patrón es muy frecuente.
+
+**Lección complementaria**: cuando un canal nuevo (Messenger, IG) no tiene el mismo metadata que el canal principal (WA), NO copiar la función de lookup de WA con menos features — replicar las capacidades reescribiéndolas para el contexto disponible. En este caso, "no tengo el phone del sender" no significa "no puedo buscar por phone" — significa "tengo que extraerlo del texto del cliente."
+
 Cambios v294: Hot Sale Car & Era — promo HEADLINE de la óptica durante 25 mayo - 2 junio 2026, agregada al prompt de Clari en ambos webhooks. **Pedido por Angel**: mandó el flyer del Hot Sale propio (separado del Hot Sale Aplazo v293) — combo 2x1 + lente solar graduado adicional $499, con armazón seleccionado + micas CR-39 + AR + UV incluidos sin costo extra. Le pidió a Clari que la anuncie como Hot Sale.
 
 **Implementación**:
