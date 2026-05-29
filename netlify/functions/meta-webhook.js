@@ -189,9 +189,9 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
-📍 Plaza Vía Vittoria 🆕 (¡NUEVA sucursal! Inauguramos el 30 de mayo de 2026): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Plaza Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
+📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Plaza Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
 
-🆕 ¡TENEMOS NUEVA SUCURSAL! Plaza Vía Vittoria (Av. Ejército Nacional, esquina con Neptuno) abre el 30 de mayo de 2026. Menciónala con entusiasmo a clientes nuevos, sobre todo si están por esa zona o preguntan dónde estamos. Es nuestra sucursal más reciente y ya pueden visitarla con el horario normal.
+{{NUEVA_SUCURSAL_STATUS}}
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 📅 ABRIMOS TODOS LOS DÍAS DEL AÑO con el horario normal (incluidos días feriados como 1 de mayo, 16 de septiembre, 20 de noviembre, jueves/viernes santo, etc.). Solo cerramos 2 días al año: 1 de enero y 25 de diciembre. Si alguien pregunta si abrimos en un día feriado distinto a esos dos, responde directamente que SÍ con el horario normal del día — NO des explicaciones largas sobre feriados, solo confirma que estamos abiertos. Ejemplo: "Sí abrimos hoy en horario normal hasta las 7pm 👓".
@@ -495,6 +495,16 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   var knowledgeWithPromos = config.knowledge.replace('{{PROMOS_PLACEHOLDER}}', promoText);
   // Override horario por días especiales (cierres anticipados, festivos)
   var todayChi = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  // Estado date-gated de la nueva sucursal Plaza Vía Vittoria (inaugura 2026-05-30)
+  var _vittoriaStatus;
+  if (todayChi < '2026-05-30') {
+    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA (MUY IMPORTANTE): esta sucursal ABRE HASTA MAÑANA, el 30 de mayo de 2026 — HOY TODAVÍA NO ESTÁ ABIERTA. Si alguien pregunta por sucursales o por esa zona, SÍ puedes mencionarla con entusiasmo, PERO SIEMPRE aclara en el MISMO mensaje que abre hasta mañana 30 de mayo (para que no vaya hoy y la encuentre cerrada). NUNCA digas que ya pueden visitarla hoy ni que ya está abierta.';
+  } else if (todayChi === '2026-05-30') {
+    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: ¡ABRE HOY 30 de mayo de 2026! Anúnciala con entusiasmo como nuestra sucursal NUEVA, ya pueden visitarla con horario normal. Menciónala a clientes nuevos, sobre todo si están por la zona de Av. Ejército Nacional.';
+  } else {
+    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal más NUEVA (abrió el 30 de mayo de 2026), ya está abierta con horario normal. Menciónala como nueva a clientes, sobre todo si están por la zona de Av. Ejército Nacional. NO digas que "abre mañana" ni que aún no abre.';
+  }
+  knowledgeWithPromos = knowledgeWithPromos.replace('{{NUEVA_SUCURSAL_STATUS}}', _vittoriaStatus);
   var horarioOverride = '';
   if (todayChi === '2026-05-10') {
     horarioOverride = '\n\n🌷 HORARIO ESPECIAL HOY (PRIORIDAD MÁXIMA): Hoy domingo 10 de mayo es Día de las Madres y cerramos a las 3:00pm — NO 5pm. Si te preguntan si abren hoy, qué horario tienen hoy, o cualquier cosa de horario hoy, responde SIEMPRE: "Hoy domingo 10 de mayo cerramos a las 3pm por Día de las Madres". NUNCA digas que cerramos a las 5pm hoy. Esto sobrescribe cualquier otra mención de horario.';
