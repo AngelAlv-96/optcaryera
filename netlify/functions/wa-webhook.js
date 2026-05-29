@@ -263,7 +263,11 @@ VISIÓN SEGURA (protección extra):
 Precio especial solo válido el día de compra o recogida.
 
 REGLAS IMPORTANTES:
-1. EXAMEN DE VISTA: Gratuito al comprar lentes (con armazón O lentes de contacto). NO ofrezcas examen solo ni receta sin compra.
+1. EXAMEN DE VISTA: Gratuito INCLUIDO al comprar lentes (armazón o lentes de contacto). NO ofrezcas examen solo ni receta sin compra.
+   ⚡ REGLA DE LIDERAZGO (CRÍTICA): cuando el cliente diga que NO sabe su graduación, NO se acuerda, NO tiene receta, su receta es vieja, o pregunte "¿cómo sé mi graduación?" / "¿pueden revisar mis lentes?" / "¿cómo saber cuánto aumento tengo?" → tu PRIMERA Y PRINCIPAL respuesta es: "No te preocupes, aquí en sucursal te hacemos el examen de vista completo — viene INCLUIDO al comprar tus lentes. No necesitas saber tu graduación ni traer receta." Una línea clara y al frente, NO como paréntesis ni "aunque...".
+   ⛔ NUNCA preguntes "¿qué graduación manejas?" / "¿cuánto aumento usas?" / "¿cuál es tu graduación aproximada?" — esa info NO la necesitas tú, la mide la optometrista en sucursal. Preguntarla suena pushy y al cliente que no la sabe lo hace sentir incómodo.
+   ✅ SÍ puedes preguntar "¿tienes receta reciente o quieres examen al pasar?" como UNA sola opción binaria — pero solo UNA vez. Si dice que no tiene/no sabe, NO insistas — pivota inmediato al "lo hacemos en sucursal gratis al comprar".
+   📋 Revisión de lentes existentes (lensometría): SÍ, en sucursal pueden leer los lentes que el cliente trae para sacar la graduación aproximada — pero recomienda SIEMPRE el examen completo incluido como primera opción ("el examen completo es más preciso y viene incluido sin costo extra al comprar").
 2. SERVICIO A DOMICILIO: No lo ofrecemos. El servicio a domicilio no es una práctica ética en optometría ya que se requiere equipo especializado.
 3. CURRÍCULUM: admon.caryera@gmail.com (solo optometristas certificados)
 4. HORARIO Y ESPERAR AL CLIENTE: NUNCA digas "te esperamos", "date prisa", "alcanzas a llegar", ni prometas que el personal esperará al cliente. Tú NO controlas al personal de la sucursal. Si un cliente pregunta si alcanza a llegar cerca de la hora de cierre, di: "El horario es hasta las 7pm (o 5pm domingos). Te recomiendo llegar con tiempo suficiente para que te atiendan bien." NUNCA asegures que "sí alcanza" ni que "lo esperan". Si llega y está cerrado, es peor que haberle dicho que viniera otro día.
@@ -1644,7 +1648,7 @@ async function cmdVentas() {
   var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
   var ventas = await supaFetch('ventas?select=sucursal,total,pagado,estado&created_at=gte.' + utcStart + '&created_at=lte.' + utcEnd + '&estado=neq.Cancelada');
   ventas = ventas || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
   var totalGeneral = 0;
   var totalPagado = 0;
   var lines = ['📊 *VENTAS HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
@@ -1654,7 +1658,7 @@ async function cmdVentas() {
     var sp = sv.reduce(function(a, v) { return a + Number(v.pagado); }, 0);
     totalGeneral += st;
     totalPagado += sp;
-    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : s === 'Magnolia' ? '🟣' : '🟢';
     lines.push(emoji + ' ' + s + ': ' + sv.length + ' ventas');
     lines.push('   💰 $' + st.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' vendido · $' + sp.toLocaleString('es-MX', { minimumFractionDigits: 0 }) + ' cobrado');
   });
@@ -1675,11 +1679,11 @@ async function cmdCaja() {
   pagos = pagos || [];
   var retiros = await supaFetch('retiros_caja?select=monto,sucursal&fecha=eq.' + today);
   retiros = retiros || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
   var lines = ['🏦 *CAJA HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
   sucs.forEach(function(s) {
     var caja = cajas.find(function(c) { return c.sucursal === s; });
-    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : s === 'Magnolia' ? '🟣' : '🟢';
     if (!caja) {
       lines.push(emoji + ' ' + s + ': ⚪ Sin abrir');
       return;
@@ -1716,7 +1720,7 @@ async function cmdCaja() {
 async function cmdPendientes() {
   var ordenes = await supaFetch('ordenes_laboratorio?select=id,estado_lab,sucursal&estado_lab=neq.Entregado');
   ordenes = ordenes || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
   var estados = {
     'En cola': ['Enviado al lab', 'Recibido en lab', 'Recibido', 'Pendiente de surtir'],
     'Surtido': ['Surtido'],
@@ -1744,7 +1748,7 @@ async function cmdPendientes() {
   sucs.forEach(function(s) {
     var sv = ordenes.filter(function(o) { return o.sucursal === s; });
     var listo = sv.filter(function(o) { return ['Recibido en óptica', 'Listo para entrega'].includes(o.estado_lab); }).length;
-    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : '🟣';
+    var emoji = s === 'Américas' ? '🔵' : s === 'Pinocelli' ? '🟡' : s === 'Magnolia' ? '🟣' : '🟢';
     lines.push(emoji + ' ' + s + ': ' + sv.length + ' órdenes' + (listo > 0 ? ' (' + listo + ' listas para entregar)' : ''));
   });
   return lines.join('\n');
