@@ -245,7 +245,7 @@ exports.handler = async function(event) {
     } catch (e) { /* ignore */ }
 
     const conteoVencido = [];
-    for (const suc of ['Américas', 'Pinocelli', 'Magnolia']) {
+    for (const suc of ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria']) {
       const last = ultimoConteo[suc];
       if (!last) {
         conteoVencido.push({ sucursal: suc, dias: 'nunca' });

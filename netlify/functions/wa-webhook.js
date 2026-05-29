@@ -195,6 +195,9 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
+📍 Plaza Vía Vittoria 🆕 (¡NUEVA sucursal! Inauguramos el 30 de mayo de 2026): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Plaza Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
+
+🆕 ¡TENEMOS NUEVA SUCURSAL! Plaza Vía Vittoria (Av. Ejército Nacional, esquina con Neptuno) abre el 30 de mayo de 2026. Menciónala con entusiasmo a clientes nuevos, sobre todo si están por esa zona o preguntan dónde estamos. Es nuestra sucursal más reciente y ya pueden visitarla con el horario normal.
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 No se necesita cita previa.
@@ -932,7 +935,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- NUNCA confirmar disponibilidad ni inventario — NO sabes qué hay en stock\n' +
       '- NUNCA decir "probablemente tenemos", "seguro hay", "lo más probable es que tengamos" — si no sabes, NO lo afirmes\n' +
       '- NUNCA mandar al cliente a sucursal a "verificar" o "confirmar" algo que puedes resolver por WhatsApp\n' +
-      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec)';
+      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Plaza Similares, abre 30 de mayo 2026)';
   }
 
   // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)
@@ -1648,7 +1651,7 @@ async function cmdVentas() {
   var utcEnd = new Date(today + 'T23:59:59.999').toISOString();
   var ventas = await supaFetch('ventas?select=sucursal,total,pagado,estado&created_at=gte.' + utcStart + '&created_at=lte.' + utcEnd + '&estado=neq.Cancelada');
   ventas = ventas || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria'];
   var totalGeneral = 0;
   var totalPagado = 0;
   var lines = ['📊 *VENTAS HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
@@ -1679,7 +1682,7 @@ async function cmdCaja() {
   pagos = pagos || [];
   var retiros = await supaFetch('retiros_caja?select=monto,sucursal&fecha=eq.' + today);
   retiros = retiros || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria'];
   var lines = ['🏦 *CAJA HOY* ' + new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' }) + '\n'];
   sucs.forEach(function(s) {
     var caja = cajas.find(function(c) { return c.sucursal === s; });
@@ -1720,7 +1723,7 @@ async function cmdCaja() {
 async function cmdPendientes() {
   var ordenes = await supaFetch('ordenes_laboratorio?select=id,estado_lab,sucursal&estado_lab=neq.Entregado');
   ordenes = ordenes || [];
-  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vitoria'];
+  var sucs = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria'];
   var estados = {
     'En cola': ['Enviado al lab', 'Recibido en lab', 'Recibido', 'Pendiente de surtir'],
     'Surtido': ['Surtido'],

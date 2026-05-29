@@ -770,7 +770,7 @@ function _asistGetAllAsesores() {
   // Build flat list of asesores from asesores config (by sucursal)
   var list = [];
   var sucs = (_asistAsesores && _asistAsesores.sucursales) || {};
-  var sucColors = { 'Américas':'#8ab0e8', 'Pinocelli':'#d4b84a', 'Magnolia':'#b48ad4' };
+  var sucColors = { 'Américas':'#8ab0e8', 'Pinocelli':'#d4b84a', 'Magnolia':'#b48ad4', 'Plaza Vía Vittoria':'#66bb6a' };
   Object.keys(sucs).forEach(function(suc) {
     (sucs[suc] || []).forEach(function(name) {
       list.push({ nombre: name, sucursal: suc, color: sucColors[suc] || '#888' });
@@ -817,7 +817,7 @@ function asistRenderConfig() {
   var dayOrder = ['lun','mar','mie','jue','vie','sab','dom'];
   var defSched = (_asistHorarios && _asistHorarios.default) || {};
   var overrides = (_asistHorarios && _asistHorarios.override) || {};
-  var sucColors = { 'Américas': '#8ab0e8', 'Pinocelli': '#d4b84a', 'Magnolia': '#b48ad4', 'Laboratorio': 'var(--muted)' };
+  var sucColors = { 'Américas': '#8ab0e8', 'Pinocelli': '#d4b84a', 'Magnolia': '#b48ad4', 'Plaza Vía Vittoria': '#66bb6a', 'Laboratorio': 'var(--muted)' };
 
   var html = '<style>.asist-sec-hdr:hover{background:rgba(255,255,255,0.03)}.asist-emp-row:hover{background:rgba(255,255,255,0.02)}</style>';
 
@@ -862,7 +862,7 @@ function asistRenderConfig() {
   }).join('');
 
   // Render each sucursal group
-  var sucOrder = ['Américas', 'Pinocelli', 'Magnolia', 'Laboratorio'];
+  var sucOrder = ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria', 'Laboratorio'];
   sucOrder.forEach(function(suc) {
     var emps = bySuc[suc] || [];
     if (emps.length === 0) return;
@@ -950,7 +950,7 @@ function asistRenderConfig() {
   html += '<div style="display:flex;gap:5px;align-items:center">';
   html += '<input type="text" id="asist-extra-nombre" placeholder="Nombre completo" style="flex:1;' + inputS + '">';
   html += '<select id="asist-extra-suc" style="' + inputS + '">';
-  html += '<option value="Laboratorio">Laboratorio</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option>';
+  html += '<option value="Laboratorio">Laboratorio</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>';
   html += '</select>';
   html += '<input type="text" id="asist-extra-phone" placeholder="Teléfono" maxlength="15" style="width:100px;' + monoInputS + '">';
   html += '<button class="btn btn-p btn-sm" style="padding:4px 8px;font-size:10px" onclick="asistAgregarExtra()">+ Agregar</button>';

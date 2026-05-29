@@ -17,7 +17,7 @@ async function getDatosFiscales() {
     const { data } = await db.from('app_config').select('value').eq('id', 'datos_fiscales').single();
     if (data?.value) { _datosFiscalesCache = typeof data.value === 'string' ? JSON.parse(data.value) : data.value; return _datosFiscalesCache; }
   } catch(e) {}
-  _datosFiscalesCache = { rfc:'AIFI9707035EA', regimen:'RESICO', sucursales:{ 'Américas':{direccion:'BENJAMIN FRANKLIN 3220-L1011G COL. MARGARITAS CP 32300',telefono:'656 703 8499'}, 'Pinocelli':{direccion:'MIGUEL DE LA MADRID L3A COL. LOTE BRAVO CP 32696',telefono:'656 559 1500'}, 'Magnolia':{direccion:'MANUEL J. CLOUTHIER L8 EL GRANJERO CP 32690',telefono:'656 890 3072'} } };
+  _datosFiscalesCache = { rfc:'AIFI9707035EA', regimen:'RESICO', sucursales:{ 'Américas':{direccion:'BENJAMIN FRANKLIN 3220-L1011G COL. MARGARITAS CP 32300',telefono:'656 703 8499'}, 'Pinocelli':{direccion:'MIGUEL DE LA MADRID L3A COL. LOTE BRAVO CP 32696',telefono:'656 559 1500'}, 'Magnolia':{direccion:'MANUEL J. CLOUTHIER L8 EL GRANJERO CP 32690',telefono:'656 890 3072'}, 'Plaza Vía Vittoria':{direccion:'AV. EJÉRCITO NACIONAL 12946 (ESQ. NEPTUNO) CP 32565 CD JUÁREZ CHIH',telefono:'656 687 7482'} } };
   return _datosFiscalesCache;
 }
 

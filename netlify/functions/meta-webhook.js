@@ -189,6 +189,9 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
+📍 Plaza Vía Vittoria 🆕 (¡NUEVA sucursal! Inauguramos el 30 de mayo de 2026): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Plaza Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
+
+🆕 ¡TENEMOS NUEVA SUCURSAL! Plaza Vía Vittoria (Av. Ejército Nacional, esquina con Neptuno) abre el 30 de mayo de 2026. Menciónala con entusiasmo a clientes nuevos, sobre todo si están por esa zona o preguntan dónde estamos. Es nuestra sucursal más reciente y ya pueden visitarla con el horario normal.
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
 📅 ABRIMOS TODOS LOS DÍAS DEL AÑO con el horario normal (incluidos días feriados como 1 de mayo, 16 de septiembre, 20 de noviembre, jueves/viernes santo, etc.). Solo cerramos 2 días al año: 1 de enero y 25 de diciembre. Si alguien pregunta si abrimos en un día feriado distinto a esos dos, responde directamente que SÍ con el horario normal del día — NO des explicaciones largas sobre feriados, solo confirma que estamos abiertos. Ejemplo: "Sí abrimos hoy en horario normal hasta las 7pm 👓".
@@ -721,7 +724,7 @@ REGLAS ESTRICTAS:
 
 DATOS BÁSICOS:
 Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
-Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly) — Ciudad Juárez
+Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Plaza Similares, inaugura el 30 de mayo de 2026) — Ciudad Juárez
 Examen de vista incluido al comprar lentes (armazón o lentes de contacto)
 Lentes listos desde 35 min
 No se necesita cita`,

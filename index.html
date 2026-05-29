@@ -2123,7 +2123,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-right" style="display:flex;gap:8px;align-items:center">
             <select id="lab-suc-filtro" onchange="loadLabTablero()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todas sucursales</option>
-              <option>Am&eacute;ricas</option><option>Pinocelli</option><option>Magnolia</option>
+              <option>Am&eacute;ricas</option><option>Pinocelli</option><option>Magnolia</option><option>Plaza V&iacute;a Vittoria</option>
             </select>
             <button class="btn btn-p btn-sm" onclick="abrirRecibirPedidos()" title="Recibir pedidos" style="font-size:12px">&#128230; Recibir</button>
             <button class="btn btn-g btn-sm" onclick="abrirScanOrden()" title="Escanear código">&#128247;</button>
@@ -2800,7 +2800,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 </div>
                 <div class="fg"><label>Sucursal</label>
                   <select class="ord-input" id="cfg-suc">
-                    <option>Américas</option><option>Pinocelli</option><option>Magnolia</option><option>Todas</option>
+                    <option>Américas</option><option>Pinocelli</option><option>Magnolia</option><option>Plaza Vía Vittoria</option><option>Todas</option>
                   </select>
                 </div>
               </div>
@@ -2879,7 +2879,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end">
                   <div class="fg" style="margin-bottom:0;flex:1;min-width:120px"><label style="font-size:10px;color:var(--muted)">Nombre</label><input class="ord-input" id="cfg-asesor-nombre" placeholder="Nombre completo"></div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Sucursal</label>
-                    <select class="ord-input" id="cfg-asesor-suc"><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="_global">Global (todas)</option></select>
+                    <select class="ord-input" id="cfg-asesor-suc"><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option><option value="_global">Global (todas)</option></select>
                   </div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Comisi&oacute;n %</label><input class="ord-input" id="cfg-asesor-com" type="number" value="2" min="0" max="10" step="0.5" style="width:60px"></div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Inicio (opc.)</label><input class="ord-input" id="cfg-asesor-inicio" type="date" style="width:130px" title="Fecha en que empezó (para pro-rateo de su primera quincena)"></div>
@@ -3176,6 +3176,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="Am&eacute;ricas">Am&eacute;ricas</option>
                 <option value="Pinocelli">Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
+                <option value="Plaza V&iacute;a Vittoria">Plaza V&iacute;a Vittoria</option>
               </select>
               <select class="ord-input" id="wcrm-filtro-campana" onchange="filtrarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:130px">
                 <option value="">Todas las campa&ntilde;as</option>
@@ -3540,7 +3541,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                       </div>
                       <div class="fg" style="margin-bottom:0"><label style="font-size:10px">🏪 Entrega en</label>
                         <select id="vta-sucursal-entrega" style="width:100%;padding:7px 8px;font-size:11px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
-                          <option value="">— Sucursal —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option>
+                          <option value="">— Sucursal —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
                         </select>
                       </div>
                     </div>
@@ -3879,6 +3880,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="Américas">Américas</option>
               <option value="Pinocelli">Pinocelli</option>
               <option value="Magnolia">Magnolia</option>
+              <option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
             </select>
             <button class="btn btn-g btn-sm" onclick="initCaja()">🔄</button>
           </div>
@@ -4025,6 +4027,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="Américas">Américas</option>
                 <option value="Pinocelli">Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
+                <option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
               </select>
             </div>
             <div id="caja-hist-resumen" style="margin-bottom:12px"></div>
@@ -4043,7 +4046,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div id="cred-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px"></div>
           <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
             <div style="position:relative;flex:1;min-width:150px"><input class="ord-input" id="cred-search" oninput="renderCreditos()" placeholder="Buscar por nombre o telefono..." style="padding-left:32px;font-size:12px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.4">&#128269;</span></div>
-            <select id="cred-suc-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todas</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option></select>
+            <select id="cred-suc-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todas</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option></select>
             <select id="cred-estado-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="pagado">Pagados</option></select>
           </div>
           <div id="cred-list" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -4064,7 +4067,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:end">
             <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Sucursal</label>
               <select id="com-sucursal" onchange="calcularComisiones()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
-                <option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option>
+                <option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
               </select>
             </div>
             <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Quincena</label>
@@ -4136,7 +4139,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               </select>
               <select id="lc-filtro-suc" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
                 <option value="">Todas las sucursales</option>
-                <option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Online">Online</option>
+                <option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza V&iacute;a Vittoria</option><option value="Online">Online</option>
               </select>
             </div>
             <div id="lc-list" style="display:grid;gap:6px"></div>
@@ -5395,13 +5398,13 @@ async function _checkAllCortesCompleted() {
     var { data: cortesHoy } = await db.from('cortes_caja').select('sucursal').eq('fecha', today).eq('estado', 'cortada');
     if (!cortesHoy) return;
     var sucs = (cortesHoy || []).map(c => c.sucursal);
-    var has3 = ['Américas','Pinocelli','Magnolia'].every(s => sucs.includes(s));
+    var has3 = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].every(s => sucs.includes(s));
     if (has3) {
       _cortesNotifiedToday = today;
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.ready.then(function(reg) {
-          reg.showNotification('✅ 3 cortes completados — Car & Era', {
-            body: 'Américas, Pinocelli y Magnolia cerraron caja. Resumen disponible en Dashboard.',
+          reg.showNotification('✅ Cortes completados — Car & Era', {
+            body: 'Todas las sucursales cerraron caja. Resumen disponible en Dashboard.',
             icon: '/icon-192.png',
             vibrate: [200, 100, 200, 100, 200],
             tag: 'cortes-completos-' + today,
@@ -5423,6 +5426,7 @@ const USUARIOS = {
   'americas':    { pass:'americas01',  nombre:'Américas',     rol:'sucursal', sucursal:'Américas' },
   'pinocelli':   { pass:'pinocelli01', nombre:'Pinocelli',    rol:'sucursal', sucursal:'Pinocelli' },
   'magnolia':    { pass:'magnolia01',  nombre:'Magnolia',     rol:'sucursal', sucursal:'Magnolia' },
+  'vittoria':    { pass:'vittoria01', nombre:'Plaza Vía Vittoria', rol:'sucursal', sucursal:'Plaza Vía Vittoria' },
   'gerencia':    { pass:'car2024ge', nombre:'Gerencia',       rol:'gerencia', sucursal:'Todas' },
   'admin':       { pass:'car2024ad', nombre:'Administrador',  rol:'admin',    sucursal:'Todas' },
   'carera':      { pass:'carera2024', nombre:'Administrador',  rol:'admin', sucursal:'Todas' },
@@ -7724,7 +7728,7 @@ async function pcReimprimir(id) {
 }
 
 async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol) {
-  var sucs = ['Américas','Pinocelli','Magnolia','Online'];
+  var sucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria','Online'];
   var [{data:ventasHoy},{count:nHC},{count:nPre},{data:citasH},{data:cortesHoy},{data:garantiasHoy},{count:ordenesLab},{data:pagosHoyDash},{data:abonosHoyDash}] = await Promise.all([
     db.from('ventas').select('sucursal,total,estado,pagado').gte('created_at',utcStart).lte('created_at',utcEnd).neq('estado','Cancelada'),
     db.from('historias_clinicas').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
@@ -7747,7 +7751,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
 
   // Check if all 3 physical branches have closed — show summary grid
   var corteSucs = cortesHoy.map(c => c.sucursal);
-  var physicalSucs = ['Américas','Pinocelli','Magnolia'];
+  var physicalSucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
   var allClosed = physicalSucs.every(s => corteSucs.includes(s));
 
   if (allClosed && (rol === 'admin' || rol === 'gerencia')) {
@@ -7768,7 +7772,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   // Ventas por sucursal
   h += '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>🏪 Ventas por sucursal hoy</h3></div>';
   h += '<div style="padding:12px 16px">';
-  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Online':'#38bdf8'};
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Plaza Vía Vittoria':'#66bb6a','Online':'#38bdf8'};
   sucs.forEach(function(s) {
     var sv = ventasHoy.filter(function(v){return v.sucursal===s});
     var st = sv.reduce(function(a,v){return a+Number(v.total)},0);
@@ -7876,7 +7880,7 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
 
     ch += '<details><summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--beige);padding:4px 0">📋 Últimos movimientos ('+movimientos.length+')</summary>';
     ch += '<div style="max-height:300px;overflow-y:auto;margin-top:8px">';
-    var sucC2 = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
+    var sucC2 = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Plaza Vía Vittoria':'#66bb6a'};
     movimientos.slice(0,25).forEach(function(m) {
       ch += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px">';
       ch += '<span style="color:var(--muted);min-width:36px">'+m.hora+'</span>';
@@ -7941,7 +7945,7 @@ async function _loadDashAuditoria() {
 
     // Stats row
     h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px;margin-bottom:12px">';
-    ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+    ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].forEach(function(s) {
       var n = porSuc[s] || 0;
       h += '<div style="background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.12);border-radius:8px;padding:6px;text-align:center">';
       h += '<div style="font-size:16px;font-weight:700;color:#72c47e">'+n+'</div>';
@@ -7964,7 +7968,7 @@ async function _loadDashAuditoria() {
 
     // Conteo status
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">';
-    ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+    ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].forEach(function(s) {
       var sNorm = s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       var last = ultimoConteo[s] || ultimoConteo[sNorm];
       var dias = last ? Math.floor((now.getTime() - new Date(last).getTime()) / 86400000) : 999;
@@ -8012,6 +8016,7 @@ function abrirConteoFisico() {
             '<option value="Américas"'+(suc==='Américas'?' selected':'')+'>Américas</option>' +
             '<option value="Pinocelli"'+(suc==='Pinocelli'?' selected':'')+'>Pinocelli</option>' +
             '<option value="Magnolia"'+(suc==='Magnolia'?' selected':'')+'>Magnolia</option>' +
+            '<option value="Plaza Vía Vittoria"'+(suc==='Plaza Vía Vittoria'?' selected':'')+'>Plaza Vía Vittoria</option>' +
           '</select>' +
         '</div>') +
       '<div style="display:flex;gap:8px;margin-bottom:16px">' +
@@ -8758,12 +8763,12 @@ async function _audRenderResumen() {
 
     var now = new Date();
     var h = '<div class="est-grid-3" style="margin-bottom:16px">';
-    ['Américas','Pinocelli','Magnolia'].forEach(function(suc) {
+    ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].forEach(function(suc) {
       var items = esperando.filter(function(o) { return o.sucursal === suc; });
       var porRevisar = items.filter(function(o) { return o.estado_lab === 'Recibido en óptica'; }).length;
       var listos = items.filter(function(o) { return o.estado_lab === 'Listo para entrega'; }).length;
       var mayores3 = items.filter(function(o) { return Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000) > 3; }).length;
-      var sucC = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
+      var sucC = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Plaza Vía Vittoria':'#66bb6a'};
       h += '<div class="est-card">';
       h += '<div style="font-size:14px;font-weight:700;color:'+(sucC[suc]||'#888')+';margin-bottom:8px">'+suc+'</div>';
       h += '<div style="font-size:12px;color:var(--muted);margin-bottom:4px">👁 '+porRevisar+' por revisar · ✅ '+listos+' listos</div>';
@@ -9023,17 +9028,18 @@ async function _audResolverFolio(conteoId, folio, estado) {
 }
 
 function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, today, orders, urgentes, demorados, rol) {
-  var sucs = ['Américas','Pinocelli','Magnolia'];
-  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Online':'#38bdf8'};
+  var sucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Plaza Vía Vittoria':'#66bb6a','Online':'#38bdf8'};
   var PAY_ICONS = {'Efectivo':'💵','Tarjeta':'💳','MSI':'⏰','Transferencia':'🔄','Dólar':'💲','Aplazo':'📱','Link de pago':'🔗','Monedero':'🪙'};
   var PAY_CLR = {'Efectivo':'#4ade80','Tarjeta':'#60a5fa','MSI':'#fbbf24','Transferencia':'#a78bfa','Dólar':'#34d399','Aplazo':'#f472b6','Link de pago':'#38bdf8','Monedero':'#34d399'};
   var totalGeneral = 0, totalVentasCount = 0, totalGarantias = garantiasHoy.length, totalAbonosGeneral = 0;
   var globalDesglose = {};
 
-  var h = '<div style="text-align:center;padding:16px 0 8px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em">Resumen del día</div><div style="font-size:22px;font-weight:800;color:var(--beige)">' + today + '</div><div style="font-size:11px;color:#72c47e;margin-top:4px">✅ 3 sucursales cerradas</div></div>';
+  var _numCerradas = sucs.filter(function(s){ return cortesHoy.some(function(c){ return c.sucursal === s; }); }).length;
+  var h = '<div style="text-align:center;padding:16px 0 8px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.15em">Resumen del día</div><div style="font-size:22px;font-weight:800;color:var(--beige)">' + today + '</div><div style="font-size:11px;color:#72c47e;margin-top:4px">✅ ' + _numCerradas + ' sucursales cerradas</div></div>';
 
-  // Per-branch cards
-  h += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px">';
+  // Per-branch cards (grid responsivo: se adapta a 3, 4 o más sucursales)
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px">';
   sucs.forEach(function(s) {
     // Aggregate ALL cortes for this sucursal (supports multiple cortes per day)
     var cortesForSuc = cortesHoy.filter(c => c.sucursal === s);
@@ -15885,8 +15891,8 @@ function renderClariConversations() {
     var purchInfo = _clariPurchaseMap[_wcrmNorm10(c.phone)];
     var purchBadge = '';
     if (purchInfo) {
-      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : '#72b8c4';
-      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : '';
+      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? '#66bb6a' : '#72b8c4';
+      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? 'PVV' : '';
       var badgeContent = '';
       if (purchInfo.pacienteName) badgeContent += escH(purchInfo.pacienteName);
       if (sucShort && purchInfo.folio) badgeContent += (badgeContent ? ' · ' : '') + sucShort + ' #' + purchInfo.folio;
@@ -16981,7 +16987,7 @@ async function renderAsesoresConfig() {
   var el = document.getElementById('cfg-asesores-list');
   if (!el) return;
   var html = '';
-  var sucColors = { 'Américas':'#b48ad4', 'Pinocelli':'#8ab0e8', 'Magnolia':'#d4b84a' };
+  var sucColors = { 'Américas':'#b48ad4', 'Pinocelli':'#8ab0e8', 'Magnolia':'#d4b84a', 'Plaza Vía Vittoria':'#66bb6a' };
   Object.entries(sucs).forEach(function(entry) {
     var suc = entry[0], names = entry[1];
     var c = sucColors[suc] || '#888';
@@ -20453,8 +20459,8 @@ function filtrarHistVentas() {
     const c=EC[v.estado]||'#888';const sp=Number(v.saldo)>0;
     const isSicar = v._is_sicar;
     const isOnline = v.sucursal === 'Online';
-    const _sucColors = {'Américas':'206,147,216','Americas':'206,147,216','Pinocelli':'79,195,247','Magnolia':'255,167,38'};
-    const _sucShort = (v.sucursal||'').replace('Américas','AME').replace('Americas','AME').replace('Pinocelli','PIN').replace('Magnolia','MAG').replace('Online','ONL');
+    const _sucColors = {'Américas':'206,147,216','Americas':'206,147,216','Pinocelli':'79,195,247','Magnolia':'255,167,38','Plaza Vía Vittoria':'102,187,106'};
+    const _sucShort = (v.sucursal||'').replace('Plaza Vía Vittoria','PVV').replace('Américas','AME').replace('Americas','AME').replace('Pinocelli','PIN').replace('Magnolia','MAG').replace('Online','ONL');
     const sucTag = v.sucursal && !isSicar ? '<span style="font-size:8px;padding:1px 5px;background:rgba('+(_sucColors[v.sucursal]||'255,255,255')+',0.12);color:rgb('+(_sucColors[v.sucursal]||'180,180,180')+');border-radius:4px;font-weight:700;margin-left:4px">'+_sucShort+'</span>' : '';
     const sicarTag = isSicar ? '<span style="font-size:8px;padding:1px 5px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:4px;font-weight:700;margin-left:4px">SICAR</span>' : '';
     const onlineTag = isOnline ? '<span style="font-size:8px;padding:1px 5px;background:rgba(56,189,248,0.15);color:#38bdf8;border-radius:4px;font-weight:700;margin-left:4px">🌐 ONLINE</span>' : '';
@@ -22159,7 +22165,7 @@ function enviarCorteWhatsApp(caja, desglose, totalVentas, totalAbonos, totalCanc
 async function verHistorialCortes() {
   var isAdmin = currentUser?.rol === 'admin';
   var isGerencia = currentUser?.rol === 'gerencia';
-  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a'};
+  var sucColors = {'Américas':'#b48ad4','Pinocelli':'#8ab0e8','Magnolia':'#d4b84a','Plaza Vía Vittoria':'#66bb6a'};
   // Init date pickers on first load (default: last 7 days)
   var elDesde = document.getElementById('caja-hist-desde');
   var elHasta = document.getElementById('caja-hist-hasta');
@@ -22240,7 +22246,7 @@ async function verHistorialCortes() {
     if (showSuc && !sucFilter) {
       var porSuc = {};
       wCortes.forEach(function(c){ var s=c.sucursal||'Otra'; if(!porSuc[s])porSuc[s]=[]; porSuc[s].push(c); });
-      var sucOrder = ['Américas','Pinocelli','Magnolia'];
+      var sucOrder = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
       var sucKeys = sucOrder.filter(function(s){return porSuc[s]});
       Object.keys(porSuc).forEach(function(s){if(sucKeys.indexOf(s)===-1) sucKeys.push(s)});
       sucKeys.forEach(function(sucName) {

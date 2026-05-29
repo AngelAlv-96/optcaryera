@@ -116,7 +116,7 @@ function _contRenderFiltros(containerId, onRefresh) {
   }
   html += '<select style="background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:4px 8px;color:var(--text);font-size:11px" onchange="_contSucursal=this.value;' + onRefresh + '">';
   html += '<option value=""' + (!_contSucursal ? ' selected' : '') + '>Todas las sucursales</option>';
-  ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+  ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].forEach(function(s) {
     html += '<option value="' + s + '"' + (_contSucursal === s ? ' selected' : '') + '>' + s + '</option>';
   });
   html += '</select>';
@@ -387,7 +387,7 @@ function contMostrarFormGasto(editData) {
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Monto</label><input type="number" id="cont-monto" value="' + (d.monto || '') + '" step="0.01" placeholder="0.00" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px"></div>';
   html += '<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:2px">Sucursal</label><select id="cont-suc" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 8px;color:var(--text);font-size:12px">';
   html += '<option value=""' + (!d.sucursal ? ' selected' : '') + '>General</option>';
-  ['Américas','Pinocelli','Magnolia'].forEach(function(s) {
+  ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].forEach(function(s) {
     html += '<option' + (d.sucursal === s ? ' selected' : '') + '>' + s + '</option>';
   });
   html += '</select></div>';

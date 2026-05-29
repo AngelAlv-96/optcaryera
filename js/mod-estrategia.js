@@ -466,7 +466,8 @@ function _estRenderMeta() {
   var sucDefs = [
     { label: 'Américas', key: 'americas', color: '#ce93d8' },
     { label: 'Pinocelli', key: 'pinocelli', color: '#4fc3f7' },
-    { label: 'Magnolia', key: 'magnolia', color: '#ffa726' }
+    { label: 'Magnolia', key: 'magnolia', color: '#ffa726' },
+    { label: 'Plaza Vía Vittoria', key: 'plaza via vittoria', color: '#66bb6a' }
   ];
   var actual = {}; var actualCount = {};
   sucDefs.forEach(function(s) { actual[s.key] = 0; actualCount[s.key] = 0; });
@@ -657,7 +658,8 @@ function estEditMetas() {
   var sucDefs = [
     { label: 'Américas', key: 'americas' },
     { label: 'Pinocelli', key: 'pinocelli' },
-    { label: 'Magnolia', key: 'magnolia' }
+    { label: 'Magnolia', key: 'magnolia' },
+    { label: 'Plaza Vía Vittoria', key: 'plaza via vittoria' }
   ];
 
   var grow = (_estMetas && _estMetas.crecimiento_pct) || 5;
