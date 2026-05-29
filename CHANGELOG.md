@@ -31,6 +31,27 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v296: Upgrade del modelo Anthropic en producción de `claude-sonnet-4-20250514` → `claude-opus-4-8`. **Pedido por Angel**: "actualiza a opus 4.8".
+
+**8 endpoints actualizados** (todos los Sonnet del proyecto):
+- `wa-webhook.js:981` — Clari main loop WhatsApp
+- `wa-webhook.js:1880` — LC/PROMO photo OCR (clasificación A/B/C/D + extracción)
+- `wa-webhook.js:1993` — PROMO analysis vs vigentes (después del OCR)
+- `wa-webhook.js:3029` — Compras OCR (notas manuscritas e impresas)
+- `wa-webhook.js:3344` — Lab Assistant chat (Q&A texto)
+- `meta-webhook.js:565` — Clari main loop Messenger + Instagram
+- `frame-ocr.js:70` — Armazón OCR
+- `ia-chat.js:82` — Asistente optometría IA
+
+**Se mantiene `claude-haiku-4-5-20251001`** en `meta-webhook.js:704` (auto-reply de comentarios públicos FB/IG). Razón: alto volumen + bajo costo + Haiku ya rinde para respuestas cortas a comentarios.
+
+**Impacto esperado**:
+- Mejor calidad conversacional de Clari (más natural, mejor seguimiento de reglas largas del prompt como anti-coqueteo, post-compra, etc.).
+- Mejor OCR — especialmente notas manuscritas de compras de lab (Opus tiene ventaja notable sobre Sonnet en handwriting).
+- Costo por token sube respecto a Sonnet. Monitorear gasto Anthropic en la primera semana — si se dispara, considerar bajar a Sonnet/Haiku endpoints de alto volumen como OCR.
+
+**Acción de monitoreo**: revisar consumo Anthropic post-deploy (24-72 hrs) y reaccionar si el aumento de costo no se justifica con mejora de calidad observable.
+
 Cambios v295: Fix doble en lookup de pedidos de Clari Messenger/IG — disparado por caso Ángel Ravelo Navarro (2026-05-28).
 
 **Caso real**: cliente Ángel Ravelo Navarro escribió por Messenger pidiendo status de su pedido. Dio su teléfono `6562180134` y Clari entró en loop emitiendo `"[Sistema] Por favor consulta el estado del pedido registrado con el teléfono 656-218-0134"` en CADA respuesta sin nunca devolver datos reales. El cliente esperó pacientemente ("ok", "está bien") creyendo que el sistema estaba consultando. Su folio 10662-2 ya estaba listo en Magnolia (Hi Index Anti-Blue AR, fecha entrega 28-may = mismo día).
