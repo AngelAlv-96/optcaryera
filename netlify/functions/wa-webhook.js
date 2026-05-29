@@ -978,7 +978,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-opus-4-8',
       max_tokens: 350,
       system: systemPrompt,
       messages: messages
@@ -1877,7 +1877,7 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-opus-4-8',
       max_tokens: 1500,
       system: 'Eres un experto óptico que clasifica y extrae datos de imágenes. La imagen puede ser:\n' +
         '(A) Caja o blíster de lentes de contacto\n' +
@@ -1990,7 +1990,7 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-opus-4-8',
           max_tokens: 350,
           system: analysisSystem,
           messages: [{ role: 'user', content: 'Analiza esta promo contra las promos vigentes y responde al cliente.' }]
@@ -3026,7 +3026,7 @@ async function labAssistantOCR(mediaUrl, mediaType, userName, caption) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-opus-4-8',
       max_tokens: 4096,
       system: 'Eres un asistente experto en óptica que extrae datos de notas de compra de materiales ópticos (lentes oftálmicos). Las notas pueden ser IMPRESAS (tickets, facturas) o MANUSCRITAS (escritas a mano).\n\n' +
         'INSTRUCCIONES PARA NOTAS MANUSCRITAS:\n' +
@@ -3341,7 +3341,7 @@ async function labAssistantText(userText, userName) {
       'anthropic-version': '2023-06-01'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-opus-4-8',
       max_tokens: 1024,
       system: 'Eres el asistente de compras del laboratorio de Ópticas Car & Era en Ciudad Juárez.\n'
         + 'Respondes preguntas sobre materiales ópticos, precios, proveedores y gastos.\n'

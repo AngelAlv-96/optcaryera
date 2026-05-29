@@ -67,7 +67,7 @@ exports.handler = async (event) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-opus-4-8',
           max_tokens: 256,
           messages: [{
             role: 'user',
