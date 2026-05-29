@@ -31,6 +31,23 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v297: Revert de v296 — los 8 endpoints regresan a `claude-sonnet-4-20250514`.
+
+**Motivo del revert**: malentendido. Cuando Angel pidió "actualiza a opus 4.8" se refería al modelo del agente de Claude Code (la CLI que lo asiste), NO al modelo Anthropic que corre en producción para Clari/OCRs/IA-chat. El cambio en Claude Code se hace desde la terminal del usuario:
+- Slash command `/model` dentro de la sesión activa
+- Re-launch con `claude --model claude-opus-4-8`
+- Edición de `~/.claude/settings.json` campo `"model"`
+
+**Archivos revertidos**:
+- `wa-webhook.js` (5 ocurrencias)
+- `meta-webhook.js` (1 ocurrencia — la del main loop; la de Haiku para comentarios públicos nunca se tocó)
+- `frame-ocr.js` (1)
+- `ia-chat.js` (1)
+
+Total: 8 endpoints `claude-opus-4-8` → `claude-sonnet-4-20250514`. Producción queda igual que antes de v296 (Sonnet 4 vigente).
+
+**Lección operacional**: cuando el usuario da una directiva ambigua sobre "el modelo" o "el agente", confirmar si se refiere a (a) el modelo Anthropic que corre el código del proyecto, o (b) el modelo del agente de Claude Code que lleva la conversación. Son cosas distintas y vivien en lugares distintos (código vs settings del CLI). Una preguntita corta antes de tocar producción ahorra commits de revert.
+
 Cambios v296: Upgrade del modelo Anthropic en producción de `claude-sonnet-4-20250514` → `claude-opus-4-8`. **Pedido por Angel**: "actualiza a opus 4.8".
 
 **8 endpoints actualizados** (todos los Sonnet del proyecto):
