@@ -19713,9 +19713,9 @@ async function generarFolioVenta(isOnline) {
   let folioConfig = {};
   try { folioConfig = cfg?.value ? (typeof cfg.value === 'string' ? JSON.parse(cfg.value) : cfg.value) : {}; } catch(e) {}
   
-  if (!folioConfig[suc]) {
-    const input = prompt(`📋 Primera venta en ${suc}\n\nIngresa el número del ÚLTIMO folio registrado en SICAR para esta sucursal.\n\nEjemplo: si el último fue 10579, escribe 10579\n(La siguiente venta será 10580)`);
-    if (!input || isNaN(parseInt(input))) {
+  if (folioConfig[suc] === undefined || folioConfig[suc] === null) {
+    const input = prompt(`📋 Primera venta en ${suc}\n\nIngresa el número del ÚLTIMO folio registrado (de SICAR) para continuar la numeración.\n\nEjemplo: si el último fue 10579, escribe 10579 (la siguiente venta será 10580).\n\n👉 Si es una sucursal NUEVA sin SICAR, escribe 0 (la primera venta será 0001).`);
+    if (input === null || input.trim() === '' || isNaN(parseInt(input))) {
       throw new Error('Necesitas configurar el folio inicial para continuar.');
     }
     folioConfig[suc] = parseInt(input);
