@@ -195,7 +195,8 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
-📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Plaza Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
+📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
+ℹ️ NOTA del mapa de Plaza Vía Vittoria: la ficha de Google propia de la óptica aún está en aprobación, por eso el link de Maps es el de la PLAZA. En ese link la foto puede verse como un salón de fiestas (el del "payaso Teto") — es la MISMA plaza donde está la óptica. Solo aclara esto si el cliente lo nota o pide referencias: dile que sí es la misma plaza y que la óptica está a un lado de Farmacias Similares. No lo menciones si nadie pregunta.
 
 {{NUEVA_SUCURSAL_STATUS}}
 
@@ -774,9 +775,9 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   if (todayChi < '2026-05-30') {
     _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA (MUY IMPORTANTE): esta sucursal ABRE HASTA MAÑANA, el 30 de mayo de 2026 — HOY TODAVÍA NO ESTÁ ABIERTA. Si alguien pregunta por sucursales o por esa zona, SÍ puedes mencionarla con entusiasmo, PERO SIEMPRE aclara en el MISMO mensaje que abre hasta mañana 30 de mayo (para que no vaya hoy y la encuentre cerrada). NUNCA digas que ya pueden visitarla hoy ni que ya está abierta.';
   } else if (todayChi === '2026-05-30') {
-    _vittoriaStatus = '🎉 SOBRE PLAZA VÍA VITTORIA — ¡HOY ES LA INAUGURACIÓN (30 de mayo de 2026)! Es nuestra sucursal MÁS NUEVA y RECIÉN INAUGURADA. SIEMPRE que alguien pregunte por ubicaciones, por dónde estamos, o no sepa a cuál sucursal ir, DESTÁCALA con entusiasmo como la que abre HOY e invítalos a ser de los primeros en conocerla (con más razón si están por la zona de Av. Ejército Nacional / a un lado de Plaza Similares). Ya está abierta con horario normal. Profesional y breve (1-3 líneas), sin exagerar ni sonar a spam.';
+    _vittoriaStatus = '🎉 SOBRE PLAZA VÍA VITTORIA — ¡HOY ES LA INAUGURACIÓN (30 de mayo de 2026)! Es nuestra sucursal MÁS NUEVA y RECIÉN INAUGURADA. SIEMPRE que alguien pregunte por ubicaciones, por dónde estamos, o no sepa a cuál sucursal ir, DESTÁCALA con entusiasmo como la que abre HOY e invítalos a ser de los primeros en conocerla (con más razón si están por la zona de Av. Ejército Nacional / a un lado de Farmacias Similares). Ya está abierta con horario normal. 🎁 PROMO DE INAUGURACIÓN (SOLO Plaza Vía Vittoria, para los primeros clientes): el lente solar graduado adicional va GRATIS — NO se cobra el costo extra. Ofrécela como gancho de apertura a quien pregunte por esta sucursal o se interese en visitarla. Profesional y breve (1-3 líneas), sin exagerar ni sonar a spam.';
   } else {
-    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal MÁS NUEVA (inaugurada el 30 de mayo de 2026), ya abierta con horario normal. Cuando pregunten por ubicaciones o estén indecisos sobre a cuál ir, SUGIÉRELA con entusiasmo como la opción más nueva (sobre todo si están por la zona de Av. Ejército Nacional / Plaza Similares). NO digas que "abre mañana" ni que aún no abre. Profesional y breve.';
+    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal MÁS NUEVA (inaugurada el 30 de mayo de 2026), ya abierta con horario normal. Cuando pregunten por ubicaciones o estén indecisos sobre a cuál ir, SUGIÉRELA con entusiasmo como la opción más nueva (sobre todo si están por la zona de Av. Ejército Nacional / Farmacias Similares). 🎁 PROMO DE APERTURA (SOLO Plaza Vía Vittoria, para los primeros clientes): el lente solar graduado adicional va GRATIS, sin costo extra — menciónala como gancho a quien pregunte por esta sucursal. NO digas que "abre mañana" ni que aún no abre. Profesional y breve.';
   }
   knowledgeWithPromos = knowledgeWithPromos.replace('{{NUEVA_SUCURSAL_STATUS}}', _vittoriaStatus);
   var horarioOverride = '';
@@ -945,7 +946,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- NUNCA confirmar disponibilidad ni inventario — NO sabes qué hay en stock\n' +
       '- NUNCA decir "probablemente tenemos", "seguro hay", "lo más probable es que tengamos" — si no sabes, NO lo afirmes\n' +
       '- NUNCA mandar al cliente a sucursal a "verificar" o "confirmar" algo que puedes resolver por WhatsApp\n' +
-      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Plaza Similares, abre 30 de mayo 2026)';
+      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Farmacias Similares, abre 30 de mayo 2026)';
   }
 
   // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)
