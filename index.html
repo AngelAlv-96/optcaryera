@@ -5395,10 +5395,16 @@ async function _checkAllCortesCompleted() {
   try {
     var today = hoyLocal();
     if (_cortesNotifiedToday === today) return;
-    var { data: cortesHoy } = await db.from('cortes_caja').select('sucursal').eq('fecha', today).eq('estado', 'cortada');
+    var [{ data: cortesHoy }, { data: cajasHoy }] = await Promise.all([
+      db.from('cortes_caja').select('sucursal').eq('fecha', today).eq('estado', 'cortada'),
+      db.from('cortes_caja').select('sucursal').eq('fecha', today)
+    ]);
     if (!cortesHoy) return;
     var sucs = (cortesHoy || []).map(c => c.sucursal);
-    var has3 = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'].every(s => sucs.includes(s));
+    var physicalSucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
+    // Solo exigir las sucursales que abrieron caja hoy (no las que no operaron, ej: sucursal nueva)
+    var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoy||[]).some(function(c){ return c.sucursal === s; }); });
+    var has3 = operatingSucs.length > 0 && operatingSucs.every(s => sucs.includes(s));
     if (has3) {
       _cortesNotifiedToday = today;
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
@@ -7729,7 +7735,7 @@ async function pcReimprimir(id) {
 
 async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol) {
   var sucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria','Online'];
-  var [{data:ventasHoy},{count:nHC},{count:nPre},{data:citasH},{data:cortesHoy},{data:garantiasHoy},{count:ordenesLab},{data:pagosHoyDash},{data:abonosHoyDash}] = await Promise.all([
+  var [{data:ventasHoy},{count:nHC},{count:nPre},{data:citasH},{data:cortesHoy},{data:garantiasHoy},{count:ordenesLab},{data:pagosHoyDash},{data:abonosHoyDash},{data:cajasHoyEstados}] = await Promise.all([
     db.from('ventas').select('sucursal,total,estado,pagado').gte('created_at',utcStart).lte('created_at',utcEnd).neq('estado','Cancelada'),
     db.from('historias_clinicas').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('pacientes').select('*',{count:'exact',head:true}).eq('estado','pre-registro').gte('created_at',utcStart).lte('created_at',utcEnd),
@@ -7738,7 +7744,8 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     db.from('ordenes_laboratorio').select('id,sucursal').gte('created_at',utcStart).lte('created_at',utcEnd).ilike('notas_laboratorio','%Folio: GTA-%'),
     db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('venta_pagos').select('monto,ventas(estado)').gte('created_at',utcStart).lte('created_at',utcEnd),
-    db.from('creditos_abonos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd)
+    db.from('creditos_abonos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd),
+    db.from('cortes_caja').select('sucursal,estado').eq('fecha', today)
   ]);
   ventasHoy = ventasHoy || [];
   cortesHoy = cortesHoy || [];
@@ -7749,10 +7756,12 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   var totalVentas = ventasHoy.reduce(function(s,v){return s+Number(v.total)},0);
   var totalCobradoHoy = pagosHoyDash.reduce(function(s,p){return s+Number(p.monto)},0) + abonosHoyDash.reduce(function(s,a){return s+Number(a.monto)},0);
 
-  // Check if all 3 physical branches have closed — show summary grid
+  // Mostrar el resumen del día cuando TODAS las sucursales que operaron hoy (abrieron caja) ya cerraron.
+  // No se exige a sucursales que no operaron (ej: una sucursal nueva sin movimiento aún).
   var corteSucs = cortesHoy.map(c => c.sucursal);
   var physicalSucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
-  var allClosed = physicalSucs.every(s => corteSucs.includes(s));
+  var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoyEstados||[]).some(function(c){ return c.sucursal === s; }); });
+  var allClosed = operatingSucs.length > 0 && operatingSucs.every(s => corteSucs.includes(s));
 
   if (allClosed && (rol === 'admin' || rol === 'gerencia')) {
     return _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLab||0, today, orders, urgentes, demorados, rol);
@@ -9043,6 +9052,8 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
   sucs.forEach(function(s) {
     // Aggregate ALL cortes for this sucursal (supports multiple cortes per day)
     var cortesForSuc = cortesHoy.filter(c => c.sucursal === s);
+    // Omitir sucursales que no operaron hoy (sin corte y sin ventas) — ej: sucursal nueva sin movimiento
+    if (cortesForSuc.length === 0 && ventasHoy.filter(v => v.sucursal === s).length === 0) return;
     var sv = ventasHoy.filter(v => v.sucursal === s);
     var sg = garantiasHoy.filter(g => g.sucursal === s);
     var numVentas = cortesForSuc.length ? cortesForSuc.reduce((a,c)=>a+(c.num_ventas||0),0) : sv.length;
