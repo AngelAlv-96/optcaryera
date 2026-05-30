@@ -500,9 +500,9 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
   if (todayChi < '2026-05-30') {
     _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA (MUY IMPORTANTE): esta sucursal ABRE HASTA MAÑANA, el 30 de mayo de 2026 — HOY TODAVÍA NO ESTÁ ABIERTA. Si alguien pregunta por sucursales o por esa zona, SÍ puedes mencionarla con entusiasmo, PERO SIEMPRE aclara en el MISMO mensaje que abre hasta mañana 30 de mayo (para que no vaya hoy y la encuentre cerrada). NUNCA digas que ya pueden visitarla hoy ni que ya está abierta.';
   } else if (todayChi === '2026-05-30') {
-    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: ¡ABRE HOY 30 de mayo de 2026! Anúnciala con entusiasmo como nuestra sucursal NUEVA, ya pueden visitarla con horario normal. Menciónala a clientes nuevos, sobre todo si están por la zona de Av. Ejército Nacional.';
+    _vittoriaStatus = '🎉 SOBRE PLAZA VÍA VITTORIA — ¡HOY ES LA INAUGURACIÓN (30 de mayo de 2026)! Es nuestra sucursal MÁS NUEVA y RECIÉN INAUGURADA. SIEMPRE que alguien pregunte por ubicaciones, por dónde estamos, o no sepa a cuál sucursal ir, DESTÁCALA con entusiasmo como la que abre HOY e invítalos a ser de los primeros en conocerla (con más razón si están por la zona de Av. Ejército Nacional / a un lado de Plaza Similares). Ya está abierta con horario normal. Profesional y breve (1-3 líneas), sin exagerar ni sonar a spam.';
   } else {
-    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal más NUEVA (abrió el 30 de mayo de 2026), ya está abierta con horario normal. Menciónala como nueva a clientes, sobre todo si están por la zona de Av. Ejército Nacional. NO digas que "abre mañana" ni que aún no abre.';
+    _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal MÁS NUEVA (inaugurada el 30 de mayo de 2026), ya abierta con horario normal. Cuando pregunten por ubicaciones o estén indecisos sobre a cuál ir, SUGIÉRELA con entusiasmo como la opción más nueva (sobre todo si están por la zona de Av. Ejército Nacional / Plaza Similares). NO digas que "abre mañana" ni que aún no abre. Profesional y breve.';
   }
   knowledgeWithPromos = knowledgeWithPromos.replace('{{NUEVA_SUCURSAL_STATUS}}', _vittoriaStatus);
   var horarioOverride = '';
