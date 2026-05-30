@@ -7155,6 +7155,11 @@ async function _promptEntregaLentes(folio) {
   } catch(e) { /* silent — don't block payment flow */ }
 }
 
+// Display-only: las otras sucursales se conocen sin el "Plaza " prefijo (Américas, Pinocelli, Magnolia).
+// "Plaza Vía Vittoria" se muestra como "Vía Vittoria" en cards del Dashboard para consistencia.
+// El valor canónico en DB / código sigue siendo "Plaza Vía Vittoria" intacto.
+function _sucDisplay(s) { return (s || '').replace(/^Plaza\s+/i, ''); }
+
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
   var suc = currentUser?.sucursal || 'Todas';
@@ -7789,7 +7794,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     var c = sucColors[s]||'#888';
     var pct = totalVentas > 0 ? Math.round(st/totalVentas*100) : 0;
     h += '<div style="margin-bottom:12px">';
-    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:'+c+'">'+(s==='Online'?'🌐 ':'')+s+'</span><span style="font-size:14px;font-weight:800;color:var(--white)">$'+st.toLocaleString('es-MX',{minimumFractionDigits:0})+' <span style="font-size:10px;color:var(--muted)">('+sv.length+' ventas)</span></span></div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:'+c+'">'+(s==='Online'?'🌐 ':'')+_sucDisplay(s)+'</span><span style="font-size:14px;font-weight:800;color:var(--white)">$'+st.toLocaleString('es-MX',{minimumFractionDigits:0})+' <span style="font-size:10px;color:var(--muted)">('+sv.length+' ventas)</span></span></div>';
     h += '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+c+';border-radius:3px;transition:width .5s"></div></div>';
     h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Cobrado: $'+sp.toLocaleString('es-MX',{minimumFractionDigits:0})+' · Saldo: $'+(st-sp).toLocaleString('es-MX',{minimumFractionDigits:0})+'</div>';
     h += '</div>';
@@ -9080,7 +9085,7 @@ function _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLabCount, 
     Object.entries(desglose).forEach(function(e) { globalDesglose[e[0]] = (globalDesglose[e[0]]||0) + Number(e[1]); });
 
     h += '<div style="background:var(--surface);border:2px solid '+c+'33;border-radius:12px;padding:14px 12px">';
-    h += '<div style="text-align:center;font-size:14px;font-weight:800;color:'+c+';margin-bottom:6px">'+s+'</div>';
+    h += '<div style="text-align:center;font-size:14px;font-weight:800;color:'+c+';margin-bottom:6px">'+_sucDisplay(s)+'</div>';
     h += '<div style="text-align:center;font-size:22px;font-weight:800;color:var(--white)">$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0})+'</div>';
     h += '<div style="text-align:center;font-size:10px;color:var(--muted);margin-bottom:8px">'+numVentas+' ventas'+(numAbonos>0?' · '+numAbonos+' abonos $'+totalAbonos.toLocaleString('es-MX',{minimumFractionDigits:0}):'')+(sg.length>0?' · '+sg.length+' gtas':'')+'</div>';
     // Full desglose
