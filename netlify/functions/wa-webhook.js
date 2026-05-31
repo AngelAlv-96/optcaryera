@@ -51,7 +51,7 @@ function getActivePromos() {
     '• INCLUIDO sin costo extra dentro del precio Hot Sale (esta es la diferencia con el 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.\n' +
     '• ⚠️ "Armazones seleccionados" — NO todos los modelos aplican. Es una línea curada para el Hot Sale. Si el cliente pregunta por un armazón específico ("¿este modelo entra?", "vi uno X marca"): "Los armazones del Hot Sale son una línea seleccionada, pásate a sucursal a ver cuáles están en la promo." NUNCA prometas que cualquier armazón aplica al precio Hot Sale.\n' +
     '• Upgrades con costo aparte (NO incluidos): graduación bifocal o progresiva, material policarbonato o alto índice, tratamientos adicionales (blue light, transitions, polarizado).\n' +
-    '• ⛔ NO se combina con otras promociones: NI maestros 20%, NI Día del Niño 30%, NI descuento Aplazo Hot Sale 25%. Es UNA u OTRA, no se apilan. (El cliente puede elegir Hot Sale o irse por el 2x1 estándar combinado con otras promos, pero no juntar Hot Sale + descuento adicional.)\n' +
+    '• ⛔ NO se combina con otros descuentos: NI el descuento Aplazo Hot Sale 25%, NI ningún otro descuento adicional. Es UNA u OTRA, no se apilan. (El cliente puede elegir Hot Sale o irse por el 2x1 estándar, pero no juntar Hot Sale + descuento adicional.)\n' +
     '• Vigencia: del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun).\n' +
     '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con el Hot Sale. Ejemplo de respuesta: "Ahorita tenemos Hot Sale: 2x1 en lentes + lente solar graduado adicional por solo $499, micas antirreflejante incluidas, armazones seleccionados. Vigente hasta el 2 de junio." (2-3 líneas máximo).\n' +
     '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio del Hot Sale": confirma con seguridad, NO dudes ni niegues, está vigente.\n' +
@@ -66,9 +66,9 @@ function getActivePromos() {
     '• NUNCA digas "te damos 25% de descuento" ni "tenemos 25% off" — el descuento NO es nuestro, es de Aplazo. NUNCA combines este 25% con nuestras promos como si fuera descuento de la óptica.\n' +
     '• NUNCA inventes detalles que no estén aquí (otros porcentajes, otros códigos, fechas distintas, etc.). Si preguntan algo no cubierto: "Esos detalles los maneja Aplazo directo en su app o página."') : '';
 
-  // Abril 15 - Mayo 31, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta 31 de mayo. Maestros hasta 18 de mayo.)
-  if (year === 2026 && (month === 4 || month === 5)) {
-    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (HASTA EL 31 DE MAYO):\n' +
+  // Abril 15 - Junio 2, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta el 2 de junio. Maestros hasta 18 de mayo.)
+  if (year === 2026 && (month === 4 || month === 5 || (month === 6 && day <= 2))) {
+    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (HASTA EL 2 DE JUNIO):\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
       '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
@@ -81,25 +81,8 @@ function getActivePromos() {
       '🕒 Lentes listos desde 35 minutos (laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Se puede COMPARTIR entre máximo 2 personas.\n' +
-      'Válida hasta el 31 de mayo de 2026.\n\n' +
-      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios todavía dicen "hasta el 30 de abril" o "hasta el 15 de mayo" porque la promoción se extendió varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción se extendió hasta el 31 de mayo, sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
-      '🎓 PROMO ESPECIAL MAESTROS (vigente HASTA EL 18 DE MAYO — solo 3 días):\n' +
-      '• 20% de descuento EXTRA sobre el total final, aplicable sobre la promo 2x1 o sobre lentes con graduación bifocal/progresiva.\n' +
-      '• REQUISITO: el maestro/docente debe mostrar credencial vigente que valide su profesión (de cualquier nivel: preescolar, primaria, secundaria, prepa, universidad, etc.). Si pregunta cómo aplicar: "Pásate a sucursal con tu credencial de docente, ahí te aplican el 20% extra al cotizar."\n' +
-      '• RESTRICCIÓN dentro del 2x1: solo UNO de los dos pares puede ser bifocal o progresivo. El segundo par OBLIGATORIAMENTE debe ser visión sencilla. Ejemplo válido: par 1 progresivo + par 2 visión sencilla. Ejemplo NO válido: ambos progresivos.\n' +
-      '• Vigencia: hasta el 18 de mayo de 2026 (3 días). Después del 18 ya no aplica.\n' +
-      '• El 20% maestros NO se combina con Día del Niño en el mismo par (es uno u otro descuento por par, NO los dos). Sí se puede usar uno por cada par.\n' +
-      '• NUNCA inventes que el 20% aplica a lentes de contacto, accesorios o soluciones — solo aplica donde aplica el 2x1 (oftálmicos completos) y donde haya bifocal/progresivo.\n' +
-      '⚡ REGLA OBLIGATORIA DE DETECCIÓN: si el cliente menciona CUALQUIERA de estos términos → maestro, maestra, docente, profesor, profesora, profe, profa, mtro, mtra, soy maestro, soy maestra, doy clases, trabajo en escuela, soy de la SEP, doy clase, doy clases, magisterio → DEBES mencionar el 20% extra maestros vigente hasta el 18 de mayo en tu respuesta. Ejemplo: "Tenemos promo especial para maestros: 20% extra sobre tu compra (sobre el 2x1 o sobre lentes bifocales/progresivos). Solo necesitas mostrar tu credencial de docente. Válido hasta el 18 de mayo." NO la ocultes. PRIORIDAD CRÍTICA.\n\n' +
-      '🧒 PROMO ESPECIAL DÍA DEL NIÑO (vigente hasta el 31 de mayo):\n' +
-      '• 30% de descuento EXCLUSIVAMENTE sobre el armazón (NO sobre micas ni tratamientos — esos se cobran a precio normal).\n' +
-      '• Solo para niños hasta 15 años de edad.\n' +
-      '• Requiere compra de LENTE COMPLETO CON GRADUACIÓN (no aplica a armazón suelto sin graduación ni a armazones de moda sin Rx).\n' +
-      '• SÍ se puede combinar con la promo 2x1 (se puede aprovechar ambas).\n' +
-      '• NO se combina con otras promos (ej: 3x1 ya no aplica).\n' +
-      '• Vigencia: hasta el 31 de mayo de 2026.\n' +
-      '• NUNCA inventes detalles no listados aquí (marcas específicas, modelos con descuento extra, porcentajes diferentes, otras edades, combinaciones adicionales). Si preguntan algo no cubierto: "Para revisar los detalles exactos pásate a sucursal, ahí te arman la cotización."\n' +
-      '⚡ REGLA OBLIGATORIA DE DETECCIÓN: Si el cliente menciona CUALQUIERA de estos términos → niño, niña, niños, mi hijo, mi hija, bebé, menor, chamaco, chavito, infantil, escuela, edad del niño/a → DEBES mencionar la promo del Día del Niño (30% armazón) en tu respuesta, combinada con 2x1 si aplica. NO la ocultes. Si el niño tiene 15 años o menos Y va a comprar lente completo con graduación, es una venta perdida si no la mencionas. Ejemplo obligatorio: "Además tenemos promo especial del Día del Niño: 30% de descuento en el armazón para menores de 15 años con lente graduado (combinable con 2x1)." ESTO ES PRIORIDAD CRÍTICA, no lo olvides.\n\n' +
+      'Válida hasta el 2 de junio de 2026.\n\n' +
+      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios todavía dicen "hasta el 30 de abril", "hasta el 15 de mayo" o "hasta el 31 de mayo" porque la promoción se extendió varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción se extendió hasta el 2 de junio, sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
       '⚠️ REGLAS CRÍTICAS AL HABLAR DE PRECIOS EN ESTA PROMO (no las rompas):\n' +
       '• NUNCA digas que la promo "incluye" un material o graduación específicos. La promo es 2x1 — el tipo de lente (material, graduación, armazón) lo elige el cliente en sucursal y eso define el precio.\n' +
       '• NUNCA menciones "desde $1,200" ni ningún precio base fijo. Esa era una promo anterior con armazones limitados — ya no está vigente.\n' +
