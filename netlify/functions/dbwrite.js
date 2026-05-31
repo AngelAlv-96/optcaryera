@@ -11,6 +11,7 @@ const BASE_USERS = process.env.AUTH_USERS ? JSON.parse(process.env.AUTH_USERS) :
   'americas':  { pass: 'americas01',  rol: 'sucursal' },
   'pinocelli': { pass: 'pinocelli01', rol: 'sucursal' },
   'magnolia':  { pass: 'magnolia01',  rol: 'sucursal' },
+  'vittoria':  { pass: 'vittoria01',  rol: 'sucursal' },
   'gerencia':  { pass: 'car2024ge',   rol: 'gerencia' },
   'admin':     { pass: 'car2024ad',   rol: 'admin' },
   'carera':    { pass: 'carera2024',  rol: 'admin' },
