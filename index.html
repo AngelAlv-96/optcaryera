@@ -9717,9 +9717,14 @@ async function irAVentaDesdeConsultas(id, nombre) {
     if (p) tel = p.telefono || '';
   } catch(e) {}
   go('ventas');
-  // initVenta() corre síncrono dentro de go() si el carrito está vacío (limpia vtaPaciente);
-  // seleccionamos el paciente después para que no se pise.
-  setTimeout(() => { if (typeof selVtaPac === 'function') selVtaPac(id, nombre, tel); }, 80);
+  // go('ventas') corre initVenta() síncrono (limpia el campo) y reenfoca el buscador de paciente a los 150ms.
+  // Si seleccionamos ANTES de ese focus, el onfocus re-dispara la búsqueda con el nombre completo y tapa la
+  // selección con "Sin resultados". Por eso seleccionamos DESPUÉS (250ms) y movemos el foco a productos.
+  setTimeout(() => {
+    if (typeof selVtaPac === 'function') selVtaPac(id, nombre, tel);
+    const dd = document.getElementById('vta-pac-dropdown'); if (dd) dd.style.display = 'none';
+    const prod = document.getElementById('vta-prod-search'); if (prod) prod.focus();
+  }, 250);
 }
 
 async function abrirHC(id, nombre) {
