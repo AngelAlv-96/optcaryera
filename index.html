@@ -9276,8 +9276,10 @@ function debouncePacSearch() {
 
 function buildSmartFilter(q) {
   const raw = q.toLowerCase().split(/\s+/).filter(w => w.length >= 2);
+  // Teléfono: si al quitar espacios/guiones/paréntesis/+ queda solo dígitos (3+), buscar por teléfono
+  const _tel = q.replace(/[\s\-().+]/g, '');
+  if (/^\d{3,}$/.test(_tel)) return { field: 'telefono', value: _tel };
   if (!raw.length) return null;
-  if (/^\d+$/.test(q)) return { field: 'telefono', filter: `telefono.ilike.%${q}%` };
 
   const stopWords = ['de','del','la','las','los','el','lo'];
   const words = raw.length > 1 ? raw.filter(w => !stopWords.includes(w)) : raw;
@@ -9305,7 +9307,7 @@ function _swapSZ(s) {
 
 function applySmartFilter(query, sf, q) {
   if (!sf) return query;
-  if (sf.field === 'telefono') return query.ilike('telefono', `%${q}%`);
+  if (sf.field === 'telefono') return query.ilike('telefono', `%${sf.value || q}%`);
   if (sf.words) {
     // For 2+ words: first word matches nombre, rest matches apellidos (most common pattern)
     // Also try each word in both fields as fallback
@@ -9697,12 +9699,27 @@ async function verConsultasPaciente(id, nombre) {
         <div style="font-size:11px;color:var(--muted)">${data?.length || 0} consulta${(data?.length||0)!==1?'s':''}</div>
       </div>
       <div style="display:flex;gap:6px">
+        <button onclick="irAVentaDesdeConsultas('${id}','${nombre.replace(/'/g,"\\'")}')" class="btn btn-sm" style="font-size:11px;background:#72c47e;color:#0d1117;border:none;font-weight:700">🛒 Ir a venta</button>
         <button onclick="document.getElementById('consultas-modal-overlay').style.display='none';abrirHC('${id}','${nombre.replace(/'/g,"\\'")}')" class="btn btn-p btn-sm" style="font-size:11px">+ Nueva consulta</button>
         <button onclick="this.closest('#consultas-modal-overlay').style.display='none'" class="btn btn-g btn-sm" style="font-size:11px">Cerrar</button>
       </div>
     </div>
     <div style="overflow-y:auto;flex:1">${consultas}</div>
   </div>`;
+}
+
+async function irAVentaDesdeConsultas(id, nombre) {
+  const ov = document.getElementById('consultas-modal-overlay');
+  if (ov) ov.style.display = 'none';
+  let tel = '';
+  try {
+    const { data: p } = await db.from('pacientes').select('telefono').eq('id', id).single();
+    if (p) tel = p.telefono || '';
+  } catch(e) {}
+  go('ventas');
+  // initVenta() corre síncrono dentro de go() si el carrito está vacío (limpia vtaPaciente);
+  // seleccionamos el paciente después para que no se pise.
+  setTimeout(() => { if (typeof selVtaPac === 'function') selVtaPac(id, nombre, tel); }, 80);
 }
 
 async function abrirHC(id, nombre) {
@@ -19379,8 +19396,8 @@ async function buscarVtaPac() {
   }
   if (q.length<2) { dd.style.display='none'; return; }
   const filtro=buildSmartFilter(q);
-  let query=db.from('pacientes').select('id, nombre, apellidos, telefono').limit(50);
-  query=applySmartFilter(query,filtro);
+  let query=db.from('pacientes').select('id, nombre, apellidos, telefono').order('created_at',{ascending:false}).limit(50);
+  query=applySmartFilter(query,filtro,q);
   const { data } = await query;
   if (!data?.length) { dd.innerHTML='<div style="padding:10px;color:var(--muted);font-size:12px;text-align:center">Sin resultados</div>'; dd.style.display=''; return; }
   dd.innerHTML=data.map(p=>{
