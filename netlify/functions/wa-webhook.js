@@ -2812,16 +2812,22 @@ exports.handler = async function(event) {
             // Extract sucursal from [Review] log
             var sucMatch = (reviewHistory[0].content || '').match(/Sucursal:\s*([^\n,]+)/);
             var reviewSuc = sucMatch ? sucMatch[1].trim() : '';
-            // Google Maps links per sucursal
+            // Google Maps links per sucursal (SOLO las que tienen ficha de Google verificada).
+            // Plaza Vía Vittoria NO está aquí: su ficha sigue en verificación → NO se le manda link (no a Américas) para no desviar reseñas a otra sucursal. Agregar su link aquí cuando la ficha esté lista.
             var mapsLinks = {
               'Américas': 'https://g.page/r/CV9ZD9ZPVjvbEBM/review',
               'Pinocelli': 'https://g.page/r/Cdzzax18yI15EBM/review',
               'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review'
             };
-            var mapsLink = mapsLinks[reviewSuc] || mapsLinks['Américas'];
+            var mapsLink = mapsLinks[reviewSuc]; // sin fallback a Américas (misatribuiría reseñas)
             var reviewReply;
             if (lowerText === 'todo excelente' || lowerText === 'buenas promos') {
-              reviewReply = '¡Gracias! 😊 ¿Nos regalas 15 segundos? Solo toca el link, pon tus estrellitas ⭐ y listo. Nos ayudas a que más familias en Juárez nos encuentren 🙏\n👉 ' + mapsLink;
+              if (mapsLink) {
+                reviewReply = '¡Gracias! 😊 ¿Nos regalas 15 segundos? Solo toca el link, pon tus estrellitas ⭐ y listo. Nos ayudas a que más familias en Juárez nos encuentren 🙏\n👉 ' + mapsLink;
+              } else {
+                // Sucursal sin ficha de Google propia aún (ej. Plaza Vía Vittoria) — agradecer sin pedir reseña
+                reviewReply = '¡Muchísimas gracias por tu confianza! 😊 Nos llena saber que tu experiencia fue excelente. ¡Te esperamos pronto y mucho éxito! 👓';
+              }
             } else {
               // "Podría mejorar" — enter care mode
               reviewReply = 'Lamentamos que tu experiencia no haya sido la mejor 😔\n\nQueremos mejorar. ¿Podrías contarnos qué te gustaría que hiciéramos diferente? Tu opinión es muy valiosa para nosotros.\n\nSi prefieres, también puedes visitarnos en cualquier sucursal y con gusto te atendemos personalmente 🤝';

@@ -15,6 +15,10 @@ const TEMPLATE_SID = 'HX80c7577a56dea4c6a675a9a7ea5c5cea';
 // Max per run (individual, not batch)
 const MAX_PER_RUN = 10;
 
+// Sucursales SIN ficha de Google verificada aún → no se les envía encuesta (no tienen a dónde reseñar).
+// Quitar de aquí cuando la ficha de Google de la sucursal esté lista.
+const SIN_FICHA_GOOGLE = ['Plaza Vía Vittoria'];
+
 async function supaREST(method, path, body) {
   const opts = {
     method,
@@ -132,6 +136,14 @@ exports.handler = async function(event) {
 
     for (const item of queue) {
       const phone = normalizePhone(item.phone);
+
+      // Sucursal sin ficha de Google aún → no enviar (no tiene a dónde reseñar). Marcar sent para no reintentar.
+      if (SIN_FICHA_GOOGLE.includes(item.sucursal)) {
+        await supaREST('PATCH', `review_queue?id=eq.${item.id}`, { sent: true });
+        console.log(`[REVIEW-CRON] ⏭ Saltado ${item.sucursal} (sin ficha Google aún): ${item.folio || ''}`);
+        saltados++;
+        continue;
+      }
 
       // Ya le enviaron encuesta en los últimos 30 días → marcar como sent y saltar
       if (alreadySent.has(phone)) {

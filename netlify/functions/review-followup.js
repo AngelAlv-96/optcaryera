@@ -226,7 +226,9 @@ exports.handler = async function(event) {
         }
       } catch (e) { /* use default */ }
 
-      const mapsLink = MAPS_LINKS[sucursal] || MAPS_LINKS['Américas'];
+      const mapsLink = MAPS_LINKS[sucursal];
+      // Sucursal sin ficha de Google aún (ej. Plaza Vía Vittoria) → no enviar recordatorio de reseña
+      if (!mapsLink) { continue; }
 
       // Find customer name from pacientes via clari_conversations user_name
       let nombre = '';
