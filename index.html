@@ -5395,15 +5395,18 @@ async function _checkAllCortesCompleted() {
   try {
     var today = hoyLocal();
     if (_cortesNotifiedToday === today) return;
-    var [{ data: cortesHoy }, { data: cajasHoy }] = await Promise.all([
+    var _dayStart = new Date(today + 'T00:00:00-06:00');
+    var _dayEnd = new Date(_dayStart.getTime() + 86400000);
+    var [{ data: cortesHoy }, { data: cajasHoy }, { data: ventasHoy }] = await Promise.all([
       db.from('cortes_caja').select('sucursal').eq('fecha', today).eq('estado', 'cortada'),
-      db.from('cortes_caja').select('sucursal').eq('fecha', today)
+      db.from('cortes_caja').select('sucursal').eq('fecha', today),
+      db.from('ventas').select('sucursal').gte('created_at', _dayStart.toISOString()).lt('created_at', _dayEnd.toISOString()).neq('estado', 'Cancelada')
     ]);
     if (!cortesHoy) return;
     var sucs = (cortesHoy || []).map(c => c.sucursal);
     var physicalSucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
-    // Solo exigir las sucursales que abrieron caja hoy (no las que no operaron, ej: sucursal nueva)
-    var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoy||[]).some(function(c){ return c.sucursal === s; }); });
+    // Una sucursal "operó hoy" si abrió caja O tuvo ventas — debe cerrar antes de notificar (no adelantarse a una sucursal que vendió pero aún no cierra).
+    var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoy||[]).some(function(c){ return c.sucursal === s; }) || (ventasHoy||[]).some(function(v){ return v.sucursal === s; }); });
     var has3 = operatingSucs.length > 0 && operatingSucs.every(s => sucs.includes(s));
     if (has3) {
       _cortesNotifiedToday = today;
@@ -7768,7 +7771,8 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   // No se exige a sucursales que no operaron (ej: una sucursal nueva sin movimiento aún).
   var corteSucs = cortesHoy.map(c => c.sucursal);
   var physicalSucs = ['Américas','Pinocelli','Magnolia','Plaza Vía Vittoria'];
-  var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoyEstados||[]).some(function(c){ return c.sucursal === s; }); });
+  // Una sucursal "operó hoy" si abrió caja O si tuvo ventas (una sucursal que vendió debe cerrar antes de mostrar el resumen — no adelantarse).
+  var operatingSucs = physicalSucs.filter(function(s){ return (cajasHoyEstados||[]).some(function(c){ return c.sucursal === s; }) || ventasHoy.some(function(v){ return v.sucursal === s; }); });
   var allClosed = operatingSucs.length > 0 && operatingSucs.every(s => corteSucs.includes(s));
 
   if (allClosed && (rol === 'admin' || rol === 'gerencia')) {
