@@ -6812,20 +6812,22 @@ async function buscarParaEntrega(query) {
       }
     }
 
-    // 2. Buscar por folio numérico — trae órdenes del folio + folios promo (10538, 10538-2, 10538-3)
-    if (!ordenes.length && /^\d+$/.test(query)) {
-      // ilike '%Folio: 10538%' matchea "Folio: 10538", "Folio: 10538-2", "Folio: 10538-3"
-      var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + query + '%');
+    // 2. Buscar por folio: numérico (10538) o prefijado (V0001) — incluye folios promo (10538-2, V0001-3)
+    var _esFolio = !tokenMatch && /^[A-Za-z]{0,4}\d{2,}(?:-\d+)?$/.test(query);
+    if (!ordenes.length && _esFolio) {
+      var _folioBase = query.toUpperCase().replace(/-\d+$/, '');
+      // ilike '%Folio: 10538%' matchea "Folio: 10538", "10538-2", "10538-3" (igual con V0001, V0001-2...)
+      var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + _folioBase + '%');
       ordenes = ords || [];
-      // Buscar la venta asociada por folio
-      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', parseInt(query)).single();
+      // Buscar la venta asociada por folio base (string — soporta numérico y prefijado V; folio es TEXT)
+      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', _folioBase).single();
       if (venta) ventaData = venta;
       // Fallback: si encontramos la venta pero no órdenes por texto, buscar por paciente_id
       if (!ordenes.length && ventaData && ventaData.paciente_id) ordenes = await _fallbackByPaciente(ventaData.paciente_id);
     }
 
     // 3. Buscar por texto (nombre)
-    if (!ordenes.length && !/^\d+$/.test(query) && !tokenMatch) {
+    if (!ordenes.length && !_esFolio && !tokenMatch) {
       var words = query.toLowerCase().split(/\s+/);
       var { data: pacs } = await db.from('pacientes').select('id,nombre,apellidos,telefono').or(words.map(function(w){return 'nombre.ilike.%'+w+'%,apellidos.ilike.%'+w+'%'}).join(',')).limit(10);
       if (pacs && pacs.length) {
@@ -6836,8 +6838,9 @@ async function buscarParaEntrega(query) {
         if (ordenes.length) {
           var folios = [];
           ordenes.forEach(function(o) {
-            var m = (o.notas_laboratorio||'').match(/Folio: (\d+)/);
-            if (m) folios.push(parseInt(m[1]));
+            // folio base como string — soporta numérico (10538) y prefijado (V0001)
+            var m = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/);
+            if (m) folios.push(m[1].replace(/-\d+$/, ''));
           });
           if (folios.length) {
             var uniqueFolios = [...new Set(folios)];

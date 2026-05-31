@@ -479,10 +479,10 @@ async function lookupOrders(phone, text) {
     }
   }
 
-  // 2. Try by folio if message contains a number
-  var folioMatch = text.match(/\b(\d{4,6})\b/);
+  // 2. Try by folio if message contains a number (numérico 10538 o prefijado V0001)
+  var folioMatch = text.match(/\b(V?\d{4,6})\b/i);
   if (folioMatch) {
-    var folio = folioMatch[1];
+    var folio = folioMatch[1].toUpperCase();
     var byFolio = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + folio + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
     console.log('[OrderLookup] folio "' + folio + '": ' + (byFolio ? byFolio.length : 'null'));
     if (byFolio && byFolio.length > 0) {
@@ -523,7 +523,7 @@ async function lookupOrders(phone, text) {
       if (histMsgs && histMsgs.length > 0) {
         var histFolios = {};
         histMsgs.forEach(function(m) {
-          var matches = (m.content || '').match(/Folio:\s*(\d{4,6}(?:-\d+)?)/g);
+          var matches = (m.content || '').match(/Folio:\s*(V?\d{4,6}(?:-\d+)?)/gi);
           if (matches) matches.forEach(function(fm) {
             var f = fm.replace(/Folio:\s*/, '').replace(/-\d+$/, '');
             histFolios[f] = true;
@@ -666,7 +666,7 @@ async function lookupOrders(phone, text) {
 function isAskingAboutOrder(text) {
   var lower = text.toLowerCase();
   var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo', 'pagar', 'debo', 'pendiente', 'saldo', 'adeudo', 'abono', 'cobro', 'cuánto debo', 'cuanto debo', 'liquidar'];
-  return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
+  return keywords.some(function(kw) { return lower.includes(kw); }) || /\bV?\d{4,6}\b/i.test(text);
 }
 
 // Detect if user is providing name/folio as follow-up to a previous order inquiry

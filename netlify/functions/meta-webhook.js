@@ -374,10 +374,10 @@ async function lookupOrdersByText(text) {
       }
     }
   }
-  // Try by folio (4-6 digit number — comprueba SOLO si no es un teléfono ya descartado arriba)
-  var folioMatch = text.match(/\b(\d{4,6})\b/);
+  // Try by folio (numérico 10538 o prefijado V0001 — comprueba SOLO si no es un teléfono ya descartado arriba)
+  var folioMatch = text.match(/\b(V?\d{4,6})\b/i);
   if (folioMatch) {
-    var folio = folioMatch[1];
+    var folio = folioMatch[1].toUpperCase();
     var byFolio = await supaFetch('ordenes_laboratorio?notas_laboratorio=ilike.*Folio: ' + folio + '*&select=*,pacientes(nombre,apellidos,telefono)&order=created_at.desc&limit=5');
     if (byFolio && byFolio.length > 0) return byFolio;
   }
@@ -456,7 +456,7 @@ async function enrichOrdersWithSales(orders) {
 function isAskingAboutOrder(text) {
   var lower = text.toLowerCase();
   var keywords = ['pedido', 'orden', 'listo', 'listos', 'lentes', 'status', 'estado', 'entrega', 'recoger', 'folio', 'cuando', 'cuándo', 'demora', 'tarda', 'avance', 'proceso', 'ya están', 'ya estan', 'ya mero', 'falta', 'tiempo', 'pagar', 'debo', 'pendiente', 'saldo', 'adeudo', 'abono', 'cobro', 'cuánto debo', 'cuanto debo', 'liquidar'];
-  return keywords.some(function(kw) { return lower.includes(kw); }) || /\b\d{4,6}\b/.test(text);
+  return keywords.some(function(kw) { return lower.includes(kw); }) || /\bV?\d{4,6}\b/i.test(text);
 }
 
 // ── CONVERSATION HISTORY (uses senderId as phone to keep it simple) ──
