@@ -795,7 +795,7 @@ function _estRenderDashboard() {
 
   // By sucursal
   h += '<div class="est-grid-3" style="margin-top:12px">';
-  ['Américas', 'Pinocelli', 'Magnolia'].forEach(function(s) {
+  ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria'].forEach(function(s) {
     var d = bySuc[s] || { count: 0, total: 0 };
     var tp = d.count > 0 ? Math.round(d.total / d.count) : 0;
     h += '<div class="est-card"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">' + s + '</div>';
@@ -1117,7 +1117,7 @@ function _estRenderMargenes() {
   // By sucursal
   h += '<h3 style="font-size:15px;margin:24px 0 12px">Descuento por sucursal</h3>';
   h += '<div class="est-grid-3">';
-  ['Américas', 'Pinocelli', 'Magnolia'].forEach(function(s) {
+  ['Américas', 'Pinocelli', 'Magnolia', 'Plaza Vía Vittoria'].forEach(function(s) {
     var sv = ventas.filter(function(x) { return x.sucursal === s; });
     var sub = sv.reduce(function(a, x) { return a + (x.subtotal || 0); }, 0);
     var tot = sv.reduce(function(a, x) { return a + (x.total || 0); }, 0);

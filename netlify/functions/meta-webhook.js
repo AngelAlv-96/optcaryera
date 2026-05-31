@@ -726,7 +726,7 @@ async function generatePublicReply(commentText) {
 REGLAS ESTRICTAS:
 - Máximo 3-4 líneas, breve pero informativo
 - Responde lo básico del comentario (horario, ubicación, etc.)
-- Si preguntan ubicación, SIEMPRE menciona las 3 sucursales con su zona
+- Si preguntan ubicación, SIEMPRE menciona TODAS las sucursales con su zona
 - Siempre termina invitando a revisar su DM para más detalles
 - Usa 1-2 emojis máximo (👓 ✨ 👋)
 - NO uses markdown, NO uses listas con guiones
