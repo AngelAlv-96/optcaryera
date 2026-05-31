@@ -19718,7 +19718,28 @@ async function generarFolioVenta(isOnline) {
     return 'ONL-' + String(nextNum).padStart(4, '0');
   }
   const suc = currentUser?.sucursal || 'Todas';
-  
+
+  // ── Sucursales con folio PREFIJADO (namespace propio: nunca chocan con los folios numéricos de las otras sucursales, para siempre) ──
+  const PREFIXED_SUCS = { 'Plaza Vía Vittoria': 'V' };
+  if (PREFIXED_SUCS[suc]) {
+    const pref = PREFIXED_SUCS[suc];
+    const {data:cfgP} = await db.from('app_config').select('value').eq('id','folio_ventas').single();
+    let fcP = {};
+    try { fcP = cfgP?.value ? (typeof cfgP.value === 'string' ? JSON.parse(cfgP.value) : cfgP.value) : {}; } catch(e) {}
+    let pCfg = fcP[suc];
+    if (!pCfg || typeof pCfg !== 'object') pCfg = { prefijo: pref, siguiente: 1 }; // migra seed numérico viejo (40000) a contador prefijado
+    let nextNum = pCfg.siguiente || 1;
+    // Solo considerar folios ya prefijados (V...) — ignora folios numéricos legacy de esta sucursal (ej: 40001 de la primera venta)
+    const {data:lastP} = await db.from('ventas').select('folio').eq('sucursal', suc).ilike('folio', pref + '%').order('created_at',{ascending:false}).limit(1);
+    if (lastP?.[0]?.folio) {
+      const m = String(lastP[0].folio).match(/(\d+)$/);
+      if (m) nextNum = Math.max(nextNum, parseInt(m[1]) + 1);
+    }
+    fcP[suc] = { prefijo: pref, siguiente: nextNum + 1 };
+    await db.from('app_config').upsert({ id: 'folio_ventas', value: fcP }, { onConflict: 'id' });
+    return pref + String(nextNum).padStart(4, '0');
+  }
+
   if (suc === 'Todas') {
     const {data}=await db.from('ventas').select('folio').eq('sucursal','Todas').order('created_at',{ascending:false}).limit(1);
     let num=1; if(data?.[0]?.folio){const n=parseInt(data[0].folio);if(!isNaN(n))num=n+1;}
