@@ -2826,7 +2826,7 @@ exports.handler = async function(event) {
                 reviewReply = '¡Gracias! 😊 ¿Nos regalas 15 segundos? Solo toca el link, pon tus estrellitas ⭐ y listo. Nos ayudas a que más familias en Juárez nos encuentren 🙏\n👉 ' + mapsLink;
               } else {
                 // Sucursal sin ficha de Google propia aún (ej. Plaza Vía Vittoria) — agradecer sin pedir reseña
-                reviewReply = '¡Muchísimas gracias por tu confianza! 😊 Nos llena saber que tu experiencia fue excelente. ¡Te esperamos pronto y mucho éxito! 👓';
+                reviewReply = '¡Muchísimas gracias por tu confianza! 😊 Nos alegra que tu experiencia haya sido excelente. Aquí estamos para cuidar tu vista cuando lo necesites. ¡Un gusto atenderte! 👓';
               }
             } else {
               // "Podría mejorar" — enter care mode
