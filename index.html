@@ -10886,8 +10886,8 @@ async function buscarPacienteOrden() {
   if (q.length < 2) { res.style.display='none'; return; }
   clearTimeout(ordSearchTimer);
   ordSearchTimer = setTimeout(async () => {
-    // Check if query looks like a folio number (including sub-folios -2, -3)
-    if (/^\d{3,}(-\d+)?$/.test(q)) {
+    // Check if query looks like a folio (numérico o prefijado tipo V0004, incl. sub-folios -2, -3)
+    if (/^[A-Za-z]{0,4}\d{2,}(-\d+)?$/.test(q)) {
       var folioBase = q.replace(/-\d+$/, '');
       var isSubFolio = q !== folioBase;
       // Search ventas by folio base
@@ -12077,9 +12077,11 @@ function syncTicket() {
     </div>`;
 }
 
-let _pendingPromoFolios = []; // [{folio, venta_id, promo_id, slot_label, item_desc, paciente_nombre, fecha_entrega, usado}]
+let _pendingPromoFolios = []; // [{folio, venta_id, promo_id, slot_label, item_desc, paciente_nombre, paciente_id, fecha_entrega, usado}]
+var _suppressPromoCheck = false; // evita que selPacienteOrden re-dispare checkPendingPromoFolios al cambiar de paciente desde un folio compartido
 
 async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
+  if (_suppressPromoCheck) return;
   _pendingPromoFolios = [];
   const banner = document.getElementById('folio-promo-banner');
   banner.style.display = 'none';
@@ -12111,6 +12113,7 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
               promo_nombre: vp.nombre_promo,
               slot_label: fd.slot_label,
               item_desc: fd.item_desc,
+              paciente_id: fd.paciente_id || v.paciente_id || null,
               paciente_nombre: fd.paciente_nombre || pacienteNombre,
               fecha_entrega: v.fecha_entrega,
               hora_entrega: v.hora_entrega || null,
@@ -12147,6 +12150,7 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
                 promo_nombre: vp.nombre_promo,
                 slot_label: fd.slot_label,
                 item_desc: fd.item_desc,
+                paciente_id: fd.paciente_id || null,
                 paciente_nombre: fd.paciente_nombre || pacienteNombre,
                 fecha_entrega: vp.ventas.fecha_entrega,
                 hora_entrega: vp.ventas.hora_entrega || null,
@@ -12174,9 +12178,67 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
   } catch(e) { console.warn('[PromoFolios]', e.message); }
 }
 
+// Muestra TODOS los folios pendientes de UNA venta (sin filtrar por paciente) — clave para 2x1 compartidos
+// entre dos personas: el folio del 2º par pertenece a otro paciente y de otro modo queda invisible.
+async function mostrarFoliosPendientesVenta(ventaId, fallbackNombre) {
+  _pendingPromoFolios = [];
+  const banner = document.getElementById('folio-promo-banner');
+  if (!banner) return;
+  let vps = [];
+  try {
+    const { data } = await db.from('venta_promociones')
+      .select('id, nombre_promo, folios_detalle, ventas(id, folio, fecha_entrega, hora_entrega)')
+      .eq('venta_id', ventaId);
+    vps = data || [];
+  } catch(e) { console.warn('[FoliosVenta]', e.message); }
+  const avail = [], usados = [];
+  for (const vp of vps) {
+    const fdArr = Array.isArray(vp.folios_detalle) ? vp.folios_detalle : (typeof vp.folios_detalle === 'string' ? JSON.parse(vp.folios_detalle || '[]') : []);
+    for (const fd of fdArr) {
+      if (fd.usado) { usados.push(fd.folio); continue; }
+      avail.push({
+        folio: fd.folio, venta_id: ventaId, venta_folio: vp.ventas?.folio, promo_id: vp.id,
+        promo_nombre: vp.nombre_promo, slot_label: fd.slot_label, item_desc: fd.item_desc,
+        paciente_id: fd.paciente_id || null, paciente_nombre: fd.paciente_nombre || fallbackNombre,
+        fecha_entrega: vp.ventas?.fecha_entrega, hora_entrega: vp.ventas?.hora_entrega || null,
+        armazon: fd.armazon || null, material: fd.material || null, material_meta: fd.material_meta || null, usado: false
+      });
+    }
+  }
+  _pendingPromoFolios = avail;
+  if (!avail.length && !usados.length) { banner.style.display = 'none'; return; }
+  banner.style.display = 'block';
+  banner.innerHTML =
+    (avail.length
+      ? `<div style="font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:4px">🎁 Folios pendientes de esta venta (${avail.length}) — toca para capturar la orden</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${avail.map((f, i) => `<button onclick="selPromoFolio(${i})" style="padding:6px 12px;background:rgba(212,184,74,0.15);border:1px solid rgba(212,184,74,0.3);border-radius:8px;color:var(--beige);font-size:11px;font-weight:600;cursor:pointer;font-family:'Outfit',sans-serif;text-align:left">
+            <div>${f.folio} <span style="opacity:.6">(${f.slot_label || ''})</span></div>
+            <div style="font-size:9px;color:var(--muted);font-weight:400">👤 ${f.paciente_nombre || '—'}${f.armazon ? ' · 🔲' + f.armazon.substring(0, 18) : ''}${f.material ? ' · 🔬' + f.material.substring(0, 18) : ''}</div>
+          </button>`).join('')}
+        </div>`
+      : '<div style="font-weight:600;color:#72c47e">✅ Todas las órdenes de esta venta ya fueron capturadas</div>')
+    + (usados.length ? `<div style="font-size:10px;color:var(--muted);margin-top:6px">Ya capturadas: ${usados.join(', ')}</div>` : '');
+}
+
 async function selPromoFolio(idx) {
   const f = _pendingPromoFolios[idx];
   if (!f) return;
+  // Si el folio es de OTRO paciente (2x1 compartido) → cambiar al paciente correcto primero.
+  // Suprimimos el re-check de promo dentro de selPacienteOrden para no perder la lista de folios de la venta.
+  const curPid = document.getElementById('ord-pid').value;
+  if (f.paciente_id && f.paciente_id !== curPid) {
+    try {
+      const { data: p } = await db.from('pacientes').select('id, nombre, apellidos, telefono').eq('id', f.paciente_id).single();
+      if (p) {
+        const nomP = (p.nombre + ' ' + (p.apellidos || '')).trim();
+        _suppressPromoCheck = true;
+        try { await selPacienteOrden(p.id, nomP, p.telefono || '', ''); }
+        finally { _suppressPromoCheck = false; }
+        toast('👤 Paciente del folio: ' + nomP);
+      }
+    } catch(e) { console.warn('[selPromoFolio] cambio de paciente', e.message); }
+  }
   document.getElementById('ord-folio').value = f.folio;
   if (f.fecha_entrega) document.getElementById('ord-entrega').value = f.fecha_entrega;
   if (f.hora_entrega) document.getElementById('ord-hora-entrega').value = f.hora_entrega;
@@ -12536,17 +12598,9 @@ async function selVentaEnOrden(ventaId) {
   if (vt.hora_entrega) document.getElementById('ord-hora-entrega').value = vt.hora_entrega;
   syncTicket();
   await _prefillOrderFromVenta(vt.folio);
-  const promoFolios = (vt.venta_promociones||[]).flatMap(vp => (vp.folios_detalle||[]).filter(fd => !fd.usado));
-  if (promoFolios.length) {
-    await checkPendingPromoFolios(p.id, nom);
-    if (_pendingPromoFolios.length > 0) {
-      const currentFolio = document.getElementById('ord-folio').value;
-      let matchIdx = _pendingPromoFolios.findIndex(f => f.folio === currentFolio);
-      if (matchIdx < 0) matchIdx = _pendingPromoFolios.findIndex(f => f.folio.startsWith(currentFolio));
-      if (matchIdx < 0) matchIdx = 0;
-      await selPromoFolio(matchIdx);
-    }
-  }
+  // Mostrar TODOS los folios pendientes de esta venta (incluye 2x1 compartidos con otro paciente).
+  // El empleado toca el folio que va a capturar; si es de otro paciente, se cambia solo.
+  await mostrarFoliosPendientesVenta(vt.id, nom);
   toast(`✓ Folio ${vt.folio} cargado · ${nom}`);
 }
 
