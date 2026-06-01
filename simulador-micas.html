@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<title>Simulador de Micas — Ópticas Car & Era</title>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root{
+  --bg:#0d0f14;--surface:#161a22;--surface2:#1f242e;--border:#2c323d;
+  --white:#f2f4f8;--muted:#8b93a3;--accent:#5ad1c8;--beige:#e2c6a6;
+  --thin:#3dd17a;--mid:#f0c84a;--thick:#f0683d;--xthick:#e8443d;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--white);min-height:100%}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;outline:none}
+
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px}
+header .logo{font-weight:800;letter-spacing:.04em;color:var(--beige);font-size:15px}
+header .sub{color:var(--muted);font-size:11px}
+header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:16px;display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;position:sticky;top:16px}
+@media(max-width:860px){.panel{position:static}}
+.panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+
+.example-bar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.example-bar button{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 6px;font-size:11px;min-width:80px}
+.example-bar button:hover{border-color:var(--accent)}
+
+.eye-block{background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:12px}
+.eye-block .eye-title{font-weight:700;font-size:13px;color:var(--accent);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.eye-block .eye-title .copy{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 7px;cursor:pointer}
+.rx-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.fld label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px}
+.fld input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 8px;color:var(--white);font-size:14px;font-variant-numeric:tabular-nums;text-align:center}
+.fld input:focus{border-color:var(--accent)}
+
+.ctrl{margin-bottom:14px}
+.ctrl label.lbl{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;transition:.12s;flex:1;text-align:center;min-width:54px}
+.chip.active{background:var(--accent);color:#04201d;border-color:var(--accent);font-weight:700}
+
+.slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.slider-row input[type=range]{flex:1;accent-color:var(--accent)}
+.slider-row .val{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;min-width:58px;text-align:right;color:var(--accent)}
+
+.idx-compare{display:flex;gap:8px}
+.idx-compare select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--white);font-size:13px}
+
+.results{display:flex;flex-direction:column;gap:16px}
+.canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
+.canvas-card h3{font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.canvas-card h3 .pill{font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:2px 8px;font-weight:600}
+.canvas-card .hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
+canvas{display:block;width:100%;background:#0a0c10;border-radius:10px}
+#wrap3d{position:relative;width:100%;height:380px;background:radial-gradient(circle at 50% 35%,#10151d,#0a0c10);border-radius:10px;overflow:hidden}
+#cv3d{width:100%;height:100%;display:block;cursor:grab}
+#cv3d:active{cursor:grabbing}
+#hint3d{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted);pointer-events:none}
+#err3d{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:12px;padding:20px}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:5px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+table.tbl th,table.tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+table.tbl th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+table.tbl tr.hi td{background:rgba(90,209,200,.08)}
+table.tbl td.mat{text-align:left;font-weight:600}
+.badge{font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700}
+.badge.best{background:rgba(61,209,122,.15);color:var(--thin)}
+.badge.worst{background:rgba(232,68,61,.15);color:var(--xthick)}
+
+.verdict{background:linear-gradient(135deg,rgba(90,209,200,.1),rgba(226,198,166,.06));border:1px solid var(--border);border-radius:12px;padding:14px;font-size:13px;line-height:1.5;margin-top:12px}
+.verdict b{color:var(--accent)}
+.footnote{font-size:10px;color:var(--muted);line-height:1.5;margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">ÓPTICAS CAR &amp; ERA</div>
+    <div class="sub">Simulador de grosor de mica · alto índice</div>
+  </div>
+  <div class="tag">herramienta de asesor</div>
+</header>
+
+<div class="wrap">
+  <!-- ── CONTROLES ── -->
+  <div class="panel">
+    <h2>📋 Graduación</h2>
+
+    <div class="example-bar">
+      <button onclick="loadExample('miopia')">Ej: Miopía -6</button>
+      <button onclick="loadExample('astig')">Ej: Astigmatismo</button>
+      <button onclick="loadExample('alta')">Ej: Graduación alta</button>
+    </div>
+
+    <div class="eye-block">
+      <div class="eye-title">OD · Ojo derecho <span class="copy" onclick="copyEye('od','oi')">copiar a OI ▸</span></div>
+      <div class="rx-row">
+        <div class="fld"><label>Esfera</label><input id="od-sph" type="number" step="0.25" value="-6.00"></div>
+        <div class="fld"><label>Cilindro</label><input id="od-cyl" type="number" step="0.25" value="0.00"></div>
+        <div class="fld"><label>Eje</label><input id="od-axis" type="number" step="1" min="0" max="180" value="0"></div>
+      </div>
+    </div>
+
+    <div class="eye-block">
+      <div class="eye-title">OI · Ojo izquierdo <span class="copy" onclick="copyEye('oi','od')">copiar a OD ▸</span></div>
+      <div class="rx-row">
+        <div class="fld"><label>Esfera</label><input id="oi-sph" type="number" step="0.25" value="-4.00"></div>
+        <div class="fld"><label>Cilindro</label><input id="oi-cyl" type="number" step="0.25" value="-2.00"></div>
+        <div class="fld"><label>Eje</label><input id="oi-axis" type="number" step="1" min="0" max="180" value="90"></div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Forma del armazón</label>
+      <div class="chips" id="shape-chips">
+        <button class="chip active" data-shape="round">Redondo</button>
+        <button class="chip" data-shape="rect">Rectangular</button>
+        <button class="chip" data-shape="oval">Ovalado</button>
+        <button class="chip" data-shape="cateye">Cat-eye</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Tamaño de la mica (ancho × alto, mm)</label>
+      <div class="slider-row">
+        <input id="frame-w" type="range" min="40" max="62" step="1" value="52">
+        <span class="val" id="frame-w-val">52 mm</span>
+      </div>
+      <div class="slider-row">
+        <input id="frame-h" type="range" min="28" max="50" step="1" value="40">
+        <span class="val" id="frame-h-val">40 mm</span>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Comparar materiales</label>
+      <div class="idx-compare">
+        <select id="idxA"></select>
+        <select id="idxB"></select>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Espesor central mínimo (mm)</label>
+      <div class="slider-row">
+        <input id="ct" type="range" min="1.0" max="3.0" step="0.1" value="1.5">
+        <span class="val" id="ct-val">1.5 mm</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RESULTADOS ── -->
+  <div class="results">
+
+    <div class="canvas-card">
+      <h3>Vista 3D — gira el armazón <span class="pill">arrastra para rotar</span></h3>
+      <div class="hint">Muestra el material A. Arrastra para girar y ver cómo la mica sobresale por detrás del armazón. Con cilindro, el grosor cambia alrededor según el eje (compara OD vs OI).</div>
+      <div id="wrap3d">
+        <canvas id="cv3d"></canvas>
+        <div id="hint3d">🖱 arrastra para rotar · rueda para acercar</div>
+        <div id="err3d">No se pudo cargar el visor 3D (sin conexión). Las otras vistas funcionan igual.</div>
+      </div>
+    </div>
+
+    <div class="canvas-card">
+      <h3>Corte transversal — meridiano más grueso</h3>
+      <div class="hint">Perfil real de la mica cortada por su parte más gruesa. Los dos materiales lado a lado, con medidas en mm.</div>
+      <canvas id="cvCross" width="760" height="300"></canvas>
+    </div>
+
+    <div class="canvas-card">
+      <h3>Comparativa de materiales — borde más grueso (OD)</h3>
+      <table class="tbl" id="tblMat"><thead><tr>
+        <th class="mat" style="text-align:left">Material</th><th>Índice</th><th>Borde máx.</th><th>Borde mín.</th><th></th>
+      </tr></thead><tbody></tbody></table>
+      <div class="verdict" id="verdict"></div>
+      <div class="footnote">Cálculo aproximado (modelo de sagita, espesor central configurable). Sirve para comparar materiales y orientar al cliente; el grosor final exacto depende de la curva base, el montaje y el descentrado del laboratorio. Próximo paso: integrar la lista de precios por material.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Materiales (índice de refracción) ──
+const MATERIALS = [
+  {id:'i149', name:'1.49 (CR-39)', n:1.498},
+  {id:'i156', name:'1.56',         n:1.560},
+  {id:'i160', name:'1.60',         n:1.600},
+  {id:'i167', name:'1.67',         n:1.670},
+  {id:'i172', name:'1.72',         n:1.720},
+  {id:'i174', name:'1.74',         n:1.740},
+];
+
+let state = { shape:'round', idxA:'i149', idxB:'i174' };
+
+// ── Física ──
+function meridianPower(sph, cyl, axisDeg, angDeg){
+  const d = (angDeg - axisDeg) * Math.PI/180;
+  return sph + cyl * Math.sin(d)*Math.sin(d);
+}
+function sag(P, h, n){ return Math.abs(P) * h*h / (2000*(n-1)); }
+
+function semiDiam(angDeg, shape, halfW, halfH){
+  const t = angDeg*Math.PI/180, c=Math.abs(Math.cos(t)), s=Math.abs(Math.sin(t));
+  if(shape==='round'){ return (halfW+halfH)/2; }
+  if(shape==='oval'){
+    return (halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
+  }
+  if(shape==='rect'){
+    const p=4; return Math.pow(Math.pow(c/halfW,p)+Math.pow(s/halfH,p),-1/p);
+  }
+  if(shape==='cateye'){
+    let base=(halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
+    const up=Math.sin(t); if(up>0) base*=(1+0.18*up); return base;
+  }
+  return (halfW+halfH)/2;
+}
+
+function edgeAt(angDeg, rx, n, shape, halfW, halfH, ct){
+  const P=meridianPower(rx.sph,rx.cyl,rx.axis,angDeg);
+  const h=semiDiam(angDeg,shape,halfW,halfH);
+  if(P<0) return ct + sag(P,h,n);
+  if(P>0) return Math.max(0.8, ct - sag(P,h,n));
+  return ct;
+}
+function thicknessAt(rho, P, n, ct){
+  if(P<0) return ct + sag(P,rho,n);
+  if(P>0) return Math.max(0.8, ct - sag(P,rho,n));
+  return ct;
+}
+
+function readRx(eye){
+  return {
+    sph: parseFloat(document.getElementById(eye+'-sph').value)||0,
+    cyl: parseFloat(document.getElementById(eye+'-cyl').value)||0,
+    axis: parseFloat(document.getElementById(eye+'-axis').value)||0,
+  };
+}
+function getCT(){ return parseFloat(document.getElementById('ct').value)||1.5; }
+function half(){ return { w:(+document.getElementById('frame-w').value)/2, h:(+document.getElementById('frame-h').value)/2 }; }
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function thickColor(et){ if(et<3)return getCss('--thin'); if(et<5)return getCss('--mid'); if(et<7.5)return getCss('--thick'); return getCss('--xthick'); }
+
+/* ════════════ 3D ════════════ */
+let THREEOK = (typeof THREE!=='undefined' && THREE.OrbitControls);
+let scene,camera,renderer,controls,lensGroup,animating=false;
+
+function buildLensGeometry(rx, n, shape, hw, hh, ct){
+  const R=22, A=84;
+  const pos=[], idx=[];
+  const front=(i,j)=> i*(A+1)+j;
+  const backBase=(R+1)*(A+1);
+  const back=(i,j)=> backBase + i*(A+1)+j;
+  // vertices frontales
+  for(let i=0;i<=R;i++) for(let j=0;j<=A;j++){
+    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R;
+    const tr=ang*Math.PI/180, x=rho*Math.cos(tr), y=rho*Math.sin(tr);
+    const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang), t=thicknessAt(rho,P,n,ct);
+    pos.push(x,y,t/2);
+  }
+  // vertices traseros
+  for(let i=0;i<=R;i++) for(let j=0;j<=A;j++){
+    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R;
+    const tr=ang*Math.PI/180, x=rho*Math.cos(tr), y=rho*Math.sin(tr);
+    const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang), t=thicknessAt(rho,P,n,ct);
+    pos.push(x,y,-t/2);
+  }
+  for(let i=0;i<R;i++) for(let j=0;j<A;j++){
+    idx.push(front(i,j),front(i+1,j),front(i+1,j+1));
+    idx.push(front(i,j),front(i+1,j+1),front(i,j+1));
+    idx.push(back(i,j),back(i+1,j+1),back(i+1,j));
+    idx.push(back(i,j),back(i,j+1),back(i+1,j+1));
+  }
+  // pared del borde (i=R)
+  for(let j=0;j<A;j++){
+    idx.push(front(R,j),back(R,j),back(R,j+1));
+    idx.push(front(R,j),back(R,j+1),front(R,j+1));
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+function buildRim(shape,hw,hh){
+  const pts=[],A=96;
+  for(let j=0;j<=A;j++){ const ang=j*360/A,r=semiDiam(ang,shape,hw,hh),tr=ang*Math.PI/180;
+    pts.push(new THREE.Vector3(r*Math.cos(tr),r*Math.sin(tr),0)); }
+  const curve=new THREE.CatmullRomCurve3(pts,true);
+  const g=new THREE.TubeGeometry(curve,140,1.0,10,true);
+  return new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x222831,roughness:.5,metalness:.3}));
+}
+function initThree(){
+  const cv=document.getElementById('cv3d');
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(42,1,1,3000);
+  camera.position.set(35,28,165);
+  controls=new THREE.OrbitControls(camera,cv);
+  controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=70; controls.maxDistance=320;
+  scene.add(new THREE.AmbientLight(0xffffff,.65));
+  const d1=new THREE.DirectionalLight(0xffffff,.9); d1.position.set(60,80,120); scene.add(d1);
+  const d2=new THREE.DirectionalLight(0x88aaff,.4); d2.position.set(-80,-40,60); scene.add(d2);
+  lensGroup=new THREE.Group(); scene.add(lensGroup);
+  animating=true;
+  (function loop(){ if(!animating)return; controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
+  window.addEventListener('resize',resize3d);
+}
+function resize3d(){
+  if(!renderer)return;
+  const w=document.getElementById('wrap3d').clientWidth, h=document.getElementById('wrap3d').clientHeight;
+  renderer.setPixelRatio(window.devicePixelRatio||1);
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+function draw3D(){
+  if(!THREEOK){ document.getElementById('err3d').style.display='flex'; return; }
+  if(!renderer) initThree();
+  resize3d();
+  while(lensGroup.children.length) { const c=lensGroup.children.pop(); if(c.geometry)c.geometry.dispose(); lensGroup.remove(c); }
+  const {w:hw,h:hh}=half(), ct=getCT();
+  const n=MATERIALS.find(m=>m.id===state.idxA).n;
+  const mat=new THREE.MeshStandardMaterial({color:0xaadcff,transparent:true,opacity:.6,roughness:.12,metalness:0,side:THREE.DoubleSide});
+  const bridge=18, sep=hw+bridge/2;
+  [['od',-sep],['oi',sep]].forEach(([eye,ox])=>{
+    const rx=readRx(eye);
+    const lens=new THREE.Mesh(buildLensGeometry(rx,n,state.shape,hw,hh,ct),mat);
+    lens.position.x=ox; lensGroup.add(lens);
+    const rim=buildRim(state.shape,hw,hh); rim.position.x=ox; lensGroup.add(rim);
+  });
+  // puente
+  const bg=new THREE.Mesh(new THREE.BoxGeometry(bridge,3,3),new THREE.MeshStandardMaterial({color:0x222831,roughness:.5,metalness:.3}));
+  bg.position.set(0,hh*0.55,0); lensGroup.add(bg);
+}
+
+/* ════════════ Corte transversal 2D ════════════ */
+function drawCross(){
+  const cv=document.getElementById('cvCross'), ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
+  const rx=readRx('od'); const {w:hw,h:hh}=half(); const ct=getCT();
+  const mats=[MATERIALS.find(m=>m.id===state.idxA), MATERIALS.find(m=>m.id===state.idxB)];
+  let maxAng=0,best=0;
+  for(let a=0;a<360;a++){ const et=edgeAt(a,rx,mats[0].n,state.shape,hw,hh,ct); if(et>best){best=et;maxAng=a;} }
+  const h=semiDiam(maxAng,state.shape,hw,hh);
+  const P=meridianPower(rx.sph,rx.cyl,rx.axis,maxAng);
+  const cols=[{cx:W*0.27},{cx:W*0.73}];
+  const scaleY=3.2, scaleX=14; const cy=H*0.5;
+
+  ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui'; ctx.textAlign='center';
+  ctx.fillText('Corte en meridiano '+Math.round(maxAng)+'° · poder '+P.toFixed(2)+' D · OD', W/2, 18);
+
+  mats.forEach((m,k)=>{
+    const cx=cols[k].cx;
+    const et=thicknessAt(h,P,m.n,ct);
+    const steps=44, profile=[];
+    for(let i=0;i<=steps;i++){ const y=-h+2*h*i/steps; profile.push({y,t:thicknessAt(Math.abs(y),P,m.n,ct)}); }
+    ctx.beginPath();
+    profile.forEach((pt,i)=>{ const x=cx+pt.t/2*scaleX,yy=cy-pt.y*scaleY; i===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); });
+    for(let i=profile.length-1;i>=0;i--){ const pt=profile[i]; ctx.lineTo(cx-pt.t/2*scaleX,cy-pt.y*scaleY); }
+    ctx.closePath();
+    const grad=ctx.createLinearGradient(cx-30,0,cx+30,0);
+    grad.addColorStop(0,'rgba(90,209,200,.15)');grad.addColorStop(.5,'rgba(140,190,230,.4)');grad.addColorStop(1,'rgba(90,209,200,.15)');
+    ctx.fillStyle=grad; ctx.fill(); ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=getCss('--white'); ctx.font='700 13px system-ui';
+    ctx.fillText(m.name, cx, cy-h*scaleY-22);
+    ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui';
+    ctx.fillText('índice '+m.n.toFixed(2), cx, cy-h*scaleY-6);
+    ctx.fillStyle=thickColor(et); ctx.font='700 14px system-ui';
+    ctx.fillText('borde '+et.toFixed(1)+' mm', cx, cy+h*scaleY+22);
+    ctx.fillStyle=getCss('--muted'); ctx.font='10px system-ui';
+    ctx.fillText('centro '+ct.toFixed(1)+' mm', cx, cy+h*scaleY+38);
+  });
+  const etA=thicknessAt(h,P,mats[0].n,ct), etB=thicknessAt(h,P,mats[1].n,ct);
+  ctx.fillStyle=getCss('--beige'); ctx.font='700 12px system-ui'; ctx.textAlign='center';
+  ctx.fillText('Diferencia: '+Math.abs(etA-etB).toFixed(1)+' mm', W/2, H-10);
+}
+
+/* ════════════ Tabla + veredicto ════════════ */
+function drawTable(){
+  const rx=readRx('od'); const {w:hw,h:hh}=half(); const ct=getCT();
+  const tb=document.querySelector('#tblMat tbody'); tb.innerHTML='';
+  const rows=MATERIALS.map(m=>{ let mx=0,mn=99;
+    for(let a=0;a<360;a+=2){ const et=edgeAt(a,rx,m.n,state.shape,hw,hh,ct); if(et>mx)mx=et; if(et<mn)mn=et; }
+    return {m,mx,mn}; });
+  const minMx=Math.min(...rows.map(r=>r.mx)), maxMx=Math.max(...rows.map(r=>r.mx));
+  rows.forEach(r=>{
+    const hi=(r.m.id===state.idxA||r.m.id===state.idxB);
+    const badge=r.mx===minMx?'<span class="badge best">más delgado</span>':(r.mx===maxMx?'<span class="badge worst">más grueso</span>':'');
+    tb.insertAdjacentHTML('beforeend',
+      `<tr class="${hi?'hi':''}"><td class="mat">${r.m.name}</td><td>${r.m.n.toFixed(2)}</td>
+       <td style="color:${thickColor(r.mx)};font-weight:700">${r.mx.toFixed(1)} mm</td>
+       <td>${r.mn.toFixed(1)} mm</td><td>${badge}</td></tr>`);
+  });
+  const a=rows.find(r=>r.m.id===state.idxA), b=rows.find(r=>r.m.id===state.idxB);
+  const thinner=a.mx<b.mx?a:b, thicker=a.mx<b.mx?b:a;
+  const diff=thicker.mx-thinner.mx, pct=thicker.mx>0?Math.round(diff/thicker.mx*100):0;
+  let msg;
+  if(diff<0.4) msg=`Con esta graduación la diferencia entre <b>${a.m.name}</b> y <b>${b.m.name}</b> es mínima (${diff.toFixed(1)} mm). El alto índice no se justifica por grosor aquí.`;
+  else msg=`<b>${thinner.m.name}</b> deja el borde <b>${diff.toFixed(1)} mm más delgado</b> que <b>${thicker.m.name}</b> (${pct}% menos).${ thicker.mx>=6?' A este grosor el armazón ayuda mucho: una mica más cerrada/pequeña reduce el borde.':'' }`;
+  document.getElementById('verdict').innerHTML=msg;
+}
+
+function render(){ try{draw3D();}catch(e){console.warn('3D',e);document.getElementById('err3d').style.display='flex';} drawCross(); drawTable(); }
+
+/* ════════════ Eventos ════════════ */
+function copyEye(from,to){ ['sph','cyl','axis'].forEach(f=>{document.getElementById(to+'-'+f).value=document.getElementById(from+'-'+f).value;}); render(); }
+function setRx(eye,s,c,a){ document.getElementById(eye+'-sph').value=s.toFixed(2); document.getElementById(eye+'-cyl').value=c.toFixed(2); document.getElementById(eye+'-axis').value=a; }
+function loadExample(t){
+  if(t==='miopia'){ setRx('od',-6,0,0); setRx('oi',-6,0,0); }
+  if(t==='astig'){ setRx('od',-3,-1.50,180); setRx('oi',-3,-2.50,90); }
+  if(t==='alta'){ setRx('od',-9,-1.00,10); setRx('oi',-8.50,-1.25,170); }
+  render();
+}
+document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#shape-chips .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); state.shape=c.dataset.shape; render();
+});
+['frame-w','frame-h','ct'].forEach(id=>{ const el=document.getElementById(id);
+  el.oninput=()=>{ document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm'; render(); }; });
+['od-sph','od-cyl','od-axis','oi-sph','oi-cyl','oi-axis'].forEach(id=>{ document.getElementById(id).oninput=render; });
+
+function fillSelects(){
+  const A=document.getElementById('idxA'),B=document.getElementById('idxB');
+  MATERIALS.forEach(m=>{ const o=`<option value="${m.id}">${m.name}</option>`; A.insertAdjacentHTML('beforeend',o); B.insertAdjacentHTML('beforeend',o); });
+  A.value=state.idxA; B.value=state.idxB;
+  A.onchange=()=>{state.idxA=A.value;render();}; B.onchange=()=>{state.idxB=B.value;render();};
+}
+
+fillSelects();
+render();
+</script>
+</body>
+</html>
