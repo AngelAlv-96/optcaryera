@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0d0f14">
 <title>Simulador de Micas — Ópticas Car & Era</title>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
 :root{
   --bg:#0d0f14;--surface:#161a22;--surface2:#1f242e;--border:#2c323d;
@@ -45,7 +43,7 @@ header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid 
 .ctrl{margin-bottom:14px}
 .ctrl label.lbl{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:12px;transition:.12s;flex:1;text-align:center;min-width:54px}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;font-size:11.5px;transition:.12s;flex:1;text-align:center;min-width:54px}
 .chip.active{background:var(--accent);color:#04201d;border-color:var(--accent);font-weight:700}
 
 .slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
@@ -57,14 +55,17 @@ header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid 
 
 .results{display:flex;flex-direction:column;gap:16px}
 .canvas-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px}
-.canvas-card h3{font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.canvas-card h3{font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .canvas-card h3 .pill{font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:2px 8px;font-weight:600}
 .canvas-card .hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
 canvas{display:block;width:100%;background:#0a0c10;border-radius:10px}
-#wrap3d{position:relative;width:100%;height:380px;background:radial-gradient(circle at 50% 35%,#10151d,#0a0c10);border-radius:10px;overflow:hidden}
+#wrap3d{position:relative;width:100%;height:440px;background:#0a0c10;border-radius:10px;overflow:hidden}
 #cv3d{width:100%;height:100%;display:block;cursor:grab}
 #cv3d:active{cursor:grabbing}
-#hint3d{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:10px;color:var(--muted);pointer-events:none}
+#cap3d{font-size:12px;margin-top:10px;line-height:1.4;color:var(--muted)}
+#cap3d b{color:var(--accent)}
+#cap3d .hideline{color:var(--beige)}
+#load3d{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
 #err3d{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:12px;padding:20px}
 
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
@@ -100,13 +101,13 @@ table.tbl td.mat{text-align:left;font-weight:600}
     <h2>📋 Graduación</h2>
 
     <div class="example-bar">
-      <button onclick="loadExample('miopia')">Ej: Miopía -6</button>
-      <button onclick="loadExample('astig')">Ej: Astigmatismo</button>
-      <button onclick="loadExample('alta')">Ej: Graduación alta</button>
+      <button data-ex="miopia">Ej: Miopía -6</button>
+      <button data-ex="astig">Ej: Astigmatismo</button>
+      <button data-ex="alta">Ej: Graduación alta</button>
     </div>
 
     <div class="eye-block">
-      <div class="eye-title">OD · Ojo derecho <span class="copy" onclick="copyEye('od','oi')">copiar a OI ▸</span></div>
+      <div class="eye-title">OD · Ojo derecho <span class="copy" data-copy="od:oi">copiar a OI ▸</span></div>
       <div class="rx-row">
         <div class="fld"><label>Esfera</label><input id="od-sph" type="number" step="0.25" value="-6.00"></div>
         <div class="fld"><label>Cilindro</label><input id="od-cyl" type="number" step="0.25" value="0.00"></div>
@@ -115,7 +116,7 @@ table.tbl td.mat{text-align:left;font-weight:600}
     </div>
 
     <div class="eye-block">
-      <div class="eye-title">OI · Ojo izquierdo <span class="copy" onclick="copyEye('oi','od')">copiar a OD ▸</span></div>
+      <div class="eye-title">OI · Ojo izquierdo <span class="copy" data-copy="oi:od">copiar a OD ▸</span></div>
       <div class="rx-row">
         <div class="fld"><label>Esfera</label><input id="oi-sph" type="number" step="0.25" value="-4.00"></div>
         <div class="fld"><label>Cilindro</label><input id="oi-cyl" type="number" step="0.25" value="-2.00"></div>
@@ -130,6 +131,16 @@ table.tbl td.mat{text-align:left;font-weight:600}
         <button class="chip" data-shape="rect">Rectangular</button>
         <button class="chip" data-shape="oval">Ovalado</button>
         <button class="chip" data-shape="cateye">Cat-eye</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Grosor del armazón <span style="color:var(--beige)">· esconde el borde</span></label>
+      <div class="chips" id="rim-chips">
+        <button class="chip" data-rim="none">Al aire</button>
+        <button class="chip" data-rim="thin">Metal fino</button>
+        <button class="chip active" data-rim="med">Acetato</button>
+        <button class="chip" data-rim="thick">Acetato grueso</button>
       </div>
     </div>
 
@@ -166,13 +177,14 @@ table.tbl td.mat{text-align:left;font-weight:600}
   <div class="results">
 
     <div class="canvas-card">
-      <h3>Vista 3D — gira el armazón <span class="pill">arrastra para rotar</span></h3>
-      <div class="hint">Muestra el material A. Arrastra para girar y ver cómo la mica sobresale por detrás del armazón. Con cilindro, el grosor cambia alrededor según el eje (compara OD vs OI).</div>
+      <h3>Vista 3D realista <span class="pill">arrastra para rotar</span> <span class="pill">rueda = zoom</span></h3>
+      <div class="hint">Vidrio con refracción real (el índice afecta cómo se ve la luz a través de la mica). Gira el armazón para ver cómo sobresale el borde por detrás — y cómo un armazón más grueso lo esconde.</div>
       <div id="wrap3d">
         <canvas id="cv3d"></canvas>
-        <div id="hint3d">🖱 arrastra para rotar · rueda para acercar</div>
-        <div id="err3d">No se pudo cargar el visor 3D (sin conexión). Las otras vistas funcionan igual.</div>
+        <div id="load3d">Cargando visor 3D…</div>
+        <div id="err3d">No se pudo cargar el visor 3D (revisa tu conexión). Las otras vistas funcionan igual.</div>
       </div>
+      <div id="cap3d"></div>
     </div>
 
     <div class="canvas-card">
@@ -193,8 +205,19 @@ table.tbl td.mat{text-align:left;font-weight:600}
   </div>
 </div>
 
-<script>
-// ── Materiales (índice de refracción) ──
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ── Materiales ──
 const MATERIALS = [
   {id:'i149', name:'1.49 (CR-39)', n:1.498},
   {id:'i156', name:'1.56',         n:1.560},
@@ -203,218 +226,191 @@ const MATERIALS = [
   {id:'i172', name:'1.72',         n:1.720},
   {id:'i174', name:'1.74',         n:1.740},
 ];
+// ── Presets de grosor de armazón (mm): width=cuánto cubre hacia adentro, depth=cobertura frente-atrás ──
+const RIMS = {
+  none:  {show:false},
+  thin:  {show:true, width:1.0, depth:3.0,  color:0xb9bfc7, metal:true,  rough:0.22, label:'metal fino'},
+  med:   {show:true, width:2.6, depth:5.5,  color:0x171a20, metal:false, rough:0.40, label:'acetato'},
+  thick: {show:true, width:4.4, depth:9.0,  color:0x2a1d12, metal:false, rough:0.45, label:'acetato grueso'},
+};
 
-let state = { shape:'round', idxA:'i149', idxB:'i174' };
+let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med' };
 
 // ── Física ──
-function meridianPower(sph, cyl, axisDeg, angDeg){
-  const d = (angDeg - axisDeg) * Math.PI/180;
-  return sph + cyl * Math.sin(d)*Math.sin(d);
-}
-function sag(P, h, n){ return Math.abs(P) * h*h / (2000*(n-1)); }
-
-function semiDiam(angDeg, shape, halfW, halfH){
-  const t = angDeg*Math.PI/180, c=Math.abs(Math.cos(t)), s=Math.abs(Math.sin(t));
-  if(shape==='round'){ return (halfW+halfH)/2; }
-  if(shape==='oval'){
-    return (halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
-  }
-  if(shape==='rect'){
-    const p=4; return Math.pow(Math.pow(c/halfW,p)+Math.pow(s/halfH,p),-1/p);
-  }
-  if(shape==='cateye'){
-    let base=(halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
-    const up=Math.sin(t); if(up>0) base*=(1+0.18*up); return base;
-  }
+function meridianPower(sph,cyl,axisDeg,angDeg){ const d=(angDeg-axisDeg)*Math.PI/180; return sph+cyl*Math.sin(d)*Math.sin(d); }
+function sag(P,h,n){ return Math.abs(P)*h*h/(2000*(n-1)); }
+function semiDiam(angDeg,shape,halfW,halfH){
+  const t=angDeg*Math.PI/180,c=Math.abs(Math.cos(t)),s=Math.abs(Math.sin(t));
+  if(shape==='round') return (halfW+halfH)/2;
+  if(shape==='oval')  return (halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
+  if(shape==='rect'){ const p=4; return Math.pow(Math.pow(c/halfW,p)+Math.pow(s/halfH,p),-1/p); }
+  if(shape==='cateye'){ let b=(halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6); const up=Math.sin(t); if(up>0)b*=(1+0.18*up); return b; }
   return (halfW+halfH)/2;
 }
+function thicknessAt(rho,P,n,ct){ if(P<0)return ct+sag(P,rho,n); if(P>0)return Math.max(0.8,ct-sag(P,rho,n)); return ct; }
+function edgeAt(angDeg,rx,n,shape,hw,hh,ct){ const P=meridianPower(rx.sph,rx.cyl,rx.axis,angDeg); return thicknessAt(semiDiam(angDeg,shape,hw,hh),P,n,ct); }
 
-function edgeAt(angDeg, rx, n, shape, halfW, halfH, ct){
-  const P=meridianPower(rx.sph,rx.cyl,rx.axis,angDeg);
-  const h=semiDiam(angDeg,shape,halfW,halfH);
-  if(P<0) return ct + sag(P,h,n);
-  if(P>0) return Math.max(0.8, ct - sag(P,h,n));
-  return ct;
-}
-function thicknessAt(rho, P, n, ct){
-  if(P<0) return ct + sag(P,rho,n);
-  if(P>0) return Math.max(0.8, ct - sag(P,rho,n));
-  return ct;
-}
-
-function readRx(eye){
-  return {
-    sph: parseFloat(document.getElementById(eye+'-sph').value)||0,
-    cyl: parseFloat(document.getElementById(eye+'-cyl').value)||0,
-    axis: parseFloat(document.getElementById(eye+'-axis').value)||0,
-  };
-}
+function readRx(eye){ return {
+  sph:parseFloat(document.getElementById(eye+'-sph').value)||0,
+  cyl:parseFloat(document.getElementById(eye+'-cyl').value)||0,
+  axis:parseFloat(document.getElementById(eye+'-axis').value)||0 }; }
 function getCT(){ return parseFloat(document.getElementById('ct').value)||1.5; }
-function half(){ return { w:(+document.getElementById('frame-w').value)/2, h:(+document.getElementById('frame-h').value)/2 }; }
+function half(){ return {w:(+document.getElementById('frame-w').value)/2,h:(+document.getElementById('frame-h').value)/2}; }
 function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 function thickColor(et){ if(et<3)return getCss('--thin'); if(et<5)return getCss('--mid'); if(et<7.5)return getCss('--thick'); return getCss('--xthick'); }
 
-/* ════════════ 3D ════════════ */
-let THREEOK = (typeof THREE!=='undefined' && THREE.OrbitControls);
-let scene,camera,renderer,controls,lensGroup,animating=false;
+/* ════════════ 3D realista ════════════ */
+let renderer,scene,camera,controls,lensGroup,lensMatA,running=false,inited=false;
+const BASE_BULGE=2.4;        // curva base frontal (menisco) en mm
+const FRONT_LIP=1.4;         // cuánto sobresale el armazón hacia el frente
 
-function buildLensGeometry(rx, n, shape, hw, hh, ct){
-  const R=22, A=84;
-  const pos=[], idx=[];
-  const front=(i,j)=> i*(A+1)+j;
-  const backBase=(R+1)*(A+1);
-  const back=(i,j)=> backBase + i*(A+1)+j;
-  // vertices frontales
-  for(let i=0;i<=R;i++) for(let j=0;j<=A;j++){
-    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R;
-    const tr=ang*Math.PI/180, x=rho*Math.cos(tr), y=rho*Math.sin(tr);
+function lensGeometry(rx,n,shape,hw,hh,ct){
+  const R=24,A=90,pos=[],idx=[];
+  const fI=(i,j)=>i*(A+1)+j, base=(R+1)*(A+1), bI=(i,j)=>base+i*(A+1)+j;
+  const add=(zside)=>{ for(let i=0;i<=R;i++)for(let j=0;j<=A;j++){
+    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R, tr=ang*Math.PI/180;
+    const x=rho*Math.cos(tr), y=rho*Math.sin(tr);
     const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang), t=thicknessAt(rho,P,n,ct);
-    pos.push(x,y,t/2);
+    const front=BASE_BULGE*(1-(rho/(per||1))*(rho/(per||1)));
+    pos.push(x,y, zside==='f'? front : front-t);
+  }};
+  add('f'); add('b');
+  for(let i=0;i<R;i++)for(let j=0;j<A;j++){
+    idx.push(fI(i,j),fI(i+1,j),fI(i+1,j+1), fI(i,j),fI(i+1,j+1),fI(i,j+1));
+    idx.push(bI(i,j),bI(i+1,j+1),bI(i+1,j), bI(i,j),bI(i,j+1),bI(i+1,j+1));
   }
-  // vertices traseros
-  for(let i=0;i<=R;i++) for(let j=0;j<=A;j++){
-    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R;
-    const tr=ang*Math.PI/180, x=rho*Math.cos(tr), y=rho*Math.sin(tr);
-    const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang), t=thicknessAt(rho,P,n,ct);
-    pos.push(x,y,-t/2);
-  }
-  for(let i=0;i<R;i++) for(let j=0;j<A;j++){
-    idx.push(front(i,j),front(i+1,j),front(i+1,j+1));
-    idx.push(front(i,j),front(i+1,j+1),front(i,j+1));
-    idx.push(back(i,j),back(i+1,j+1),back(i+1,j));
-    idx.push(back(i,j),back(i,j+1),back(i+1,j+1));
-  }
-  // pared del borde (i=R)
-  for(let j=0;j<A;j++){
-    idx.push(front(R,j),back(R,j),back(R,j+1));
-    idx.push(front(R,j),back(R,j+1),front(R,j+1));
-  }
+  for(let j=0;j<A;j++) idx.push(fI(R,j),bI(R,j),bI(R,j+1), fI(R,j),bI(R,j+1),fI(R,j+1));
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-  g.setIndex(idx);
-  g.computeVertexNormals();
+  g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-function buildRim(shape,hw,hh){
-  const pts=[],A=96;
-  for(let j=0;j<=A;j++){ const ang=j*360/A,r=semiDiam(ang,shape,hw,hh),tr=ang*Math.PI/180;
-    pts.push(new THREE.Vector3(r*Math.cos(tr),r*Math.sin(tr),0)); }
-  const curve=new THREE.CatmullRomCurve3(pts,true);
-  const g=new THREE.TubeGeometry(curve,140,1.0,10,true);
-  return new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:0x222831,roughness:.5,metalness:.3}));
+function rimMesh(shape,hw,hh,rim){
+  // anillo: borde exterior = perímetro + width ; agujero interior = perímetro - 0.4 (lapa sobre la mica)
+  const A=120, outer=[], inner=[];
+  for(let j=0;j<A;j++){ const ang=j*360/A, tr=ang*Math.PI/180, r=semiDiam(ang,shape,hw,hh);
+    outer.push(new THREE.Vector2((r+rim.width)*Math.cos(tr),(r+rim.width)*Math.sin(tr)));
+    inner.push(new THREE.Vector2((r-0.4)*Math.cos(tr),(r-0.4)*Math.sin(tr))); }
+  const shp=new THREE.Shape(outer); const hole=new THREE.Path(inner); shp.holes.push(hole);
+  const geo=new THREE.ExtrudeGeometry(shp,{depth:rim.depth,bevelEnabled:true,bevelThickness:0.5,bevelSize:0.5,bevelSegments:2,curveSegments:64});
+  // extruye en +z desde 0..depth ; lo movemos para que el frente quede en +FRONT_LIP y cubra hacia atrás
+  geo.translate(0,0,-(rim.depth-FRONT_LIP));
+  const mat=new THREE.MeshPhysicalMaterial({color:rim.color, roughness:rim.rough,
+    metalness:rim.metal?1.0:0.0, clearcoat:rim.metal?0.3:1.0, clearcoatRoughness:0.15});
+  return new THREE.Mesh(geo,mat);
 }
+function templeMesh(rim,hw,hh,side){
+  const g=new THREE.BoxGeometry(2.0,4.0,26);
+  const m=new THREE.MeshPhysicalMaterial({color:rim.color,roughness:rim.rough,metalness:rim.metal?1:0,clearcoat:rim.metal?0.3:1,clearcoatRoughness:0.2});
+  const mesh=new THREE.Mesh(g,m); mesh.position.set(side*(hw+rim.width),hh*0.35,-13+FRONT_LIP); return mesh;
+}
+
 function initThree(){
   const cv=document.getElementById('cv3d');
-  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
-  scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(42,1,1,3000);
-  camera.position.set(35,28,165);
-  controls=new THREE.OrbitControls(camera,cv);
-  controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=70; controls.maxDistance=320;
-  scene.add(new THREE.AmbientLight(0xffffff,.65));
-  const d1=new THREE.DirectionalLight(0xffffff,.9); d1.position.set(60,80,120); scene.add(d1);
-  const d2=new THREE.DirectionalLight(0x88aaff,.4); d2.position.set(-80,-40,60); scene.add(d2);
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0x0c1118);
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+  camera=new THREE.PerspectiveCamera(40,1,1,3000); camera.position.set(35,26,160);
+  controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=.08;
+  controls.minDistance=70; controls.maxDistance=320; controls.autoRotate=true; controls.autoRotateSpeed=0.7;
+  cv.addEventListener('pointerdown',()=>controls.autoRotate=false,{once:true});
+  const d1=new THREE.DirectionalLight(0xffffff,1.4); d1.position.set(60,90,120); scene.add(d1);
+  const d2=new THREE.DirectionalLight(0xbcd2ff,0.6); d2.position.set(-90,-30,40); scene.add(d2);
   lensGroup=new THREE.Group(); scene.add(lensGroup);
-  animating=true;
-  (function loop(){ if(!animating)return; controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
+  inited=true; running=true;
+  (function loop(){ if(!running)return; controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
   window.addEventListener('resize',resize3d);
 }
-function resize3d(){
-  if(!renderer)return;
-  const w=document.getElementById('wrap3d').clientWidth, h=document.getElementById('wrap3d').clientHeight;
-  renderer.setPixelRatio(window.devicePixelRatio||1);
-  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
-}
+function resize3d(){ if(!renderer)return;
+  const el=document.getElementById('wrap3d'), w=el.clientWidth, h=el.clientHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+
 function draw3D(){
-  if(!THREEOK){ document.getElementById('err3d').style.display='flex'; return; }
-  if(!renderer) initThree();
+  if(!inited){ initThree(); document.getElementById('load3d').style.display='none'; }
   resize3d();
-  while(lensGroup.children.length) { const c=lensGroup.children.pop(); if(c.geometry)c.geometry.dispose(); lensGroup.remove(c); }
+  while(lensGroup.children.length){ const c=lensGroup.children.pop(); if(c.geometry)c.geometry.dispose(); lensGroup.remove(c); }
   const {w:hw,h:hh}=half(), ct=getCT();
-  const n=MATERIALS.find(m=>m.id===state.idxA).n;
-  const mat=new THREE.MeshStandardMaterial({color:0xaadcff,transparent:true,opacity:.6,roughness:.12,metalness:0,side:THREE.DoubleSide});
-  const bridge=18, sep=hw+bridge/2;
+  const matObj=MATERIALS.find(m=>m.id===state.idxA), n=matObj.n;
+  const rim=RIMS[state.rim];
+  lensMatA=new THREE.MeshPhysicalMaterial({
+    color:0xffffff, transmission:1.0, ior:n, thickness:Math.max(2,ct+2),
+    roughness:0.02, metalness:0, transparent:true, side:THREE.DoubleSide,
+    attenuationColor:new THREE.Color(0xeaf6ff), attenuationDistance:6, clearcoat:0.4, clearcoatRoughness:0.08 });
+  const sep=hw+18/2;
+  let maxEt=0;
   [['od',-sep],['oi',sep]].forEach(([eye,ox])=>{
     const rx=readRx(eye);
-    const lens=new THREE.Mesh(buildLensGeometry(rx,n,state.shape,hw,hh,ct),mat);
+    for(let a=0;a<360;a+=4){ const et=edgeAt(a,rx,n,state.shape,hw,hh,ct); if(et>maxEt)maxEt=et; }
+    const lens=new THREE.Mesh(lensGeometry(rx,n,state.shape,hw,hh,ct),lensMatA);
     lens.position.x=ox; lensGroup.add(lens);
-    const rim=buildRim(state.shape,hw,hh); rim.position.x=ox; lensGroup.add(rim);
+    if(rim.show){ const r=rimMesh(state.shape,hw,hh,rim); r.position.x=ox; lensGroup.add(r); }
   });
-  // puente
-  const bg=new THREE.Mesh(new THREE.BoxGeometry(bridge,3,3),new THREE.MeshStandardMaterial({color:0x222831,roughness:.5,metalness:.3}));
-  bg.position.set(0,hh*0.55,0); lensGroup.add(bg);
+  if(rim.show){
+    const bridge=new THREE.Mesh(new THREE.BoxGeometry(18,4,Math.max(3,rim.depth*0.7)),
+      new THREE.MeshPhysicalMaterial({color:rim.color,roughness:rim.rough,metalness:rim.metal?1:0,clearcoat:rim.metal?0.3:1,clearcoatRoughness:0.15}));
+    bridge.position.set(0,hh*0.5,FRONT_LIP-rim.depth*0.5); lensGroup.add(bridge);
+    lensGroup.add(templeMesh(rim,hw,hh,1)); lensGroup.add(templeMesh(rim,hw,hh,-1));
+  }
+  // caption: cuánto esconde el armazón
+  const cap=document.getElementById('cap3d');
+  const coverBack = rim.show? (rim.depth-FRONT_LIP) : 0;     // mm que cubre hacia atrás
+  const poke=Math.max(0, maxEt-coverBack);
+  let line=`Borde más grueso: <b>${maxEt.toFixed(1)} mm</b> · material mostrado <b>${matObj.name}</b>.`;
+  if(!rim.show) line+=` <span class="hideline">Armazón al aire: el borde queda totalmente expuesto.</span>`;
+  else if(poke<=0.2) line+=` <span class="hideline">El armazón <b>${rim.label}</b> esconde el borde casi por completo. 👍</span>`;
+  else line+=` <span class="hideline">El armazón <b>${rim.label}</b> tapa ~${coverBack.toFixed(1)} mm; sobresalen ~${poke.toFixed(1)} mm. Un armazón más grueso lo escondería.</span>`;
+  cap.innerHTML=line;
 }
 
-/* ════════════ Corte transversal 2D ════════════ */
+/* ════════════ Corte 2D ════════════ */
 function drawCross(){
-  const cv=document.getElementById('cvCross'), ctx=cv.getContext('2d');
-  const W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
-  const rx=readRx('od'); const {w:hw,h:hh}=half(); const ct=getCT();
-  const mats=[MATERIALS.find(m=>m.id===state.idxA), MATERIALS.find(m=>m.id===state.idxB)];
-  let maxAng=0,best=0;
-  for(let a=0;a<360;a++){ const et=edgeAt(a,rx,mats[0].n,state.shape,hw,hh,ct); if(et>best){best=et;maxAng=a;} }
-  const h=semiDiam(maxAng,state.shape,hw,hh);
-  const P=meridianPower(rx.sph,rx.cyl,rx.axis,maxAng);
-  const cols=[{cx:W*0.27},{cx:W*0.73}];
-  const scaleY=3.2, scaleX=14; const cy=H*0.5;
-
+  const cv=document.getElementById('cvCross'), ctx=cv.getContext('2d'), W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
+  const rx=readRx('od'), {w:hw,h:hh}=half(), ct=getCT();
+  const mats=[MATERIALS.find(m=>m.id===state.idxA),MATERIALS.find(m=>m.id===state.idxB)];
+  let maxAng=0,best=0; for(let a=0;a<360;a++){ const et=edgeAt(a,rx,mats[0].n,state.shape,hw,hh,ct); if(et>best){best=et;maxAng=a;} }
+  const h=semiDiam(maxAng,state.shape,hw,hh), P=meridianPower(rx.sph,rx.cyl,rx.axis,maxAng);
+  const cols=[{cx:W*0.27},{cx:W*0.73}], scaleY=3.2, scaleX=14, cy=H*0.5;
   ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui'; ctx.textAlign='center';
   ctx.fillText('Corte en meridiano '+Math.round(maxAng)+'° · poder '+P.toFixed(2)+' D · OD', W/2, 18);
-
-  mats.forEach((m,k)=>{
-    const cx=cols[k].cx;
-    const et=thicknessAt(h,P,m.n,ct);
-    const steps=44, profile=[];
-    for(let i=0;i<=steps;i++){ const y=-h+2*h*i/steps; profile.push({y,t:thicknessAt(Math.abs(y),P,m.n,ct)}); }
-    ctx.beginPath();
-    profile.forEach((pt,i)=>{ const x=cx+pt.t/2*scaleX,yy=cy-pt.y*scaleY; i===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); });
-    for(let i=profile.length-1;i>=0;i--){ const pt=profile[i]; ctx.lineTo(cx-pt.t/2*scaleX,cy-pt.y*scaleY); }
-    ctx.closePath();
-    const grad=ctx.createLinearGradient(cx-30,0,cx+30,0);
-    grad.addColorStop(0,'rgba(90,209,200,.15)');grad.addColorStop(.5,'rgba(140,190,230,.4)');grad.addColorStop(1,'rgba(90,209,200,.15)');
-    ctx.fillStyle=grad; ctx.fill(); ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle=getCss('--white'); ctx.font='700 13px system-ui';
-    ctx.fillText(m.name, cx, cy-h*scaleY-22);
-    ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui';
-    ctx.fillText('índice '+m.n.toFixed(2), cx, cy-h*scaleY-6);
-    ctx.fillStyle=thickColor(et); ctx.font='700 14px system-ui';
-    ctx.fillText('borde '+et.toFixed(1)+' mm', cx, cy+h*scaleY+22);
-    ctx.fillStyle=getCss('--muted'); ctx.font='10px system-ui';
-    ctx.fillText('centro '+ct.toFixed(1)+' mm', cx, cy+h*scaleY+38);
+  mats.forEach((m,k)=>{ const cx=cols[k].cx, et=thicknessAt(h,P,m.n,ct), steps=44, prof=[];
+    for(let i=0;i<=steps;i++){ const y=-h+2*h*i/steps; prof.push({y,t:thicknessAt(Math.abs(y),P,m.n,ct)}); }
+    ctx.beginPath(); prof.forEach((pt,i)=>{ const x=cx+pt.t/2*scaleX,yy=cy-pt.y*scaleY; i===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); });
+    for(let i=prof.length-1;i>=0;i--){ ctx.lineTo(cx-prof[i].t/2*scaleX,cy-prof[i].y*scaleY); } ctx.closePath();
+    const g=ctx.createLinearGradient(cx-30,0,cx+30,0); g.addColorStop(0,'rgba(90,209,200,.15)'); g.addColorStop(.5,'rgba(140,190,230,.4)'); g.addColorStop(1,'rgba(90,209,200,.15)');
+    ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle=getCss('--white'); ctx.font='700 13px system-ui'; ctx.fillText(m.name,cx,cy-h*scaleY-22);
+    ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui'; ctx.fillText('índice '+m.n.toFixed(2),cx,cy-h*scaleY-6);
+    ctx.fillStyle=thickColor(et); ctx.font='700 14px system-ui'; ctx.fillText('borde '+et.toFixed(1)+' mm',cx,cy+h*scaleY+22);
+    ctx.fillStyle=getCss('--muted'); ctx.font='10px system-ui'; ctx.fillText('centro '+ct.toFixed(1)+' mm',cx,cy+h*scaleY+38);
   });
   const etA=thicknessAt(h,P,mats[0].n,ct), etB=thicknessAt(h,P,mats[1].n,ct);
   ctx.fillStyle=getCss('--beige'); ctx.font='700 12px system-ui'; ctx.textAlign='center';
   ctx.fillText('Diferencia: '+Math.abs(etA-etB).toFixed(1)+' mm', W/2, H-10);
 }
 
-/* ════════════ Tabla + veredicto ════════════ */
+/* ════════════ Tabla ════════════ */
 function drawTable(){
-  const rx=readRx('od'); const {w:hw,h:hh}=half(); const ct=getCT();
+  const rx=readRx('od'), {w:hw,h:hh}=half(), ct=getCT();
   const tb=document.querySelector('#tblMat tbody'); tb.innerHTML='';
-  const rows=MATERIALS.map(m=>{ let mx=0,mn=99;
-    for(let a=0;a<360;a+=2){ const et=edgeAt(a,rx,m.n,state.shape,hw,hh,ct); if(et>mx)mx=et; if(et<mn)mn=et; }
-    return {m,mx,mn}; });
+  const rows=MATERIALS.map(m=>{ let mx=0,mn=99; for(let a=0;a<360;a+=2){ const et=edgeAt(a,rx,m.n,state.shape,hw,hh,ct); if(et>mx)mx=et; if(et<mn)mn=et; } return {m,mx,mn}; });
   const minMx=Math.min(...rows.map(r=>r.mx)), maxMx=Math.max(...rows.map(r=>r.mx));
-  rows.forEach(r=>{
-    const hi=(r.m.id===state.idxA||r.m.id===state.idxB);
+  rows.forEach(r=>{ const hi=(r.m.id===state.idxA||r.m.id===state.idxB);
     const badge=r.mx===minMx?'<span class="badge best">más delgado</span>':(r.mx===maxMx?'<span class="badge worst">más grueso</span>':'');
-    tb.insertAdjacentHTML('beforeend',
-      `<tr class="${hi?'hi':''}"><td class="mat">${r.m.name}</td><td>${r.m.n.toFixed(2)}</td>
-       <td style="color:${thickColor(r.mx)};font-weight:700">${r.mx.toFixed(1)} mm</td>
-       <td>${r.mn.toFixed(1)} mm</td><td>${badge}</td></tr>`);
-  });
+    tb.insertAdjacentHTML('beforeend',`<tr class="${hi?'hi':''}"><td class="mat">${r.m.name}</td><td>${r.m.n.toFixed(2)}</td><td style="color:${thickColor(r.mx)};font-weight:700">${r.mx.toFixed(1)} mm</td><td>${r.mn.toFixed(1)} mm</td><td>${badge}</td></tr>`); });
   const a=rows.find(r=>r.m.id===state.idxA), b=rows.find(r=>r.m.id===state.idxB);
-  const thinner=a.mx<b.mx?a:b, thicker=a.mx<b.mx?b:a;
-  const diff=thicker.mx-thinner.mx, pct=thicker.mx>0?Math.round(diff/thicker.mx*100):0;
-  let msg;
-  if(diff<0.4) msg=`Con esta graduación la diferencia entre <b>${a.m.name}</b> y <b>${b.m.name}</b> es mínima (${diff.toFixed(1)} mm). El alto índice no se justifica por grosor aquí.`;
-  else msg=`<b>${thinner.m.name}</b> deja el borde <b>${diff.toFixed(1)} mm más delgado</b> que <b>${thicker.m.name}</b> (${pct}% menos).${ thicker.mx>=6?' A este grosor el armazón ayuda mucho: una mica más cerrada/pequeña reduce el borde.':'' }`;
+  const thinner=a.mx<b.mx?a:b, thicker=a.mx<b.mx?b:a, diff=thicker.mx-thinner.mx, pct=thicker.mx>0?Math.round(diff/thicker.mx*100):0;
+  let msg; if(diff<0.4) msg=`Con esta graduación la diferencia entre <b>${a.m.name}</b> y <b>${b.m.name}</b> es mínima (${diff.toFixed(1)} mm). El alto índice no se justifica por grosor aquí.`;
+  else msg=`<b>${thinner.m.name}</b> deja el borde <b>${diff.toFixed(1)} mm más delgado</b> que <b>${thicker.m.name}</b> (${pct}% menos).${ thicker.mx>=6?' A este grosor el armazón ayuda mucho: una mica más cerrada/pequeña o un acetato grueso reduce/esconde el borde.':'' }`;
   document.getElementById('verdict').innerHTML=msg;
 }
 
-function render(){ try{draw3D();}catch(e){console.warn('3D',e);document.getElementById('err3d').style.display='flex';} drawCross(); drawTable(); }
+function render(){ try{ draw3D(); }catch(e){ console.warn('3D',e); document.getElementById('load3d').style.display='none'; document.getElementById('err3d').style.display='flex'; } drawCross(); drawTable(); }
 
-/* ════════════ Eventos ════════════ */
+/* ── Eventos ── */
 function copyEye(from,to){ ['sph','cyl','axis'].forEach(f=>{document.getElementById(to+'-'+f).value=document.getElementById(from+'-'+f).value;}); render(); }
 function setRx(eye,s,c,a){ document.getElementById(eye+'-sph').value=s.toFixed(2); document.getElementById(eye+'-cyl').value=c.toFixed(2); document.getElementById(eye+'-axis').value=a; }
 function loadExample(t){
@@ -423,22 +419,17 @@ function loadExample(t){
   if(t==='alta'){ setRx('od',-9,-1.00,10); setRx('oi',-8.50,-1.25,170); }
   render();
 }
-document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{
-  document.querySelectorAll('#shape-chips .chip').forEach(x=>x.classList.remove('active'));
-  c.classList.add('active'); state.shape=c.dataset.shape; render();
-});
-['frame-w','frame-h','ct'].forEach(id=>{ const el=document.getElementById(id);
-  el.oninput=()=>{ document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm'; render(); }; });
+document.querySelectorAll('.example-bar button').forEach(b=>b.onclick=()=>loadExample(b.dataset.ex));
+document.querySelectorAll('.eye-title .copy').forEach(s=>s.onclick=()=>{ const [f,t]=s.dataset.copy.split(':'); copyEye(f,t); });
+document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('#shape-chips .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); state.shape=c.dataset.shape; render(); });
+document.querySelectorAll('#rim-chips .chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('#rim-chips .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); state.rim=c.dataset.rim; render(); });
+['frame-w','frame-h','ct'].forEach(id=>{ const el=document.getElementById(id); el.oninput=()=>{ document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm'; render(); }; });
 ['od-sph','od-cyl','od-axis','oi-sph','oi-cyl','oi-axis'].forEach(id=>{ document.getElementById(id).oninput=render; });
 
-function fillSelects(){
-  const A=document.getElementById('idxA'),B=document.getElementById('idxB');
+(function fillSelects(){ const A=document.getElementById('idxA'),B=document.getElementById('idxB');
   MATERIALS.forEach(m=>{ const o=`<option value="${m.id}">${m.name}</option>`; A.insertAdjacentHTML('beforeend',o); B.insertAdjacentHTML('beforeend',o); });
-  A.value=state.idxA; B.value=state.idxB;
-  A.onchange=()=>{state.idxA=A.value;render();}; B.onchange=()=>{state.idxB=B.value;render();};
-}
+  A.value=state.idxA; B.value=state.idxB; A.onchange=()=>{state.idxA=A.value;render();}; B.onchange=()=>{state.idxB=B.value;render();}; })();
 
-fillSelects();
 render();
 </script>
 </body>
