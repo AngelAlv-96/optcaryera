@@ -278,6 +278,7 @@ NUNCA crees una venta sin que el cliente haya confirmado explícitamente que qui
 
 FOTOS DE LC: Si un cliente envía foto, el sistema la procesa automáticamente y muestra los datos extraídos + productos del catálogo.
 Si ves "[LC-OCR]" en el historial, significa que se extrajo graduación de una foto. Usa esos datos para hacer recomendaciones precisas.
+Si ves "[FOTO-OTRA]" en el historial, el cliente mandó una imagen que NO es caja de LC, receta ni promo (un sticker, saludo, selfie u objeto). NO digas que detectaste una receta ni una graduación, NO inventes datos. Continúa la conversación con naturalidad y pregunta en qué le puedes ayudar.
 Si la marca/modelo no está en catálogo, recomienda la alternativa más cercana y explica por qué es similar.
 
 CONVERSIÓN RX OFTÁLMICA → LENTES DE CONTACTO:
@@ -1884,7 +1885,8 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
         '(B) Receta oftalmológica / prescripción\n' +
         '(C) Imagen de una promoción publicitaria de una óptica (flyer, anuncio, captura de pantalla, redes sociales, poster en sucursal)\n' +
         '(D) Otra cosa no reconocible\n\n' +
-        'PRIMERO clasifica la imagen. Si es (C) PROMO, responde con JSON de promo (no intentes extraer graduación). Si es (A) o (B), extrae datos de LC/receta.\n\n' +
+        'PRIMERO clasifica la imagen. Si es (C) PROMO, responde con JSON de promo (no intentes extraer graduación). Si es (A) o (B), extrae datos de LC/receta. Si es (D) OTRA COSA (sticker, emoji, meme, GIF, selfie, foto de una persona, saludo tipo "buenos días/bonito día", paisaje, mascota, comida, objeto no óptico, captura sin promoción), responde EXACTAMENTE {"es_promo":false,"es_otro":true,"descripcion_breve":"qué es la imagen en pocas palabras"} y NADA MÁS.\n' +
+        '⛔ NUNCA inventes una RECETA ni una graduación a partir de una imagen que no contiene datos ópticos. Si NO ves números de graduación (PWR/SPH/CYL/AXIS) NI una caja/blíster de lentes de contacto NI texto claro de una receta médica, entonces ES (D): usa es_otro:true. NO fuerces marca="RECETA" en imágenes sin graduación legible.\n\n' +
         'SI ES PROMO (flyer, anuncio, captura de Facebook/Instagram/WhatsApp, poster con precios, texto promocional tipo "2x1", "50% desc", "desde $X"):\n' +
         'Extrae TEXTO VISIBLE completo y condiciones. Formato JSON:\n' +
         '{"es_promo":true,"texto_completo":"todo el texto visible literal, sin resumir","titulo":"título o headline principal","precio":"precio principal si hay","condiciones":"letra chica o condiciones si se ven","marca_negocio":"nombre de la óptica que publica la promo si se ve (ej: Ópticas Car & Era, Devlyn, Ben & Frank, Salud Digna)","fecha_vigencia":"si menciona fecha","detalle":"descripción de qué incluye la promo (ej: armazón + micas CR-39, examen gratis, etc.)"}\n' +
@@ -1916,12 +1918,13 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
         'LC: {"es_promo":false,"marca":"Air Optix","modelo":"Hydraglyde","tipo":"esferico","ojos":[{"ojo":"OD","pwr":"-2.50","cyl":null,"axis":null,"add":null,"bc":"8.6","dia":"14.2"}],"color":null,"frecuencia":"mensual","cantidad_cajas":1}\n' +
         'Si hay datos para ambos ojos, incluye ambos en el array "ojos".\n' +
         'Si es un producto de color, incluye el nombre del color.\n' +
-        'Para recetas oftálmicas: marca="RECETA", modelo=null, tipo según CYL (torico si tiene CYL, esferico si no).',
+        'Para recetas oftálmicas: marca="RECETA", modelo=null, tipo según CYL (torico si tiene CYL, esferico si no).\n' +
+        'Otra cosa (D): {"es_promo":false,"es_otro":true,"descripcion_breve":"..."}. Recuerda: sin graduación legible ni caja de LC, NO es receta — usa es_otro:true.',
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: mType, data: base64 } },
-          { type: 'text', text: 'Extrae todos los datos visibles de esta caja de lentes de contacto o receta. Responde solo JSON.' }
+          { type: 'text', text: 'Clasifica esta imagen y extrae los datos visibles según las reglas. Si NO es caja de LC, receta ni promo (ej: sticker, saludo, selfie, objeto), usa es_otro:true. Responde solo JSON.' }
         ]
       }]
     })
@@ -2011,6 +2014,16 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
       reply: 'Gracias por mandarme la promo 👀 Déjame revisarla contra nuestras promos vigentes. ¿En qué más te puedo ayudar mientras tanto?',
       promo: true, ocr: ocr
     };
+  }
+
+  // ── FOTO NO ÓPTICA (sticker, saludo, selfie, objeto) ──
+  // Evita que un sticker/saludo se convierta en una "receta" alucinada (marca=RECETA con ojos vacíos)
+  // y que Clari ofrezca una venta sobre una graduación inexistente.
+  var _recetaTieneDatos = ocr.ojos && ocr.ojos.some(function(o) { return o && (o.pwr || o.cyl || o.axis || o.add); });
+  if (ocr.es_otro === true || (ocr.marca === 'RECETA' && !_recetaTieneDatos && !ocr.modelo)) {
+    var otraCtx = '[FOTO-OTRA] ' + JSON.stringify({ descripcion: ocr.descripcion_breve || null });
+    await saveMessage(phone, 'user', otraCtx, userName);
+    return { reply: 'Recibí tu foto 👀 ¿En qué te puedo ayudar?' };
   }
 
   // ── LC / RECETA FLOW ──

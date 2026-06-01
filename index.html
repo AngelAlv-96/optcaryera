@@ -7368,6 +7368,28 @@ async function loadDash() {
 // ── CLARI PENDING SALE POLLING (admin only) ──
 var _clariPendingTimer = null;
 var _clariPendingNotified = {};
+var _clariPendingDismissed = {};   // keys dismissed/handled by admin (no reaparece esa venta)
+var _clariPendingCurrentKey = '';  // key de la venta mostrada ahora
+var _clariPendingCurrentName = ''; // nombre del cliente mostrado ahora
+// Lleva al admin a la conversación del cliente (no abre WA externo)
+function _goClariPendingConv() {
+  var name = _clariPendingCurrentName || '';
+  // marcar como atendida para que el banner no estorbe mientras respondo
+  if (_clariPendingCurrentKey) _clariPendingDismissed[_clariPendingCurrentKey] = true;
+  var b = document.getElementById('clari-pending-banner');
+  if (b) b.style.display = 'none';
+  try { go('clari'); } catch(e) {}
+  setTimeout(function() {
+    var s = document.getElementById('clari-search');
+    if (s) { s.value = name; if (typeof filterClariConv === 'function') filterClariConv(); }
+  }, 700);
+}
+// Quitar el banner (persistente en móvil tapa el menú)
+function _dismissClariPending() {
+  if (_clariPendingCurrentKey) _clariPendingDismissed[_clariPendingCurrentKey] = true;
+  var b = document.getElementById('clari-pending-banner');
+  if (b) b.style.display = 'none';
+}
 function _startClariPendingPolling() {
   if (_clariPendingTimer) clearInterval(_clariPendingTimer);
   _checkClariPending();
@@ -7400,11 +7422,15 @@ async function _checkClariPending() {
         document.head.appendChild(style);
       }
     }
-    banner.style.display = 'flex';
     var p = pending[0];
-    banner.innerHTML = '<span style="font-size:20px">🛒</span><div style="flex:1;color:white"><div style="font-size:13px;font-weight:700">Venta Clari pendiente de aprobación</div><div style="font-size:11px;opacity:0.9">👤 '+(p.customerName||'')+ ' · 👁 '+(p.productName||'')+' x'+(p.qty||1)+' · $'+(p.total||0)+' · 🏪 '+(p.sucursalEntrega||'')+'</div></div><a href="https://wa.me/5216563110094" target="_blank" style="background:white;color:#1e40af;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;white-space:nowrap">📱 Responder WA</a>';
     // Push notification (once per pending sale)
     var pendingKey = (p.customerName||'') + '_' + (p.total||0);
+    // Si el admin ya lo atendió/quitó, no reaparece (en móvil tapaba el menú)
+    if (_clariPendingDismissed[pendingKey]) { banner.style.display = 'none'; return; }
+    _clariPendingCurrentKey = pendingKey;
+    _clariPendingCurrentName = p.customerName || '';
+    banner.style.display = 'flex';
+    banner.innerHTML = '<span style="font-size:20px">🛒</span><div style="flex:1;min-width:0;color:white"><div style="font-size:13px;font-weight:700">Venta Clari pendiente de aprobación</div><div style="font-size:11px;opacity:0.9">👤 '+(p.customerName||'')+ ' · 👁 '+(p.productName||'')+' x'+(p.qty||1)+' · $'+(p.total||0)+' · 🏪 '+(p.sucursalEntrega||'')+'</div></div><button onclick="_goClariPendingConv()" style="background:white;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;white-space:nowrap">💬 Ir a conversación</button><button onclick="_dismissClariPending()" aria-label="Quitar" style="background:rgba(255,255,255,0.2);color:white;width:30px;height:30px;border-radius:8px;font-size:15px;font-weight:700;border:none;cursor:pointer;line-height:1;flex:none">✕</button>';
     if (!_clariPendingNotified[pendingKey]) {
       _clariPendingNotified[pendingKey] = true;
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
