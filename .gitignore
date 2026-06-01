@@ -24,3 +24,5 @@ Thumbs.db
 
 # Subcarpeta extraída del ZIP (ya no se necesita)
 optcaryera-v138 (2)/
+
+*.bak

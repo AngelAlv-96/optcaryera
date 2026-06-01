@@ -125,7 +125,13 @@ function templateToText(templateName, variables) {
     'lentes_listos': '🎉 Tus lentes están listos para recoger',
     'ticket_digital': '🧾 Ticket digital enviado',
     'comprobante_abono': '💰 Comprobante de abono enviado',
-    'corte_caja_resumen': '📊 Resumen de corte de caja'
+    'corte_caja_resumen': '📊 Resumen de corte de caja',
+    // SIDs de Twilio (ContentSid) — el sistema envía el SID directo, no el nombre amigable.
+    // Sin esto el historial guarda "📋 Template: HX..." (opaco) y Clari no entiende el contexto.
+    'HX7541b62cd4541056ea18eb628f1c4bad': '🎉 Tus lentes están listos para recoger',
+    'HX06c0cfea31f5a0110f28b9e46bbed4ae': '🧾 Ticket digital enviado',
+    'HX40dba775cdf9e14b874bc8c7ff0034a6': '💰 Comprobante de abono enviado',
+    'HX23d232e120ff04a785bb92734974fba0': '📊 Resumen de corte de caja'
   };
   let text = descriptions[templateName] || '📋 Template: ' + templateName;
   if (variables) {
@@ -133,6 +139,45 @@ function templateToText(templateName, variables) {
     if (vals.length) text += '\n' + vals.join(' | ');
   }
   return text;
+}
+
+// ── Dedup de templates del lado servidor (anti doble-envío) ──
+// Cubre lo que el throttle en memoria NO cubre: recargas de página y multi-dispositivo.
+// Política por template: byVars:false = un solo envío por teléfono/ventana sin importar las
+// variables (notificaciones idempotentes como "lentes listos"); byVars:true = solo bloquea
+// duplicados EXACTOS (mismo contenido), permitiendo reenvíos legítimos con datos distintos
+// (ej: dos abonos del mismo cliente con montos diferentes).
+const TEMPLATE_DEDUP = {
+  'HX7541b62cd4541056ea18eb628f1c4bad': { minutes: 15, byVars: false }, // lentes listos
+  'HX06c0cfea31f5a0110f28b9e46bbed4ae': { minutes: 5,  byVars: true  }, // ticket digital
+  'HX40dba775cdf9e14b874bc8c7ff0034a6': { minutes: 5,  byVars: true  }  // comprobante abono
+};
+const DEFAULT_DEDUP = { minutes: 5, byVars: true };
+
+async function recentTemplateDuplicate(phone, template, variables) {
+  if (!SERVICE_KEY || !template) return false;
+  const cfg = TEMPLATE_DEDUP[template] || DEFAULT_DEDUP;
+  // Construye un patrón estable a partir de lo que se va a registrar en el historial.
+  // Se tokeniza por espacios y se unen los tokens con comodín (*) para tolerar el salto
+  // de línea que el historial guarda entre la descripción y las variables, además de
+  // espacios variables. Se neutralizan los comodines SQL LIKE (% _ *) antes de tokenizar.
+  const base = templateToText(template, cfg.byVars ? variables : null);
+  const tokens = base.replace(/^[^0-9A-Za-zÀ-ÿ]+/, '').replace(/[%_*]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 12);
+  if (tokens.join('').length < 6) return false; // demasiado corto para deduplicar con seguridad
+  const pattern = '*' + tokens.join('*') + '*';
+  const sinceIso = new Date(Date.now() - cfg.minutes * 60000).toISOString();
+  try {
+    const url = `${SUPA_URL}/rest/v1/clari_conversations`
+      + `?phone=eq.${encodeURIComponent(normalizePhone(phone))}`
+      + `&role=eq.assistant`
+      + `&content=ilike.${encodeURIComponent(pattern)}`
+      + `&created_at=gte.${encodeURIComponent(sinceIso)}`
+      + `&select=id&limit=1`;
+    const res = await fetch(url, { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}` } });
+    if (!res.ok) return false;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) { console.warn('[Dedup]', e.message); return false; }
 }
 
 exports.handler = async (event) => {
@@ -169,8 +214,16 @@ exports.handler = async (event) => {
     switch (action) {
 
       case 'send': {
-        const { phone, message, template, template_variables } = body;
+        const { phone, message, template, template_variables, force } = body;
         if (!phone) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'phone required' }) };
+
+        // Anti doble-envío: si este mismo template ya salió a este teléfono dentro de la
+        // ventana, se omite (a menos que el cliente fuerce con force:true). Cubre recargas
+        // y multi-dispositivo, que el throttle en memoria del front no alcanza.
+        if (template && !force && await recentTemplateDuplicate(phone, template, template_variables)) {
+          console.log('[WA] Dedup: template', template, 'ya enviado recientemente a', phone, '— omitido');
+          return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, deduped: true, result: { status: 'skipped_duplicate' } }) };
+        }
 
         let result, historyText;
         if (template) {

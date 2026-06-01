@@ -5288,6 +5288,7 @@ async function sendWA(phone, message, opts = {}) {
         // Twilio uses ContentSid + ContentVariables
         payload.template = opts.template;
         if (opts.template_variables) payload.template_variables = opts.template_variables;
+        if (opts.force) payload.force = true; // omite la dedup del servidor (reenvío intencional)
       } else {
         payload.message = message;
       }
@@ -6636,9 +6637,16 @@ function _waMarkSent(tipo, id) {
   _waSentLog[key] = { ts: Date.now(), count: (entry ? entry.count : 0) + 1 };
 }
 
+// Llave de throttle por TELÉFONO (no por ordenId). Un reintento sin orden caía como
+// llave distinta y se escapaba del anti-duplicados → causó doble envío de "lentes listos".
+function _waPhoneKey(num, ordenId) {
+  var d = String(num || '').replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : (ordenId || num || d);
+}
+
 function confirmarEnvioWA(num, msg, nombre, ordenId) {
-  // Throttle check
-  var thr = _waCheckThrottle('lentes', ordenId || num);
+  // Throttle check (por teléfono, consistente en todos los puntos del flujo)
+  var thr = _waCheckThrottle('lentes', _waPhoneKey(num, ordenId));
   if (thr && thr.blocked) { toast('\u274c Notificaci\u00f3n bloqueada para este cliente', true); return; }
   if (thr && !thr.ok) { toast('\u23f3 Espera ' + thr.wait + ' min para reenviar la notificaci\u00f3n', true); return; }
 
@@ -6656,7 +6664,7 @@ function confirmarEnvioWA(num, msg, nombre, ordenId) {
     _mostrarDialogoWA({
       nombre: nombre || num, telActual: telDisplay,
       pacienteId: null, isRetry: (thr && thr.attempts > 0),
-      _tipo: 'lentes', _id: ordenId || num,
+      _tipo: 'lentes', _id: _waPhoneKey(num, ordenId),
       onEnviar: ejecutarDesdeDialogo
     });
     return;
@@ -6698,7 +6706,7 @@ async function ejecutarEnvioWA(overlay, num, msg, ordenId, esNuevoTel) {
     });
     if (!result.ok) result = await sendWA(num, msg, { silent: true });
     if (result.ok) {
-      _waMarkSent('lentes', ordenId || num);
+      _waMarkSent('lentes', _waPhoneKey(num, ordenId));
       if (btn) {
         btn.textContent = '\u2705 Enviado por WhatsApp';
         btn.style.background = 'rgba(114,196,126,0.25)';
@@ -6728,7 +6736,7 @@ async function ejecutarEnvioWA(overlay, num, msg, ordenId, esNuevoTel) {
       if (overlay) overlay.remove();
     } else { throw new Error(result.error || 'Error al enviar'); }
   } catch(e) {
-    if (typeof _waMarkBlocked === 'function') _waMarkBlocked('lentes', ordenId || num);
+    if (typeof _waMarkBlocked === 'function') _waMarkBlocked('lentes', _waPhoneKey(num, ordenId));
     if (btn) {
       btn.textContent = '\u274c Error al enviar';
       btn.style.background = 'rgba(224,128,128,0.2)';
