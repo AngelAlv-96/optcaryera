@@ -21,7 +21,8 @@ const FOLLOWUP_MAX_DAYS = 5;
 const MAPS_LINKS = {
   'Américas': 'https://g.page/r/CV9ZD9ZPVjvbEBM/review',
   'Pinocelli': 'https://g.page/r/Cdzzax18yI15EBM/review',
-  'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review'
+  'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review',
+  'Plaza Vía Vittoria': 'https://g.page/r/CXWWc_sm_uq-EBM/review'
 };
 
 async function supaREST(method, path, body) {

@@ -178,8 +178,7 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
-📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/6N7UTbUEdqzUd66s9
-ℹ️ NOTA del mapa de Plaza Vía Vittoria: la ficha de Google propia de la óptica aún está en aprobación, por eso el link de Maps es el de la PLAZA. En ese link la foto puede verse como un salón de fiestas (el del "payaso Teto") — es la MISMA plaza donde está la óptica. Solo aclara esto si el cliente lo nota o pide referencias: dile que sí es la misma plaza y que la óptica está a un lado de Farmacias Similares. No lo menciones si nadie pregunta.
+📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 
 {{NUEVA_SUCURSAL_STATUS}}
 
@@ -2796,11 +2795,11 @@ exports.handler = async function(event) {
             var sucMatch = (reviewHistory[0].content || '').match(/Sucursal:\s*([^\n,]+)/);
             var reviewSuc = sucMatch ? sucMatch[1].trim() : '';
             // Google Maps links per sucursal (SOLO las que tienen ficha de Google verificada).
-            // Plaza Vía Vittoria NO está aquí: su ficha sigue en verificación → NO se le manda link (no a Américas) para no desviar reseñas a otra sucursal. Agregar su link aquí cuando la ficha esté lista.
             var mapsLinks = {
               'Américas': 'https://g.page/r/CV9ZD9ZPVjvbEBM/review',
               'Pinocelli': 'https://g.page/r/Cdzzax18yI15EBM/review',
-              'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review'
+              'Magnolia': 'https://g.page/r/CTVxzblIsQ6IEBM/review',
+              'Plaza Vía Vittoria': 'https://g.page/r/CXWWc_sm_uq-EBM/review'
             };
             var mapsLink = mapsLinks[reviewSuc]; // sin fallback a Américas (misatribuiría reseñas)
             var reviewReply;

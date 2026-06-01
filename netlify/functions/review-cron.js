@@ -17,7 +17,7 @@ const MAX_PER_RUN = 10;
 
 // Sucursales SIN ficha de Google verificada aún → no se les envía encuesta (no tienen a dónde reseñar).
 // Quitar de aquí cuando la ficha de Google de la sucursal esté lista.
-const SIN_FICHA_GOOGLE = ['Plaza Vía Vittoria'];
+const SIN_FICHA_GOOGLE = [];
 
 async function supaREST(method, path, body) {
   const opts = {
