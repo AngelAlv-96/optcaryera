@@ -267,7 +267,7 @@ function getCss(v){ return getComputedStyle(document.documentElement).getPropert
 function thickColor(et){ if(et<3)return getCss('--thin'); if(et<5)return getCss('--mid'); if(et<7.5)return getCss('--thick'); return getCss('--xthick'); }
 
 /* ════════ 3D ════════ */
-let renderer,scene,camera,controls,glasses,inited=false,running=false;
+let renderer,scene,camera,controls,glasses,inited=false,running=false,threeFailed=false;
 const BASE_BULGE=2.4, FRONT_LIP=1.4;
 
 function lensGeometry(rx,n,shape,hw,hh,ct){
@@ -340,7 +340,11 @@ function initThree(){
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1; renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   scene=new THREE.Scene(); scene.background=new THREE.Color(0x0c1118);
-  const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+  // luz base SIEMPRE (por si el entorno HDR no se puede generar en el dispositivo)
+  scene.add(new THREE.HemisphereLight(0xffffff,0x222b38,0.7));
+  scene.add(new THREE.AmbientLight(0xffffff,0.3));
+  try{ const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture; }
+  catch(envErr){ console.warn('Entorno HDR no disponible, uso luz base:',envErr); }
   camera=new THREE.PerspectiveCamera(38,1,1,3000);
   controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=70; controls.maxDistance=340;
   controls.autoRotate=true; controls.autoRotateSpeed=0.8; cv.addEventListener('pointerdown',()=>controls.autoRotate=false,{once:true});
@@ -437,7 +441,17 @@ function drawTable(){
   document.getElementById('verdict').innerHTML=msg;
 }
 
-function render(){ try{draw3D();}catch(e){console.warn('3D',e);document.getElementById('load3d').style.display='none';document.getElementById('err3d').style.display='flex';} drawCross(); drawTable(); }
+function render(){
+  if(!threeFailed){
+    try{ draw3D(); }
+    catch(e){ threeFailed=true; running=false; console.warn('3D',e);
+      document.getElementById('load3d').style.display='none';
+      const el=document.getElementById('err3d'); el.style.display='flex';
+      el.textContent='Visor 3D no disponible ('+((e&&e.message)?e.message:e)+'). Ábrelo en Chrome/Safari (no dentro de Telegram). El resto de la herramienta funciona normal.';
+    }
+  }
+  drawCross(); drawTable();
+}
 
 /* ── Eventos ── */
 function copyEye(f,t){ ['sph','cyl','axis'].forEach(k=>{document.getElementById(t+'-'+k).value=document.getElementById(f+'-'+k).value;}); render(); }
