@@ -59,9 +59,12 @@ header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid 
 .canvas-card h3 .pill{font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:2px 8px;font-weight:600}
 .canvas-card .hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
 canvas{display:block;width:100%;background:#0a0c10;border-radius:10px}
-#wrap3d{position:relative;width:100%;height:440px;background:#0a0c10;border-radius:10px;overflow:hidden}
+#wrap3d{position:relative;width:100%;height:460px;background:#0a0c10;border-radius:10px;overflow:hidden}
 #cv3d{width:100%;height:100%;display:block;cursor:grab}
 #cv3d:active{cursor:grabbing}
+.view-toggle{display:flex;gap:6px;margin-bottom:10px}
+.view-toggle button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px}
+.view-toggle button.active{background:var(--accent);color:#04201d;border-color:var(--accent);font-weight:700}
 #cap3d{font-size:12px;margin-top:10px;line-height:1.4;color:var(--muted)}
 #cap3d b{color:var(--accent)}
 #cap3d .hideline{color:var(--beige)}
@@ -69,8 +72,7 @@ canvas{display:block;width:100%;background:#0a0c10;border-radius:10px}
 #err3d{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:12px;padding:20px}
 
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
-.legend span{display:flex;align-items:center;gap:5px}
-.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.legend span{display:flex;align-items:center;gap:5px}.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
 
 table.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
 table.tbl th,table.tbl td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
@@ -78,8 +80,7 @@ table.tbl th{color:var(--muted);font-size:10px;text-transform:uppercase;letter-s
 table.tbl tr.hi td{background:rgba(90,209,200,.08)}
 table.tbl td.mat{text-align:left;font-weight:600}
 .badge{font-size:9px;padding:2px 6px;border-radius:5px;font-weight:700}
-.badge.best{background:rgba(61,209,122,.15);color:var(--thin)}
-.badge.worst{background:rgba(232,68,61,.15);color:var(--xthick)}
+.badge.best{background:rgba(61,209,122,.15);color:var(--thin)}.badge.worst{background:rgba(232,68,61,.15);color:var(--xthick)}
 
 .verdict{background:linear-gradient(135deg,rgba(90,209,200,.1),rgba(226,198,166,.06));border:1px solid var(--border);border-radius:12px;padding:14px;font-size:13px;line-height:1.5;margin-top:12px}
 .verdict b{color:var(--accent)}
@@ -90,7 +91,7 @@ table.tbl td.mat{text-align:left;font-weight:600}
 <header>
   <div>
     <div class="logo">ÓPTICAS CAR &amp; ERA</div>
-    <div class="sub">Simulador de grosor de mica · alto índice</div>
+    <div class="sub">Simulador de grosor de mica · alto índice + antirreflejante</div>
   </div>
   <div class="tag">herramienta de asesor</div>
 </header>
@@ -145,31 +146,37 @@ table.tbl td.mat{text-align:left;font-weight:600}
     </div>
 
     <div class="ctrl">
+      <label class="lbl">Color del armazón</label>
+      <div class="chips" id="color-chips">
+        <button class="chip active" data-col="black">Negro</button>
+        <button class="chip" data-col="tortoise">Carey</button>
+        <button class="chip" data-col="crystal">Cristal</button>
+        <button class="chip" data-col="blue">Azul</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label class="lbl">Tratamiento de la mica</label>
+      <div class="chips" id="ar-chips">
+        <button class="chip active" data-ar="on">Con antirreflejante</button>
+        <button class="chip" data-ar="off">Sin AR (con reflejo)</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
       <label class="lbl">Tamaño de la mica (ancho × alto, mm)</label>
-      <div class="slider-row">
-        <input id="frame-w" type="range" min="40" max="62" step="1" value="52">
-        <span class="val" id="frame-w-val">52 mm</span>
-      </div>
-      <div class="slider-row">
-        <input id="frame-h" type="range" min="28" max="50" step="1" value="40">
-        <span class="val" id="frame-h-val">40 mm</span>
-      </div>
+      <div class="slider-row"><input id="frame-w" type="range" min="40" max="62" step="1" value="52"><span class="val" id="frame-w-val">52 mm</span></div>
+      <div class="slider-row"><input id="frame-h" type="range" min="28" max="50" step="1" value="40"><span class="val" id="frame-h-val">40 mm</span></div>
     </div>
 
     <div class="ctrl">
       <label class="lbl">Comparar materiales</label>
-      <div class="idx-compare">
-        <select id="idxA"></select>
-        <select id="idxB"></select>
-      </div>
+      <div class="idx-compare"><select id="idxA"></select><select id="idxB"></select></div>
     </div>
 
     <div class="ctrl">
       <label class="lbl">Espesor central mínimo (mm)</label>
-      <div class="slider-row">
-        <input id="ct" type="range" min="1.0" max="3.0" step="0.1" value="1.5">
-        <span class="val" id="ct-val">1.5 mm</span>
-      </div>
+      <div class="slider-row"><input id="ct" type="range" min="1.0" max="3.0" step="0.1" value="1.5"><span class="val" id="ct-val">1.5 mm</span></div>
     </div>
   </div>
 
@@ -178,7 +185,13 @@ table.tbl td.mat{text-align:left;font-weight:600}
 
     <div class="canvas-card">
       <h3>Vista 3D realista <span class="pill">arrastra para rotar</span> <span class="pill">rueda = zoom</span></h3>
-      <div class="hint">Vidrio con refracción real (el índice afecta cómo se ve la luz a través de la mica). Gira el armazón para ver cómo sobresale el borde por detrás — y cómo un armazón más grueso lo esconde.</div>
+      <div class="view-toggle" id="view-toggle">
+        <button class="active" data-view="34">¾ vista</button>
+        <button data-view="front">De frente</button>
+        <button data-view="side">De lado</button>
+        <button data-view="top">Desde arriba</button>
+      </div>
+      <div class="hint">Armazón y micas realistas, con vidrio de refracción real. Con antirreflejante ves el reflejo verde/púrpura característico y casi sin glare; sin AR ves el reflejo blanco molesto. Gíralo para ver cómo el armazón esconde el borde grueso.</div>
       <div id="wrap3d">
         <canvas id="cv3d"></canvas>
         <div id="load3d">Cargando visor 3D…</div>
@@ -217,219 +230,236 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
-// ── Materiales ──
 const MATERIALS = [
-  {id:'i149', name:'1.49 (CR-39)', n:1.498},
-  {id:'i156', name:'1.56',         n:1.560},
-  {id:'i160', name:'1.60',         n:1.600},
-  {id:'i167', name:'1.67',         n:1.670},
-  {id:'i172', name:'1.72',         n:1.720},
-  {id:'i174', name:'1.74',         n:1.740},
+  {id:'i149',name:'1.49 (CR-39)',n:1.498},{id:'i156',name:'1.56',n:1.560},
+  {id:'i160',name:'1.60',n:1.600},{id:'i167',name:'1.67',n:1.670},
+  {id:'i172',name:'1.72',n:1.720},{id:'i174',name:'1.74',n:1.740},
 ];
-// ── Presets de grosor de armazón (mm): width=cuánto cubre hacia adentro, depth=cobertura frente-atrás ──
 const RIMS = {
   none:  {show:false},
-  thin:  {show:true, width:1.0, depth:3.0,  color:0xb9bfc7, metal:true,  rough:0.22, label:'metal fino'},
-  med:   {show:true, width:2.6, depth:5.5,  color:0x171a20, metal:false, rough:0.40, label:'acetato'},
-  thick: {show:true, width:4.4, depth:9.0,  color:0x2a1d12, metal:false, rough:0.45, label:'acetato grueso'},
+  thin:  {show:true, width:1.1, depth:3.0, metal:true,  rough:0.22, label:'metal fino', pads:true},
+  med:   {show:true, width:2.6, depth:5.5, metal:false, rough:0.38, label:'acetato',    pads:false},
+  thick: {show:true, width:4.4, depth:9.0, metal:false, rough:0.44, label:'acetato grueso', pads:false},
 };
-
-let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med' };
+const COLORS = {
+  black:{base:0x16181d, metal:0x9aa0a8, name:'negro'},
+  tortoise:{base:0x4a2c12, metal:0xb08d4a, name:'carey'},
+  crystal:{base:0xc9d2db, metal:0xd8dee6, name:'cristal'},
+  blue:{base:0x1b3a66, metal:0x5b7fb0, name:'azul'},
+};
+let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med', color:'black', ar:'on' };
 
 // ── Física ──
-function meridianPower(sph,cyl,axisDeg,angDeg){ const d=(angDeg-axisDeg)*Math.PI/180; return sph+cyl*Math.sin(d)*Math.sin(d); }
+function meridianPower(s,c,ax,a){ const d=(a-ax)*Math.PI/180; return s+c*Math.sin(d)*Math.sin(d); }
 function sag(P,h,n){ return Math.abs(P)*h*h/(2000*(n-1)); }
-function semiDiam(angDeg,shape,halfW,halfH){
-  const t=angDeg*Math.PI/180,c=Math.abs(Math.cos(t)),s=Math.abs(Math.sin(t));
-  if(shape==='round') return (halfW+halfH)/2;
-  if(shape==='oval')  return (halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6);
-  if(shape==='rect'){ const p=4; return Math.pow(Math.pow(c/halfW,p)+Math.pow(s/halfH,p),-1/p); }
-  if(shape==='cateye'){ let b=(halfW*halfH)/Math.sqrt((halfH*c)*(halfH*c)+(halfW*s)*(halfW*s)+1e-6); const up=Math.sin(t); if(up>0)b*=(1+0.18*up); return b; }
-  return (halfW+halfH)/2;
-}
+function semiDiam(a,shape,hw,hh){ const t=a*Math.PI/180,c=Math.abs(Math.cos(t)),s=Math.abs(Math.sin(t));
+  if(shape==='round')return (hw+hh)/2;
+  if(shape==='oval') return (hw*hh)/Math.sqrt((hh*c)*(hh*c)+(hw*s)*(hw*s)+1e-6);
+  if(shape==='rect'){const p=4;return Math.pow(Math.pow(c/hw,p)+Math.pow(s/hh,p),-1/p);}
+  if(shape==='cateye'){let b=(hw*hh)/Math.sqrt((hh*c)*(hh*c)+(hw*s)*(hw*s)+1e-6);const up=Math.sin(t);if(up>0)b*=(1+0.18*up);return b;}
+  return (hw+hh)/2; }
 function thicknessAt(rho,P,n,ct){ if(P<0)return ct+sag(P,rho,n); if(P>0)return Math.max(0.8,ct-sag(P,rho,n)); return ct; }
-function edgeAt(angDeg,rx,n,shape,hw,hh,ct){ const P=meridianPower(rx.sph,rx.cyl,rx.axis,angDeg); return thicknessAt(semiDiam(angDeg,shape,hw,hh),P,n,ct); }
-
-function readRx(eye){ return {
-  sph:parseFloat(document.getElementById(eye+'-sph').value)||0,
-  cyl:parseFloat(document.getElementById(eye+'-cyl').value)||0,
-  axis:parseFloat(document.getElementById(eye+'-axis').value)||0 }; }
+function edgeAt(a,rx,n,shape,hw,hh,ct){ const P=meridianPower(rx.sph,rx.cyl,rx.axis,a); return thicknessAt(semiDiam(a,shape,hw,hh),P,n,ct); }
+function readRx(e){ return {sph:parseFloat(document.getElementById(e+'-sph').value)||0,cyl:parseFloat(document.getElementById(e+'-cyl').value)||0,axis:parseFloat(document.getElementById(e+'-axis').value)||0}; }
 function getCT(){ return parseFloat(document.getElementById('ct').value)||1.5; }
 function half(){ return {w:(+document.getElementById('frame-w').value)/2,h:(+document.getElementById('frame-h').value)/2}; }
 function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
 function thickColor(et){ if(et<3)return getCss('--thin'); if(et<5)return getCss('--mid'); if(et<7.5)return getCss('--thick'); return getCss('--xthick'); }
 
-/* ════════════ 3D realista ════════════ */
-let renderer,scene,camera,controls,lensGroup,lensMatA,running=false,inited=false;
-const BASE_BULGE=2.4;        // curva base frontal (menisco) en mm
-const FRONT_LIP=1.4;         // cuánto sobresale el armazón hacia el frente
+/* ════════ 3D ════════ */
+let renderer,scene,camera,controls,glasses,inited=false,running=false;
+const BASE_BULGE=2.4, FRONT_LIP=1.4;
 
 function lensGeometry(rx,n,shape,hw,hh,ct){
-  const R=24,A=90,pos=[],idx=[];
+  const R=26,A=96,pos=[],idx=[];
   const fI=(i,j)=>i*(A+1)+j, base=(R+1)*(A+1), bI=(i,j)=>base+i*(A+1)+j;
-  const add=(zside)=>{ for(let i=0;i<=R;i++)for(let j=0;j<=A;j++){
-    const ang=j*360/A, per=semiDiam(ang,shape,hw,hh), rho=per*i/R, tr=ang*Math.PI/180;
-    const x=rho*Math.cos(tr), y=rho*Math.sin(tr);
-    const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang), t=thicknessAt(rho,P,n,ct);
+  const push=(side)=>{ for(let i=0;i<=R;i++)for(let j=0;j<=A;j++){
+    const ang=j*360/A,per=semiDiam(ang,shape,hw,hh),rho=per*i/R,tr=ang*Math.PI/180;
+    const P=meridianPower(rx.sph,rx.cyl,rx.axis,ang),t=thicknessAt(rho,P,n,ct);
     const front=BASE_BULGE*(1-(rho/(per||1))*(rho/(per||1)));
-    pos.push(x,y, zside==='f'? front : front-t);
+    pos.push(rho*Math.cos(tr),rho*Math.sin(tr), side==='f'?front:front-t);
   }};
-  add('f'); add('b');
+  push('f'); push('b');
   for(let i=0;i<R;i++)for(let j=0;j<A;j++){
     idx.push(fI(i,j),fI(i+1,j),fI(i+1,j+1), fI(i,j),fI(i+1,j+1),fI(i,j+1));
     idx.push(bI(i,j),bI(i+1,j+1),bI(i+1,j), bI(i,j),bI(i,j+1),bI(i+1,j+1));
   }
   for(let j=0;j<A;j++) idx.push(fI(R,j),bI(R,j),bI(R,j+1), fI(R,j),bI(R,j+1),fI(R,j+1));
-  const g=new THREE.BufferGeometry();
-  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-  g.setIndex(idx); g.computeVertexNormals();
-  return g;
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setIndex(idx); g.computeVertexNormals(); return g;
 }
-function rimMesh(shape,hw,hh,rim){
-  // anillo: borde exterior = perímetro + width ; agujero interior = perímetro - 0.4 (lapa sobre la mica)
-  const A=120, outer=[], inner=[];
-  for(let j=0;j<A;j++){ const ang=j*360/A, tr=ang*Math.PI/180, r=semiDiam(ang,shape,hw,hh);
+function lensMaterial(n,ar){
+  // antirreflejante = película fina (iridiscencia verde/púrpura) + muy poco reflejo (glare).
+  // sin AR = reflejo fuerte (glare blanco), sin iridiscencia.
+  return new THREE.MeshPhysicalMaterial({
+    color:0xffffff, transmission:1.0, ior:n, thickness:Math.max(2,getCT()+2),
+    roughness:0.015, metalness:0, transparent:true, side:THREE.DoubleSide,
+    attenuationColor:new THREE.Color(ar?0xe9f7ee:0xeef4ff), attenuationDistance:7,
+    clearcoat:1.0, clearcoatRoughness:0.04,
+    envMapIntensity: ar?0.45:1.55,
+    iridescence: ar?0.55:0.0, iridescenceIOR:1.32, iridescenceThicknessRange:[120,420],
+    specularIntensity: ar?0.4:1.0,
+  });
+}
+function frameMat(rim,colKey){
+  const col=COLORS[colKey];
+  if(rim.metal) return new THREE.MeshPhysicalMaterial({color:col.metal,metalness:1.0,roughness:rim.rough,clearcoat:0.4,clearcoatRoughness:0.2,envMapIntensity:1.2});
+  const crystal = colKey==='crystal';
+  return new THREE.MeshPhysicalMaterial({color:col.base,metalness:0,roughness:rim.rough,clearcoat:1.0,clearcoatRoughness:0.08,
+    transmission:crystal?0.5:0.0, transparent:crystal, ior:1.5, envMapIntensity:1.0});
+}
+function rimMesh(shape,hw,hh,rim,colKey){
+  const A=128,outer=[],inner=[];
+  for(let j=0;j<A;j++){ const tr=j*360/A*Math.PI/180, r=semiDiam(j*360/A,shape,hw,hh);
     outer.push(new THREE.Vector2((r+rim.width)*Math.cos(tr),(r+rim.width)*Math.sin(tr)));
     inner.push(new THREE.Vector2((r-0.4)*Math.cos(tr),(r-0.4)*Math.sin(tr))); }
-  const shp=new THREE.Shape(outer); const hole=new THREE.Path(inner); shp.holes.push(hole);
-  const geo=new THREE.ExtrudeGeometry(shp,{depth:rim.depth,bevelEnabled:true,bevelThickness:0.5,bevelSize:0.5,bevelSegments:2,curveSegments:64});
-  // extruye en +z desde 0..depth ; lo movemos para que el frente quede en +FRONT_LIP y cubra hacia atrás
+  const shp=new THREE.Shape(outer); shp.holes.push(new THREE.Path(inner));
+  const bevel=Math.min(1.6,rim.depth*0.22);
+  const geo=new THREE.ExtrudeGeometry(shp,{depth:rim.depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:3,curveSegments:72});
   geo.translate(0,0,-(rim.depth-FRONT_LIP));
-  const mat=new THREE.MeshPhysicalMaterial({color:rim.color, roughness:rim.rough,
-    metalness:rim.metal?1.0:0.0, clearcoat:rim.metal?0.3:1.0, clearcoatRoughness:0.15});
-  return new THREE.Mesh(geo,mat);
+  const m=new THREE.Mesh(geo,frameMat(rim,colKey)); m.castShadow=true; return m;
 }
-function templeMesh(rim,hw,hh,side){
-  const g=new THREE.BoxGeometry(2.0,4.0,26);
-  const m=new THREE.MeshPhysicalMaterial({color:rim.color,roughness:rim.rough,metalness:rim.metal?1:0,clearcoat:rim.metal?0.3:1,clearcoatRoughness:0.2});
-  const mesh=new THREE.Mesh(g,m); mesh.position.set(side*(hw+rim.width),hh*0.35,-13+FRONT_LIP); return mesh;
+function box(w,h,d,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.castShadow=true; return m; }
+function templeGroup(rim,hw,hh,side,colKey){
+  const g=new THREE.Group(), mat=frameMat(rim,colKey), thick=rim.metal?1.4:rim.width*0.9+1.5;
+  const arm=box(thick,thick,30,mat); arm.position.set(side*(hw+rim.width),hh*0.32,-15+FRONT_LIP); arm.rotation.y=side*0.08; g.add(arm);
+  const tip=box(thick,thick,8,mat); tip.position.set(side*(hw+rim.width+1),hh*0.32-3,-30+FRONT_LIP); tip.rotation.x=0.5; g.add(tip);
+  const hinge=box(thick+1.2,thick+1.5,1.6,mat); hinge.position.set(side*(hw+rim.width*0.6),hh*0.32,FRONT_LIP-1); g.add(hinge);
+  return g;
+}
+function nosePads(hw,hh,mat){
+  const g=new THREE.Group();
+  [[-1],[1]].forEach(([s])=>{ const pad=new THREE.Mesh(new THREE.SphereGeometry(2.0,16,12),mat);
+    pad.scale.set(0.6,1.3,0.5); pad.position.set(s*(hw*0.32),-hh*0.55,FRONT_LIP-2); pad.castShadow=true; g.add(pad); });
+  return g;
 }
 
 function initThree(){
   const cv=document.getElementById('cv3d');
   renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
-  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
-  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1; renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   scene=new THREE.Scene(); scene.background=new THREE.Color(0x0c1118);
-  const pmrem=new THREE.PMREMGenerator(renderer);
-  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
-  camera=new THREE.PerspectiveCamera(40,1,1,3000); camera.position.set(35,26,160);
-  controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=.08;
-  controls.minDistance=70; controls.maxDistance=320; controls.autoRotate=true; controls.autoRotateSpeed=0.7;
-  cv.addEventListener('pointerdown',()=>controls.autoRotate=false,{once:true});
-  const d1=new THREE.DirectionalLight(0xffffff,1.4); d1.position.set(60,90,120); scene.add(d1);
-  const d2=new THREE.DirectionalLight(0xbcd2ff,0.6); d2.position.set(-90,-30,40); scene.add(d2);
-  lensGroup=new THREE.Group(); scene.add(lensGroup);
+  const pmrem=new THREE.PMREMGenerator(renderer); scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+  camera=new THREE.PerspectiveCamera(38,1,1,3000);
+  controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=.08; controls.minDistance=70; controls.maxDistance=340;
+  controls.autoRotate=true; controls.autoRotateSpeed=0.8; cv.addEventListener('pointerdown',()=>controls.autoRotate=false,{once:true});
+  const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(50,90,110);
+  key.castShadow=true; key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=10; key.shadow.camera.far=400;
+  key.shadow.camera.left=-120; key.shadow.camera.right=120; key.shadow.camera.top=120; key.shadow.camera.bottom=-120; key.shadow.bias=-0.0005; scene.add(key);
+  scene.add(Object.assign(new THREE.DirectionalLight(0xbcd2ff,0.7),{position:new THREE.Vector3(-90,10,40)}));
+  scene.add(Object.assign(new THREE.DirectionalLight(0xffe6c0,0.5),{position:new THREE.Vector3(0,-30,-90)}));
+  // piso de sombra
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.ShadowMaterial({opacity:0.32}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-46; ground.receiveShadow=true; scene.add(ground);
+  glasses=new THREE.Group(); scene.add(glasses);
   inited=true; running=true;
   (function loop(){ if(!running)return; controls.update(); renderer.render(scene,camera); requestAnimationFrame(loop); })();
   window.addEventListener('resize',resize3d);
 }
-function resize3d(){ if(!renderer)return;
-  const el=document.getElementById('wrap3d'), w=el.clientWidth, h=el.clientHeight;
+function resize3d(){ if(!renderer)return; const el=document.getElementById('wrap3d'),w=el.clientWidth,h=el.clientHeight;
   renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
-
+function setView(v){
+  if(!camera)return; const d=160;
+  if(v==='front')camera.position.set(0,0,d);
+  else if(v==='side')camera.position.set(d,6,8);
+  else if(v==='top')camera.position.set(0,d*0.9,40);
+  else camera.position.set(38,26,150);
+  controls.target.set(0,0,0); controls.update();
+}
 function draw3D(){
-  if(!inited){ initThree(); document.getElementById('load3d').style.display='none'; }
+  if(!inited){ initThree(); document.getElementById('load3d').style.display='none'; setView('34'); }
   resize3d();
-  while(lensGroup.children.length){ const c=lensGroup.children.pop(); if(c.geometry)c.geometry.dispose(); lensGroup.remove(c); }
+  while(glasses.children.length){ const c=glasses.children.pop(); c.traverse?.(o=>{o.geometry&&o.geometry.dispose();}); glasses.remove(c); }
   const {w:hw,h:hh}=half(), ct=getCT();
   const matObj=MATERIALS.find(m=>m.id===state.idxA), n=matObj.n;
-  const rim=RIMS[state.rim];
-  lensMatA=new THREE.MeshPhysicalMaterial({
-    color:0xffffff, transmission:1.0, ior:n, thickness:Math.max(2,ct+2),
-    roughness:0.02, metalness:0, transparent:true, side:THREE.DoubleSide,
-    attenuationColor:new THREE.Color(0xeaf6ff), attenuationDistance:6, clearcoat:0.4, clearcoatRoughness:0.08 });
-  const sep=hw+18/2;
-  let maxEt=0;
+  const rim=RIMS[state.rim], ar=state.ar==='on';
+  const lensMat=lensMaterial(n,ar);
+  const sep=hw+18/2; let maxEt=0;
   [['od',-sep],['oi',sep]].forEach(([eye,ox])=>{
-    const rx=readRx(eye);
-    for(let a=0;a<360;a+=4){ const et=edgeAt(a,rx,n,state.shape,hw,hh,ct); if(et>maxEt)maxEt=et; }
-    const lens=new THREE.Mesh(lensGeometry(rx,n,state.shape,hw,hh,ct),lensMatA);
-    lens.position.x=ox; lensGroup.add(lens);
-    if(rim.show){ const r=rimMesh(state.shape,hw,hh,rim); r.position.x=ox; lensGroup.add(r); }
+    const rx=readRx(eye); for(let a=0;a<360;a+=4){ const et=edgeAt(a,rx,n,state.shape,hw,hh,ct); if(et>maxEt)maxEt=et; }
+    const lens=new THREE.Mesh(lensGeometry(rx,n,state.shape,hw,hh,ct),lensMat); lens.position.x=ox; glasses.add(lens);
+    if(rim.show){ const r=rimMesh(state.shape,hw,hh,rim,state.color); r.position.x=ox; glasses.add(r); }
   });
   if(rim.show){
-    const bridge=new THREE.Mesh(new THREE.BoxGeometry(18,4,Math.max(3,rim.depth*0.7)),
-      new THREE.MeshPhysicalMaterial({color:rim.color,roughness:rim.rough,metalness:rim.metal?1:0,clearcoat:rim.metal?0.3:1,clearcoatRoughness:0.15}));
-    bridge.position.set(0,hh*0.5,FRONT_LIP-rim.depth*0.5); lensGroup.add(bridge);
-    lensGroup.add(templeMesh(rim,hw,hh,1)); lensGroup.add(templeMesh(rim,hw,hh,-1));
+    const fmat=frameMat(rim,state.color);
+    const bridge=box(15,4.5,Math.max(3,rim.depth*0.75),fmat); bridge.position.set(0,hh*0.5,FRONT_LIP-rim.depth*0.45); glasses.add(bridge);
+    glasses.add(templeGroup(rim,hw,hh,1,state.color)); glasses.add(templeGroup(rim,hw,hh,-1,state.color));
+    if(rim.pads) glasses.add(nosePads(hw,hh,frameMat(rim,state.color)));
   }
-  // caption: cuánto esconde el armazón
   const cap=document.getElementById('cap3d');
-  const coverBack = rim.show? (rim.depth-FRONT_LIP) : 0;     // mm que cubre hacia atrás
-  const poke=Math.max(0, maxEt-coverBack);
-  let line=`Borde más grueso: <b>${maxEt.toFixed(1)} mm</b> · material mostrado <b>${matObj.name}</b>.`;
+  const coverBack=rim.show?(rim.depth-FRONT_LIP):0, poke=Math.max(0,maxEt-coverBack);
+  let line=`Borde más grueso: <b>${maxEt.toFixed(1)} mm</b> · material <b>${matObj.name}</b> · ${ar?'<b>con antirreflejante</b> (reflejo verde, sin glare)':'<b>sin AR</b> (reflejo blanco molesto)'}.`;
   if(!rim.show) line+=` <span class="hideline">Armazón al aire: el borde queda totalmente expuesto.</span>`;
-  else if(poke<=0.2) line+=` <span class="hideline">El armazón <b>${rim.label}</b> esconde el borde casi por completo. 👍</span>`;
-  else line+=` <span class="hideline">El armazón <b>${rim.label}</b> tapa ~${coverBack.toFixed(1)} mm; sobresalen ~${poke.toFixed(1)} mm. Un armazón más grueso lo escondería.</span>`;
+  else if(poke<=0.2) line+=` <span class="hideline">El armazón ${rim.label} esconde el borde casi por completo. 👍</span>`;
+  else line+=` <span class="hideline">El armazón ${rim.label} tapa ~${coverBack.toFixed(1)} mm; sobresalen ~${poke.toFixed(1)} mm. Un armazón más grueso lo escondería.</span>`;
   cap.innerHTML=line;
 }
 
-/* ════════════ Corte 2D ════════════ */
+/* ════════ Corte 2D ════════ */
 function drawCross(){
-  const cv=document.getElementById('cvCross'), ctx=cv.getContext('2d'), W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
-  const rx=readRx('od'), {w:hw,h:hh}=half(), ct=getCT();
+  const cv=document.getElementById('cvCross'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height; ctx.clearRect(0,0,W,H);
+  const rx=readRx('od'),{w:hw,h:hh}=half(),ct=getCT();
   const mats=[MATERIALS.find(m=>m.id===state.idxA),MATERIALS.find(m=>m.id===state.idxB)];
-  let maxAng=0,best=0; for(let a=0;a<360;a++){ const et=edgeAt(a,rx,mats[0].n,state.shape,hw,hh,ct); if(et>best){best=et;maxAng=a;} }
-  const h=semiDiam(maxAng,state.shape,hw,hh), P=meridianPower(rx.sph,rx.cyl,rx.axis,maxAng);
-  const cols=[{cx:W*0.27},{cx:W*0.73}], scaleY=3.2, scaleX=14, cy=H*0.5;
-  ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui'; ctx.textAlign='center';
-  ctx.fillText('Corte en meridiano '+Math.round(maxAng)+'° · poder '+P.toFixed(2)+' D · OD', W/2, 18);
-  mats.forEach((m,k)=>{ const cx=cols[k].cx, et=thicknessAt(h,P,m.n,ct), steps=44, prof=[];
-    for(let i=0;i<=steps;i++){ const y=-h+2*h*i/steps; prof.push({y,t:thicknessAt(Math.abs(y),P,m.n,ct)}); }
-    ctx.beginPath(); prof.forEach((pt,i)=>{ const x=cx+pt.t/2*scaleX,yy=cy-pt.y*scaleY; i===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy); });
-    for(let i=prof.length-1;i>=0;i--){ ctx.lineTo(cx-prof[i].t/2*scaleX,cy-prof[i].y*scaleY); } ctx.closePath();
-    const g=ctx.createLinearGradient(cx-30,0,cx+30,0); g.addColorStop(0,'rgba(90,209,200,.15)'); g.addColorStop(.5,'rgba(140,190,230,.4)'); g.addColorStop(1,'rgba(90,209,200,.15)');
-    ctx.fillStyle=g; ctx.fill(); ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle=getCss('--white'); ctx.font='700 13px system-ui'; ctx.fillText(m.name,cx,cy-h*scaleY-22);
-    ctx.fillStyle=getCss('--muted'); ctx.font='11px system-ui'; ctx.fillText('índice '+m.n.toFixed(2),cx,cy-h*scaleY-6);
-    ctx.fillStyle=thickColor(et); ctx.font='700 14px system-ui'; ctx.fillText('borde '+et.toFixed(1)+' mm',cx,cy+h*scaleY+22);
-    ctx.fillStyle=getCss('--muted'); ctx.font='10px system-ui'; ctx.fillText('centro '+ct.toFixed(1)+' mm',cx,cy+h*scaleY+38);
+  let maxAng=0,best=0; for(let a=0;a<360;a++){const et=edgeAt(a,rx,mats[0].n,state.shape,hw,hh,ct);if(et>best){best=et;maxAng=a;}}
+  const h=semiDiam(maxAng,state.shape,hw,hh),P=meridianPower(rx.sph,rx.cyl,rx.axis,maxAng);
+  const cols=[{cx:W*0.27},{cx:W*0.73}],scaleY=3.2,scaleX=14,cy=H*0.5;
+  ctx.fillStyle=getCss('--muted');ctx.font='11px system-ui';ctx.textAlign='center';
+  ctx.fillText('Corte en meridiano '+Math.round(maxAng)+'° · poder '+P.toFixed(2)+' D · OD',W/2,18);
+  mats.forEach((m,k)=>{const cx=cols[k].cx,et=thicknessAt(h,P,m.n,ct),steps=44,prof=[];
+    for(let i=0;i<=steps;i++){const y=-h+2*h*i/steps;prof.push({y,t:thicknessAt(Math.abs(y),P,m.n,ct)});}
+    ctx.beginPath();prof.forEach((pt,i)=>{const x=cx+pt.t/2*scaleX,yy=cy-pt.y*scaleY;i===0?ctx.moveTo(x,yy):ctx.lineTo(x,yy);});
+    for(let i=prof.length-1;i>=0;i--){ctx.lineTo(cx-prof[i].t/2*scaleX,cy-prof[i].y*scaleY);}ctx.closePath();
+    const g=ctx.createLinearGradient(cx-30,0,cx+30,0);g.addColorStop(0,'rgba(90,209,200,.15)');g.addColorStop(.5,'rgba(140,190,230,.4)');g.addColorStop(1,'rgba(90,209,200,.15)');
+    ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=getCss('--accent');ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=getCss('--white');ctx.font='700 13px system-ui';ctx.fillText(m.name,cx,cy-h*scaleY-22);
+    ctx.fillStyle=getCss('--muted');ctx.font='11px system-ui';ctx.fillText('índice '+m.n.toFixed(2),cx,cy-h*scaleY-6);
+    ctx.fillStyle=thickColor(et);ctx.font='700 14px system-ui';ctx.fillText('borde '+et.toFixed(1)+' mm',cx,cy+h*scaleY+22);
+    ctx.fillStyle=getCss('--muted');ctx.font='10px system-ui';ctx.fillText('centro '+ct.toFixed(1)+' mm',cx,cy+h*scaleY+38);
   });
-  const etA=thicknessAt(h,P,mats[0].n,ct), etB=thicknessAt(h,P,mats[1].n,ct);
-  ctx.fillStyle=getCss('--beige'); ctx.font='700 12px system-ui'; ctx.textAlign='center';
-  ctx.fillText('Diferencia: '+Math.abs(etA-etB).toFixed(1)+' mm', W/2, H-10);
+  const etA=thicknessAt(h,P,mats[0].n,ct),etB=thicknessAt(h,P,mats[1].n,ct);
+  ctx.fillStyle=getCss('--beige');ctx.font='700 12px system-ui';ctx.textAlign='center';
+  ctx.fillText('Diferencia: '+Math.abs(etA-etB).toFixed(1)+' mm',W/2,H-10);
 }
-
-/* ════════════ Tabla ════════════ */
+/* ════════ Tabla ════════ */
 function drawTable(){
-  const rx=readRx('od'), {w:hw,h:hh}=half(), ct=getCT();
-  const tb=document.querySelector('#tblMat tbody'); tb.innerHTML='';
-  const rows=MATERIALS.map(m=>{ let mx=0,mn=99; for(let a=0;a<360;a+=2){ const et=edgeAt(a,rx,m.n,state.shape,hw,hh,ct); if(et>mx)mx=et; if(et<mn)mn=et; } return {m,mx,mn}; });
-  const minMx=Math.min(...rows.map(r=>r.mx)), maxMx=Math.max(...rows.map(r=>r.mx));
-  rows.forEach(r=>{ const hi=(r.m.id===state.idxA||r.m.id===state.idxB);
+  const rx=readRx('od'),{w:hw,h:hh}=half(),ct=getCT();
+  const tb=document.querySelector('#tblMat tbody');tb.innerHTML='';
+  const rows=MATERIALS.map(m=>{let mx=0,mn=99;for(let a=0;a<360;a+=2){const et=edgeAt(a,rx,m.n,state.shape,hw,hh,ct);if(et>mx)mx=et;if(et<mn)mn=et;}return {m,mx,mn};});
+  const minMx=Math.min(...rows.map(r=>r.mx)),maxMx=Math.max(...rows.map(r=>r.mx));
+  rows.forEach(r=>{const hi=(r.m.id===state.idxA||r.m.id===state.idxB);
     const badge=r.mx===minMx?'<span class="badge best">más delgado</span>':(r.mx===maxMx?'<span class="badge worst">más grueso</span>':'');
-    tb.insertAdjacentHTML('beforeend',`<tr class="${hi?'hi':''}"><td class="mat">${r.m.name}</td><td>${r.m.n.toFixed(2)}</td><td style="color:${thickColor(r.mx)};font-weight:700">${r.mx.toFixed(1)} mm</td><td>${r.mn.toFixed(1)} mm</td><td>${badge}</td></tr>`); });
-  const a=rows.find(r=>r.m.id===state.idxA), b=rows.find(r=>r.m.id===state.idxB);
-  const thinner=a.mx<b.mx?a:b, thicker=a.mx<b.mx?b:a, diff=thicker.mx-thinner.mx, pct=thicker.mx>0?Math.round(diff/thicker.mx*100):0;
-  let msg; if(diff<0.4) msg=`Con esta graduación la diferencia entre <b>${a.m.name}</b> y <b>${b.m.name}</b> es mínima (${diff.toFixed(1)} mm). El alto índice no se justifica por grosor aquí.`;
-  else msg=`<b>${thinner.m.name}</b> deja el borde <b>${diff.toFixed(1)} mm más delgado</b> que <b>${thicker.m.name}</b> (${pct}% menos).${ thicker.mx>=6?' A este grosor el armazón ayuda mucho: una mica más cerrada/pequeña o un acetato grueso reduce/esconde el borde.':'' }`;
+    tb.insertAdjacentHTML('beforeend',`<tr class="${hi?'hi':''}"><td class="mat">${r.m.name}</td><td>${r.m.n.toFixed(2)}</td><td style="color:${thickColor(r.mx)};font-weight:700">${r.mx.toFixed(1)} mm</td><td>${r.mn.toFixed(1)} mm</td><td>${badge}</td></tr>`);});
+  const a=rows.find(r=>r.m.id===state.idxA),b=rows.find(r=>r.m.id===state.idxB);
+  const thinner=a.mx<b.mx?a:b,thicker=a.mx<b.mx?b:a,diff=thicker.mx-thinner.mx,pct=thicker.mx>0?Math.round(diff/thicker.mx*100):0;
+  let msg;if(diff<0.4)msg=`Con esta graduación la diferencia entre <b>${a.m.name}</b> y <b>${b.m.name}</b> es mínima (${diff.toFixed(1)} mm). El alto índice no se justifica por grosor aquí.`;
+  else msg=`<b>${thinner.m.name}</b> deja el borde <b>${diff.toFixed(1)} mm más delgado</b> que <b>${thicker.m.name}</b> (${pct}% menos).${thicker.mx>=6?' A este grosor el armazón ayuda mucho: una mica más cerrada/pequeña o un acetato grueso reduce/esconde el borde.':''}`;
   document.getElementById('verdict').innerHTML=msg;
 }
 
-function render(){ try{ draw3D(); }catch(e){ console.warn('3D',e); document.getElementById('load3d').style.display='none'; document.getElementById('err3d').style.display='flex'; } drawCross(); drawTable(); }
+function render(){ try{draw3D();}catch(e){console.warn('3D',e);document.getElementById('load3d').style.display='none';document.getElementById('err3d').style.display='flex';} drawCross(); drawTable(); }
 
 /* ── Eventos ── */
-function copyEye(from,to){ ['sph','cyl','axis'].forEach(f=>{document.getElementById(to+'-'+f).value=document.getElementById(from+'-'+f).value;}); render(); }
-function setRx(eye,s,c,a){ document.getElementById(eye+'-sph').value=s.toFixed(2); document.getElementById(eye+'-cyl').value=c.toFixed(2); document.getElementById(eye+'-axis').value=a; }
+function copyEye(f,t){ ['sph','cyl','axis'].forEach(k=>{document.getElementById(t+'-'+k).value=document.getElementById(f+'-'+k).value;}); render(); }
+function setRx(e,s,c,a){ document.getElementById(e+'-sph').value=s.toFixed(2); document.getElementById(e+'-cyl').value=c.toFixed(2); document.getElementById(e+'-axis').value=a; }
 function loadExample(t){
-  if(t==='miopia'){ setRx('od',-6,0,0); setRx('oi',-6,0,0); }
-  if(t==='astig'){ setRx('od',-3,-1.50,180); setRx('oi',-3,-2.50,90); }
-  if(t==='alta'){ setRx('od',-9,-1.00,10); setRx('oi',-8.50,-1.25,170); }
+  if(t==='miopia'){setRx('od',-6,0,0);setRx('oi',-6,0,0);}
+  if(t==='astig'){setRx('od',-3,-1.50,180);setRx('oi',-3,-2.50,90);}
+  if(t==='alta'){setRx('od',-9,-1.00,10);setRx('oi',-8.50,-1.25,170);}
   render();
 }
 document.querySelectorAll('.example-bar button').forEach(b=>b.onclick=()=>loadExample(b.dataset.ex));
-document.querySelectorAll('.eye-title .copy').forEach(s=>s.onclick=()=>{ const [f,t]=s.dataset.copy.split(':'); copyEye(f,t); });
-document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('#shape-chips .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); state.shape=c.dataset.shape; render(); });
-document.querySelectorAll('#rim-chips .chip').forEach(c=>c.onclick=()=>{ document.querySelectorAll('#rim-chips .chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); state.rim=c.dataset.rim; render(); });
-['frame-w','frame-h','ct'].forEach(id=>{ const el=document.getElementById(id); el.oninput=()=>{ document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm'; render(); }; });
-['od-sph','od-cyl','od-axis','oi-sph','oi-cyl','oi-axis'].forEach(id=>{ document.getElementById(id).oninput=render; });
-
-(function fillSelects(){ const A=document.getElementById('idxA'),B=document.getElementById('idxB');
-  MATERIALS.forEach(m=>{ const o=`<option value="${m.id}">${m.name}</option>`; A.insertAdjacentHTML('beforeend',o); B.insertAdjacentHTML('beforeend',o); });
-  A.value=state.idxA; B.value=state.idxB; A.onchange=()=>{state.idxA=A.value;render();}; B.onchange=()=>{state.idxB=B.value;render();}; })();
-
+document.querySelectorAll('.eye-title .copy').forEach(s=>s.onclick=()=>{const[f,t]=s.dataset.copy.split(':');copyEye(f,t);});
+document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#shape-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.shape=c.dataset.shape;render();});
+document.querySelectorAll('#rim-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#rim-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.rim=c.dataset.rim;render();});
+document.querySelectorAll('#color-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#color-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.color=c.dataset.col;render();});
+document.querySelectorAll('#ar-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#ar-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.ar=c.dataset.ar;render();});
+document.querySelectorAll('#view-toggle button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#view-toggle button').forEach(x=>x.classList.remove('active'));b.classList.add('active');setView(b.dataset.view);});
+['frame-w','frame-h','ct'].forEach(id=>{const el=document.getElementById(id);el.oninput=()=>{document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm';render();};});
+['od-sph','od-cyl','od-axis','oi-sph','oi-cyl','oi-axis'].forEach(id=>{document.getElementById(id).oninput=render;});
+(function fillSelects(){const A=document.getElementById('idxA'),B=document.getElementById('idxB');
+  MATERIALS.forEach(m=>{const o=`<option value="${m.id}">${m.name}</option>`;A.insertAdjacentHTML('beforeend',o);B.insertAdjacentHTML('beforeend',o);});
+  A.value=state.idxA;B.value=state.idxB;A.onchange=()=>{state.idxA=A.value;render();};B.onchange=()=>{state.idxB=B.value;render();};})();
 render();
 </script>
 </body>
