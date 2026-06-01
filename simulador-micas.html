@@ -351,8 +351,8 @@ function initThree(){
   const key=new THREE.DirectionalLight(0xffffff,2.2); key.position.set(50,90,110);
   key.castShadow=true; key.shadow.mapSize.set(1024,1024); key.shadow.camera.near=10; key.shadow.camera.far=400;
   key.shadow.camera.left=-120; key.shadow.camera.right=120; key.shadow.camera.top=120; key.shadow.camera.bottom=-120; key.shadow.bias=-0.0005; scene.add(key);
-  scene.add(Object.assign(new THREE.DirectionalLight(0xbcd2ff,0.7),{position:new THREE.Vector3(-90,10,40)}));
-  scene.add(Object.assign(new THREE.DirectionalLight(0xffe6c0,0.5),{position:new THREE.Vector3(0,-30,-90)}));
+  const fill=new THREE.DirectionalLight(0xbcd2ff,0.7); fill.position.set(-90,10,40); scene.add(fill);
+  const rimLight=new THREE.DirectionalLight(0xffe6c0,0.5); rimLight.position.set(0,-30,-90); scene.add(rimLight);
   // piso de sombra
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(600,600),new THREE.ShadowMaterial({opacity:0.32}));
   ground.rotation.x=-Math.PI/2; ground.position.y=-46; ground.receiveShadow=true; scene.add(ground);
