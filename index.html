@@ -5756,6 +5756,7 @@ function go(id) {
   closeSidebar();
   const mainEl = document.querySelector('.main');
   if (mainEl) mainEl.scrollTop = 0;
+  try { if (typeof _ptrTagRefreshButtons === 'function') _ptrTagRefreshButtons(); } catch(e) {}
   if (id === 'dashboard')           loadDash();
   if (id === 'agenda')              loadAgenda();
   if (id === 'pacientes')           loadPac();
