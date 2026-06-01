@@ -264,8 +264,23 @@ html, body {
   height: 100%;
   overflow-y: auto; 
   
-  position: relative; 
+  position: relative;
 }
+
+/* ── PULL TO REFRESH (móvil) ── */
+#ptr-indicator {
+  position: fixed; top: 0; left: 0; right: 0; height: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  overflow: hidden; z-index: 250; pointer-events: none;
+  transition: height .25s ease;
+}
+#ptr-indicator .ptr-spinner {
+  width: 28px; height: 28px; margin-bottom: 9px; border-radius: 50%;
+  border: 3px solid rgba(226,198,166,0.25); border-top-color: var(--beige);
+  opacity: 0; box-sizing: border-box;
+}
+#ptr-indicator.ptr-spinning .ptr-spinner { opacity: 1 !important; animation: ptrspin .7s linear infinite; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }
 
 /* ── VIEWS ── */
 .view { display: none; animation: fadeUp 0.22s ease; }
@@ -930,6 +945,9 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
   .sidebar.open { transform: translateX(0); }
 
   .main { height: auto; min-height: calc(100vh - 52px); overflow-y: visible; padding-bottom: 80px; }
+
+  /* En móvil el refresco es jalando hacia abajo (pull-to-refresh) → ocultar botón 🔄 */
+  .ptr-refresh-btn { display: none !important; }
 
   .topbar { display: flex; flex-direction: column; padding: 10px 14px; gap: 8px; }
   .topbar-left h2 { font-size: 16px; }
@@ -5544,6 +5562,7 @@ function setupApp(u) {
     setTimeout(checkChangelog, 500);
     startDashRefresh();
     initRealtimeSubscriptions();
+    setTimeout(function(){ try { initPullToRefresh(); } catch(e) { console.warn('PTR init:', e.message); } }, 1500);
     loadAutoAuthFlag();
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
@@ -5858,6 +5877,114 @@ function initRealtimeSubscriptions() {
   });
 }
 // ── Fin Realtime ─────────────────────────────────────────────
+
+// ── PULL TO REFRESH (móvil) ──────────────────────────────────
+// Reemplaza el botón 🔄 en móvil: jalar hacia abajo desde el tope refresca la vista activa.
+var _ptrViewFn = {
+  dashboard:'loadDash', pacientes:'loadPac', 'historial-ventas':'cargarHistorialVentas',
+  caja:'initCaja', creditos:'loadCreditos', laboratorio:'loadLab', 'lab-proceso':'loadLabTablero',
+  productos:'cargarProductos', promociones:'cargarPromociones', comisiones:'calcularComisiones',
+  contabilidad:'initContabilidad', asistencia:'initAsistencia', estrategia:'initEstrategia',
+  'compras-lab':'clbInit', garantias:'cargarHistorialGarantias', ventas:'cargarVtaPendientes',
+  'lentes-contacto':'initLcModule', 'auditoria-pedidos':'loadAuditoriaPedidos',
+  'surtido-station':'surtStInit', 'reporte-materiales':'initReporteMateriales'
+};
+
+function _ptrIsMobile() { return !!(window.matchMedia && window.matchMedia('(max-width: 720px)').matches); }
+
+function _ptrTagRefreshButtons() {
+  try {
+    document.querySelectorAll('.main button').forEach(function(b){
+      if ((b.textContent || '').trim() === '🔄') b.classList.add('ptr-refresh-btn');
+    });
+  } catch(e) {}
+}
+
+function _ptrDoRefresh() {
+  // 1) Click del botón 🔄 de la vista activa (reutiliza su lógica exacta, aunque esté oculto)
+  try {
+    var v = (typeof currentView !== 'undefined' && currentView) ? document.getElementById('view-' + currentView) : null;
+    if (v) { var btn = v.querySelector('.ptr-refresh-btn'); if (btn) { btn.click(); return; } }
+  } catch(e) {}
+  // 2) Fallback: función conocida por vista
+  try {
+    var fn = _ptrViewFn[typeof currentView !== 'undefined' ? currentView : ''];
+    if (fn && typeof window[fn] === 'function') { window[fn](); return; }
+    if (typeof loadDash === 'function') loadDash();
+  } catch(e) {}
+}
+
+function initPullToRefresh() {
+  _ptrTagRefreshButtons();
+  if (window._ptrInit) return;
+  window._ptrInit = true;
+
+  var ind = document.getElementById('ptr-indicator');
+  if (!ind) {
+    ind = document.createElement('div');
+    ind.id = 'ptr-indicator';
+    ind.innerHTML = '<div class="ptr-spinner"></div>';
+    document.body.appendChild(ind);
+  }
+  var spinner = ind.querySelector('.ptr-spinner');
+
+  var startY = 0, pulling = false, dist = 0, refreshing = false;
+  var THRESHOLD = 70, MAX = 110;
+
+  function atTop() {
+    var se = document.scrollingElement || document.documentElement;
+    return (window.scrollY || se.scrollTop || 0) <= 0;
+  }
+  function blocked(t) {
+    if (!t || !t.closest) return false;
+    return !!t.closest('.m-overlay, .wcrm-modal, [id*="modal"], [id*="overlay"], input, textarea, select, canvas');
+  }
+
+  document.addEventListener('touchstart', function(e){
+    if (refreshing || !_ptrIsMobile() || !atTop() || e.touches.length !== 1 || blocked(e.target)) { pulling = false; return; }
+    startY = e.touches[0].clientY; pulling = true; dist = 0;
+    ind.style.transition = 'none';
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e){
+    if (!pulling || refreshing) return;
+    var dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { if (dist) { dist = 0; ind.style.height = '0px'; } return; }
+    if (!atTop()) { pulling = false; ind.style.height = '0px'; return; }
+    dist = Math.min(MAX, dy * 0.5); // resistencia
+    if (dist > 4) {
+      e.preventDefault(); // suprime el scroll/elastic nativo mientras jalamos
+      ind.style.height = dist + 'px';
+      spinner.style.transform = 'rotate(' + Math.min(360, (dist / THRESHOLD) * 320) + 'deg)';
+      spinner.style.opacity = Math.min(1, dist / 40);
+    }
+  }, { passive: false });
+
+  function endPull() {
+    if (!pulling || refreshing) { pulling = false; return; }
+    pulling = false;
+    ind.style.transition = 'height .25s ease';
+    if (dist >= THRESHOLD) {
+      refreshing = true;
+      ind.style.height = '46px';
+      ind.classList.add('ptr-spinning');
+      try { _ptrDoRefresh(); } catch(e) {}
+      setTimeout(function(){
+        ind.classList.remove('ptr-spinning');
+        ind.style.height = '0px';
+        spinner.style.transform = ''; spinner.style.opacity = '';
+        refreshing = false; dist = 0;
+      }, 900);
+    } else {
+      ind.style.height = '0px';
+      spinner.style.opacity = '';
+      dist = 0;
+    }
+  }
+  document.addEventListener('touchend', endPull, { passive: true });
+  document.addEventListener('touchcancel', endPull, { passive: true });
+}
+// ── Fin Pull to Refresh ──────────────────────────────────────
 
 const LAB_ESTADOS = {
   'Enviado al lab':        { cls: 'enviado',   dot: '#8ab0e8' },
