@@ -237,9 +237,9 @@ const MATERIALS = [
 ];
 const RIMS = {
   none:  {show:false},
-  thin:  {show:true, width:1.1, depth:3.0, metal:true,  rough:0.22, label:'metal fino', pads:true},
-  med:   {show:true, width:2.6, depth:5.5, metal:false, rough:0.38, label:'acetato',    pads:false},
-  thick: {show:true, width:4.4, depth:9.0, metal:false, rough:0.44, label:'acetato grueso', pads:false},
+  thin:  {show:true, width:1.2, depth:3.0, metal:true,  rough:0.22, label:'metal fino', pads:true},
+  med:   {show:true, width:3.6, depth:6.0, metal:false, rough:0.38, label:'acetato',    pads:false},
+  thick: {show:true, width:5.6, depth:9.5, metal:false, rough:0.44, label:'acetato grueso', pads:false},
 };
 const COLORS = {
   black:{base:0x16181d, metal:0x9aa0a8, name:'negro'},
@@ -247,6 +247,8 @@ const COLORS = {
   crystal:{base:0xc9d2db, metal:0xd8dee6, name:'cristal'},
   blue:{base:0x1b3a66, metal:0x5b7fb0, name:'azul'},
 };
+// herraje metálico fino que se monta cuando el armazón es "al aire" (rimless): patillas + puente + plaquetas
+const RIM_MOUNT = {show:false, metal:true, width:1.0, depth:2.6, rough:0.30, label:'al aire', pads:true};
 let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med', color:'black', ar:'on' };
 
 // ── Física ──
@@ -291,55 +293,89 @@ function lensMaterial(n,ar){
   // antirreflejante = película fina (iridiscencia verde/púrpura) + muy poco reflejo (glare).
   // sin AR = reflejo fuerte (glare blanco), sin iridiscencia.
   return new THREE.MeshPhysicalMaterial({
-    color:0xffffff, transmission:1.0, ior:n, thickness:Math.max(2,getCT()+2),
-    roughness:0.015, metalness:0, transparent:true, side:THREE.DoubleSide,
-    attenuationColor:new THREE.Color(ar?0xe9f7ee:0xeef4ff), attenuationDistance:7,
-    clearcoat:1.0, clearcoatRoughness:0.04,
-    envMapIntensity: ar?0.45:1.55,
-    iridescence: ar?0.55:0.0, iridescenceIOR:1.32, iridescenceThicknessRange:[120,420],
-    specularIntensity: ar?0.4:1.0,
+    color:0xffffff, transmission:1.0, ior:n, thickness:Math.max(1.2,getCT()*0.5),
+    roughness:0.02, metalness:0, transparent:true, side:THREE.DoubleSide,
+    // tinte casi nulo (attenuationDistance grande) → mica CLARA, no de sol
+    attenuationColor:new THREE.Color(ar?0xf0fff8:0xf2f6ff), attenuationDistance:60,
+    // AR: poco glare + reflejo residual VERDE (specular + sheen + iridiscencia verde/púrpura)
+    clearcoat: ar?0.2:1.0, clearcoatRoughness:0.05,
+    envMapIntensity: ar?0.9:1.7,
+    iridescence: ar?1.0:0.0, iridescenceIOR:1.45, iridescenceThicknessRange:[300,520],
+    specularColor: ar?new THREE.Color(0x2bff95):new THREE.Color(0xffffff),
+    specularIntensity: ar?0.95:1.0,
+    sheen: ar?0.8:0.0, sheenColor:new THREE.Color(0x29ff9c), sheenRoughness:0.35,
   });
 }
 function frameMat(rim,colKey){
   const col=COLORS[colKey];
-  if(rim.metal) return new THREE.MeshPhysicalMaterial({color:col.metal,metalness:1.0,roughness:rim.rough,clearcoat:0.4,clearcoatRoughness:0.2,envMapIntensity:1.2});
+  if(rim.metal) return new THREE.MeshPhysicalMaterial({color:col.metal,metalness:1.0,roughness:0.3,clearcoat:0.45,clearcoatRoughness:0.18,envMapIntensity:1.2});
   const crystal = colKey==='crystal';
-  return new THREE.MeshPhysicalMaterial({color:col.base,metalness:0,roughness:rim.rough,clearcoat:1.0,clearcoatRoughness:0.08,
-    transmission:crystal?0.5:0.0, transparent:crystal, ior:1.5, envMapIntensity:1.0});
+  // acetato = plástico pulido, NO cromo: reflejo suave (clearcoat bajo + envMap bajo + más rugosidad)
+  return new THREE.MeshPhysicalMaterial({color:col.base,metalness:0,roughness:0.46,clearcoat:0.55,clearcoatRoughness:0.2,
+    sheen:0.22, sheenRoughness:0.6, sheenColor:new THREE.Color(0xffffff),
+    transmission:crystal?0.6:0.0, transparent:crystal, ior:1.5, envMapIntensity:0.65});
 }
 function rimMesh(shape,hw,hh,rim,colKey){
-  const A=128,outer=[],inner=[];
+  const A=160,outer=[],inner=[];
   for(let j=0;j<A;j++){ const tr=j*360/A*Math.PI/180, r=semiDiam(j*360/A,shape,hw,hh);
     outer.push(new THREE.Vector2((r+rim.width)*Math.cos(tr),(r+rim.width)*Math.sin(tr)));
     inner.push(new THREE.Vector2((r-0.4)*Math.cos(tr),(r-0.4)*Math.sin(tr))); }
   const shp=new THREE.Shape(outer); shp.holes.push(new THREE.Path(inner));
-  const bevel=Math.min(1.6,rim.depth*0.22);
-  const geo=new THREE.ExtrudeGeometry(shp,{depth:rim.depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:3,curveSegments:72});
+  // bisel pequeño = cara frontal PLANA (frente de acetato real), no tubo/dona
+  const bevel=Math.min(0.7,rim.width*0.22);
+  const geo=new THREE.ExtrudeGeometry(shp,{depth:rim.depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:4,curveSegments:128});
   geo.translate(0,0,-(rim.depth-FRONT_LIP));
-  const m=new THREE.Mesh(geo,frameMat(rim,colKey)); m.castShadow=true; return m;
+  const m=new THREE.Mesh(geo,frameMat(rim,colKey)); m.castShadow=true; m.receiveShadow=true; return m;
 }
-function box(w,h,d,mat){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat); m.castShadow=true; return m; }
-function templeGroup(rim,hw,hh,side,colKey){
-  const g=new THREE.Group(), mat=frameMat(rim,colKey), thick=rim.metal?1.4:rim.width*0.9+1.5;
-  const arm=box(thick,thick,30,mat); arm.position.set(side*(hw+rim.width),hh*0.32,-15+FRONT_LIP); arm.rotation.y=side*0.08; g.add(arm);
-  const tip=box(thick,thick,8,mat); tip.position.set(side*(hw+rim.width+1),hh*0.32-3,-30+FRONT_LIP); tip.rotation.x=0.5; g.add(tip);
-  const hinge=box(thick+1.2,thick+1.5,1.6,mat); hinge.position.set(side*(hw+rim.width*0.6),hh*0.32,FRONT_LIP-1); g.add(hinge);
+// tubo curvo a lo largo de una polilínea (patillas, puente, brazos de plaqueta)
+function tube(points,radius,mat,segs){
+  const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
+  const m=new THREE.Mesh(new THREE.TubeGeometry(curve,segs||64,radius,16,false),mat); m.castShadow=true; return m;
+}
+function endCap(p,radius,mat){ const m=new THREE.Mesh(new THREE.SphereGeometry(radius,16,12),mat); m.position.set(p[0],p[1],p[2]); m.castShadow=true; return m; }
+function templeGroup(rim,ax,ay,az,side,colKey){
+  const g=new THREE.Group(), mat=frameMat(rim,colKey);
+  const rad=rim.metal?0.95:Math.min(3.2,rim.width*0.45+1.0);
+  const pts=[ [ax,ay,az], [ax+side*1.2,ay+0.5,az-14], [ax+side*0.6,ay,az-36],
+              [ax-side*0.4,ay-2.5,az-52], [ax-side*1.4,ay-9,az-58], [ax-side*2.0,ay-16,az-59] ];
+  g.add(tube(pts,rad,mat)); g.add(endCap(pts[pts.length-1],rad*1.05,mat));
+  // bisagra (barril cilíndrico vertical)
+  const hg=new THREE.Mesh(new THREE.CylinderGeometry(rim.metal?1.0:1.5,rim.metal?1.0:1.5,rim.metal?3:4.2,18),mat);
+  hg.position.set(ax,ay,az+0.5); hg.castShadow=true; g.add(hg);
   return g;
 }
-function nosePads(hw,hh,mat){
+// puente curvo tipo "saddle" anclado al borde superior-interno de cada lente
+function bridgeMesh(shape,hw,hh,sep,rim,colKey){
+  const wid=rim.width, ang=140*Math.PI/180, r=semiDiam(140,shape,hw,hh);
+  const X=sep+(r+wid)*Math.cos(ang), Y=(r+wid)*Math.sin(ang);   // X<sep → hacia el centro
+  const bz=FRONT_LIP-(rim.show?rim.depth*0.35:0.6), rise=hh*(rim.metal?0.13:0.09);
+  const pts=[ [-X,Y,bz], [-X*0.45,Y+rise*0.6,bz+0.4], [0,Y+rise,bz+0.6], [X*0.45,Y+rise*0.6,bz+0.4], [X,Y,bz] ];
+  return tube(pts,rim.metal?0.85:rim.width*0.55,frameMat(rim,colKey),48);
+}
+function nosePads(padX,hh,mat){
   const g=new THREE.Group();
-  [[-1],[1]].forEach(([s])=>{ const pad=new THREE.Mesh(new THREE.SphereGeometry(2.0,16,12),mat);
-    pad.scale.set(0.6,1.3,0.5); pad.position.set(s*(hw*0.32),-hh*0.55,FRONT_LIP-2); pad.castShadow=true; g.add(pad); });
+  [-1,1].forEach(s=>{ const pad=new THREE.Mesh(new THREE.SphereGeometry(2.1,18,14),mat);
+    pad.scale.set(0.55,1.35,0.5); pad.position.set(s*padX,-hh*0.20,FRONT_LIP-1.6); pad.castShadow=true; g.add(pad);
+    const armPts=[ [s*(padX+3),hh*0.04,FRONT_LIP-0.4], [s*(padX+1),-hh*0.07,FRONT_LIP-1], [s*padX,-hh*0.20,FRONT_LIP-1.6] ];
+    g.add(tube(armPts,0.45,mat,16)); });
   return g;
 }
 
+function studioBg(){
+  // fondo de estudio CLARO: la mica transparente transmite luz → se ve clara (no de sol).
+  const c=document.createElement('canvas'); c.width=32; c.height=256; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,'#eef2f7'); g.addColorStop(0.55,'#d4dae2'); g.addColorStop(1,'#aeb7c3');
+  x.fillStyle=g; x.fillRect(0,0,32,256);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
 function initThree(){
   const cv=document.getElementById('cv3d');
   renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1; renderer.outputColorSpace=THREE.SRGBColorSpace;
   renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  scene=new THREE.Scene(); scene.background=new THREE.Color(0x0c1118);
+  scene=new THREE.Scene(); scene.background=studioBg();
   // luz base SIEMPRE (por si el entorno HDR no se puede generar en el dispositivo)
   scene.add(new THREE.HemisphereLight(0xffffff,0x222b38,0.7));
   scene.add(new THREE.AmbientLight(0xffffff,0.3));
@@ -380,17 +416,20 @@ function draw3D(){
   const rim=RIMS[state.rim], ar=state.ar==='on';
   const lensMat=lensMaterial(n,ar);
   const sep=hw+18/2; let maxEt=0;
+  const outR=semiDiam(0,state.shape,hw,hh);     // borde exterior (ancla de patilla)
+  const innerR=semiDiam(180,state.shape,hw,hh); // borde interior (plaquetas/puente)
+  const hardware=rim.show?rim:RIM_MOUNT;        // rimless → herraje metálico fino
   [['od',-sep],['oi',sep]].forEach(([eye,ox])=>{
     const rx=readRx(eye); for(let a=0;a<360;a+=4){ const et=edgeAt(a,rx,n,state.shape,hw,hh,ct); if(et>maxEt)maxEt=et; }
     const lens=new THREE.Mesh(lensGeometry(rx,n,state.shape,hw,hh,ct),lensMat); lens.position.x=ox; glasses.add(lens);
     if(rim.show){ const r=rimMesh(state.shape,hw,hh,rim,state.color); r.position.x=ox; glasses.add(r); }
   });
-  if(rim.show){
-    const fmat=frameMat(rim,state.color);
-    const bridge=box(15,4.5,Math.max(3,rim.depth*0.75),fmat); bridge.position.set(0,hh*0.5,FRONT_LIP-rim.depth*0.45); glasses.add(bridge);
-    glasses.add(templeGroup(rim,hw,hh,1,state.color)); glasses.add(templeGroup(rim,hw,hh,-1,state.color));
-    if(rim.pads) glasses.add(nosePads(hw,hh,frameMat(rim,state.color)));
-  }
+  // herraje SIEMPRE presente (con armazón o al aire): patillas + puente + plaquetas
+  const ay=hh*0.12, ax=sep+outR+hardware.width*0.5, az=FRONT_LIP-1;
+  glasses.add(templeGroup(hardware,ax,ay,az,1,state.color));
+  glasses.add(templeGroup(hardware,-ax,ay,az,-1,state.color));
+  glasses.add(bridgeMesh(state.shape,hw,hh,sep,hardware,state.color));
+  if(hardware.metal||hardware.pads) glasses.add(nosePads(Math.max(6,sep-innerR+1),hh,frameMat(hardware,state.color)));
   const cap=document.getElementById('cap3d');
   const coverBack=rim.show?(rim.depth-FRONT_LIP):0, poke=Math.max(0,maxEt-coverBack);
   let line=`Borde más grueso: <b>${maxEt.toFixed(1)} mm</b> · material <b>${matObj.name}</b> · ${ar?'<b>con antirreflejante</b> (reflejo verde, sin glare)':'<b>sin AR</b> (reflejo blanco molesto)'}.`;
