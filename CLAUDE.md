@@ -30,6 +30,13 @@ Si algo se rompe gravemente:
 - Angel tiene ZIPs versionados de respaldo (v136, v137, v138)
 - Solo necesita descomprimir el ZIP anterior y hacer deploy
 
+## 📲 COMUNICACIÓN POR TELEGRAM (REGLA GENERAL)
+- **Acuse de recibo OBLIGATORIO**: al recibir CUALQUIER mensaje de Telegram (`<channel source="...telegram...">`), la PRIMERA acción es **reaccionar** con la tool `react` (emoji 👀 o 👍) usando el `chat_id` + `message_id` del mensaje — ANTES de investigar o ejecutar. Así Angel confirma que el mensaje llegó y la conexión funciona, sin esperar a la respuesta completa.
+- Telegram solo acepta emojis de su whitelist (👍 👎 ❤ 🔥 👀 🎉…); otros son rechazados.
+- Si el mensaje llega SIN `message_id` visible, no se puede reaccionar — en ese caso la propia respuesta sirve de confirmación.
+- **Responder siempre en español** (ver `memory/feedback_telegram_spanish.md`).
+- Las respuestas al usuario van por la tool `reply` (pasando el `chat_id`); el texto del transcript NO llega a su chat.
+
 ## 📁 ESTRUCTURA DEL PROYECTO
 ```
 / (raíz)
