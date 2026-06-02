@@ -126,6 +126,19 @@ table.tbl td.mat{text-align:left;font-weight:600}
     </div>
 
     <div class="ctrl">
+      <label class="lbl">Tipo de armazón</label>
+      <div class="chips" id="src-chips">
+        <button class="chip active" data-src="proc">Dibujo 3D</button>
+        <button class="chip" data-src="real">Modelo real</button>
+      </div>
+    </div>
+
+    <div class="ctrl" id="model-ctrl" style="display:none">
+      <label class="lbl">Modelo de armazón</label>
+      <div class="chips" id="model-chips"></div>
+    </div>
+
+    <div class="ctrl" id="proc-controls">
       <label class="lbl">Forma del armazón</label>
       <div class="chips" id="shape-chips">
         <button class="chip active" data-shape="round">Redondo</button>
@@ -229,6 +242,7 @@ table.tbl td.mat{text-align:left;font-weight:600}
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const MATERIALS = [
   {id:'i149',name:'1.49 (CR-39)',n:1.498},{id:'i156',name:'1.56',n:1.560},
@@ -249,7 +263,7 @@ const COLORS = {
 };
 // herraje metálico fino que se monta cuando el armazón es "al aire" (rimless): patillas + puente + plaquetas
 const RIM_MOUNT = {show:false, metal:true, width:1.0, depth:2.6, rough:0.30, label:'al aire', pads:true};
-let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med', color:'black', ar:'on' };
+let state = { shape:'round', idxA:'i149', idxB:'i174', rim:'med', color:'black', ar:'on', frameSrc:'proc', frameModel:'round-gold' };
 
 // ── Física ──
 function meridianPower(s,c,ax,a){ const d=(a-ax)*Math.PI/180; return s+c*Math.sin(d)*Math.sin(d); }
@@ -407,15 +421,83 @@ function setView(v){
   else camera.position.set(38,26,150);
   controls.target.set(0,0,0); controls.update();
 }
+/* ── Armazones de MODELO REAL (GLB) ──
+   Registro de modelos: para AGREGAR un armazón nuevo, suelta el .glb en /models y añade
+   una línea aquí { id, name, file }. El selector y la carga se arman solos. */
+const FRAME_MODELS = [
+  { id:'round-gold', name:'Redondo metal', file:'models/glasses.glb' },
+  // { id:'rect-acetato', name:'Rectangular', file:'models/rect.glb' },
+  // { id:'cateye',       name:'Cat-eye',     file:'models/cateye.glb' },
+];
+const glbCache = {};                       // id -> { frame, openings, loading, failed }
+function curModelDef(){ return FRAME_MODELS.find(m=>m.id===state.frameModel) || FRAME_MODELS[0]; }
+// mide aberturas de lente (centro/radio por ojo) a partir de una lista de meshes, separando por signo de x
+function measureOpenings(meshes, shrink){
+  meshes = Array.isArray(meshes)?meshes:[meshes];
+  const v=new THREE.Vector3(), mk0=()=>({minx:1e9,maxx:-1e9,miny:1e9,maxy:-1e9,minz:1e9,maxz:-1e9});
+  const L=mk0(), R=mk0(); let any=false;
+  for(const mesh of meshes){ if(!mesh||!mesh.geometry?.attributes?.position) continue; mesh.updateWorldMatrix(true,true);
+    const pos=mesh.geometry.attributes.position;
+    for(let i=0;i<pos.count;i++){ v.fromBufferAttribute(pos,i).applyMatrix4(mesh.matrixWorld); any=true;
+      const b=v.x<0?L:R; b.minx=Math.min(b.minx,v.x);b.maxx=Math.max(b.maxx,v.x);b.miny=Math.min(b.miny,v.y);b.maxy=Math.max(b.maxy,v.y);b.minz=Math.min(b.minz,v.z);b.maxz=Math.max(b.maxz,v.z); }
+  }
+  if(!any||L.maxx<L.minx||R.maxx<R.minx) return null;
+  const s=shrink||1, mk=b=>({cx:(b.minx+b.maxx)/2,cy:(b.miny+b.maxy)/2,cz:(b.minz+b.maxz)/2,rx:(b.maxx-b.minx)/2*s,ry:(b.maxy-b.miny)/2*s});
+  return {L:mk(L),R:mk(R)};
+}
+function loadGLB(def){
+  const c = glbCache[def.id] || (glbCache[def.id]={frame:null,openings:null,loading:false,failed:false});
+  if(c.frame||c.loading||c.failed) return c;
+  c.loading=true;
+  new GLTFLoader().load(def.file,(gltf)=>{
+    const root=gltf.scene;
+    // escalar a ancho objetivo (~unidades mm del simulador) y centrar en el origen
+    let box=new THREE.Box3().setFromObject(root), size=box.getSize(new THREE.Vector3());
+    root.scale.setScalar(120/Math.max(size.x,1e-6));
+    box=new THREE.Box3().setFromObject(root); root.position.sub(box.getCenter(new THREE.Vector3()));
+    // detectar lentes del modelo (mesh con "lens"/"lente"); si no hay, estimar aberturas del armazón completo
+    const lensMeshes=[], allMeshes=[]; root.traverse(o=>{ if(o.isMesh){ allMeshes.push(o); if(/lens|lente/i.test(o.name)) lensMeshes.push(o); } });
+    c.openings = lensMeshes.length ? measureOpenings(lensMeshes,1) : measureOpenings(allMeshes,0.82);
+    if(c.openings){ const dz=(c.openings.L.cz+c.openings.R.cz)/2; root.position.z-=dz; c.openings.L.cz-=dz; c.openings.R.cz-=dz; }
+    lensMeshes.forEach(m=>m.visible=false);            // ocultar lentes planos del modelo (ponemos el nuestro)
+    root.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    root.visible=false; scene.add(root); c.frame=root; c.loading=false;
+    if(state.frameSrc==='real' && state.frameModel===def.id) render();
+  }, undefined, (err)=>{ c.failed=true; c.loading=false; console.warn('GLB no cargó:',def.file,err); if(state.frameSrc==='real') render(); });
+  return c;
+}
+
 function draw3D(){
   if(!inited){ initThree(); document.getElementById('load3d').style.display='none'; setView('34'); }
   resize3d();
   while(glasses.children.length){ const c=glasses.children.pop(); c.traverse?.(o=>{o.geometry&&o.geometry.dispose();}); glasses.remove(c); }
   const {w:hw,h:hh}=half(), ct=getCT();
   const matObj=MATERIALS.find(m=>m.id===state.idxA), n=matObj.n;
-  const rim=RIMS[state.rim], ar=state.ar==='on';
-  const lensMat=lensMaterial(n,ar);
-  const sep=hw+18/2; let maxEt=0;
+  const ar=state.ar==='on', lensMat=lensMaterial(n,ar);
+  const cap=document.getElementById('cap3d');
+  let maxEt=0;
+
+  // ── MODO MODELO REAL ──
+  if(state.frameSrc==='real'){
+    const def=curModelDef(), c=loadGLB(def);
+    Object.values(glbCache).forEach(e=>{ if(e.frame) e.frame.visible=(e===c); });   // mostrar solo el actual
+    if(!c.frame){ cap.innerHTML = c.failed ? 'No se pudo cargar el armazón real (revisa tu conexión).' : 'Cargando armazón real…'; return; }
+    const tint=COLORS[state.color].metal;            // tinte metálico según color elegido
+    c.frame.traverse(o=>{ if(o.isMesh && o.visible && o.material){ if(o.material.color) o.material.color.setHex(tint); o.material.metalness=1.0; o.material.roughness=0.3; o.material.needsUpdate=true; } });
+    const O=c.openings;
+    if(O){ [['od',O.L],['oi',O.R]].forEach(([eye,op])=>{
+      const rx=readRx(eye), R=(op.rx+op.ry)/2;
+      for(let a=0;a<360;a+=4){ const et=edgeAt(a,rx,n,'round',R,R,ct); if(et>maxEt)maxEt=et; }
+      const lens=new THREE.Mesh(lensGeometry(rx,n,'round',R,R,ct),lensMat); lens.position.set(op.cx,op.cy,op.cz); glasses.add(lens);
+    }); }
+    cap.innerHTML=`Armazón <b>${def.name}</b> (modelo real) · borde más grueso <b>${maxEt.toFixed(1)} mm</b> · material <b>${matObj.name}</b> · ${ar?'<b>con AR</b> (reflejo verde)':'<b>sin AR</b> (glare blanco)'}. <span class="hideline">La forma y el tamaño los define el modelo; la graduación y el material sí cambian el grosor.</span>`;
+    return;
+  }
+  Object.values(glbCache).forEach(e=>{ if(e.frame) e.frame.visible=false; });
+
+  // ── MODO PROCEDURAL (dibujo paramétrico) ──
+  const rim=RIMS[state.rim];
+  const sep=hw+18/2;
   const outR=semiDiam(0,state.shape,hw,hh);     // borde exterior (ancla de patilla)
   const innerR=semiDiam(180,state.shape,hw,hh); // borde interior (plaquetas/puente)
   const hardware=rim.show?rim:RIM_MOUNT;        // rimless → herraje metálico fino
@@ -430,7 +512,6 @@ function draw3D(){
   glasses.add(templeGroup(hardware,-ax,ay,az,-1,state.color));
   glasses.add(bridgeMesh(state.shape,hw,hh,sep,hardware,state.color));
   if(hardware.metal||hardware.pads) glasses.add(nosePads(Math.max(6,sep-innerR+1),hh,frameMat(hardware,state.color)));
-  const cap=document.getElementById('cap3d');
   const coverBack=rim.show?(rim.depth-FRONT_LIP):0, poke=Math.max(0,maxEt-coverBack);
   let line=`Borde más grueso: <b>${maxEt.toFixed(1)} mm</b> · material <b>${matObj.name}</b> · ${ar?'<b>con antirreflejante</b> (reflejo verde, sin glare)':'<b>sin AR</b> (reflejo blanco molesto)'}.`;
   if(!rim.show) line+=` <span class="hideline">Armazón al aire: el borde queda totalmente expuesto.</span>`;
@@ -507,6 +588,14 @@ document.querySelectorAll('#shape-chips .chip').forEach(c=>c.onclick=()=>{docume
 document.querySelectorAll('#rim-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#rim-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.rim=c.dataset.rim;render();});
 document.querySelectorAll('#color-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#color-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.color=c.dataset.col;render();});
 document.querySelectorAll('#ar-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#ar-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.ar=c.dataset.ar;render();});
+function applyFrameSrcUI(){ const real=state.frameSrc==='real';
+  ['#shape-chips','#rim-chips','#frame-w'].forEach(sel=>{ const c=document.querySelector(sel)?.closest('.ctrl'); if(c) c.style.display=real?'none':''; });
+  const mc=document.getElementById('model-ctrl'); if(mc) mc.style.display=real?'':'none'; }
+// armar selector de modelos desde el registro
+(function fillModels(){ const box=document.getElementById('model-chips'); if(!box)return;
+  FRAME_MODELS.forEach((m,i)=>{ const b=document.createElement('button'); b.className='chip'+((m.id===state.frameModel||(i===0&&!FRAME_MODELS.some(x=>x.id===state.frameModel)))?' active':''); b.textContent=m.name; b.dataset.model=m.id; box.appendChild(b); });
+  box.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{ box.querySelectorAll('.chip').forEach(x=>x.classList.remove('active')); c.classList.add('active'); state.frameModel=c.dataset.model; render(); }); })();
+document.querySelectorAll('#src-chips .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#src-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');state.frameSrc=c.dataset.src;applyFrameSrcUI();render();});
 document.querySelectorAll('#view-toggle button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#view-toggle button').forEach(x=>x.classList.remove('active'));b.classList.add('active');setView(b.dataset.view);});
 ['frame-w','frame-h','ct'].forEach(id=>{const el=document.getElementById(id);el.oninput=()=>{document.getElementById(id+'-val').textContent=(id==='ct'?(+el.value).toFixed(1):el.value)+' mm';render();};});
 ['od-sph','od-cyl','od-axis','oi-sph','oi-cyl','oi-axis'].forEach(id=>{document.getElementById(id).oninput=render;});
