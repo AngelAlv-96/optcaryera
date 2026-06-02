@@ -297,6 +297,14 @@ exports.handler = async function() {
 
 async function checkSignatureRequests(employees, fechaLocal) {
   try {
+    // Cargar expedientes para conocer la fecha_ingreso de cada empleado (no reportar días antes del alta)
+    var expedientes = {};
+    try {
+      var expRes = await supaFetch('app_config?id=eq.expedientes_empleados&select=value');
+      if (expRes && expRes[0] && expRes[0].value) {
+        expedientes = typeof expRes[0].value === 'string' ? JSON.parse(expRes[0].value) : expRes[0].value;
+      }
+    } catch(eExp) { console.warn('[Firma Cron] expedientes load error:', eExp.message); }
     // For each employee, check if they need a signature request
     // Random interval: 7-10 days since last signed period
     for (var i = 0; i < employees.length; i++) {
@@ -342,6 +350,9 @@ async function checkSignatureRequests(employees, fechaLocal) {
       }
       // Never go before system activation date
       if (periodoInicio < ASISTENCIA_START_DATE) periodoInicio = ASISTENCIA_START_DATE;
+      // Empleado nuevo: nunca incluir días antes de su fecha_ingreso
+      var empIngreso = expedientes[emp.uid] && expedientes[emp.uid].fecha_ingreso;
+      if (empIngreso && periodoInicio < empIngreso) periodoInicio = empIngreso;
       var yesterday = new Date(fechaLocal + 'T12:00:00');
       yesterday.setDate(yesterday.getDate() - 1);
       var periodoFin = yesterday.toLocaleDateString('en-CA');

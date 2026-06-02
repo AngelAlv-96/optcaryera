@@ -1503,12 +1503,23 @@ async function cmdAsistencia(phone, action, profileName) {
       try {
         var faltasDias = [];
         var ASISTENCIA_START_DATE = '2026-03-25'; // ignore absences before this date (employees started using system)
+        // Per-employee start date: NUNCA contar faltas antes de la fecha_ingreso del empleado.
+        // Los empleados nuevos no tienen faltas en los días previos a su alta (causaba actas falsas).
+        var fechaIngreso = null;
+        try {
+          var expData = await supaFetch('app_config?id=eq.expedientes_empleados&select=value');
+          if (expData && expData[0] && expData[0].value) {
+            var expedientes = typeof expData[0].value === 'string' ? JSON.parse(expData[0].value) : expData[0].value;
+            if (expedientes[uid] && expedientes[uid].fecha_ingreso) fechaIngreso = expedientes[uid].fecha_ingreso;
+          }
+        } catch(eIng) { console.warn('[Asistencia] fecha_ingreso lookup error:', eIng.message); }
         // Check last 7 days for days with no entry where employee was scheduled
         for (var dBack = 1; dBack <= 7; dBack++) {
           var checkDate = new Date(nowChihuahua);
           checkDate.setDate(checkDate.getDate() - dBack);
           var checkFecha = checkDate.toLocaleDateString('en-CA');
           if (checkFecha < ASISTENCIA_START_DATE) continue; // skip dates before system was activated
+          if (fechaIngreso && checkFecha < fechaIngreso) continue; // empleado nuevo: ignorar días antes de su ingreso
           var checkDayKey = dayNames[checkDate.getDay()];
           // Check schedule for that day
           var checkSched = horarios.default ? horarios.default[checkDayKey] : null;
