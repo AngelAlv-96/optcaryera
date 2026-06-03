@@ -129,7 +129,8 @@ exports.handler = async function(event) {
       await new Promise(r => setTimeout(r, RATE_LIMIT_MS));
     }
 
-    if (enviados > 0 || fallidos > 0) await sendAdminWA('Vittoria Inauguracion - Resumen\n\nEnviados: ' + enviados + '/' + limited.length + '\nFallidos: ' + fallidos + '\nRestantes: ' + (eligible.length - limited.length) + '\nYa contactados: ' + alreadySent.size + '\nCompraron reciente: ' + recentBuyers.size);
+    // (Resumen por WhatsApp a admins ELIMINADO — spameaba un mensaje por cada lote a los admin_phones.
+    //  Los resultados de cada lote ya van en la respuesta JSON; no hace falta notificar por WA.)
 
     return { statusCode: 200, body: JSON.stringify({ ok: true, enviados, fallidos, total: limited.length, restantes: eligible.length - limited.length, errores: errores.slice(0, 10) }) };
   } catch (err) { console.error('[VITTORIA] Fatal:', err.message); return { statusCode: 500, body: JSON.stringify({ error: err.message }) }; }
