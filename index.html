@@ -7379,6 +7379,7 @@ var _clariPendingNotified = {};
 var _clariPendingDismissed = {};   // keys dismissed/handled by admin (no reaparece esa venta)
 var _clariPendingCurrentKey = '';  // key de la venta mostrada ahora
 var _clariPendingCurrentName = ''; // nombre del cliente mostrado ahora
+var _clariPendingCurrentId = '';   // id del registro app_config (clari_pending_*) mostrado ahora — para borrarlo de verdad
 // Lleva al admin a la conversación del cliente (no abre WA externo)
 function _goClariPendingConv() {
   var name = _clariPendingCurrentName || '';
@@ -7392,11 +7393,18 @@ function _goClariPendingConv() {
     if (s) { s.value = name; if (typeof filterClariConv === 'function') filterClariConv(); }
   }, 700);
 }
-// Quitar el banner (persistente en móvil tapa el menú)
-function _dismissClariPending() {
+// Quitar el banner DEFINITIVAMENTE: borra el registro clari_pending_* en app_config.
+// Antes solo lo ocultaba en memoria → reaparecía al reentrar al sistema. Si la venta ya se
+// resolvió/aclaró por otro lado (cliente nunca cerró el SI/NO), el admin lo quita de raíz aquí.
+async function _dismissClariPending() {
+  if (!confirm('¿Quitar esta venta pendiente? Ya no volverá a aparecer.')) return;
   if (_clariPendingCurrentKey) _clariPendingDismissed[_clariPendingCurrentKey] = true;
   var b = document.getElementById('clari-pending-banner');
   if (b) b.style.display = 'none';
+  if (_clariPendingCurrentId) {
+    try { await db.from('app_config').delete().eq('id', _clariPendingCurrentId); toast('✅ Venta pendiente quitada'); }
+    catch(e) { console.warn('[Clari Pending] delete error', e); }
+  }
 }
 function _startClariPendingPolling() {
   if (_clariPendingTimer) clearInterval(_clariPendingTimer);
@@ -7414,7 +7422,7 @@ async function _checkClariPending() {
     }
     // Show/update banner
     var pending = data.map(function(d) {
-      try { return typeof d.value === 'string' ? JSON.parse(d.value) : d.value; } catch(e) { return null; }
+      try { var v = typeof d.value === 'string' ? JSON.parse(d.value) : d.value; if (v) v._cfgId = d.id; return v; } catch(e) { return null; }
     }).filter(Boolean);
     if (!pending.length) { if (banner) banner.style.display = 'none'; return; }
     if (!banner) {
@@ -7437,6 +7445,7 @@ async function _checkClariPending() {
     if (_clariPendingDismissed[pendingKey]) { banner.style.display = 'none'; return; }
     _clariPendingCurrentKey = pendingKey;
     _clariPendingCurrentName = p.customerName || '';
+    _clariPendingCurrentId = p._cfgId || '';
     banner.style.display = 'flex';
     banner.innerHTML = '<span style="font-size:20px">🛒</span><div style="flex:1;min-width:0;color:white"><div style="font-size:13px;font-weight:700">Venta Clari pendiente de aprobación</div><div style="font-size:11px;opacity:0.9">👤 '+(p.customerName||'')+ ' · 👁 '+(p.productName||'')+' x'+(p.qty||1)+' · $'+(p.total||0)+' · 🏪 '+(p.sucursalEntrega||'')+'</div></div><button onclick="_goClariPendingConv()" style="background:white;color:#1e40af;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;white-space:nowrap">💬 Ir a conversación</button><button onclick="_dismissClariPending()" aria-label="Quitar" style="background:rgba(255,255,255,0.2);color:white;width:30px;height:30px;border-radius:8px;font-size:15px;font-weight:700;border:none;cursor:pointer;line-height:1;flex:none">✕</button>';
     if (!_clariPendingNotified[pendingKey]) {
