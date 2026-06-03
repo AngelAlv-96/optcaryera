@@ -36,7 +36,7 @@ function normalizePhone(phone) {
   return num;
 }
 
-async function sendTemplate(to) {
+async function sendTemplate(to, templateSid) {
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_WA) return { ok: false, err: 'missing_config' };
   const toNum = normalizePhone(to);
   const auth = Buffer.from(TWILIO_SID + ':' + TWILIO_TOKEN).toString('base64');
@@ -44,7 +44,7 @@ async function sendTemplate(to) {
   const fromNum = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : 'whatsapp:' + TWILIO_WA;
   params.append('From', fromNum);
   params.append('To', 'whatsapp:+' + toNum);
-  params.append('ContentSid', TEMPLATE_SID);
+  params.append('ContentSid', templateSid || TEMPLATE_SID);
   params.append('ContentVariables', JSON.stringify({}));
   try {
     const res = await fetch('https://api.twilio.com/2010-04-01/Accounts/' + TWILIO_SID + '/Messages.json', { method: 'POST', headers: { 'Authorization': 'Basic ' + auth, 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
@@ -79,6 +79,8 @@ exports.handler = async function(event) {
   const qs = event.queryStringParameters || {};
   if (qs.key !== BLAST_KEY) return { statusCode: 401, body: JSON.stringify({ error: 'Key invalida. Usa ?key=TU_CLAVE' }) };
   const dryRun = qs.dry === '1';
+  // Permite elegir el template aprobado al momento de enviar (?tpl=SID). Default: el de texto.
+  const templateSid = (qs.tpl && /^HX[0-9a-f]{32}$/i.test(qs.tpl)) ? qs.tpl : TEMPLATE_SID;
 
   const nowCH = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
   const horaLocal = nowCH.getHours();
@@ -120,7 +122,7 @@ exports.handler = async function(event) {
         const recheck = await supaREST('GET', 'clari_conversations?phone=eq.' + c.phone + '&content=ilike.*' + DEDUP_TAG + '*&created_at=gte.' + dedupFrom.toISOString() + '&select=id&limit=1');
         if (recheck && recheck.length > 0) { console.log('[VITTORIA] skip ' + c.phone.slice(-4) + ' ya enviado'); continue; }
       } catch (e) { console.warn('[VITTORIA] recheck fallo ' + c.phone.slice(-4) + ', salto:', e.message); continue; }
-      const result = await sendTemplate(c.phone);
+      const result = await sendTemplate(c.phone, templateSid);
       if (result.ok) { await saveToHistory(c.phone, '[' + DEDUP_TAG + '] Cupon inauguracion Vittoria enviado a ' + (c.name || c.phone.slice(-4))); enviados++; }
       else { fallidos++; errores.push({ phone: c.phone.slice(-4), err: result.err }); }
       await new Promise(r => setTimeout(r, RATE_LIMIT_MS));
