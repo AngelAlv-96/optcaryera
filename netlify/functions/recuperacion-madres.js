@@ -150,6 +150,7 @@ async function getAdminPhones() {
 }
 
 async function sendAdminWA(msg) {
+  return; // Resumen por-lote a admins DESACTIVADO (spameaba un WA por cada lote). Los resultados van en la respuesta JSON.
   const phones = await getAdminPhones();
   const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
   const fromNum = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : `whatsapp:${TWILIO_WA}`;

@@ -91,6 +91,7 @@ async function saveToHistory(phone, role, content) {
 }
 
 async function sendAdminWA(msg) {
+  return; // Resumen por-lote a admins DESACTIVADO (spameaba un WA por cada lote). Los resultados van en la respuesta JSON.
   try {
     const cfg = await supaREST('GET', "app_config?id=eq.whatsapp_config&select=value");
     const phones = (cfg && cfg[0]) ? JSON.parse(cfg[0].value).admin_phones || ['5216564269961'] : ['5216564269961'];
