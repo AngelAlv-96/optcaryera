@@ -44,20 +44,27 @@ function getActivePromos() {
   var month = mx.getMonth() + 1; // 1-based
   var year = mx.getFullYear();
 
-  // Hot Sale Car & Era + Aplazo: 25 mayo - 2 junio 2026 (auto-expira tras esa fecha)
-  var hotSaleActive = now >= new Date('2026-05-25T00:00:00-06:00') && now <= new Date('2026-06-02T23:59:59-06:00');
-  var hotSaleCarEra = hotSaleActive ? ('🔥 HOT SALE CAR & ERA (25 mayo – 2 junio 2026) — ANÚNCIALA COMO LA PROMO HEADLINE durante estos 9 días, antes que cualquier otra:\n' +
+  // Combo headline (2x1 + solar $499 + armazón+micas+AR+UV): Hot Sale 25 may–2 jun, EXTENDIDO todo junio 2026.
+  var comboActive = now >= new Date('2026-05-25T00:00:00-06:00') && now <= new Date('2026-06-30T23:59:59-06:00');
+  var esEventoHotSale = comboActive && now <= new Date('2026-06-02T23:59:59-06:00'); // dentro de los 9 días del Hot Sale nombrado
+  var hotSaleActive = esEventoHotSale; // (el Hot Sale Aplazo solo existe durante el evento)
+  var comboHeader = esEventoHotSale
+    ? '🔥 HOT SALE CAR & ERA (25 mayo – 2 junio 2026) — ANÚNCIALA COMO LA PROMO HEADLINE durante estos 9 días, antes que cualquier otra:\n'
+    : '🎁 PROMOCIÓN DE JUNIO — el MISMO combo del Hot Sale, EXTENDIDO durante TODO junio 2026 — ANÚNCIALA COMO LA PROMO HEADLINE, antes que cualquier otra:\n' +
+      '• 🗣️ CÓMO NOMBRARLA SEGÚN EL CONTEXTO: si el cliente menciona el Hot Sale, vio el anuncio del Hot Sale o ya lo conocía → preséntala como EXTENSIÓN ("Extendimos la promo del Hot Sale durante todo junio, sigue vigente"). Si es contexto nuevo/general (no menciona Hot Sale) → preséntala como "nuestra promoción de junio". NUNCA digas que el Hot Sale ya terminó sin aclarar de inmediato que el MISMO combo sigue vigente en junio.\n';
+  var comboVigencia = esEventoHotSale ? 'del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun)' : 'durante todo junio de 2026 (hasta el 30 de junio)';
+  var hotSaleCarEra = comboActive ? (comboHeader +
     '• Combo: 2x1 en lentes completos + lente solar graduado adicional por solo $499.\n' +
-    '• INCLUIDO sin costo extra dentro del precio Hot Sale (esta es la diferencia con el 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.\n' +
-    '• ⚠️ "Armazones seleccionados" — NO todos los modelos aplican. Es una línea curada para el Hot Sale. Si el cliente pregunta por un armazón específico ("¿este modelo entra?", "vi uno X marca"): "Los armazones del Hot Sale son una línea seleccionada, pásate a sucursal a ver cuáles están en la promo." NUNCA prometas que cualquier armazón aplica al precio Hot Sale.\n' +
+    '• INCLUIDO sin costo extra dentro del precio del combo (esta es la diferencia con el 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.\n' +
+    '• ⚠️ "Armazones seleccionados" — NO todos los modelos aplican. Es una línea curada. Si el cliente pregunta por un armazón específico ("¿este modelo entra?", "vi uno X marca"): "Los armazones de la promo son una línea seleccionada, pásate a sucursal a ver cuáles están." NUNCA prometas que cualquier armazón aplica al precio de la promo.\n' +
     '• Upgrades con costo aparte (NO incluidos): graduación bifocal o progresiva, material policarbonato o alto índice, tratamientos adicionales (blue light, transitions, polarizado).\n' +
-    '• ⛔ NO se combina con otros descuentos: NI el descuento Aplazo Hot Sale 25%, NI ningún otro descuento adicional. Es UNA u OTRA, no se apilan. (El cliente puede elegir Hot Sale o irse por el 2x1 estándar, pero no juntar Hot Sale + descuento adicional.)\n' +
-    '• Vigencia: del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun).\n' +
-    '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con el Hot Sale. Ejemplo de respuesta: "Ahorita tenemos Hot Sale: 2x1 en lentes + lente solar graduado adicional por solo $499, micas antirreflejante incluidas, armazones seleccionados. Vigente hasta el 2 de junio." (2-3 líneas máximo).\n' +
-    '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio del Hot Sale": confirma con seguridad, NO dudes ni niegues, está vigente.\n' +
-    '• Si el cliente pregunta si el armazón que YA TIENE aplica al Hot Sale: "El Hot Sale incluye armazón seleccionado, micas y AR — si traes tu armazón propio o quieres uno fuera de la lista seleccionada, te conviene más el 2x1 estándar. Pásate a sucursal y te cotizan ambas opciones."\n' +
-    '• Después del 2 de junio regresa el 2x1 estándar (sin armazón Hot Sale, AR opcional con costo).\n' +
-    '• ⚠️ NO CONFUNDIR con el Hot Sale APLAZO (otra promo paralela): el Hot Sale Car & Era es ESTE combo (armazón + micas + AR + solar $499); el Hot Sale Aplazo es un descuento de la plataforma de pagos Aplazo para sus clientes nuevos (código HS2026). Son DOS Hot Sales en paralelo. Si el cliente menciona "código HS2026" o pagar con Aplazo → es Aplazo. Si menciona armazones / 2x1 / micas / solar → es Hot Sale Car & Era.\n\n') : '';
+    '• ⛔ NO se combina con otros descuentos: NI descuento de Aplazo, NI ningún otro descuento adicional. Es UNA u OTRA, no se apilan.\n' +
+    '• Vigencia: ' + comboVigencia + '.\n' +
+    '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con esta promo. Ejemplo: "Tenemos 2x1 en lentes + lente solar graduado adicional por solo $499, micas antirreflejante incluidas, armazones seleccionados, vigente todo junio." (2-3 líneas máximo).\n' +
+    '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio": confirma con seguridad que el combo sigue vigente, NO dudes ni niegues.\n' +
+    '• Si el cliente pregunta si el armazón que YA TIENE aplica: "La promo incluye armazón seleccionado, micas y AR — si traes tu armazón propio o quieres uno fuera de la lista seleccionada, te conviene más el 2x1 estándar. Pásate a sucursal y te cotizan ambas opciones."\n' +
+    '• Después de junio regresa el 2x1 estándar (sin armazón seleccionado, AR opcional con costo).\n' +
+    (esEventoHotSale ? '• ⚠️ NO CONFUNDIR con el Hot Sale APLAZO (otra promo paralela): el combo Car & Era es ESTE (armazón + micas + AR + solar $499); el Hot Sale Aplazo es un descuento de la plataforma de pagos Aplazo para sus clientes nuevos (código HS2026). Si el cliente menciona "código HS2026" o pagar con Aplazo → es Aplazo. Si menciona armazones / 2x1 / micas / solar → es el combo Car & Era.\n\n' : '\n') ) : '';
   var hotSaleAplazo = hotSaleActive ? ('\n\n🔥 HOT SALE APLAZO (25 mayo – 2 junio 2026) — DESCUENTO DIRECTO DE APLAZO, NO DE LA ÓPTICA:\n' +
     '• Aplazo (la plataforma de pagos a plazos) está corriendo su promo Hot Sale: 25% de descuento para CLIENTES NUEVOS de Aplazo (subió de 15% a 25%) + 3 quincenas sin intereses en compras desde $2,000.\n' +
     '• Código: HS2026 (lo aplica el cliente directo en su Aplazo). Vigencia: 25 mayo – 2 junio 2026.\n' +
@@ -66,9 +73,9 @@ function getActivePromos() {
     '• NUNCA digas "te damos 25% de descuento" ni "tenemos 25% off" — el descuento NO es nuestro, es de Aplazo. NUNCA combines este 25% con nuestras promos como si fuera descuento de la óptica.\n' +
     '• NUNCA inventes detalles que no estén aquí (otros porcentajes, otros códigos, fechas distintas, etc.). Si preguntan algo no cubierto: "Esos detalles los maneja Aplazo directo en su app o página."') : '';
 
-  // Abril 15 - Junio 2, 2026 (3x1 terminó el 14 de abril; promos extendidas hasta el 2 de junio. Maestros hasta 18 de mayo.)
-  if (year === 2026 && (month === 4 || month === 5 || (month === 6 && day <= 2))) {
-    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (HASTA EL 2 DE JUNIO):\n' +
+  // Abril 15 - Junio 30, 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante TODO junio. Maestros hasta 18 de mayo.)
+  if (year === 2026 && (month === 4 || month === 5 || month === 6)) {
+    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (DURANTE JUNIO 2026):\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
       '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
@@ -81,8 +88,8 @@ function getActivePromos() {
       '🕒 Lentes listos desde 35 minutos (laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
       'Se puede COMPARTIR entre máximo 2 personas.\n' +
-      'Válida hasta el 2 de junio de 2026.\n\n' +
-      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios todavía dicen "hasta el 30 de abril", "hasta el 15 de mayo" o "hasta el 31 de mayo" porque la promoción se extendió varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción se extendió hasta el 2 de junio, sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
+      'Válida durante todo junio de 2026 (hasta el 30 de junio).\n\n' +
+      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios dicen fechas anteriores ("hasta el 30 de abril", "hasta el 31 de mayo", "Hot Sale hasta el 2 de junio") porque la promoción se ha extendido varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción sigue vigente durante todo junio. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
       '⚠️ REGLAS CRÍTICAS AL HABLAR DE PRECIOS EN ESTA PROMO (no las rompas):\n' +
       '• NUNCA digas que la promo "incluye" un material o graduación específicos. La promo es 2x1 — el tipo de lente (material, graduación, armazón) lo elige el cliente en sucursal y eso define el precio.\n' +
       '• NUNCA menciones "desde $1,200" ni ningún precio base fijo. Esa era una promo anterior con armazones limitados — ya no está vigente.\n' +
