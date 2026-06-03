@@ -64,14 +64,9 @@ function getActivePromos() {
     '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio": confirma con seguridad que el combo sigue vigente, NO dudes ni niegues.\n' +
     '• Si el cliente pregunta si el armazón que YA TIENE aplica: "La promo incluye armazón seleccionado, micas y AR — si traes tu armazón propio o quieres uno fuera de la lista seleccionada, te conviene más el 2x1 estándar. Pásate a sucursal y te cotizan ambas opciones."\n' +
     '• Después de junio regresa el 2x1 estándar (sin armazón seleccionado, AR opcional con costo).\n' +
-    (esEventoHotSale ? '• ⚠️ NO CONFUNDIR con el Hot Sale APLAZO (otra promo paralela): el combo Car & Era es ESTE (armazón + micas + AR + solar $499); el Hot Sale Aplazo es un descuento de la plataforma de pagos Aplazo para sus clientes nuevos (código HS2026). Si el cliente menciona "código HS2026" o pagar con Aplazo → es Aplazo. Si menciona armazones / 2x1 / micas / solar → es el combo Car & Era.\n\n' : '\n') ) : '';
-  var hotSaleAplazo = hotSaleActive ? ('\n\n🔥 HOT SALE APLAZO (25 mayo – 2 junio 2026) — DESCUENTO DIRECTO DE APLAZO, NO DE LA ÓPTICA:\n' +
-    '• Aplazo (la plataforma de pagos a plazos) está corriendo su promo Hot Sale: 25% de descuento para CLIENTES NUEVOS de Aplazo (subió de 15% a 25%) + 3 quincenas sin intereses en compras desde $2,000.\n' +
-    '• Código: HS2026 (lo aplica el cliente directo en su Aplazo). Vigencia: 25 mayo – 2 junio 2026.\n' +
-    '• 🟧 ACLARACIÓN OBLIGATORIA: este descuento NO lo hace Ópticas Car & Era. Es un beneficio que Aplazo da a sus propios clientes nuevos dentro de su plataforma. El cliente puede USAR Aplazo como forma de pago en nuestras sucursales y aprovechar ese descuento dentro de Aplazo.\n' +
-    '• ⚡ CUÁNDO MENCIONARLO: si el cliente pregunta sobre Aplazo, pagos a plazos, parcialidades sin tarjeta, financiamiento, o cómo pagar a meses, MENCIONA esta promo Hot Sale + código HS2026 + la aclaración. Ejemplo: "Justo ahora Aplazo trae Hot Sale para clientes nuevos: 25% off + 3 quincenas sin intereses desde $2,000, código HS2026 (25 may – 2 jun). Ojo: ese descuento lo da Aplazo directo, no nosotros — tú lo aprovechas dentro de su plataforma y vienes a pagar con nosotros."\n' +
-    '• NUNCA digas "te damos 25% de descuento" ni "tenemos 25% off" — el descuento NO es nuestro, es de Aplazo. NUNCA combines este 25% con nuestras promos como si fuera descuento de la óptica.\n' +
-    '• NUNCA inventes detalles que no estén aquí (otros porcentajes, otros códigos, fechas distintas, etc.). Si preguntan algo no cubierto: "Esos detalles los maneja Aplazo directo en su app o página."') : '';
+    '\n' ) : '';
+  // Hot Sale APLAZO ELIMINADO (ya no existe): la promo de descuento HS2026 de Aplazo terminó. Aplazo SIGUE como método de pago/financiamiento (eso va en el knowledge general, no aquí).
+  var hotSaleAplazo = '';
 
   // Abril 15 - Junio 30, 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante TODO junio. Maestros hasta 18 de mayo.)
   if (year === 2026 && (month === 4 || month === 5 || month === 6)) {
