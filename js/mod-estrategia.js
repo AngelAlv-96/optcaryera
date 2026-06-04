@@ -706,7 +706,7 @@ async function estSaveMetas() {
   if (!_estMetas.overrides) _estMetas.overrides = {};
 
   var overrides = {};
-  ['americas', 'pinocelli', 'magnolia'].forEach(function(key) {
+  ['americas', 'pinocelli', 'magnolia', 'plaza via vittoria'].forEach(function(key) {
     var val = parseInt(document.getElementById('est-edit-' + key)?.value) || 0;
     if (val > 0) overrides[key] = val;
   });
