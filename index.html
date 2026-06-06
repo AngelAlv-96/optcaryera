@@ -9625,7 +9625,7 @@ function renderPac(list) {
       </div>
       <div class="c-meta"><p>Estado</p><span class="badge b-${p.estado}">${p.estado}</span></div>
       <button onclick="verConsultasPaciente('${p.id}','${nombre}')" style="background:rgba(226,198,166,0.1);border:1px solid rgba(226,198,166,0.18);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="Ver consultas">📋 Consultas</button>
-      <button onclick="editarPaciente('${p.id}')" style="background:none;border:1px solid rgba(226,198,166,0.2);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="${currentUser?.rol==='admin'?'Editar datos':'Editar teléfono'}">${currentUser?.rol==='admin'?'✏ Editar':'📞 Tel.'}</button>
+      <button onclick="editarPaciente('${p.id}')" style="background:none;border:1px solid rgba(226,198,166,0.2);color:var(--beige);cursor:pointer;padding:5px 10px;font-size:11px;border-radius:7px;font-weight:600;font-family:'Outfit',sans-serif;white-space:nowrap" title="${['admin','gerencia','sucursal'].includes(currentUser?.rol)?'Editar datos':'Editar teléfono'}">${['admin','gerencia','sucursal'].includes(currentUser?.rol)?'✏ Editar':'📞 Tel.'}</button>
       <button onclick="deletePac('${p.id}','${nombre}')" style="background:none;border:none;color:var(--muted2);cursor:pointer;padding:6px 8px;font-size:14px;transition:color .15s" onmouseover="this.style.color='#e08080'" onmouseout="this.style.color='var(--muted2)'" title="Eliminar paciente">✕</button>
     </div>`;
   }).join('');
@@ -9639,7 +9639,7 @@ async function editarPaciente(id) {
   const ov = document.createElement('div');
   ov.className = 'm-overlay open';
   const v = (f) => (p[f]||'').toString().replace(/"/g,'&quot;');
-  const isAdmin = currentUser?.rol === 'admin';
+  const isAdmin = ['admin','gerencia','sucursal'].includes(currentUser?.rol); // editar datos completos del paciente (Angel v334: dar permiso a sucursales, no solo admin)
   const inp = (lbl, id, val, type='text', extra='') => `<div><label style="font-size:10px;color:var(--muted)">${lbl}</label><input id="${id}" type="${type}" value="${val}" ${extra} style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>`;
   ov.innerHTML = `<div class="modal" style="max-width:${isAdmin?480:340}px;padding:24px">
     <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige);margin-bottom:4px">${isAdmin?'✏ Editar Paciente':'📞 Editar teléfono'}</h3>
