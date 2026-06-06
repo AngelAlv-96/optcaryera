@@ -7716,7 +7716,7 @@ async function _loadDashMiSobre(suc) {
     var periodo = _msPeriodoActivo();
     if (!periodo) return;
     await cargarAsesoresConfig();
-    var asesoresSuc = (_asesoresConfig?.sucursales || {})[suc] || [];
+    var asesoresSuc = _asesoresActivos(suc);
     if (asesoresSuc.length === 0) return;
     // Verificar si al menos uno todavía no ha cobrado
     var { data: pagados } = await db.from('comisiones_pagadas').select('asesor').eq('sucursal', suc).eq('periodo', periodo.periodo);
@@ -17382,6 +17382,7 @@ async function renderAsesoresConfig() {
   var comPcts = cfg.comisiones || {};
   var comDef = cfg.comision_default || 2;
   var fechaInicios = cfg.fecha_inicio || {};
+  var inactivos = cfg.inactivos || [];
   var el = document.getElementById('cfg-asesores-list');
   if (!el) return;
   var html = '';
@@ -17393,10 +17394,13 @@ async function renderAsesoresConfig() {
     names.forEach(function(n) {
       var pct = comPcts[n] !== undefined ? comPcts[n] : comDef;
       var fInicio = fechaInicios[n];
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.03)">';
-      html += '<span style="flex:1;font-size:12px;color:var(--white)">' + n + (fInicio ? '<span style="font-size:9px;color:#e8a84a;margin-left:6px">desde ' + fInicio + '</span>' : '') + '</span>';
+      var esInact = inactivos.indexOf(n) !== -1;
+      var nEsc = n.replace(/'/g,"\\'");
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.03)' + (esInact ? ';opacity:.55' : '') + '">';
+      html += '<span style="flex:1;font-size:12px;color:var(--white)">' + n + (esInact ? '<span style="font-size:9px;color:#e8a84a;margin-left:6px;font-weight:700">⏸ incapacidad</span>' : (fInicio ? '<span style="font-size:9px;color:#e8a84a;margin-left:6px">desde ' + fInicio + '</span>' : '')) + '</span>';
       html += '<span style="font-size:11px;color:' + (pct === 1 ? '#e8a84a' : '#72c47e') + ';font-weight:700">' + pct + '%</span>';
-      html += '<button onclick="eliminarAsesorConfig(\'' + suc + '\',\'' + n.replace(/'/g,"\\'") + '\')" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:12px;padding:2px 4px" title="Eliminar">✕</button>';
+      html += '<button onclick="toggleAsesorInactivo(\'' + suc + '\',\'' + nEsc + '\')" style="background:none;border:none;color:' + (esInact ? '#72c47e' : '#e8a84a') + ';cursor:pointer;font-size:13px;padding:2px 4px" title="' + (esInact ? 'Reactivar (regresó de incapacidad)' : 'Pausar comisión por incapacidad/baja temporal') + '">' + (esInact ? '▶' : '⏸') + '</button>';
+      html += '<button onclick="eliminarAsesorConfig(\'' + suc + '\',\'' + nEsc + '\')" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:12px;padding:2px 4px" title="Eliminar">✕</button>';
       html += '</div>';
     });
     html += '</div>';
@@ -17458,11 +17462,34 @@ async function eliminarAsesorConfig(suc, nombre) {
   }
   if (cfg.comisiones) delete cfg.comisiones[nombre];
   if (cfg.fecha_inicio) delete cfg.fecha_inicio[nombre];
+  if (cfg.inactivos) cfg.inactivos = cfg.inactivos.filter(function(n) { return n !== nombre; });
   var { error } = await db.from('app_config').upsert({ id: 'asesores', value: cfg }, { onConflict: 'id' });
   if (error) { toast('Error: ' + error.message, true); return; }
   _asesoresConfig = cfg;
   toast('✓ Asesor eliminado');
   renderAsesoresConfig();
+}
+
+// Pausar/reactivar la comisión de un asesor (incapacidad / baja temporal) — NO lo borra, reversible.
+// Mientras está pausado: no genera comisión, no cuenta para el divisor del pool, y no aparece en el POS para asignarle ventas.
+async function toggleAsesorInactivo(suc, nombre) {
+  await cargarAsesoresConfig();
+  var cfg = _asesoresConfig || {};
+  if (!cfg.inactivos) cfg.inactivos = [];
+  var idx = cfg.inactivos.indexOf(nombre);
+  var pausar = idx === -1;
+  if (pausar) {
+    if (!confirm('¿Pausar la comisión de ' + nombre + ' por incapacidad / baja temporal?\n\n• Deja de generar comisión\n• No se le podrán asignar ventas en el POS\n• No se borra nada — la reactivas cuando regrese')) return;
+    cfg.inactivos.push(nombre);
+  } else {
+    cfg.inactivos.splice(idx, 1);
+  }
+  var { error } = await db.from('app_config').upsert({ id: 'asesores', value: cfg }, { onConflict: 'id' });
+  if (error) { toast('Error: ' + error.message, true); return; }
+  _asesoresConfig = cfg;
+  toast(pausar ? ('⏸ ' + nombre + ' pausada — ya no genera comisión') : ('▶ ' + nombre + ' reactivada'));
+  renderAsesoresConfig();
+  try { if (document.getElementById('com-table')) calcularComisiones(); } catch(e) {}
 }
 
 (function() {
@@ -18425,12 +18452,21 @@ async function cargarAsesoresConfig() {
   return _asesoresConfig;
 }
 
+// Asesores ACTIVOS de una sucursal — excluye los pausados (incapacidad/baja temporal) en cfg.inactivos.
+function _asesoresActivos(suc) {
+  var cfg = _asesoresConfig || {};
+  var lista = (cfg.sucursales || {})[suc] || [];
+  var inact = cfg.inactivos || [];
+  return lista.filter(function(n){ return inact.indexOf(n) === -1; });
+}
 function getAsesoresPorSucursal(suc) {
   var cfg = _asesoresConfig || { sucursales: { 'Américas':['Lic. Elva Rosa','Dulce Villarreal'], 'Pinocelli':['Lic. Carolina Acosta','Lic. Brenda Lee','Paola Barraza'], 'Magnolia':['Lic. Mariela Piña','Alejandra Alcala'] }, globales:['Karen Alv','Angel Alv','Ivonne Alv'] };
   var all = cfg.sucursales || {};
   var globales = cfg.globales || [];
-  if (suc === 'Todas') return Object.values(all).flat().concat(globales).filter(function(v,i,a){return a.indexOf(v)===i;});
-  return (all[suc] || []).concat(globales);
+  var inact = cfg.inactivos || [];
+  var act = function(n){ return inact.indexOf(n) === -1; }; // no asignar ventas a un asesor pausado
+  if (suc === 'Todas') return Object.values(all).flat().filter(act).concat(globales).filter(function(v,i,a){return a.indexOf(v)===i;});
+  return (all[suc] || []).filter(act).concat(globales);
 }
 
 async function cargarAsesoresGta() {
@@ -24878,7 +24914,7 @@ async function abrirMiSobre() {
   }
 
   await cargarAsesoresConfig();
-  var asesoresSuc = (_asesoresConfig?.sucursales || {})[suc] || [];
+  var asesoresSuc = _asesoresActivos(suc);
   if (asesoresSuc.length === 0) { toast('No hay asesores configurados para esta sucursal', true); cerrarMiSobre(); return; }
 
   // Filtrar quienes ya cobraron este período
@@ -25596,7 +25632,10 @@ async function calcularComisiones() {
 
   await cargarAsesoresConfig();
   var cfg = _asesoresConfig || {};
-  var asesoresSuc = (cfg.sucursales || {})[suc] || [];
+  var inactivos = cfg.inactivos || [];
+  var asesoresTodos = (cfg.sucursales || {})[suc] || [];
+  var asesoresSuc = asesoresTodos.filter(function(n){ return inactivos.indexOf(n) === -1; }); // activos: cuentan para divisor + comisión
+  var asesoresInactSuc = asesoresTodos.filter(function(n){ return inactivos.indexOf(n) !== -1; }); // pausados (incapacidad): $0
   var globales = cfg.globales || [];
   var comPcts = cfg.comisiones || {};
   var comDefault = cfg.comision_default || 2;
@@ -25670,6 +25709,13 @@ async function calcularComisiones() {
   html += '<td colspan="3" style="padding:12px 14px;font-weight:700;color:var(--beige)">Total comisiones</td>';
   html += '<td style="padding:12px 14px;text-align:right;font-weight:800;color:var(--beige);font-size:16px">$' + totalComisiones.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</td>';
   html += '</tr></tbody></table>';
+
+  // Asesores en incapacidad / baja temporal (no generan comisión y no cuentan para el divisor)
+  if (asesoresInactSuc.length) {
+    html += '<div style="padding:10px 14px;font-size:11px;color:#e8a84a;background:rgba(232,168,74,0.06);border-top:1px solid rgba(255,255,255,0.04)">';
+    html += '⏸ En incapacidad / pausa (sin comisión, no cuenta para el divisor): ' + asesoresInactSuc.join(', ');
+    html += '</div>';
+  }
 
   // Ventas de supervisores (no generan comisión)
   var vtaSupervisores = pagos.filter(function(p) { return globales.includes(p.ventas?.asesor); });
