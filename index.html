@@ -9757,20 +9757,60 @@ async function buscarCumpleCanje() {
     box.innerHTML = h;
   } catch(e) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Error: ' + e.message + '</p>'; }
 }
+// Contexto del canje en curso: el premio se PRECARGA en el POS y el canje se REGISTRA al cerrar la venta (con folio + fecha).
+var _cumpleVtaContext = null; // {pacienteId, nombre, premio, _fresh}
+var _cumple30Active = false;  // 30% de descuento de cumpleaños activo en el POS
 async function _canjearCumple(pacienteId, nombre, premio, btn) {
-  if (!confirm('¿Confirmas el canje de ' + (premio==='30pct'?'30% de descuento':'KIT gratis (solución + microfibra)') + ' para ' + nombre + '?\n\nVerifica primero su credencial (INE) que sea su cumpleaños.')) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
-  try {
-    const payload = { paciente_id: pacienteId, anio: new Date().getFullYear(), premio: premio, sucursal: currentUser?.sucursal||null, asesor: currentUser?.nombre||null, canjeado_por: currentUser?.nombre||currentUser?.id||null };
-    const { error } = await db.from('cumple_canjes').insert(payload);
-    if (error) {
-      const dup = /duplicate|unique|cumple_canjes_paciente/i.test(error.message||'');
-      toast(dup ? 'Este cliente ya canjeó su cupón este año' : 'Error: ' + error.message, true);
-      buscarCumpleCanje(); return;
+  const premioTxt = premio==='30pct' ? '30% de descuento' : 'KIT gratis (solución + microfibra)';
+  if (!confirm('Vas a canjear: ' + premioTxt + ' para ' + nombre + '.\n\n⚠️ Verifica primero su CREDENCIAL (INE) y que sea su mes de cumpleaños.\n\nSe abrirá el Punto de Venta con el ' + (premio==='30pct'?'30% precargado (se ajusta solo)':'KIT precargado a $0') + '. El canje se registra al CERRAR la venta.\n\n¿Continuar?')) return;
+  let tel = '';
+  try { const { data: p } = await db.from('pacientes').select('telefono').eq('id', pacienteId).single(); if (p) tel = p.telefono||''; } catch(e){}
+  const ov = btn ? btn.closest('.m-overlay') : null; if (ov) ov.remove();
+  _cumpleVtaContext = { pacienteId: pacienteId, nombre: nombre, premio: premio, _fresh: true };
+  go('ventas');
+  // go('ventas') corre initVenta() (que conserva el contexto _fresh) y reenfoca el buscador a los 150ms.
+  // Seleccionamos DESPUÉS (300ms) para que el onfocus no tape la selección, luego aplicamos el premio.
+  setTimeout(function(){
+    if (typeof selVtaPac === 'function') selVtaPac(pacienteId, nombre, tel);
+    var dd = document.getElementById('vta-pac-dropdown'); if (dd) dd.style.display='none';
+    _aplicarCumpleEnPOS(premio);
+    if (_cumpleVtaContext) _cumpleVtaContext._fresh = false;
+  }, 300);
+}
+function _aplicarCumpleEnPOS(premio) {
+  if (premio === 'kit') {
+    if (!vtaItems.some(function(i){return i._cumpleKit;})) {
+      vtaItems.push({ producto_id:null, descripcion:'🎁 KIT cumpleaños (solución + microfibra)', categoria:'Accesorio', cantidad:1, precio_unitario:0, descuento_item:0, subtotal:0, _cumpleKit:true });
     }
-    toast('🎂 Cupón canjeado (' + (premio==='30pct'?'30%':'KIT') + ')');
-    buscarCumpleCanje();
-  } catch(e) { toast('Error: ' + e.message, true); if (btn) { btn.disabled = false; btn.textContent = (premio==='30pct'?'Canjear 30%':'Canjear KIT'); } }
+    // Cortesía $0 pre-autorizada → permite cerrar sin anticipo sin pedir autorización admin.
+    _vtaSinAnticipo = true; _vtaSinAnticipoMotivo = 'KIT cumpleaños (cortesía)';
+    if (typeof _mostrarSinAnticipoOk === 'function') _mostrarSinAnticipoOk();
+  } else {
+    _cumple30Active = true; // recalcVtaTotales aplica 30% sobre el subtotal (post-promo)
+  }
+  renderVtaItems();
+  _showCumpleBanner(premio);
+}
+function _showCumpleBanner(premio) {
+  var view = document.getElementById('view-ventas'); if (!view) return;
+  var b = document.getElementById('vta-cumple-banner');
+  if (!b) { b = document.createElement('div'); b.id='vta-cumple-banner'; view.insertBefore(b, view.firstChild); }
+  var nombre = _cumpleVtaContext ? (_cumpleVtaContext.nombre||'') : '';
+  var txt = premio==='30pct'
+    ? '🎂 Cupón de cumpleaños de <b>'+nombre+'</b>: <b>30% de descuento</b> aplicado automáticamente al total (se ajusta al agregar productos). Se registra al cerrar la venta.'
+    : '🎂 Cupón de cumpleaños de <b>'+nombre+'</b>: <b>KIT gratis</b> (solución + microfibra) precargado a $0. Cierra la venta para registrar la entrega (folio + fecha).';
+  b.style.cssText = 'margin:10px;padding:10px 14px;background:rgba(114,196,126,0.12);border:1px solid rgba(114,196,126,0.45);border-radius:10px;color:#72c47e;font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:space-between';
+  b.innerHTML = '<span>'+txt+'</span><button onclick="_cancelarCumpleVta()" title="Quitar cupón de esta venta" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0">✕</button>';
+  b.style.display='flex';
+}
+function _cancelarCumpleVta() {
+  _cumpleVtaContext = null; _cumple30Active = false;
+  vtaItems = vtaItems.filter(function(i){return !i._cumpleKit;});
+  _vtaSinAnticipo = false; _vtaSinAnticipoMotivo = '';
+  var dE=document.getElementById('vta-descuento'); if(dE) dE.value='0';
+  var ok=document.getElementById('vta-sin-anticipo-ok'); if(ok) ok.style.display='none';
+  var b=document.getElementById('vta-cumple-banner'); if(b) b.style.display='none';
+  renderVtaItems();
 }
 
 async function deletePac(id, nombre) {
@@ -19435,6 +19475,13 @@ function checkVentasVisibility(u) { document.getElementById('nav-ventas-section'
 
 function initVenta() {
   vtaPaciente=null; vtaItems=[]; vtaMetodo='Efectivo'; vtaMetodos=[]; vtaPromoAplicada=null; vtaFolioSlots=[];
+  // 🎂 Cupón cumple: conservar el contexto solo si se acaba de activar (_fresh) para esta venta; si no, limpiar.
+  if (_cumpleVtaContext && !_cumpleVtaContext._fresh) _cumpleVtaContext = null;
+  if (!_cumpleVtaContext) {
+    _cumple30Active = false;
+    var _cdE=document.getElementById('vta-descuento'); if(_cdE) _cdE.value='0';
+    var _cbn=document.getElementById('vta-cumple-banner'); if(_cbn) _cbn.style.display='none';
+  }
   document.getElementById('vta-pac-search').value='';
   document.getElementById('vta-pac-info').style.display='none';
   document.getElementById('vta-pac-info').innerHTML='';
@@ -19907,7 +19954,16 @@ function vtaItemQty(idx,d) { vtaItems[idx].cantidad=Math.max(1,vtaItems[idx].can
 
 function recalcVtaTotales() {
   const sub=vtaItems.reduce((s,i)=>s+i.subtotal,0);
-  const desc=parseFloat(document.getElementById('vta-descuento')?.value)||0;
+  let desc;
+  if (_cumple30Active) {
+    // 30% de cumpleaños sobre el subtotal restante después del descuento de promo (combinable con 2x1/combo).
+    const promoDesc = vtaPromoAplicada ? (vtaPromoAplicada.descuento||0) : 0;
+    const baseAfterPromo = Math.max(0, sub - promoDesc);
+    desc = promoDesc + Math.round(baseAfterPromo*0.30*100)/100;
+    const dEl=document.getElementById('vta-descuento'); if(dEl) dEl.value = desc.toFixed(2);
+  } else {
+    desc=parseFloat(document.getElementById('vta-descuento')?.value)||0;
+  }
   const total=Math.max(0,sub-desc);
   document.getElementById('vta-subtotal').textContent='$'+sub.toFixed(2);
   document.getElementById('vta-total').textContent='$'+total.toFixed(2);
@@ -20368,6 +20424,14 @@ async function _procesarVentaInner() {
     if (!portalToken) {
       portalToken = Math.random().toString(36).substring(2,12);
       await db.from('ventas').update({token_portal:portalToken}).eq('id',venta.id);
+    }
+    // 🎂 Registrar canje de cupón de cumpleaños si esta venta proviene de uno (folio + fecha quedan en cumple_canjes)
+    if (_cumpleVtaContext && vtaPaciente?.id && _cumpleVtaContext.pacienteId === vtaPaciente.id) {
+      try {
+        await db.from('cumple_canjes').insert({ paciente_id: vtaPaciente.id, anio: new Date().getFullYear(), premio: _cumpleVtaContext.premio, sucursal: ventaSucursal, asesor: asesorVal, canjeado_por: currentUser?.nombre||currentUser?.id||null, venta_folio: folio });
+        toast('🎂 Cupón de cumpleaños registrado ('+(_cumpleVtaContext.premio==='30pct'?'30%':'KIT')+')');
+      } catch(e) { console.warn('[Cumple canje]', e); }
+      _cumpleVtaContext = null; _cumple30Active = false;
     }
     mostrarPostSale(venta.id, folio, estado, total, monAplicar, vtaPaciente?.nombre||'', vtaPaciente?.telefono||'', portalToken);
     cargarVtaPendientes();
