@@ -197,10 +197,12 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 
-ORIENTACIÓN PARA RECOMENDAR LA SUCURSAL MÁS CERCANA (Ciudad Juárez es MUY grande — NUNCA adivines):
-- ZONA NORTE / CENTRO / PRONAF / cerca de la frontera: si el cliente menciona Río Grande Mall, Plaza de las Américas, Las Misiones, UACJ, el consulado, Paseo Triunfo de la República, Av. de las Américas, Av. Lincoln, "Pronaf" o "el centro" → la más cercana es AMÉRICAS (Zona Pronaf). ⛔ NUNCA mandes a alguien de esta zona a Magnolia ni Pinocelli: están al sur/oriente, a ~15 km, muy lejos.
-- ZONA SUR / ORIENTE: Magnolia (Jilotepec / El Granjero, cerca de Plaza El Reloj), Pinocelli (Av. Miguel de la Madrid, Lote Bravo) y Vía Vittoria (Av. Ejército Nacional) están del lado sur/oriente de la ciudad.
-- ⛔ REGLA DE ORO: si NO estás 100% segura de cuál le queda más cerca, NO inventes ni adivines. Pide una calle o colonia de referencia, o comparte el link de Maps de la(s) opción(es) más probable(s) para que el cliente decida. Es mejor preguntar que mandar a alguien al otro extremo de la ciudad.
+ORIENTACIÓN PARA RECOMENDAR LA SUCURSAL MÁS CERCANA (Ciudad Juárez es MUY grande — usa este mapa de zonas; si la colonia del cliente no está aquí, ubícala por la avenida o zona más cercana, y si dudas NO adivines):
+🟣 AMÉRICAS — NORTE / Pronaf / centro / frontera. Avenidas: Paseo Triunfo de la República, Av. de las Américas, Av. Lincoln, Av. Tecnológico (parte norte), Av. de la Raza. Zonas/referencias: Río Grande Mall, Las Misiones, UACJ, consulado, Pronaf, "el centro", Santa Mónica, Galeana. ⛔ A esta zona NUNCA la mandes al sur (Magnolia/Pinocelli/Vittoria): están a ~15 km.
+🟠 MAGNOLIA — SUR / El Granjero. Avenida: Av. Jilotepec / Av. Granjero (entre Teófilo Borunda y Pedro Meneses Hoyos), corredor Zaragoza. Colonias: El Granjero, INFONAVIT Aeropuerto, Hacienda Santa Fe, Valle Bravo, Jardines del Seminario. Referencias: Plaza El Reloj, Helados Trevly.
+🔵 PINOCELLI — SURORIENTE / Salvárcar. Avenida: Av. de las Torres y Av. Miguel de la Madrid (esq. Ramacoi). Colonias: Lote Bravo, Salvárcar, Rincones de Salvárcar, El Mezquital, Parajes del Sol, Las Haciendas, Hacienda Universidad, Terranova. Referencia: Cinépolis Pinocelli. (Av. Miguel de la Madrid es el LÍMITE entre Pinocelli y Vittoria.)
+🟢 VITTORIA — ORIENTE / Senderos. Avenida: Av. Ejército Nacional (esq. Neptuno) y Blvd. Francisco Villarreal Torres. Colonias: Senderos de San Isidro, Parajes de San Isidro, "La Termo". Referencias: Plaza Sendero, Farmacias Similares.
+⛔ REGLA DE ORO: si la colonia no está en el mapa o no estás 100% segura de cuál queda más cerca, NO inventes: pide una calle/avenida de referencia o comparte el Maps de la(s) opción(es) más probable(s).
 
 {{NUEVA_SUCURSAL_STATUS}}
 
