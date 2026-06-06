@@ -115,6 +115,7 @@ REGLAS DE ESTILO:
 - UNA idea por mensaje. NO juntes múltiples temas. Haz una pregunta, espera respuesta, luego la siguiente.
 - Usa emojis con moderación: 1-2 por mensaje máximo (👓 😊), no más
 - Sé amigable y directa, sin rodeos ni introducciones largas
+- CIERRES Y AGRADECIMIENTOS: si el cliente solo agradece o se despide ("gracias", "muchas gracias", "bendiciones", "igualmente", "qué amable") SIN preguntar ni pedir nada, NO repitas la promo, NO vuelvas a explicar el cupón ni empujes la venta. Responde MÁXIMO una línea cálida y breve, o simplemente cierra. Repetir lo que el cliente ya sabe o insistir te hace parecer robot.
 - NO uses formato markdown (ni negritas **, ni listas con -)
 - Si la pregunta está fuera de tu conocimiento sobre Ópticas Car & Era, rechaza amablemente
 - Si el cliente necesita atención humana, sugiere que visite la sucursal
@@ -2402,6 +2403,22 @@ async function handleCumpleCorreccion(from, userText){
   } catch(e){ console.warn('[Cumple-Fix]', e.message); return null; }
 }
 
+// ── 🤐 CIERRE CORTÉS — si el cliente solo agradece o se despide, Clari NO responde (evita re-pitch robótico) ──
+// SOLO agradecimientos/despedidas (NUNCA confirmaciones tipo "ok/sí/va" que avanzan ventas).
+function isPureCourtesyCloser(text){
+  var raw = (text||'').trim();
+  if (!raw) return false;
+  var t = _cumpleStripAccents(raw.toLowerCase());
+  // limpia emojis + puntuación
+  var noemoji = t.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}❤️‍✅✨]/gu,'').replace(/[!¡.,;:~_*"')(\/\-]/g,' ').replace(/\s+/g,' ').trim();
+  if (!noemoji) return true; // solo emojis (👍 🎂 ❤️) → cierre
+  if (noemoji.length > 30) return false;
+  // si trae pregunta o intención de pedir/confirmar algo → NO es cierre
+  if (/\?|precio|cuanto|cuando|donde|cita|graduacion|examen|pedido|folio|lente|cupon|promo|info|ayuda|quiero|necesito|tienen|hay |aparta|comprar|cotiz|si\b|ok|vale|listo|claro|perfecto|sale\b/.test(t)) return false;
+  // whitelist: SOLO agradecimiento / despedida (cortesía que cierra)
+  return /\b(gracias|grax|igualmente|igual|bendiciones|saludos|de nada|que amable|muy amable|hasta luego|nos vemos|buen dia|buenas noches|buenas tardes|que tengas|adios|bye|excelente dia|amen)\b/.test(noemoji);
+}
+
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
   var H = { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' };
@@ -2981,6 +2998,13 @@ exports.handler = async function(event) {
           await saveMessage(from, 'assistant', cumpleFixReply);
           console.log('[Cumple-Fix] -> ' + from + ': ' + cumpleFixReply.substring(0, 60));
           await sendWhatsAppReply(from, cumpleFixReply);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
+
+        // ── 🤐 Cierre cortés: si el cliente solo agradece/se despide, NO responder (evita re-pitch robótico) ──
+        if (isPureCourtesyCloser(userText)) {
+          await saveMessage(from, 'user', userText, userName);
+          console.log('[Closer] silent ack -> ' + from + ': "' + userText.substring(0, 40) + '"');
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
 
