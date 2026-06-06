@@ -123,22 +123,33 @@ function _asistBuildUpcomingEvents(emps) {
   // Check asistencia records for future dates with notas
   // Since we can't do async here, we'll use a cached approach — loaded in initAsistencia
   if (window._asistUpcomingPermisos) {
+    // Agrupar por empleado + tipo (incapacidad/vacaciones/permiso): UN solo evento por bloque continuo,
+    // no uno por cada día (una incapacidad continua generaba ~30 renglones y saturaba la lista).
+    var permisoGroups = {};
     window._asistUpcomingPermisos.forEach(function(p) {
-      var empMatch = emps.find(function(e) { return e.uid === p.uid; });
-      var empName = empMatch ? empMatch.nombre : p.uid;
       var daysUntil = Math.floor((new Date(p.fecha + 'T12:00:00') - todayDate) / (24 * 60 * 60 * 1000));
-      if (daysUntil >= 0 && daysUntil <= 30) {
-        var icon = /vacaciones/i.test(p.nota) ? '🏖️' : /incapacidad/i.test(p.nota) ? '🏥' : '📋';
-        var color = /vacaciones/i.test(p.nota) ? '#4af0c8' : /incapacidad/i.test(p.nota) ? '#f5a623' : '#8ab0e8';
-        events.push({
-          date: p.fecha,
-          daysUntil: daysUntil,
-          icon: icon,
-          text: empName + ' — ' + p.nota,
-          color: color,
-          type: 'permiso'
-        });
-      }
+      if (daysUntil < 0 || daysUntil > 30) return;
+      var tipo = /vacaciones/i.test(p.nota) ? 'vacaciones' : /incapacidad/i.test(p.nota) ? 'incapacidad' : 'permiso';
+      var key = p.uid + '|' + tipo;
+      var g = permisoGroups[key];
+      if (!g) { g = permisoGroups[key] = { uid: p.uid, tipo: tipo, nota: p.nota, minDays: daysUntil, minDate: p.fecha, count: 0 }; }
+      g.count++;
+      if (daysUntil < g.minDays) { g.minDays = daysUntil; g.minDate = p.fecha; g.nota = p.nota; }
+    });
+    Object.keys(permisoGroups).forEach(function(k) {
+      var g = permisoGroups[k];
+      var empMatch = emps.find(function(e) { return e.uid === g.uid; });
+      var empName = empMatch ? empMatch.nombre : g.uid;
+      var icon = g.tipo === 'vacaciones' ? '🏖️' : g.tipo === 'incapacidad' ? '🏥' : '📋';
+      var color = g.tipo === 'vacaciones' ? '#4af0c8' : g.tipo === 'incapacidad' ? '#f5a623' : '#8ab0e8';
+      events.push({
+        date: g.minDate,
+        daysUntil: g.minDays,
+        icon: icon,
+        text: empName + ' — ' + g.nota + (g.count > 1 ? ' · ' + g.count + ' días' : ''),
+        color: color,
+        type: 'permiso'
+      });
     });
   }
 
