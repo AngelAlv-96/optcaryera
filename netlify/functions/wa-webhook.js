@@ -148,6 +148,7 @@ PROMO DE CUMPLEAÑOS (cupón cumpleañero):
 - Válido durante TODO el mes de su cumpleaños, 1 sola vez por cliente. SÍ es combinable con la promoción de temporada vigente (ej. el 2x1 / combo de junio). El examen de vista va incluido igual.
 - Se canjea en cualquiera de las 4 sucursales mostrando el cupón (el mismo mensaje de WhatsApp).
 - Si el cliente pregunta por su cupón de cumpleaños o dice "me llegó un cupón de cumpleaños": confírmalo con entusiasmo, felicítalo 🎂, explica breve el beneficio (30% en lentes O kit gratis) e invítalo a pasar a sucursal durante su mes de cumpleaños. NO inventes otros montos, regalos ni condiciones que no estén aquí.
+- FECHA INCORRECTA: si el cliente dice que HOY no es su cumpleaños o que su fecha está mal, NO discutas ni te disculpes de más. Pídele amablemente su fecha correcta SOLO con día y mes (ej. "¿Qué día y mes es tu cumpleaños?"). Cuando te dé la fecha, el sistema la corrige solo y le confirma — NO necesitas hacer nada más. Nunca pidas ni cambies el AÑO de nacimiento.
 
 REGLAS ANTI-COQUETEO / TRATO PERSONAL (CRÍTICO):
 - DETECCIÓN — el trigger es el CONTENIDO dirigido a ti como persona, no los emojis. Entras en MODO NEUTRAL solo si pasa alguna de estas situaciones:
@@ -2352,6 +2353,55 @@ async function notifyAdminPendingSale(saleData, customerPhone) {
   }
 }
 
+// ── 🎂 CORRECCIÓN DE FECHA DE CUMPLEAÑOS (Clari, solo día+mes, conserva el año) ──
+// Solo aplica a clientes que recibieron el cupón de cumpleaños este año ([Cumple-AAAA] en su historial).
+var _CUMPLE_MESES = { enero:1,ene:1,febrero:2,feb:2,marzo:3,mar:3,abril:4,abr:4,mayo:5,may:5,junio:6,jun:6,julio:7,jul:7,agosto:8,ago:8,septiembre:9,setiembre:9,sep:9,sept:9,octubre:10,oct:10,noviembre:11,nov:11,diciembre:12,dic:12 };
+function _cumpleStripAccents(s){ return (s||'').replace(/[áéíóúü]/g,function(c){return {'á':'a','é':'e','í':'i','ó':'o','ú':'u','ü':'u'}[c];}); }
+function _cumpleValidDM(d, mo){
+  if (!(d>=1 && d<=31 && mo>=1 && mo<=12)) return null;
+  var dim=[31,29,31,30,31,30,31,31,30,31,30,31];
+  if (d>dim[mo-1]) return null;
+  return { dia:d, mes:mo };
+}
+function _cumpleParseFecha(text){
+  var t = _cumpleStripAccents((text||'').toLowerCase());
+  var m = t.match(/\b(\d{1,2})\s*(?:de\s+)?([a-z]{3,})\b/); // "15 de marzo" / "15 marzo"
+  if (m && _CUMPLE_MESES[m[2]] !== undefined) { var r=_cumpleValidDM(parseInt(m[1],10), _CUMPLE_MESES[m[2]]); if(r) return r; }
+  var m2 = t.match(/\b([a-z]{3,})\s+(\d{1,2})\b/); // "marzo 15"
+  if (m2 && _CUMPLE_MESES[m2[1]] !== undefined) { var r2=_cumpleValidDM(parseInt(m2[2],10), _CUMPLE_MESES[m2[1]]); if(r2) return r2; }
+  var m3 = t.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-]\d{2,4})?\b/); // "15/03" / "15-3-1990"
+  if (m3) { var r3=_cumpleValidDM(parseInt(m3[1],10), parseInt(m3[2],10)); if(r3) return r3; }
+  return null;
+}
+async function handleCumpleCorreccion(from, userText){
+  try {
+    var fecha = _cumpleParseFecha(userText);
+    if (!fecha) return null;
+    var t = _cumpleStripAccents((userText||'').toLowerCase());
+    // Requiere referencia explícita al cumpleaños/nacimiento/corrección, O un mensaje CORTO que sea casi solo la fecha
+    // (evita falsos positivos como "paso el 15 de marzo a recoger" — 40 chars con otra intención — o preguntas con "?").
+    var corto = (userText||'').trim().length <= 25 && !/\?\s*$/.test((userText||'').trim());
+    if (!(/cumple|naci|mi fecha|no es (mi|hoy)|hoy no es|fecha de nac|equivoc|esta mal|incorrect/.test(t) || corto)) return null;
+    var d10 = (from||'').replace(/\D/g,'').slice(-10);
+    if (d10.length < 10) return null;
+    var anio = new Date().getFullYear();
+    var tagCheck = await supaFetch('clari_conversations?phone=ilike.*' + d10 + '*&content=ilike.*Cumple-' + anio + '*&select=id&limit=1');
+    if (!tagCheck || !tagCheck.length) return null; // no recibió el cupón → no corrige
+    var pacs = await supaFetch('pacientes?telefono=ilike.*' + d10 + '*&select=id,nombre,fecha_nacimiento&limit=1');
+    if (!pacs || !pacs.length) return null;
+    var pac = pacs[0];
+    var yr = (pac.fecha_nacimiento && /^\d{4}/.test(pac.fecha_nacimiento)) ? pac.fecha_nacimiento.slice(0,4) : '1990'; // conserva el AÑO
+    var nuevoISO = yr + '-' + String(fecha.mes).padStart(2,'0') + '-' + String(fecha.dia).padStart(2,'0');
+    var actual = (pac.fecha_nacimiento||'').slice(0,10);
+    if (actual !== nuevoISO) {
+      await supaFetch('pacientes?id=eq.' + pac.id, { method:'PATCH', body: JSON.stringify({ fecha_nacimiento: nuevoISO }), prefer:'return=minimal' });
+    }
+    var meses = ['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    var primer = (pac.nombre||'').trim().split(/\s+/)[0] || '';
+    return 'Listo' + (primer?' '+primer:'') + ', ya lo corregí 🎂 Tu cumpleaños quedó el ' + fecha.dia + ' de ' + meses[fecha.mes] + '. Te felicitamos en ' + meses[fecha.mes] + ' y tu cupón aplica ese mes 🎁';
+  } catch(e){ console.warn('[Cumple-Fix]', e.message); return null; }
+}
+
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
   var H = { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' };
@@ -2924,8 +2974,18 @@ exports.handler = async function(event) {
           // Clari responds normally (prompt already has reactivation context)
         }
 
+        // ── 🎂 Corrección de fecha de cumpleaños (solo día/mes, conserva el año) ──
+        var cumpleFixReply = await handleCumpleCorreccion(from, userText);
+        if (cumpleFixReply) {
+          await saveMessage(from, 'user', userText, userName);
+          await saveMessage(from, 'assistant', cumpleFixReply);
+          console.log('[Cumple-Fix] -> ' + from + ': ' + cumpleFixReply.substring(0, 60));
+          await sendWhatsAppReply(from, cumpleFixReply);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
+
         var reply = await getAIResponse(userText, userName, from);
-        
+
         // Check if AI response contains CREAR_VENTA command
         var saleMatch = reply.match(/CREAR_VENTA\|([^|]+)\|([^|]+)\|(\d+)\|(\d+\.?\d*)\|([^|\n]+)/);
         if (saleMatch) {
