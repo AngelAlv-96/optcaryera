@@ -647,7 +647,7 @@ body {
       <div class="row">
         <div class="fg">
           <label>Fecha de nacimiento</label>
-          <input type="date" id="p-nac" autocomplete="bday" min="1920-01-01">
+          <input type="text" id="p-nac" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" autocomplete="bday" oninput="_fechaNacFmt(this)">
         </div>
         <div class="fg">
           <label>Sexo</label>
@@ -1039,6 +1039,24 @@ function prevStep(from) {
   if (from > 1) showStep(from - 1);
 }
 
+// ─── Fecha de nacimiento texto DD/MM/AAAA (reemplaza el date nativo que se "brincaba" al mes) ───
+function _fechaNacFmt(el){
+  var v = (el.value||'').replace(/\D/g,'').slice(0,8);
+  if (v.length>=5) v = v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>=3) v = v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+function _fechaNacToISO(str){
+  var m = (str||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return null;
+  var d=+m[1], mo=+m[2], y=+m[3];
+  if(d<1||d>31||mo<1||mo>12||y<1900||y>2100) return null;
+  var iso = y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  var dt = new Date(iso+'T12:00:00');
+  if (dt.getDate()!==d || dt.getMonth()+1!==mo) return null;
+  return iso;
+}
+
 // ─── BUILD REVIEW ───
 function buildReview() {
   // Personal
@@ -1046,7 +1064,7 @@ function buildReview() {
   const ape = document.getElementById('p-ape').value;
   const tel = document.getElementById('p-tel').value;
   const ema = document.getElementById('p-ema').value;
-  const nac = document.getElementById('p-nac').value;
+  const nac = _fechaNacToISO(document.getElementById('p-nac').value);
   document.getElementById('rev-personal').innerHTML = `
     <b>${nom} ${ape}</b><br>
     📞 ${tel || '—'}<br>
@@ -1119,7 +1137,7 @@ async function submitForm() {
   const payload = {
     nombre:    nom,
     apellidos: ape,
-    fecha_nacimiento: document.getElementById('p-nac').value || null,
+    fecha_nacimiento: _fechaNacToISO(document.getElementById('p-nac').value),
     sexo:      document.getElementById('p-sex').value,
     telefono:  document.getElementById('p-tel').value.trim(),
     email:     document.getElementById('p-ema').value.trim(),

@@ -1383,7 +1383,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <div class="fgrid">
                 <div class="fg"><label>Nombre(s) *</label><input id="pr-nom" type="text" placeholder="María Elena" required></div>
                 <div class="fg"><label>Apellidos *</label><input id="pr-ape" type="text" placeholder="González Pérez" required></div>
-                <div class="fg"><label>Fecha de nacimiento</label><input id="pr-nac" type="date" data-no-default="1" min="1920-01-01"></div>
+                <div class="fg"><label>Fecha de nacimiento</label><input id="pr-nac" type="text" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" oninput="_fechaNacFmt(this)"></div>
                 <div class="fg"><label>Sexo</label><select id="pr-sex"><option value="">—</option><option>Femenino</option><option>Masculino</option><option>Prefiero no decir</option></select></div>
                 <div class="fg"><label>Teléfono / WhatsApp</label><input id="pr-tel" type="tel" placeholder="+52 656 000 0000"></div>
                 <div class="fg"><label>Correo electrónico</label><input id="pr-ema" type="email" placeholder="correo@ejemplo.com"></div>
@@ -9650,7 +9650,7 @@ async function editarPaciente(id) {
       ${isAdmin ? inp('Apellidos','ep-ape',v('apellidos')) : ''}
       ${inp('Teléfono','ep-tel',v('telefono'),'tel','placeholder="10 dígitos"')}
       ${isAdmin ? inp('Email','ep-ema',v('email'),'email') : ''}
-      ${isAdmin ? inp('Fecha nacimiento','ep-nac',v('fecha_nacimiento'),'date','min="1920-01-01"') : ''}
+      ${isAdmin ? `<div><label style="font-size:10px;color:var(--muted)">Fecha nacimiento</label><input id="ep-nac" type="text" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" value="${_isoToFechaNac(p.fecha_nacimiento||'')}" oninput="_fechaNacFmt(this)" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"></div>` : ''}
       ${isAdmin ? `<div><label style="font-size:10px;color:var(--muted)">Sexo</label><select id="ep-sex" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option value="">—</option><option ${p.sexo==='Femenino'?'selected':''}>Femenino</option><option ${p.sexo==='Masculino'?'selected':''}>Masculino</option></select></div>` : ''}
       ${isAdmin ? inp('Ocupación','ep-ocu',v('ocupacion')) : ''}
       ${isAdmin ? `<div><label style="font-size:10px;color:var(--muted)">Estado</label><select id="ep-est" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box"><option ${p.estado==='activo'?'selected':''}>activo</option><option ${p.estado==='inactivo'?'selected':''}>inactivo</option></select></div>` : ''}
@@ -9674,7 +9674,7 @@ async function guardarEditPaciente(id, ov, isAdmin) {
       apellidos: document.getElementById('ep-ape').value.trim(),
       telefono: tel || null,
       email: document.getElementById('ep-ema').value.trim() || null,
-      fecha_nacimiento: document.getElementById('ep-nac').value || null,
+      fecha_nacimiento: _fechaNacToISO(document.getElementById('ep-nac').value),
       sexo: document.getElementById('ep-sex').value || null,
       ocupacion: document.getElementById('ep-ocu').value.trim() || null,
       estado: document.getElementById('ep-est').value,
@@ -9685,6 +9685,28 @@ async function guardarEditPaciente(id, ov, isAdmin) {
   if (error) { toast('Error: ' + error.message, true); return; }
   toast('✓ ' + (isAdmin ? 'Paciente actualizado' : 'Teléfono guardado'));
   ov.remove(); loadPac();
+}
+
+// ── Fecha de nacimiento como texto DD/MM/AAAA (reemplaza el <input type=date> nativo que se "brincaba" al mes) ──
+function _fechaNacFmt(el){
+  var v = (el.value||'').replace(/\D/g,'').slice(0,8);
+  if (v.length>=5) v = v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if (v.length>=3) v = v.slice(0,2)+'/'+v.slice(2);
+  el.value = v;
+}
+function _fechaNacToISO(str){
+  var m = (str||'').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return null;
+  var d=+m[1], mo=+m[2], y=+m[3];
+  if(d<1||d>31||mo<1||mo>12||y<1900||y>2100) return null;
+  var iso = y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  var dt = new Date(iso+'T12:00:00');
+  if (dt.getDate()!==d || dt.getMonth()+1!==mo) return null; // valida día real (31/02 inválido)
+  return iso;
+}
+function _isoToFechaNac(iso){
+  var m=(iso||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m? m[3]+'/'+m[2]+'/'+m[1] : '';
 }
 
 // ── 🎂 Cupón de cumpleaños — validación por teléfono + canje (1 por cliente al año) ──
@@ -9786,7 +9808,7 @@ async function savePreregistro(e) {
   const prPayload = {
     nombre:  document.getElementById('pr-nom').value,
     apellidos: document.getElementById('pr-ape').value,
-    fecha_nacimiento: document.getElementById('pr-nac').value || null,
+    fecha_nacimiento: _fechaNacToISO(document.getElementById('pr-nac').value),
     sexo:    document.getElementById('pr-sex').value,
     telefono: document.getElementById('pr-tel').value,
     email:   document.getElementById('pr-ema').value,
