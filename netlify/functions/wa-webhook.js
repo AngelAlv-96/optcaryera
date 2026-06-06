@@ -1014,7 +1014,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
 
   // Safety net: el modelo a veces alucina comandos tipo "[Sistema] consulta el pedido..." porque ve esos tags en el historial guardado.
   // Los [Sistema] son markers internos en clari_conversations, NO un protocolo de tool-use. Sanitizar antes de mandar al usuario.
-  reply = reply.replace(/\n?\[Sistema\][^\n]*\n?/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  reply = reply.replace(/\n?\[Sistema\][^\n]*\n?/g, '\n').replace(/\s*\[Cierre\]\s*/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
   if (!reply) reply = 'Un momento por favor 😊';
 
   await saveMessage(phone, 'user', greeting + userMessage, userName, viaPhoneId);
@@ -2418,6 +2418,15 @@ function isPureCourtesyCloser(text){
   // whitelist: SOLO agradecimiento / despedida inequívoca (NO incluye saludos ambiguos como "buenas noches" que pueden ABRIR conversación)
   return /\b(gracias|grax|igualmente|bendiciones|saludos|de nada|que amable|muy amable|hasta luego|hasta pronto|hasta ma(n|ñ)ana|nos vemos|que tengas|que tengan|que te vaya bien|que est(e|e)n bien|que estes bien|que descanses|cuidate|cuidense|adios|bye|chao|chau|estamos en contacto|gracias por todo)\b/.test(noemoji);
 }
+// Respuesta cálida y breve a la PRIMERA despedida (sin promo). La SEGUNDA en adelante = silencio.
+function _cierreReply(text){
+  var t = _cumpleStripAccents((text||'').toLowerCase());
+  var esGracias = /gracias|grax|de nada|que amable|muy amable/.test(t);
+  var opts = esGracias
+    ? ['¡Con gusto! 😊', '¡A ti! Que estés muy bien 😊', '¡Para servirte! 😊']
+    : ['¡Hasta luego! 😊', '¡Que estés muy bien! 😊', '¡Nos vemos! 😊'];
+  return opts[Math.floor(Math.random()*opts.length)];
+}
 
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
@@ -3001,10 +3010,20 @@ exports.handler = async function(event) {
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
 
-        // ── 🤐 Cierre cortés: si el cliente solo agradece/se despide, NO responder (evita re-pitch robótico) ──
+        // ── 🤐 Cierre cortés: contesta la PRIMERA despedida con una línea cálida; si insisten, silencio (evita re-pitch robótico y loops) ──
         if (isPureCourtesyCloser(userText)) {
           await saveMessage(from, 'user', userText, userName);
-          console.log('[Closer] silent ack -> ' + from + ': "' + userText.substring(0, 40) + '"');
+          var _lastAssist = null;
+          if (recentMsgs) { for (var _ri = recentMsgs.length - 1; _ri >= 0; _ri--) { if (recentMsgs[_ri].role === 'assistant') { _lastAssist = recentMsgs[_ri].content || ''; break; } } }
+          if (_lastAssist && _lastAssist.indexOf('[Cierre]') !== -1) {
+            // Ya nos despedimos antes → no seguir contestando la despedida
+            console.log('[Closer] silent (repeat) -> ' + from + ': "' + userText.substring(0, 40) + '"');
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
+          var _desp = _cierreReply(userText);
+          await saveMessage(from, 'assistant', _desp + ' [Cierre]');
+          await sendWhatsAppReply(from, _desp);
+          console.log('[Closer] first farewell -> ' + from + ': ' + _desp);
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
 
