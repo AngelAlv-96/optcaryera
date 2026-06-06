@@ -40,6 +40,10 @@
 [functions."asistencia-cron"]
   schedule = "*/30 16-18 * * *"
 
+# Cumpleaños — felicita + cupón a los cumpleañeros del día (10:30 y 11:30 CST = 16:30/17:30 UTC; dedup 1/año evita duplicados)
+[functions."cumple-cron"]
+  schedule = "30 16,17 * * *"
+
 # Firma asistencia page
 [[redirects]]
   from = "/firma-asistencia"
