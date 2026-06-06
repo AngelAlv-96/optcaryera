@@ -24806,6 +24806,42 @@ async function _msFetchCajaState(suc) {
   return { caja: caja, efectivo: fondo + efectivoPagos + efectivoCreditos - retirosMXN };
 }
 
+// ── Comisiones por asistencia (Opción A): faltas indebidas e incapacidades NO comisionan ese día; descanso SÍ ──
+// El asesor que falta pierde su parte del ingreso de ese día; el divisor NO cambia (los demás cobran igual).
+function _comDayLocal(ts){ return new Date(ts).toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' }); }
+async function _comDiasSinComision(nombres, desde, hasta) {
+  // Devuelve { nombre: { 'YYYY-MM-DD': true } } con los días de falta (es_falta) o incapacidad (nota) en el período.
+  var out = {};
+  try {
+    var uidMap = {};
+    var uids = (nombres || []).map(function(n){ var u = 'asesor_' + n.toLowerCase().replace(/\s+/g, '_'); uidMap[u] = n; return u; });
+    if (!uids.length) return out;
+    var { data } = await db.from('asistencia').select('uid,fecha,es_falta,nota').in('uid', uids).gte('fecha', desde).lte('fecha', hasta);
+    (data || []).forEach(function(r){
+      var mala = r.es_falta === true || /incapacidad/i.test(r.nota || '');
+      if (!mala) return;
+      var nm = uidMap[r.uid]; if (!nm) return;
+      if (!out[nm]) out[nm] = {};
+      out[nm][r.fecha] = true;
+    });
+  } catch(e) { console.warn('[Comisiones] dias sin comision:', e && e.message); }
+  return out;
+}
+// Ingreso elegible de un asesor = pagos+abonos del período EXCLUYENDO sus días de falta/incapacidad (y respetando fecha_inicio).
+function _comIngresoElegible(pagos, credAb, badSet, fInicioMs) {
+  var sumP = pagos.reduce(function(s,p){
+    if (fInicioMs && new Date(p.created_at).getTime() < fInicioMs) return s;
+    if (badSet && badSet[_comDayLocal(p.created_at)]) return s;
+    return s + Number(p.monto);
+  }, 0);
+  var sumC = (credAb || []).reduce(function(s,a){
+    if (fInicioMs && new Date(a.created_at).getTime() < fInicioMs) return s;
+    if (badSet && badSet[_comDayLocal(a.created_at)]) return s;
+    return s + Number(a.monto);
+  }, 0);
+  return sumP + sumC;
+}
+
 // Calcula comisión de UN asesor para un período (refactor de calcularComisiones)
 async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
   var parts = periodoStr.split('-');
@@ -24831,22 +24867,16 @@ async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
   var { data: credAb } = await db.from('creditos_abonos').select('*').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
   credAb = credAb || [];
 
-  var totalIngreso = pagos.reduce(function(s,p){ return s + Number(p.monto); }, 0) + credAb.reduce(function(s,a){ return s + Number(a.monto); }, 0);
-  var basePorAsesor = numAsesores > 0 ? totalIngreso / numAsesores : 0;
   var pct = comPcts[asesorNombre] !== undefined ? comPcts[asesorNombre] : comDefault;
   var fInicio = fechaInicios[asesorNombre];
-  var asesoraBase = basePorAsesor;
-  var prorateado = null;
-  if (fInicio) {
-    var fInicioMs = new Date(fInicio + 'T00:00:00-06:00').getTime();
-    var periodoStartMs = new Date(utcStart).getTime();
-    if (fInicioMs > periodoStartMs) {
-      var ingreso = pagos.filter(function(p){ return new Date(p.created_at).getTime() >= fInicioMs; }).reduce(function(s,p){ return s + Number(p.monto); }, 0)
-                  + credAb.filter(function(a){ return new Date(a.created_at).getTime() >= fInicioMs; }).reduce(function(s,a){ return s + Number(a.monto); }, 0);
-      asesoraBase = numAsesores > 0 ? ingreso / numAsesores : 0;
-      prorateado = fInicio;
-    }
-  }
+  var fInicioMs = fInicio ? new Date(fInicio + 'T00:00:00-06:00').getTime() : 0;
+  var periodoStartMs = new Date(utcStart).getTime();
+  // Asistencia: días de falta/incapacidad de este asesor NO comisionan (Opción A)
+  var badMap = await _comDiasSinComision([asesorNombre], desde, hasta);
+  var bad = badMap[asesorNombre] || {};
+  var ingresoElegible = _comIngresoElegible(pagos, credAb, bad, fInicioMs);
+  var asesoraBase = numAsesores > 0 ? ingresoElegible / numAsesores : 0;
+  var prorateado = (fInicioMs && fInicioMs > periodoStartMs) ? fInicio : null;
   return { base: asesoraBase, pct: pct, comision: Math.round(asesoraBase * (pct/100) * 100) / 100, prorateado: prorateado };
 }
 
@@ -25651,6 +25681,9 @@ async function calcularComisiones() {
   var { data: credAb } = await db.from('creditos_abonos').select('*').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
   credAb = credAb || [];
 
+  // Asistencia: días de falta indebida / incapacidad por asesor → NO comisionan ese día (Opción A)
+  var badDays = await _comDiasSinComision(asesoresSuc, desde, hasta);
+
   var totalPagos = pagos.reduce(function(s, p) { return s + Number(p.monto); }, 0);
   var totalCredAb = credAb.reduce(function(s, a) { return s + Number(a.monto); }, 0);
   var totalIngreso = totalPagos + totalCredAb;
@@ -25665,29 +25698,22 @@ async function calcularComisiones() {
     { lbl: 'Base / asesor', val: '$' + basePorAsesor.toLocaleString('es-MX', {minimumFractionDigits:2}), color: 'var(--beige)' }
   ].map(function(s) { return '<div class="stat"><div class="stat-lbl">' + s.lbl + '</div><div class="stat-val" style="color:' + s.color + '">' + s.val + '</div></div>'; }).join('');
 
-  // Table — pro-rateo si la asesora empezó dentro del periodo
+  // Table — ingreso elegible por asesor: pro-rateo por fecha_inicio + descuento de días de falta/incapacidad (Opción A)
   var periodoStartMs = new Date(utcStart).getTime();
   var totalComisiones = 0;
   var rows = asesoresSuc.map(function(nombre) {
     var pct = comPcts[nombre] !== undefined ? comPcts[nombre] : comDefault;
     var fInicio = fechaInicios[nombre];
-    var asesoraBase = basePorAsesor;
-    var prorateado = null;
-    if (fInicio) {
-      var fInicioMs = new Date(fInicio + 'T00:00:00-06:00').getTime();
-      if (fInicioMs > periodoStartMs) {
-        // Pro-ratear: solo cuenta ingresos desde fecha_inicio
-        var asesoraPagos = pagos.filter(function(p){ return new Date(p.created_at).getTime() >= fInicioMs; });
-        var asesoraCredAb = credAb.filter(function(a){ return new Date(a.created_at).getTime() >= fInicioMs; });
-        var ingresoPropio = asesoraPagos.reduce(function(s,p){ return s + Number(p.monto); }, 0)
-                          + asesoraCredAb.reduce(function(s,a){ return s + Number(a.monto); }, 0);
-        asesoraBase = numAsesores > 0 ? ingresoPropio / numAsesores : 0;
-        prorateado = fInicio;
-      }
-    }
+    var fInicioMs = fInicio ? new Date(fInicio + 'T00:00:00-06:00').getTime() : 0;
+    var bad = badDays[nombre] || {};
+    var nBad = Object.keys(bad).length;
+    // Ingreso elegible = pagos/abonos del período menos los de sus días de falta/incapacidad (y antes de fecha_inicio)
+    var ingresoElegible = _comIngresoElegible(pagos, credAb, bad, fInicioMs);
+    var asesoraBase = numAsesores > 0 ? ingresoElegible / numAsesores : 0;
+    var prorateado = (fInicioMs && fInicioMs > periodoStartMs) ? fInicio : null;
     var comision = asesoraBase * (pct / 100);
     totalComisiones += comision;
-    return { nombre: nombre, pct: pct, base: asesoraBase, comision: comision, prorateado: prorateado };
+    return { nombre: nombre, pct: pct, base: asesoraBase, comision: comision, prorateado: prorateado, badDays: nBad };
   });
 
   var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
@@ -25699,7 +25725,7 @@ async function calcularComisiones() {
   html += '</tr></thead><tbody>';
   rows.forEach(function(r) {
     html += '<tr style="border-top:1px solid rgba(255,255,255,0.04)">';
-    html += '<td style="padding:10px 14px;color:var(--white);font-weight:600">' + r.nombre + (r.prorateado ? '<br><span style="font-size:9px;color:#e8a84a;font-weight:400">desde ' + r.prorateado + ' (pro-rateado)</span>' : '') + '</td>';
+    html += '<td style="padding:10px 14px;color:var(--white);font-weight:600">' + r.nombre + (r.prorateado ? '<br><span style="font-size:9px;color:#e8a84a;font-weight:400">desde ' + r.prorateado + ' (pro-rateado)</span>' : '') + (r.badDays ? '<br><span style="font-size:9px;color:#e07a7a;font-weight:600">− ' + r.badDays + ' día(s) sin comisión (falta/incap)</span>' : '') + '</td>';
     html += '<td style="padding:10px 8px;text-align:right;color:var(--muted)">$' + r.base.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</td>';
     html += '<td style="padding:10px 8px;text-align:center;color:' + (r.pct === 1 ? '#e8a84a' : '#72c47e') + ';font-weight:700">' + r.pct + '%</td>';
     html += '<td style="padding:10px 14px;text-align:right;color:#72c47e;font-weight:700;font-size:15px">$' + r.comision.toLocaleString('es-MX', {minimumFractionDigits:2}) + '</td>';
