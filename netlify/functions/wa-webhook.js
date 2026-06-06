@@ -2426,13 +2426,20 @@ function isPureCourtesyCloser(text){
   return /\b(gracias|grax|igualmente|bendiciones|saludos|de nada|que amable|muy amable|hasta luego|hasta pronto|hasta ma(n|ñ)ana|nos vemos|que tengas|que tengan|que te vaya bien|que est(e|e)n bien|que estes bien|que descanses|cuidate|cuidense|adios|bye|chao|chau|estamos en contacto|gracias por todo)\b/.test(noemoji);
 }
 // Respuesta cálida y breve a la PRIMERA despedida (sin promo). La SEGUNDA en adelante = silencio.
+// Frases fijas → se detectan por sí mismas en el historial (sin guardar ningún marcador visible).
+var _CIERRE_GRACIAS = ['¡Con gusto! 😊', '¡A ti! Que estés muy bien 😊', '¡Para servirte! 😊'];
+var _CIERRE_DESPEDIDA = ['¡Hasta luego! 😊', '¡Que estés muy bien! 😊', '¡Nos vemos! 😊'];
+var _CIERRE_TODAS = _CIERRE_GRACIAS.concat(_CIERRE_DESPEDIDA);
 function _cierreReply(text){
   var t = _cumpleStripAccents((text||'').toLowerCase());
   var esGracias = /gracias|grax|de nada|que amable|muy amable/.test(t);
-  var opts = esGracias
-    ? ['¡Con gusto! 😊', '¡A ti! Que estés muy bien 😊', '¡Para servirte! 😊']
-    : ['¡Hasta luego! 😊', '¡Que estés muy bien! 😊', '¡Nos vemos! 😊'];
+  var opts = esGracias ? _CIERRE_GRACIAS : _CIERRE_DESPEDIDA;
   return opts[Math.floor(Math.random()*opts.length)];
+}
+// ¿El último mensaje de Clari ya fue una despedida de cierre? (para no responder dos veces)
+function _yaEsCierre(msg){
+  var m = (msg||'').replace(/\s*\[Cierre\]\s*/g,'').trim(); // tolera marcador legacy
+  return _CIERRE_TODAS.indexOf(m) !== -1;
 }
 
 // ── MAIN HANDLER ──
@@ -3022,13 +3029,13 @@ exports.handler = async function(event) {
           await saveMessage(from, 'user', userText, userName);
           var _lastAssist = null;
           if (recentMsgs) { for (var _ri = recentMsgs.length - 1; _ri >= 0; _ri--) { if (recentMsgs[_ri].role === 'assistant') { _lastAssist = recentMsgs[_ri].content || ''; break; } } }
-          if (_lastAssist && _lastAssist.indexOf('[Cierre]') !== -1) {
+          if (_lastAssist && _yaEsCierre(_lastAssist)) {
             // Ya nos despedimos antes → no seguir contestando la despedida
             console.log('[Closer] silent (repeat) -> ' + from + ': "' + userText.substring(0, 40) + '"');
             return { statusCode: 200, headers: H, body: '<Response></Response>' };
           }
           var _desp = _cierreReply(userText);
-          await saveMessage(from, 'assistant', _desp + ' [Cierre]');
+          await saveMessage(from, 'assistant', _desp);
           await sendWhatsAppReply(from, _desp);
           console.log('[Closer] first farewell -> ' + from + ': ' + _desp);
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
