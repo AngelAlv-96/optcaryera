@@ -189,6 +189,11 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 
+ORIENTACIÓN PARA RECOMENDAR LA SUCURSAL MÁS CERCANA (Ciudad Juárez es MUY grande — NUNCA adivines):
+- ZONA NORTE / CENTRO / PRONAF / cerca de la frontera: si el cliente menciona Río Grande Mall, Plaza de las Américas, Las Misiones, UACJ, el consulado, Paseo Triunfo de la República, Av. de las Américas, Av. Lincoln, "Pronaf" o "el centro" → la más cercana es AMÉRICAS (Zona Pronaf). ⛔ NUNCA mandes a alguien de esta zona a Magnolia ni Pinocelli: están al sur/oriente, a ~15 km, muy lejos.
+- ZONA SUR / ORIENTE: Magnolia (Jilotepec / El Granjero, cerca de Plaza El Reloj), Pinocelli (Av. Miguel de la Madrid, Lote Bravo) y Vía Vittoria (Av. Ejército Nacional) están del lado sur/oriente de la ciudad.
+- ⛔ REGLA DE ORO: si NO estás 100% segura de cuál le queda más cerca, NO inventes ni adivines. Pide una calle o colonia de referencia, o comparte el link de Maps de la(s) opción(es) más probable(s) para que el cliente decida. Es mejor preguntar que mandar a alguien al otro extremo de la ciudad.
+
 {{NUEVA_SUCURSAL_STATUS}}
 
 ⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
