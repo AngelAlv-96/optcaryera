@@ -9784,11 +9784,12 @@ function _aplicarCumpleEnPOS(premio) {
     }
     // Cortesía $0 pre-autorizada → permite cerrar sin anticipo sin pedir autorización admin.
     _vtaSinAnticipo = true; _vtaSinAnticipoMotivo = 'KIT cumpleaños (cortesía)';
-    if (typeof _mostrarSinAnticipoOk === 'function') _mostrarSinAnticipoOk();
   } else {
     _cumple30Active = true; // recalcVtaTotales aplica 30% sobre el subtotal (post-promo)
   }
   renderVtaItems();
+  // Después de render (que re-muestra el botón sin-anticipo) marcamos el OK para el kit.
+  if (premio === 'kit' && typeof _mostrarSinAnticipoOk === 'function') _mostrarSinAnticipoOk();
   _showCumpleBanner(premio);
 }
 function _showCumpleBanner(premio) {
