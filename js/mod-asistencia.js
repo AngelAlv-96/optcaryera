@@ -965,7 +965,7 @@ function asistRenderConfig() {
   html += '</select>';
   html += '<input type="text" id="asist-extra-phone" placeholder="Teléfono" maxlength="15" style="width:100px;' + monoInputS + '">';
   html += '<label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--white);cursor:pointer;white-space:nowrap"><input type="checkbox" id="asist-extra-vendedor" onchange="var w=document.getElementById(\'asist-extra-com-wrap\');if(w)w.style.display=this.checked?\'inline-flex\':\'none\'" style="cursor:pointer">Vendedor</label>';
-  html += '<span id="asist-extra-com-wrap" style="display:none;align-items:center;gap:2px;font-size:10px;color:var(--muted)"><input type="number" id="asist-extra-com" value="2" min="0" max="100" step="0.5" style="width:42px;' + inputS + '">%</span>';
+  html += '<span id="asist-extra-com-wrap" style="display:none;align-items:center;gap:2px;font-size:10px;color:var(--muted)"><input type="number" id="asist-extra-com" value="1" min="0" max="100" step="0.5" style="width:42px;' + inputS + '">%</span>';
   html += '<button class="btn btn-p btn-sm" style="padding:4px 8px;font-size:10px" onclick="asistAgregarExtra()">+ Agregar</button>';
   html += '</div>';
   html += '<div style="font-size:9px;color:var(--muted);margin-top:3px">Marca <b>Vendedor</b> si gana comisión: se agrega también a Asesores (comisión + POS) automáticamente, con una sola alta.</div>';
