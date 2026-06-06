@@ -2411,12 +2411,12 @@ function isPureCourtesyCloser(text){
   var t = _cumpleStripAccents(raw.toLowerCase());
   // limpia emojis + puntuación
   var noemoji = t.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}❤️‍✅✨]/gu,'').replace(/[!¡.,;:~_*"')(\/\-]/g,' ').replace(/\s+/g,' ').trim();
-  if (!noemoji) return true; // solo emojis (👍 🎂 ❤️) → cierre
-  if (noemoji.length > 30) return false;
-  // si trae pregunta o intención de pedir/confirmar algo → NO es cierre
-  if (/\?|precio|cuanto|cuando|donde|cita|graduacion|examen|pedido|folio|lente|cupon|promo|info|ayuda|quiero|necesito|tienen|hay |aparta|comprar|cotiz|si\b|ok|vale|listo|claro|perfecto|sale\b/.test(t)) return false;
-  // whitelist: SOLO agradecimiento / despedida (cortesía que cierra)
-  return /\b(gracias|grax|igualmente|igual|bendiciones|saludos|de nada|que amable|muy amable|hasta luego|nos vemos|buen dia|buenas noches|buenas tardes|que tengas|adios|bye|excelente dia|amen)\b/.test(noemoji);
+  if (!noemoji) return true; // solo emojis (👍 🎂 👋 ❤️) → cierre
+  if (noemoji.length > 40) return false;
+  // NO silenciar si trae pregunta, intención de pedir/seguir, o una confirmación que avanza venta (ok/sí/va/perfecto…)
+  if (/\?|precio|cuanto|cuando|donde|cita|graduacion|examen|pedido|folio|lente|cupon|promo|info|ayuda|quiero|necesito|tienen|hay |aparta|comprar|cotiz|disponible|manda|envia|pasame|pregunta|duda|otra cosa|tambien|ademas|una mas|me puedes|podrias|\bsi\b|\bok\b|okay|vale|listo|claro|perfecto|\bsale\b|\bva\b/.test(t)) return false;
+  // whitelist: SOLO agradecimiento / despedida inequívoca (NO incluye saludos ambiguos como "buenas noches" que pueden ABRIR conversación)
+  return /\b(gracias|grax|igualmente|bendiciones|saludos|de nada|que amable|muy amable|hasta luego|hasta pronto|hasta ma(n|ñ)ana|nos vemos|que tengas|que tengan|que te vaya bien|que est(e|e)n bien|que estes bien|que descanses|cuidate|cuidense|adios|bye|chao|chau|estamos en contacto|gracias por todo)\b/.test(noemoji);
 }
 
 // ── MAIN HANDLER ──
