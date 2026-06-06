@@ -956,16 +956,20 @@ function asistRenderConfig() {
     html += '<div style="color:var(--muted);font-size:11px;padding:8px 0">No hay empleados configurados. Agrégalos en Configuración → Ventas → Asesores.</div>';
   }
 
-  // Add employee form
+  // Add employee form (alta unificada: un solo formulario llena RH + Asesores cuando es vendedor)
   html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
-  html += '<div style="display:flex;gap:5px;align-items:center">';
-  html += '<input type="text" id="asist-extra-nombre" placeholder="Nombre completo" style="flex:1;' + inputS + '">';
+  html += '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">';
+  html += '<input type="text" id="asist-extra-nombre" placeholder="Nombre completo" style="flex:1;min-width:140px;' + inputS + '">';
   html += '<select id="asist-extra-suc" style="' + inputS + '">';
   html += '<option value="Laboratorio">Laboratorio</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>';
   html += '</select>';
   html += '<input type="text" id="asist-extra-phone" placeholder="Teléfono" maxlength="15" style="width:100px;' + monoInputS + '">';
+  html += '<label style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--white);cursor:pointer;white-space:nowrap"><input type="checkbox" id="asist-extra-vendedor" onchange="var w=document.getElementById(\'asist-extra-com-wrap\');if(w)w.style.display=this.checked?\'inline-flex\':\'none\'" style="cursor:pointer">Vendedor</label>';
+  html += '<span id="asist-extra-com-wrap" style="display:none;align-items:center;gap:2px;font-size:10px;color:var(--muted)"><input type="number" id="asist-extra-com" value="2" min="0" max="100" step="0.5" style="width:42px;' + inputS + '">%</span>';
   html += '<button class="btn btn-p btn-sm" style="padding:4px 8px;font-size:10px" onclick="asistAgregarExtra()">+ Agregar</button>';
-  html += '</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:9px;color:var(--muted);margin-top:3px">Marca <b>Vendedor</b> si gana comisión: se agrega también a Asesores (comisión + POS) automáticamente, con una sola alta.</div>';
+  html += '</div>';
 
   // Horario base (collapsible at the bottom)
   html += '<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
@@ -1073,12 +1077,50 @@ async function asistAgregarExtra() {
   var nombre = (document.getElementById('asist-extra-nombre') || {}).value || '';
   var suc = (document.getElementById('asist-extra-suc') || {}).value || 'Laboratorio';
   var phone = ((document.getElementById('asist-extra-phone') || {}).value || '').replace(/[\s\-\(\)\+]/g, '');
+  var esVendedor = !!((document.getElementById('asist-extra-vendedor') || {}).checked);
+  var com = parseFloat((document.getElementById('asist-extra-com') || {}).value);
   nombre = nombre.trim();
   if (!nombre) { if (typeof toast === 'function') toast('Ingresa el nombre','error'); return; }
   if (!phone || phone.length < 10) { if (typeof toast === 'function') toast('Teléfono inválido (10 dígitos)','error'); return; }
   if (phone.length === 10) phone = '521' + phone;
   if (phone.length === 12 && phone.startsWith('52') && phone[2] !== '1') phone = '521' + phone.slice(2);
+  if (esVendedor && suc === 'Laboratorio') { if (typeof toast === 'function') toast('Un vendedor debe tener sucursal (no Laboratorio)','error'); return; }
 
+  if (esVendedor) {
+    // Alta UNIFICADA: identidad de asesor (igual que los asesores actuales) → comisión + POS + checador, sin duplicar.
+    var auid = 'asesor_' + nombre.toLowerCase().replace(/\s+/g, '_');
+    _asistPhoneMap[phone] = auid; // checador
+    // Releer la config de asesores MÁS RECIENTE para NO pisar otros campos (globales, divisores, otras sucursales).
+    var aCfg;
+    try {
+      var _fresh = await db.from('app_config').select('value').eq('id', 'asesores').single();
+      aCfg = _fresh && _fresh.data ? (typeof _fresh.data.value === 'string' ? JSON.parse(_fresh.data.value) : _fresh.data.value) : (_asistAsesores || {});
+    } catch(_e) { aCfg = _asistAsesores || {}; }
+    if (!aCfg.sucursales) aCfg.sucursales = {};
+    if (!aCfg.sucursales[suc]) aCfg.sucursales[suc] = [];
+    if (aCfg.sucursales[suc].indexOf(nombre) === -1) aCfg.sucursales[suc].push(nombre);
+    if (!aCfg.comisiones) aCfg.comisiones = {};
+    var comPct = (isNaN(com) ? (aCfg.comision_default || 2) : com);
+    if (comPct !== (aCfg.comision_default || 2)) aCfg.comisiones[nombre] = comPct;
+    if (!aCfg.fecha_inicio) aCfg.fecha_inicio = {};
+    aCfg.fecha_inicio[nombre] = _asistHoyLocal(); // pro-rateo si entra a media quincena
+    try {
+      await Promise.all([
+        db.from('app_config').upsert({ id: 'empleados_telefono', value: JSON.stringify(_asistPhoneMap) }, { onConflict: 'id' }),
+        db.from('app_config').upsert({ id: 'asesores', value: aCfg }, { onConflict: 'id' })
+      ]);
+      _asistAsesores = aCfg;
+      try { if (typeof _asesoresConfig !== 'undefined') _asesoresConfig = aCfg; } catch(_){} // refrescar caché de comisiones/POS sin recargar
+      asistRenderConfig();
+      if (typeof toast === 'function') toast(nombre + ' agregado como vendedor (comisión + checador)');
+    } catch(e) {
+      console.error('[Asistencia] Add vendedor error:', e);
+      if (typeof toast === 'function') toast('Error guardando','error');
+    }
+    return;
+  }
+
+  // No vendedor → empleado "extra" (solo checador)
   var uid = 'extra_' + nombre.toLowerCase().replace(/\s+/g, '_');
   if (!_asistHorarios.empleados_extra) _asistHorarios.empleados_extra = {};
   _asistHorarios.empleados_extra[uid] = { nombre: nombre, sucursal: suc };
