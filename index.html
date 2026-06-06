@@ -1342,6 +1342,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <input type="text" id="pac-search" placeholder="Buscar nombre, teléfono o folio..." oninput="debouncePacSearch()">
             </div>
             <button class="btn btn-g btn-sm" onclick="loadPacSelect()" title="Actualizar">&#x21bb;</button>
+            <button class="btn btn-g btn-sm" onclick="abrirCumpleCanje()" title="Validar y canjear cupón de cumpleaños">🎂 Cupón cumple</button>
             <button class="btn btn-p" onclick="go('preregistro')">+ Nuevo</button>
           </div>
         </div>
@@ -9684,6 +9685,70 @@ async function guardarEditPaciente(id, ov, isAdmin) {
   if (error) { toast('Error: ' + error.message, true); return; }
   toast('✓ ' + (isAdmin ? 'Paciente actualizado' : 'Teléfono guardado'));
   ov.remove(); loadPac();
+}
+
+// ── 🎂 Cupón de cumpleaños — validación por teléfono + canje (1 por cliente al año) ──
+function _ccMesNombre(mm){ return ['','enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][parseInt(mm,10)]||mm; }
+function abrirCumpleCanje() {
+  const ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.innerHTML = `<div class="modal" style="max-width:460px;padding:24px">
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige);margin-bottom:4px">🎂 Cupón de cumpleaños</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Busca al cliente por el teléfono que recibió el cupón. Verifica su credencial (INE) antes de canjear.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="cc-tel" type="tel" inputmode="numeric" placeholder="Teléfono (10 dígitos)" style="flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none;box-sizing:border-box" onkeydown="if(event.key==='Enter')buscarCumpleCanje()">
+      <button class="btn btn-p" onclick="buscarCumpleCanje()">Buscar</button>
+    </div>
+    <div id="cc-result"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-g" onclick="this.closest('.m-overlay').remove()">Cerrar</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(function(){ var i=document.getElementById('cc-tel'); if(i) i.focus(); }, 100);
+}
+async function buscarCumpleCanje() {
+  const raw = (document.getElementById('cc-tel') && document.getElementById('cc-tel').value || '').replace(/\D/g,'').slice(-10);
+  const box = document.getElementById('cc-result');
+  if (!box) return;
+  if (raw.length < 10) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Escribe los 10 dígitos del teléfono.</p>'; return; }
+  box.innerHTML = '<div class="ld"><div class="spin"></div> Buscando...</div>';
+  try {
+    const { data: pacs } = await db.from('pacientes').select('id,nombre,apellidos,telefono,fecha_nacimiento').ilike('telefono', '%'+raw+'%').limit(10);
+    if (!pacs || !pacs.length) { box.innerHTML = '<p style="color:var(--muted);font-size:12px">No se encontró ningún cliente con ese teléfono.</p>'; return; }
+    const anio = new Date().getFullYear();
+    const mesHoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' }).slice(5,7);
+    const ids = pacs.map(function(p){ return p.id; });
+    const { data: canjes } = await db.from('cumple_canjes').select('*').in('paciente_id', ids).eq('anio', anio);
+    const cmap = {}; (canjes||[]).forEach(function(c){ cmap[c.paciente_id] = c; });
+    let h = '';
+    pacs.forEach(function(p){
+      const nac = (p.fecha_nacimiento || '');
+      const mesNac = nac.slice(5,7);
+      const canje = cmap[p.id];
+      const nombreSafe = (p.nombre||'').replace(/[\\'"<>]/g,'').trim();
+      let estado, color, botones = '';
+      if (!nac) { estado = '⚠️ Sin fecha de nacimiento registrada'; color = '#e0a060'; }
+      else if (canje) { estado = '✅ YA CANJEADO (' + (canje.premio==='30pct'?'30% desc':'KIT gratis') + ') el ' + (canje.canjeado_at||'').slice(0,10) + (canje.sucursal?' · '+canje.sucursal:''); color = '#72c47e'; }
+      else if (mesNac !== mesHoy) { estado = '⚪ No es su mes de cumpleaños (cumple en ' + _ccMesNombre(mesNac) + ')'; color = 'var(--muted)'; }
+      else { estado = '🎂 DISPONIBLE — cumple este mes'; color = '#72c47e'; botones = '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-p btn-sm" onclick="_canjearCumple(\''+p.id+'\',\''+nombreSafe+'\',\'30pct\',this)">Canjear 30%</button><button class="btn btn-p btn-sm" style="background:#5b8def;border-color:#5b8def" onclick="_canjearCumple(\''+p.id+'\',\''+nombreSafe+'\',\'kit\',this)">Canjear KIT</button></div>'; }
+      h += '<div style="background:var(--surface2);border-radius:8px;padding:10px 12px;margin-bottom:8px"><div style="font-weight:700;font-size:13px;color:var(--white)">' + (p.nombre||'') + ' ' + (p.apellidos||'') + '</div><div style="font-size:11px;color:var(--muted)">📞 ' + (p.telefono||'') + ' · 🎂 ' + (nac ? nac.slice(8,10)+'/'+nac.slice(5,7) : '—') + '</div><div style="font-size:12px;color:'+color+';margin-top:4px;font-weight:600">' + estado + '</div>' + botones + '</div>';
+    });
+    box.innerHTML = h;
+  } catch(e) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Error: ' + e.message + '</p>'; }
+}
+async function _canjearCumple(pacienteId, nombre, premio, btn) {
+  if (!confirm('¿Confirmas el canje de ' + (premio==='30pct'?'30% de descuento':'KIT gratis (solución + microfibra)') + ' para ' + nombre + '?\n\nVerifica primero su credencial (INE) que sea su cumpleaños.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    const payload = { paciente_id: pacienteId, anio: new Date().getFullYear(), premio: premio, sucursal: currentUser?.sucursal||null, asesor: currentUser?.nombre||null, canjeado_por: currentUser?.nombre||currentUser?.id||null };
+    const { error } = await db.from('cumple_canjes').insert(payload);
+    if (error) {
+      const dup = /duplicate|unique|cumple_canjes_paciente/i.test(error.message||'');
+      toast(dup ? 'Este cliente ya canjeó su cupón este año' : 'Error: ' + error.message, true);
+      buscarCumpleCanje(); return;
+    }
+    toast('🎂 Cupón canjeado (' + (premio==='30pct'?'30%':'KIT') + ')');
+    buscarCumpleCanje();
+  } catch(e) { toast('Error: ' + e.message, true); if (btn) { btn.disabled = false; btn.textContent = (premio==='30pct'?'Canjear 30%':'Canjear KIT'); } }
 }
 
 async function deletePac(id, nombre) {
