@@ -61,6 +61,15 @@ function _asistSchedMinutes(timeStr) {
   return parseInt(p[0]) * 60 + parseInt(p[1]);
 }
 
+// Ventana de comida por empleado (cuando NO la fichan se asume esta). Cada quien la suya
+// para que dos empleados de la misma sucursal no salgan a comer al mismo tiempo.
+var _ASIST_COMIDA_DEFAULT = { inicio: '14:00', fin: '15:00' };
+function _asistComidaWindow(uid) {
+  var c = _asistHorarios && _asistHorarios.comida && _asistHorarios.comida[uid];
+  if (c && c.inicio && c.fin) return c;
+  return _ASIST_COMIDA_DEFAULT;
+}
+
 function _asistGetActiveEmployees() {
   // Returns array of {uid, nombre, sucursal} for all employees with phone mapping
   var emps = [];
@@ -238,6 +247,8 @@ async function initAsistencia() {
   if (cfgTab) cfgTab.style.display = isAdminOrGerencia ? '' : 'none';
   var expTab = document.getElementById('asist-tab-expediente');
   if (expTab) expTab.style.display = isAdminOrGerencia ? '' : 'none';
+  var falTab = document.getElementById('asist-tab-faltas');
+  if (falTab) falTab.style.display = isAdminOrGerencia ? '' : 'none';
 
   try {
     // Load config in parallel
@@ -272,7 +283,7 @@ async function initAsistencia() {
 
 function asistSwitchTab(tab) {
   _asistActiveTab = tab;
-  ['diario','resumen','expediente','config'].forEach(function(t) {
+  ['diario','resumen','faltas','expediente','config'].forEach(function(t) {
     var el = document.getElementById('asist-content-' + t);
     var btn = document.getElementById('asist-tab-' + t);
     if (el) el.style.display = t === tab ? '' : 'none';
@@ -280,6 +291,7 @@ function asistSwitchTab(tab) {
   });
   if (tab === 'diario') asistCargarDiario(_asistFechaDiario);
   if (tab === 'resumen') asistCargarResumen('semana');
+  if (tab === 'faltas') asistCargarFaltas();
   if (tab === 'expediente') asistRenderExpedientes();
   if (tab === 'config') asistRenderConfig();
 }
@@ -736,7 +748,137 @@ async function asistCargarResumen(tipo) {
     html += '</div>';
   }
 
+  // Panel de reportes para firma (vista previa / reenviar / juntar) — al final del tab
+  html += '<div id="asist-reportes-firma-panel" style="margin-top:24px"></div>';
+
   cont.innerHTML = html;
+  asistRenderReportesFirma();
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTES DE ASISTENCIA PARA FIRMA (vista previa · reenviar · juntar)
+// ═══════════════════════════════════════════════════════════
+
+var _asistReportesFirmaCache = [];  // reportes (firmas no-acta) cargados, para acciones
+
+async function asistRenderReportesFirma() {
+  var panel = document.getElementById('asist-reportes-firma-panel');
+  if (!panel) return;
+  panel.innerHTML = '<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;color:var(--muted);font-size:11px"><span class="spinner-sm"></span> Cargando reportes para firma...</div>';
+
+  var emps = _asistGetActiveEmployees();
+  var empByUid = {}; emps.forEach(function(e){ empByUid[e.uid] = e; });
+  var uids = emps.map(function(e){ return e.uid; });
+  if (!uids.length) { panel.innerHTML = ''; return; }
+
+  var firmas = [];
+  try {
+    var fr = await db.from('asistencia_firmas').select('*').in('uid', uids).order('periodo_inicio', { ascending: true });
+    firmas = fr.data || [];
+  } catch(e) { console.error('[Reportes-firma] load error', e); }
+  if (!firmas.length) {
+    panel.innerHTML = '<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px"><div style="font-size:12px;font-weight:600;color:var(--beige);margin-bottom:4px">📝 Reportes para firma</div><div style="font-size:11px;color:var(--muted)">Aún no se han enviado reportes de asistencia.</div></div>';
+    return;
+  }
+
+  // Solo REPORTES (las actas viven en el tab Faltas). El tipo se guarda al crear el registro.
+  var reportes = firmas.filter(function(f){ return f.tipo !== 'acta'; });
+  _asistReportesFirmaCache = reportes;
+
+  // Agrupar por empleado
+  var byUid = {};
+  reportes.forEach(function(f){ (byUid[f.uid] = byUid[f.uid] || []).push(f); });
+
+  var _fmt = function(ts){ return ts ? new Date(ts).toLocaleDateString('es-MX', { timeZone:'America/Chihuahua', day:'numeric', month:'short' }) : '—'; };
+
+  var html = '<div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--beige);margin-bottom:4px">📝 Reportes de asistencia para firma</div>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:12px">Si un empleado acumula <b>2 o más reportes sin firmar</b>, usa <b>🔗 Juntar y reenviar</b> para mandarlos en uno solo. 👁 Ver = vista previa.</div>';
+
+  var totalPend = 0, totalFirm = 0;
+  Object.keys(byUid).forEach(function(uid){
+    var list = byUid[uid].slice().sort(function(a,b){ return a.periodo_inicio < b.periodo_inicio ? -1 : 1; });
+    var nom = (empByUid[uid] || {}).nombre || uid;
+    var suc = (empByUid[uid] || {}).sucursal || '';
+    var pend = list.filter(function(f){ return !f.firmado_at; });
+    var firm = list.filter(function(f){ return f.firmado_at; });
+    totalPend += pend.length; totalFirm += firm.length;
+    if (!pend.length && !firm.length) return;
+
+    html += '<div style="background:var(--surface2);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 12px;margin-bottom:8px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">';
+    html += '<div style="font-size:12px;font-weight:600">' + nom + (suc?' <span style="font-size:10px;color:var(--muted);font-weight:400">· ' + suc + '</span>':'') + '</div>';
+    if (pend.length >= 2) {
+      html += '<button class="btn btn-p btn-sm" style="padding:3px 10px;font-size:11px" onclick="asistJuntarReportes(\'' + uid + '\')" title="Juntar todos los reportes sin firmar en uno solo y reenviar">🔗 Juntar y reenviar (' + pend.length + ')</button>';
+    }
+    html += '</div>';
+
+    // Pendientes
+    pend.forEach(function(f){
+      var expirado = f.token_expires && new Date(f.token_expires) < new Date();
+      var estTxt = expirado ? '<span style="color:#e74c3c">⌛ Link expirado · nunca firmado</span>' : '<span style="color:#f5a623">⏳ Pendiente de firma</span>';
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-top:1px solid rgba(255,255,255,0.04)">';
+      html += '<div style="flex:1;min-width:150px;font-size:11px;color:var(--muted)">' + f.periodo_inicio + ' al ' + f.periodo_fin + ' · enviado ' + _fmt(f.enviado_at) + ' · ' + estTxt + '</div>';
+      html += '<button class="btn btn-g" style="padding:2px 7px;font-size:10px;margin-right:4px" onclick="asistReenviarFirma(' + f.id + ')" title="Reenviar este reporte">🔄 Reenviar</button>';
+      html += '<button class="btn btn-g" style="padding:2px 7px;font-size:10px;color:#e74c3c" onclick="asistRevocarFirma(' + f.id + ')" title="Cancelar este envío">🚫 Revocar</button>';
+      html += '</div>';
+    });
+    // Firmados
+    firm.forEach(function(f){
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0;border-top:1px solid rgba(255,255,255,0.04)">';
+      html += '<div style="flex:1;min-width:150px;font-size:11px;color:var(--muted)">' + f.periodo_inicio + ' al ' + f.periodo_fin + ' · <span style="color:#4af0c8">firmado ' + _fmt(f.firmado_at) + '</span></div>';
+      html += '<button class="btn btn-g" style="padding:2px 7px;font-size:10px" onclick="asistVerDocumento(\'' + uid + '\',' + f.id + ')" title="Ver reporte firmado">👁 Ver</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  if (totalPend === 0 && totalFirm === 0) {
+    html += '<div style="font-size:11px;color:var(--muted)">No hay reportes de asistencia registrados.</div>';
+  }
+  html += '</div>';
+  panel.innerHTML = html;
+}
+
+async function asistJuntarReportes(uid) {
+  var pend = _asistReportesFirmaCache.filter(function(f){ return f.uid === uid && !f.firmado_at; });
+  if (pend.length < 2) { if (typeof toast === 'function') toast('No hay 2 o más reportes sin firmar para juntar','error'); return; }
+  var emp = _asistGetActiveEmployees().find(function(e){ return e.uid === uid; });
+  var nombre = emp ? emp.nombre : uid;
+  var phone = null;
+  for (var ph in _asistPhoneMap) { if (_asistPhoneMap[ph] === uid) { phone = ph; break; } }
+  if (!phone) { if (typeof toast === 'function') toast('Sin teléfono registrado para ' + nombre,'error'); return; }
+
+  // Periodo consolidado = del más antiguo al más reciente
+  var inicio = pend.reduce(function(m,f){ return f.periodo_inicio < m ? f.periodo_inicio : m; }, pend[0].periodo_inicio);
+  var fin = pend.reduce(function(m,f){ return f.periodo_fin > m ? f.periodo_fin : m; }, pend[0].periodo_fin);
+  if (!confirm('Juntar ' + pend.length + ' reportes sin firmar de ' + nombre + ' en uno solo (' + inicio + ' al ' + fin + ') y reenviar el link?')) return;
+
+  try {
+    // 1. Crear el reporte consolidado primero (si falla, no perdemos los viejos)
+    var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+    await db.from('asistencia_firmas').insert({ uid: uid, periodo_inicio: inicio, periodo_fin: fin, token: token, token_expires: expires, enviado_at: new Date().toISOString(), tipo: 'reporte' });
+
+    // 2. Borrar los reportes viejos sin firmar
+    for (var i = 0; i < pend.length; i++) {
+      try { await db.from('asistencia_firmas').delete().eq('id', pend[i].id); } catch(eDel) { console.warn('[Juntar] delete fail id', pend[i].id, eDel); }
+    }
+
+    // 3. Enviar WA (reporte)
+    var link = window.location.origin + '/firma-asistencia?token=' + token;
+    var msg = '📊 *Reporte de asistencia*\n\nHola ' + nombre + ', tu reporte de asistencia del ' + inicio + ' al ' + fin + ' esta listo.\n\nRevisalo y firmalo aqui:\n👉 ' + link + '\n\nEl link expira en 72 horas.';
+    await fetch('/.netlify/functions/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send', phone: phone, message: msg, auth: { id: currentUser?.id || 'admin', pass: currentUser?.pass || '' } })
+    });
+    if (typeof toast === 'function') toast(pend.length + ' reportes juntados y reenviados a ' + nombre);
+    await asistRenderReportesFirma();
+  } catch(e) {
+    console.error('[Juntar] error', e);
+    if (typeof toast === 'function') toast('Error al juntar reportes','error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -771,6 +913,349 @@ async function asistExportarExcel() {
   XLSX.utils.book_append_sheet(wb, ws, 'Asistencia');
   XLSX.writeFile(wb, 'Asistencia_' + range.start + '_' + range.end + '.xlsx');
   if (typeof toast === 'function') toast('Excel exportado');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TAB: FALTAS (validación + estado de acta + cancelar envíos)
+// ═══════════════════════════════════════════════════════════
+
+var _asistFaltasRango = null;                       // {start, end}
+var _asistFaltasFiltro = { suc: '', estado: '' };   // estado: '' todas | 'pend' | 'justificada' | 'injustificada'
+var _asistFaltasFirmas = [];                        // firma records (para estado de acta + pendientes de firma)
+var _asistFaltasCacheList = [];                     // faltas decoradas (para lookup en acciones)
+
+function _asistFaltasDefRango() {
+  if (_asistFaltasRango) return _asistFaltasRango;
+  var hoy = _asistHoyLocal();
+  var d = new Date(hoy + 'T12:00:00'); d.setDate(d.getDate() - 30);
+  _asistFaltasRango = { start: d.toLocaleDateString('en-CA'), end: hoy };
+  return _asistFaltasRango;
+}
+
+function asistFaltasSetRango(which, val) {
+  if (!val) return;
+  var r = _asistFaltasDefRango();
+  if (which === 'start') r.start = val; else r.end = val;
+  asistCargarFaltas();
+}
+
+function asistFaltasSetFiltro(key, val) {
+  _asistFaltasFiltro[key] = val;
+  asistCargarFaltas();
+}
+
+async function asistCargarFaltas() {
+  var cont = document.getElementById('asist-content-faltas');
+  if (!cont) return;
+  cont.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando...</div>';
+  var rango = _asistFaltasDefRango();
+
+  var faltas = [];
+  try {
+    var res = await db.from('asistencia').select('*').eq('es_falta', true).gte('fecha', rango.start).lte('fecha', rango.end).order('fecha', { ascending: false });
+    faltas = res.data || [];
+  } catch(e) { console.error('[Faltas] load error', e); }
+
+  var emps = _asistGetActiveEmployees();
+  var empByUid = {}; emps.forEach(function(e){ empByUid[e.uid] = e; });
+
+  // Firmas que solapan el rango (estado de acta por falta + lista de pendientes de firma)
+  _asistFaltasFirmas = [];
+  try {
+    var fres = await db.from('asistencia_firmas').select('*').gte('periodo_fin', rango.start).order('enviado_at', { ascending: false });
+    _asistFaltasFirmas = fres.data || [];
+  } catch(e) { console.error('[Faltas] firmas error', e); }
+
+  faltas.forEach(function(f) {
+    var e = empByUid[f.uid];
+    f._nombre = e ? e.nombre : f.uid;
+    f._sucursal = e ? e.sucursal : (f.sucursal || 'N/A');
+    f._dia = _asistDayLabel(f.fecha);
+    f._acta = _asistFaltasFirmas.find(function(s){ return s.uid === f.uid && s.tipo === 'acta' && s.periodo_inicio <= f.fecha && s.periodo_fin >= f.fecha; }) || null;
+  });
+  _asistFaltasCacheList = faltas;
+
+  // Filtro
+  var filtered = faltas.filter(function(f) {
+    if (_asistFaltasFiltro.suc && f._sucursal !== _asistFaltasFiltro.suc) return false;
+    if (_asistFaltasFiltro.estado === 'pend' && f.validacion_estado) return false;
+    if (_asistFaltasFiltro.estado === 'justificada' && f.validacion_estado !== 'justificada') return false;
+    if (_asistFaltasFiltro.estado === 'injustificada' && f.validacion_estado !== 'injustificada') return false;
+    return true;
+  });
+  filtered.sort(function(a,b){
+    var ap = a.validacion_estado ? 1 : 0, bp = b.validacion_estado ? 1 : 0;
+    if (ap !== bp) return ap - bp;
+    return a.fecha < b.fecha ? 1 : -1;
+  });
+
+  var st = { total: faltas.length, pend: 0, just: 0, inj: 0 };
+  faltas.forEach(function(f){ if(!f.validacion_estado) st.pend++; else if(f.validacion_estado==='justificada') st.just++; else if(f.validacion_estado==='injustificada') st.inj++; });
+
+  var sucsSet = {}; faltas.forEach(function(f){ sucsSet[f._sucursal]=1; });
+  var inputStyle = 'background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 10px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;outline:none';
+
+  var html = '';
+  // Filtros
+  html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">';
+  html += '<span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Periodo</span>';
+  html += '<input type="date" value="' + rango.start + '" onchange="asistFaltasSetRango(\'start\',this.value)" style="' + inputStyle + '">';
+  html += '<span style="color:var(--muted);font-size:11px">a</span>';
+  html += '<input type="date" value="' + rango.end + '" onchange="asistFaltasSetRango(\'end\',this.value)" style="' + inputStyle + '">';
+  html += '<select onchange="asistFaltasSetFiltro(\'suc\',this.value)" style="' + inputStyle + '"><option value="">Todas las sucursales</option>';
+  Object.keys(sucsSet).forEach(function(s){ html += '<option value="' + s.replace(/"/g,'&quot;') + '"' + (_asistFaltasFiltro.suc===s?' selected':'') + '>' + s + '</option>'; });
+  html += '</select>';
+  html += '<select onchange="asistFaltasSetFiltro(\'estado\',this.value)" style="' + inputStyle + '">';
+  [['','Todas'],['pend','Sin revisar'],['justificada','Justificadas'],['injustificada','Injustificadas']].forEach(function(o){
+    html += '<option value="' + o[0] + '"' + (_asistFaltasFiltro.estado===o[0]?' selected':'') + '>' + o[1] + '</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+
+  // Stats
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">';
+  html += _asistStatCard('❌', 'Faltas', st.total, '#e74c3c');
+  html += _asistStatCard('🕓', 'Sin revisar', st.pend, '#f5a623');
+  html += _asistStatCard('✅', 'Justificadas', st.just, '#4af0c8');
+  html += _asistStatCard('📋', 'Injustificadas', st.inj, '#e74c3c');
+  html += '</div>';
+
+  // Tabla de faltas
+  if (filtered.length === 0) {
+    html += '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Sin faltas en este periodo / filtro. 🎉</div>';
+  } else {
+    html += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+    html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08)">';
+    ['Empleado','Sucursal','Fecha','Validación','Motivo','Acta',''].forEach(function(h){
+      html += '<th style="text-align:left;padding:8px;color:var(--muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    filtered.forEach(function(f) {
+      var est = f.validacion_estado;
+      var estBadge = !est ? '<span style="background:rgba(245,166,35,0.15);color:#f5a623;padding:2px 8px;border-radius:10px;font-size:10px">Sin revisar</span>'
+        : est === 'justificada' ? '<span style="background:rgba(74,240,200,0.15);color:#4af0c8;padding:2px 8px;border-radius:10px;font-size:10px">Justificada</span>'
+        : '<span style="background:rgba(231,76,60,0.15);color:#e74c3c;padding:2px 8px;border-radius:10px;font-size:10px">Injustificada</span>';
+      var bg = !est ? 'rgba(245,166,35,0.05)' : est === 'justificada' ? 'rgba(74,240,200,0.04)' : 'rgba(231,76,60,0.05)';
+      // Estado del acta/envío + acciones
+      var actaCell, actaAction = '';
+      if (f._acta && f._acta.firmado_at) {
+        actaCell = '<span style="color:#4af0c8;font-size:10px">✅ Firmada</span>';
+        actaAction = '<button class="btn btn-g" style="padding:2px 7px;font-size:10px" onclick="asistVerDocumento(\'' + f.uid + '\',' + f._acta.id + ')" title="Ver documento firmado">👁 Ver</button>';
+      } else if (f._acta) {
+        var expF = f._acta.token_expires && new Date(f._acta.token_expires) < new Date();
+        actaCell = expF
+          ? '<span style="color:#e74c3c;font-size:10px">⌛ Link expirado · sin firmar</span>'
+          : '<span style="color:#f5a623;font-size:10px">⏳ Pendiente de firma</span>';
+        actaAction = '<button class="btn btn-g" style="padding:2px 7px;font-size:10px;margin-right:4px" onclick="asistReenviarFirma(' + f._acta.id + ')" title="Volver a enviar el link de firma">🔄 Reenviar</button>'
+          + '<button class="btn btn-g" style="padding:2px 7px;font-size:10px;color:#e74c3c" onclick="asistRevocarFirma(' + f._acta.id + ')" title="Cancelar / revocar este envío">🚫 Revocar</button>';
+      } else {
+        actaCell = '<span style="color:var(--muted);font-size:10px">Sin acta</span>';
+        actaAction = '<button class="btn btn-g" style="padding:2px 7px;font-size:10px" onclick="asistGenerarActaDesdeFalta(\'' + f.uid + '\',\'' + f.fecha + '\')" title="Generar y enviar acta de falta">📋 Generar acta</button>';
+      }
+      var motivo = f.validacion_motivo || f.nota || '';
+      var motivoCell = motivo ? '<span style="font-size:11px;color:var(--muted)" title="' + motivo.replace(/"/g,'&quot;') + '">' + (motivo.length>40?motivo.slice(0,40)+'…':motivo) + '</span>' : '<span style="color:var(--muted)">—</span>';
+      var fechaTxt = f.fecha + ' <span style="color:var(--muted);font-size:10px">(' + f._dia + ')</span>';
+      var validBy = f.validado_por ? '<div style="font-size:9px;color:var(--muted)">por ' + f.validado_por + '</div>' : '';
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);background:' + bg + '">';
+      html += '<td style="padding:8px;font-weight:500">' + f._nombre + '</td>';
+      html += '<td style="padding:8px;color:var(--muted)">' + f._sucursal + '</td>';
+      html += '<td style="padding:8px">' + fechaTxt + '</td>';
+      html += '<td style="padding:8px">' + estBadge + validBy + '</td>';
+      html += '<td style="padding:8px;max-width:160px">' + motivoCell + '</td>';
+      html += '<td style="padding:8px">' + actaCell + '</td>';
+      html += '<td style="padding:8px;text-align:right;white-space:nowrap">';
+      html += '<button class="btn btn-g" style="padding:2px 7px;font-size:10px;margin-right:4px" onclick="asistAbrirValidacion(' + f.id + ',\'' + f.uid + '\',\'' + f._nombre.replace(/'/g,"\\'") + '\',\'' + f.fecha + '\')">📝 Validar</button>';
+      html += actaAction;
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  // Tipo de documento: se guarda en el registro (acta vs reporte). Solo actas en este tab.
+  var _firmaEsActa = function(s){ return s.tipo === 'acta'; };
+  var _fmtFecha = function(ts){ return ts ? new Date(ts).toLocaleDateString('es-MX', { timeZone:'America/Chihuahua', day:'numeric', month:'short' }) : '—'; };
+
+  // Sección: Actas pendientes de firma (cancelar / reenviar) — solo actas; los reportes viven en la pestaña Reportes
+  var pendientes = _asistFaltasFirmas.filter(function(s){ return s.enviado_at && !s.firmado_at && _firmaEsActa(s); });
+  html += '<div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--beige);margin-bottom:4px">📨 Actas pendientes de firma (' + pendientes.length + ')</div>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:10px">Actas de falta enviadas que siguen sin firmar. <b>Reenviar</b> manda un link nuevo (72 h). <b>Revocar</b> cancela el envío (ej. cambió su día de descanso).</div>';
+  if (pendientes.length === 0) {
+    html += '<div style="font-size:11px;color:var(--muted)">No hay envíos pendientes en este periodo.</div>';
+  } else {
+    pendientes.forEach(function(s){
+      var e = empByUid[s.uid];
+      var nom = e ? e.nombre : s.uid;
+      var suc = e ? e.sucursal : '';
+      var tipoLbl = _firmaEsActa(s) ? '<span style="color:#e74c3c;font-size:9px;font-weight:600">ACTA</span>' : '<span style="color:#8ab0e8;font-size:9px;font-weight:600">REPORTE</span>';
+      var expirado = s.token_expires && new Date(s.token_expires) < new Date();
+      var estTxt = expirado
+        ? '<span style="color:#e74c3c">⌛ Link expirado · nunca firmada</span>'
+        : '<span style="color:#f5a623">⏳ Pendiente de firma</span>';
+      html += '<div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:8px 12px;margin-bottom:6px;flex-wrap:wrap">';
+      html += '<div style="flex:1;min-width:170px"><div style="font-size:12px;font-weight:500">' + nom + ' ' + tipoLbl + '</div>';
+      html += '<div style="font-size:10px;color:var(--muted)">' + (suc?suc+' · ':'') + s.periodo_inicio + ' al ' + s.periodo_fin + ' · enviado ' + _fmtFecha(s.enviado_at) + ' · ' + estTxt + '</div></div>';
+      html += '<button class="btn btn-g" style="padding:3px 9px;font-size:11px;margin-right:4px" onclick="asistReenviarFirma(' + s.id + ')" title="Volver a enviar el link de firma">🔄 Reenviar</button>';
+      html += '<button class="btn btn-g" style="padding:3px 9px;font-size:11px;color:#e74c3c" onclick="asistRevocarFirma(' + s.id + ')" title="Cancelar / revocar este envío">🚫 Revocar</button>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  // Sección: Actas firmadas (vista previa) — solo actas
+  var firmados = _asistFaltasFirmas.filter(function(s){ return s.firmado_at && _firmaEsActa(s); });
+  html += '<div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">';
+  html += '<div style="font-size:12px;font-weight:600;color:var(--beige);margin-bottom:4px">✅ Actas firmadas (' + firmados.length + ')</div>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:10px">Actas de falta ya firmadas por el empleado. Toca 👁 Ver para la vista previa. (Los reportes de asistencia están en la pestaña Reportes.)</div>';
+  if (firmados.length === 0) {
+    html += '<div style="font-size:11px;color:var(--muted)">Aún no hay documentos firmados en este periodo.</div>';
+  } else {
+    firmados.forEach(function(s){
+      var e = empByUid[s.uid];
+      var nom = e ? e.nombre : s.uid;
+      var suc = e ? e.sucursal : '';
+      var tipoLbl = _firmaEsActa(s) ? '<span style="color:#e74c3c;font-size:9px;font-weight:600">ACTA</span>' : '<span style="color:#8ab0e8;font-size:9px;font-weight:600">REPORTE</span>';
+      html += '<div style="display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid rgba(74,240,200,0.12);border-radius:8px;padding:8px 12px;margin-bottom:6px;flex-wrap:wrap">';
+      html += '<div style="flex:1;min-width:170px"><div style="font-size:12px;font-weight:500">' + nom + ' ' + tipoLbl + '</div>';
+      html += '<div style="font-size:10px;color:var(--muted)">' + (suc?suc+' · ':'') + s.periodo_inicio + ' al ' + s.periodo_fin + ' · <span style="color:#4af0c8">firmado ' + _fmtFecha(s.firmado_at) + '</span></div></div>';
+      html += '<button class="btn btn-g" style="padding:3px 9px;font-size:11px" onclick="asistVerDocumento(\'' + s.uid + '\',' + s.id + ')" title="Ver documento firmado">👁 Ver</button>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  cont.innerHTML = html;
+}
+
+function asistAbrirValidacion(recordId, uid, nombre, fecha) {
+  var rec = _asistFaltasCacheList.find(function(f){ return f.id === recordId; }) || {};
+  var estActual = rec.validacion_estado || '';
+  var motivoActual = (rec.validacion_motivo || rec.nota || '').replace(/"/g,'&quot;');
+  var inpS = 'width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none';
+
+  var html = '<div style="padding:20px">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">';
+  html += '<div><div style="font-size:16px;font-weight:700">Validar falta</div>';
+  html += '<div style="font-size:11px;color:var(--muted)">' + nombre + ' — ' + fecha + ' (' + _asistDayLabel(fecha) + ')</div></div>';
+  html += '<button onclick="asistCerrarModalValidacion()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:8px;margin-bottom:14px">';
+  html += '<label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;cursor:pointer;border:1px solid rgba(74,240,200,0.18)"><input type="radio" name="fval-estado" value="justificada"' + (estActual==='justificada'?' checked':'') + ' style="accent-color:#4af0c8"> <span style="font-size:12px;color:#4af0c8">✅ Justificada</span></label>';
+  html += '<label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--surface2);padding:10px;border-radius:8px;cursor:pointer;border:1px solid rgba(231,76,60,0.18)"><input type="radio" name="fval-estado" value="injustificada"' + (estActual==='injustificada'?' checked':'') + ' style="accent-color:#e74c3c"> <span style="font-size:12px;color:#e74c3c">⛔ Injustificada</span></label>';
+  html += '</div>';
+
+  html += '<div style="margin-bottom:8px"><label style="display:block;font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Motivo (RH)</label>';
+  html += '<input type="text" id="fval-motivo" value="' + motivoActual + '" placeholder="Ej: enfermedad sin justificante, cita médica, no avisó…" style="' + inpS + '"></div>';
+
+  html += '<div style="font-size:10px;color:var(--muted);margin-bottom:16px">El motivo queda documentado en RH (con quién valida y cuándo). El acta/reporte se envía igual, justificada o no; la falta sigue sin comisionar ese día.</div>';
+
+  html += '<div style="display:flex;gap:8px;justify-content:flex-end">';
+  html += '<button class="btn btn-g" onclick="asistCerrarModalValidacion()">Cancelar</button>';
+  html += '<button class="btn" id="fval-save-btn" style="background:var(--accent);color:#000;font-weight:600" onclick="asistGuardarValidacion(' + recordId + ',\'' + uid + '\',\'' + fecha + '\')">Guardar</button>';
+  html += '</div></div>';
+
+  var overlay = document.getElementById('asist-modal-validacion');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'asist-modal-validacion';
+    overlay.className = 'm-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.onclick = function(e) { if (e.target === overlay) asistCerrarModalValidacion(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.08);border-radius:14px;width:90%;max-width:440px;max-height:90vh;overflow-y:auto">' + html + '</div>';
+  overlay.classList.add('open');
+}
+
+function asistCerrarModalValidacion() {
+  var overlay = document.getElementById('asist-modal-validacion');
+  if (overlay) { overlay.classList.remove('open'); overlay.remove(); }
+}
+
+async function asistGuardarValidacion(recordId, uid, fecha) {
+  var estado = (document.querySelector('input[name=fval-estado]:checked') || {}).value;
+  if (!estado) { if (typeof toast === 'function') toast('Elige justificada o injustificada','error'); return; }
+  var motivo = (document.getElementById('fval-motivo').value || '').trim();
+  var btn = document.getElementById('fval-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+  try {
+    await db.from('asistencia').update({
+      validacion_estado: estado,
+      validacion_motivo: motivo || null,
+      validado_por: (currentUser && currentUser.nombre) || 'admin',
+      validado_at: new Date().toISOString()
+    }).eq('id', recordId);
+    asistCerrarModalValidacion();
+    if (typeof toast === 'function') toast('Falta marcada como ' + estado);
+    await asistCargarFaltas();
+  } catch(e) {
+    console.error('[Faltas] guardar validacion error', e);
+    if (typeof toast === 'function') toast('Error guardando','error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Guardar'; }
+  }
+}
+
+function asistGenerarActaDesdeFalta(uid, fecha) {
+  // Reusa el modal de envío manual, prellenado a Acta + empleado + fecha de falta
+  asistEnvioManual({ tipo: 'acta', uid: uid, faltaDesde: fecha, faltaHasta: fecha });
+}
+
+async function asistRevocarFirma(firmaId) {
+  if (!confirm('¿Revocar este envío? El link de firma dejará de funcionar de inmediato.')) return;
+  try {
+    await db.from('asistencia_firmas').delete().eq('id', firmaId);
+    if (typeof toast === 'function') toast('Envío revocado');
+    if (_asistActiveTab === 'resumen') await asistRenderReportesFirma(); else await asistCargarFaltas();
+  } catch(e) {
+    console.error('[Faltas] revocar error', e);
+    if (typeof toast === 'function') toast('Error al revocar','error');
+  }
+}
+
+async function asistReenviarFirma(firmaId) {
+  var firma = _asistFaltasFirmas.find(function(s){ return s.id === firmaId; });
+  if (!firma) { if (typeof toast === 'function') toast('Envío no encontrado','error'); return; }
+  if (firma.firmado_at) { if (typeof toast === 'function') toast('Ese documento ya está firmado','error'); return; }
+  var emp = _asistGetActiveEmployees().find(function(e){ return e.uid === firma.uid; });
+  var nombre = emp ? emp.nombre : firma.uid;
+  // Teléfono del empleado (reverse del phone map)
+  var phone = null;
+  for (var ph in _asistPhoneMap) { if (_asistPhoneMap[ph] === firma.uid) { phone = ph; break; } }
+  if (!phone) { if (typeof toast === 'function') toast('Sin teléfono registrado para ' + nombre,'error'); return; }
+  if (!confirm('¿Reenviar el link de firma a ' + nombre + '? Se generará un link nuevo (72 h) y el anterior dejará de servir.')) return;
+
+  try {
+    // El tipo se guarda en el registro. Para un acta, recuperar las fechas de falta para el link.
+    var esActa = firma.tipo === 'acta';
+    var faltaDias = [];
+    if (esActa) {
+      var faltasRes = await db.from('asistencia').select('fecha').eq('uid', firma.uid).eq('es_falta', true).gte('fecha', firma.periodo_inicio).lte('fecha', firma.periodo_fin).order('fecha');
+      faltaDias = (faltasRes.data || []).map(function(r){ return r.fecha; });
+    }
+
+    var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+    await db.from('asistencia_firmas').update({ token: token, token_expires: expires, enviado_at: new Date().toISOString() }).eq('id', firmaId);
+
+    var link = window.location.origin + '/firma-asistencia?token=' + token;
+    if (esActa && faltaDias.length) { link += '&acta=1&faltas=' + faltaDias.join(','); }
+    var docLabel = esActa ? 'Acta de falta injustificada' : 'Reporte de asistencia';
+    var msg = esActa
+      ? '📋 *' + docLabel + '*\n\n' + nombre + ', se te ha generado un acta por falta(s) injustificada(s).\n\nPeriodo: ' + firma.periodo_inicio + ' al ' + firma.periodo_fin + '\n\nRevisa y firma aqui:\n👉 ' + link + '\n\nEl link expira en 72 horas.\n_Art. 47 Frac. X — LFT_'
+      : '📊 *' + docLabel + '*\n\nHola ' + nombre + ', tu reporte de asistencia del ' + firma.periodo_inicio + ' al ' + firma.periodo_fin + ' esta listo.\n\nRevisalo y firmalo aqui:\n👉 ' + link + '\n\nEl link expira en 72 horas.';
+
+    await fetch('/.netlify/functions/whatsapp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send', phone: phone, message: msg, auth: { id: currentUser?.id || 'admin', pass: currentUser?.pass || '' } })
+    });
+    if (typeof toast === 'function') toast('Link reenviado a ' + nombre);
+    if (_asistActiveTab === 'resumen') await asistRenderReportesFirma(); else await asistCargarFaltas();
+  } catch(e) {
+    console.error('[Faltas] reenviar error', e);
+    if (typeof toast === 'function') toast('Error al reenviar','error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -940,6 +1425,17 @@ function asistRenderConfig() {
         html += '</td>';
       });
       html += '</tr></table>';
+
+      // Comida (ventana propia; se asume cuando no la fichan)
+      var cw = _asistComidaWindow(emp.uid);
+      html += '<div style="display:flex;gap:4px;align-items:center;margin-top:6px;flex-wrap:wrap">';
+      html += '<span style="font-size:9px;color:var(--muted)">🍽 Comida:</span>';
+      html += '<input type="time" value="' + cw.inicio + '" id="asist-com-ini-' + emp.uid + '" style="' + inputS + ';font-size:9px;padding:2px 3px">';
+      html += '<span style="font-size:9px;color:var(--muted)">a</span>';
+      html += '<input type="time" value="' + cw.fin + '" id="asist-com-fin-' + emp.uid + '" style="' + inputS + ';font-size:9px;padding:2px 3px">';
+      html += '<button class="btn btn-g" style="padding:2px 6px;font-size:9px;color:#4af0c8" onclick="asistGuardarComida(\'' + emp.uid + '\')">✓ Guardar comida</button>';
+      html += '<span style="font-size:8px;color:var(--muted)">(se asume si no la registran)</span>';
+      html += '</div>';
 
       // Quick actions for this employee
       html += '<div style="display:flex;gap:4px;align-items:center;margin-top:4px">';
@@ -1182,6 +1678,23 @@ async function asistGuardarHorario() {
     if (typeof toast === 'function') toast('Horarios guardados');
   } catch(e) {
     console.error('[Asistencia] Save schedule error:', e);
+    if (typeof toast === 'function') toast('Error guardando','error');
+  }
+}
+
+async function asistGuardarComida(uid) {
+  var ini = document.getElementById('asist-com-ini-' + uid);
+  var fin = document.getElementById('asist-com-fin-' + uid);
+  if (!ini || !fin) return;
+  if (!ini.value || !fin.value) { if (typeof toast === 'function') toast('Pon hora de inicio y fin','error'); return; }
+  if (fin.value <= ini.value) { if (typeof toast === 'function') toast('El fin debe ser después del inicio','error'); return; }
+  if (!_asistHorarios.comida) _asistHorarios.comida = {};
+  _asistHorarios.comida[uid] = { inicio: ini.value, fin: fin.value };
+  try {
+    await db.from('app_config').upsert({ id: 'horarios_asistencia', value: JSON.stringify(_asistHorarios) }, { onConflict: 'id' });
+    if (typeof toast === 'function') toast('Comida guardada');
+  } catch(e) {
+    console.error('[Asistencia] Save comida error:', e);
     if (typeof toast === 'function') toast('Error guardando','error');
   }
 }
@@ -1502,11 +2015,15 @@ async function asistVerDocumento(uid, firmaId) {
     document.body.appendChild(overlay);
   }
 
+  var _esActaDoc = firma.tipo ? (firma.tipo === 'acta') : records.some(function(r){ return r.es_falta; });
+  var _docTitulo = _esActaDoc ? 'Acta de falta' : 'Reporte de Asistencia';
+
   var html = '<div style="background:var(--surface);border-radius:16px;max-width:850px;width:95vw;max-height:90vh;overflow-y:auto;padding:20px;position:relative">';
   html += '<button onclick="var o=document.getElementById(\'asist-reporte-overlay\');if(o){o.classList.remove(\'open\');o.remove();}" style="position:absolute;top:12px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>';
-  html += '<h2 style="font-size:15px;margin-bottom:4px;color:var(--beige)">Reporte de Asistencia — ' + empName + '</h2>';
+  html += '<h2 style="font-size:15px;margin-bottom:4px;color:var(--beige)">' + _docTitulo + ' — ' + empName + '</h2>';
   html += '<div style="font-size:11px;color:var(--muted);margin-bottom:16px">' + firma.periodo_inicio + ' al ' + firma.periodo_fin;
-  if (firma.firmado_at) html += ' — Firmado el ' + new Date(firma.firmado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' });
+  if (firma.firmado_at) html += ' — <span style="color:#4af0c8">Firmado el ' + new Date(firma.firmado_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day: 'numeric', month: 'long', year: 'numeric' }) + '</span>';
+  else html += ' — <span style="color:#f5a623">Sin firmar</span>';
   html += '</div>';
 
   // Preview area
@@ -1727,7 +2244,7 @@ function asistImprimirMolde(tipo) {
 // ENVÍO MANUAL DE REPORTES / ACTAS POR WHATSAPP
 // ═══════════════════════════════════════════════════════════
 
-async function asistEnvioManual() {
+async function asistEnvioManual(prefill) {
   var emps = _asistGetActiveEmployees();
   if (emps.length === 0) { if (typeof toast === 'function') toast('No hay empleados registrados','error'); return; }
 
@@ -1808,6 +2325,20 @@ async function asistEnvioManual() {
       }
     });
   });
+
+  // Prellenado (ej. desde el tab Faltas: acta + empleado + fecha de falta)
+  if (prefill) {
+    if (prefill.tipo === 'acta') {
+      var actaRadio = document.querySelector('input[name=envio-tipo][value=acta]');
+      if (actaRadio) { actaRadio.checked = true; actaRadio.dispatchEvent(new Event('change')); }
+      if (prefill.faltaDesde) { var fd = document.getElementById('envio-falta-desde'); if (fd) fd.value = prefill.faltaDesde; }
+      if (prefill.faltaHasta) { var fh = document.getElementById('envio-falta-hasta'); if (fh) fh.value = prefill.faltaHasta; }
+    }
+    if (prefill.uid) {
+      var sel = document.getElementById('envio-uid');
+      if (sel) sel.value = prefill.uid;
+    }
+  }
 }
 
 async function asistEjecutarEnvio() {
@@ -1869,7 +2400,8 @@ async function asistEjecutarEnvio() {
         periodo_fin: fin,
         token: token,
         token_expires: expires,
-        enviado_at: new Date().toISOString()
+        enviado_at: new Date().toISOString(),
+        tipo: tipo
       });
 
       // Build link
@@ -1905,6 +2437,7 @@ async function asistEjecutarEnvio() {
   if (btn) { btn.disabled = false; btn.textContent = '📩 Enviar por WhatsApp'; }
   if (typeof toast === 'function') toast(enviados + ' mensaje(s) enviado(s)');
   var ov = document.getElementById('asist-reporte-overlay'); if (ov) { ov.classList.remove('open'); ov.remove(); }
+  if (_asistActiveTab === 'faltas' && typeof asistCargarFaltas === 'function') asistCargarFaltas();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2134,8 +2667,8 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
   var regPatronal = exp.reg_patronal || '';
   var domicilio = exp.domicilio_fiscal || 'Ciudad Juarez, Chihuahua, Mexico';
 
-  // Detect if this is an acta de falta (same start/end date = single day = acta)
-  var isActa = _asistCurrentFirma && _asistCurrentFirma.periodo_inicio === _asistCurrentFirma.periodo_fin;
+  // Acta vs reporte: por la columna `tipo` (fallback a inicio==fin para registros viejos sin tipo)
+  var isActa = _asistCurrentFirma && (_asistCurrentFirma.tipo ? _asistCurrentFirma.tipo === 'acta' : _asistCurrentFirma.periodo_inicio === _asistCurrentFirma.periodo_fin);
   var actaFaltas = isActa ? [_asistCurrentFirma.periodo_inicio] : [];
 
   var html = '';
@@ -2228,10 +2761,17 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
     if (!sched) return;
     totalDias++;
 
+    // Comida: si la registraron, usar la real; si no (pero hay entrada), asumir la ventana del empleado
+    var comidaRegistrada = !!(rec.comida_inicio && rec.comida_fin);
+    var _cwDur = _asistComidaWindow(_asistReporteUid);
+    var _comidaHrs = Math.max(0, (_asistSchedMinutes(_cwDur.fin) - _asistSchedMinutes(_cwDur.inicio)) / 60) || 1;
+    var netHoras = rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas) : null;
+    if (rec.entrada && !comidaRegistrada && netHoras !== null) netHoras = Math.max(0, netHoras - _comidaHrs);
+
     var estado = '';
     if (rec.entrada) {
       diasTrab++;
-      if (rec.horas_trabajadas) totalHoras += parseFloat(rec.horas_trabajadas);
+      if (netHoras !== null) totalHoras += netHoras;
       if (rec.retardo_min > 0) { totalRetardos++; totalRetMin += rec.retardo_min; estado = 'Retardo (' + rec.retardo_min + 'min)'; }
       else estado = 'A tiempo';
     } else if (fecha < _asistHoyLocal()) {
@@ -2239,28 +2779,32 @@ function _asistBuildReporteHTML(empName, empSuc, range, records, firmaEmp, firma
     }
 
     var bgColor = estado === 'FALTA' ? '#fff0f0' : rec.retardo_min > 0 ? '#fffbe6' : '';
+    var _cd = 'border:1px solid #ccc;padding:3px;text-align:center;color:#000;'; // texto negro forzado (el tema oscuro de la app lo aclaraba)
     html += '<tr style="' + (bgColor ? 'background:' + bgColor : '') + '">';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + fecha + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + _asistDayLabel(fecha).substring(0,3) + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + _asistFormatHora(rec.entrada) + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + _asistFormatHora(rec.comida_inicio) + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + _asistFormatHora(rec.comida_fin) + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center">' + _asistFormatHora(rec.salida) + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;font-weight:bold">' + (rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas).toFixed(2) : '') + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;color:' + (rec.retardo_min > 0 ? '#c00' : '') + '">' + (rec.retardo_min > 0 ? rec.retardo_min + ' min' : '') + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;font-weight:' + (estado === 'FALTA' ? 'bold;color:#c00' : 'normal') + '">' + estado + '</td>';
-    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;font-size:8pt">' + (rec.nota || '') + '</td>';
+    html += '<td style="' + _cd + '">' + fecha + '</td>';
+    html += '<td style="' + _cd + '">' + _asistDayLabel(fecha).substring(0,3) + '</td>';
+    html += '<td style="' + _cd + '">' + _asistFormatHora(rec.entrada) + '</td>';
+    var _comIni = comidaRegistrada ? _asistFormatHora(rec.comida_inicio) : (rec.entrada ? _asistFormatHora(fecha + 'T' + _cwDur.inicio + ':00-06:00') : '—');
+    var _comFin = comidaRegistrada ? _asistFormatHora(rec.comida_fin) : (rec.entrada ? _asistFormatHora(fecha + 'T' + _cwDur.fin + ':00-06:00') : '—');
+    html += '<td style="' + _cd + '">' + _comIni + '</td>';
+    html += '<td style="' + _cd + '">' + _comFin + '</td>';
+    html += '<td style="' + _cd + '">' + _asistFormatHora(rec.salida) + '</td>';
+    html += '<td style="' + _cd + 'font-weight:bold">' + (netHoras !== null ? netHoras.toFixed(2) : '') + '</td>';
+    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;color:' + (rec.retardo_min > 0 ? '#c00' : '#000') + '">' + (rec.retardo_min > 0 ? rec.retardo_min + ' min' : '') + '</td>';
+    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;' + (estado === 'FALTA' ? 'font-weight:bold;color:#c00' : 'color:#000') + '">' + estado + '</td>';
+    html += '<td style="border:1px solid #ccc;padding:3px;text-align:center;font-size:8pt;color:#000">' + (rec.nota || '') + '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
 
   // Summary
-  html += '<table style="width:50%;border-collapse:collapse;font-size:10pt;margin-bottom:20px">';
-  html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Dias programados</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center">' + totalDias + '</td></tr>';
-  html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Dias trabajados</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center">' + diasTrab + '</td></tr>';
-  html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Horas totales</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center">' + totalHoras.toFixed(2) + 'h</td></tr>';
-  html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Retardos</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center">' + totalRetardos + ' (' + totalRetMin + ' min)</td></tr>';
-  html += '<tr><td style="padding:3px;border:1px solid #ccc"><b>Faltas</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center;color:' + (totalFaltas > 0 ? '#c00' : '') + '">' + totalFaltas + '</td></tr>';
+  var _sc = 'padding:3px;border:1px solid #ccc;color:#000;';
+  html += '<table style="width:50%;border-collapse:collapse;font-size:10pt;margin-bottom:20px;color:#000">';
+  html += '<tr><td style="' + _sc + '"><b>Dias programados</b></td><td style="' + _sc + 'text-align:center">' + totalDias + '</td></tr>';
+  html += '<tr><td style="' + _sc + '"><b>Dias trabajados</b></td><td style="' + _sc + 'text-align:center">' + diasTrab + '</td></tr>';
+  html += '<tr><td style="' + _sc + '"><b>Horas totales</b></td><td style="' + _sc + 'text-align:center">' + totalHoras.toFixed(2) + 'h</td></tr>';
+  html += '<tr><td style="' + _sc + '"><b>Retardos</b></td><td style="' + _sc + 'text-align:center">' + totalRetardos + ' (' + totalRetMin + ' min)</td></tr>';
+  html += '<tr><td style="' + _sc + '"><b>Faltas</b></td><td style="padding:3px;border:1px solid #ccc;text-align:center;color:' + (totalFaltas > 0 ? '#c00' : '#000') + '">' + totalFaltas + '</td></tr>';
   html += '</table>';
   } // end else (reporte format)
 

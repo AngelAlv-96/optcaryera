@@ -4452,11 +4452,13 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.06)" id="asist-tabs">
             <button class="lc-tab active" onclick="asistSwitchTab('diario')" id="asist-tab-diario">⏰ Asistencia</button>
             <button class="lc-tab" onclick="asistSwitchTab('resumen')" id="asist-tab-resumen">📊 Reportes</button>
+            <button class="lc-tab" onclick="asistSwitchTab('faltas')" id="asist-tab-faltas" style="display:none">❌ Faltas</button>
             <button class="lc-tab" onclick="asistSwitchTab('expediente')" id="asist-tab-expediente" style="display:none">📋 Expedientes</button>
             <button class="lc-tab" onclick="asistSwitchTab('config')" id="asist-tab-config" style="display:none">⚙️ Config</button>
           </div>
           <div id="asist-content-diario"></div>
           <div id="asist-content-resumen" style="display:none"></div>
+          <div id="asist-content-faltas" style="display:none"></div>
           <div id="asist-content-expediente" style="display:none"></div>
           <div id="asist-content-config" style="display:none"></div>
         </div>

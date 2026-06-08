@@ -359,35 +359,62 @@ async function checkSignatureRequests(employees, fechaLocal) {
 
       if (periodoInicio > periodoFin) continue; // no period to sign
 
+      // ── Consolidación: juntar los REPORTES (no-actas) sin firmar previos en uno solo ──
+      // Si se acumularon varios reportes sin firmar, se funden en un único reporte que abarca
+      // del más antiguo hasta ayer, y los viejos se borran. Las actas (periodos con falta) NO se tocan.
+      var toDelete = [];
+      var consolidatedInicio = periodoInicio;
+      try {
+        var unsignedRes = await supaFetch('asistencia_firmas?uid=eq.' + emp.uid + '&firmado_at=is.null&select=id,periodo_inicio,periodo_fin,tipo&order=periodo_inicio.asc');
+        if (Array.isArray(unsignedRes)) {
+          for (var u = 0; u < unsignedRes.length; u++) {
+            var uf = unsignedRes[u];
+            // Las actas NO se consolidan (son documentos legales por falta específica)
+            if (uf.tipo === 'acta') continue;
+            toDelete.push(uf.id);
+            if (uf.periodo_inicio < consolidatedInicio) consolidatedInicio = uf.periodo_inicio;
+          }
+        }
+      } catch(eCons) { console.warn('[Firma Cron] consolidate scan error:', eCons.message); toDelete = []; consolidatedInicio = periodoInicio; }
+      // Re-aplicar topes de fecha al inicio consolidado
+      if (consolidatedInicio < ASISTENCIA_START_DATE) consolidatedInicio = ASISTENCIA_START_DATE;
+      if (empIngreso && consolidatedInicio < empIngreso) consolidatedInicio = empIngreso;
+
       // Check there are actual records in this period
-      var recCount = await supaFetch('asistencia?uid=eq.' + emp.uid + '&fecha=gte.' + periodoInicio + '&fecha=lte.' + periodoFin + '&select=id&limit=1');
+      var recCount = await supaFetch('asistencia?uid=eq.' + emp.uid + '&fecha=gte.' + consolidatedInicio + '&fecha=lte.' + periodoFin + '&select=id&limit=1');
       if (!recCount || recCount.length === 0) continue; // no records, skip
 
       // Generate token
       var token = crypto.randomBytes(24).toString('hex');
       var expires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
 
-      // Create firma record
+      // Create firma record consolidado (primero crear; si falla, no perdemos los viejos)
       await supaFetch('asistencia_firmas', {
         method: 'POST',
         body: JSON.stringify({
           uid: emp.uid,
-          periodo_inicio: periodoInicio,
+          periodo_inicio: consolidatedInicio,
           periodo_fin: periodoFin,
           token: token,
           token_expires: expires,
-          enviado_at: new Date().toISOString()
+          enviado_at: new Date().toISOString(),
+          tipo: 'reporte'
         }),
         prefer: 'return=minimal'
       });
 
+      // Borrar los reportes viejos sin firmar que se consolidaron
+      for (var dI = 0; dI < toDelete.length; dI++) {
+        try { await supaFetch('asistencia_firmas?id=eq.' + toDelete[dI], { method: 'DELETE', prefer: 'return=minimal' }); } catch(eDel) { console.warn('[Firma Cron] delete consolidated fail id', toDelete[dI], eDel.message); }
+      }
+
       // Send WA
       var link = SITE_URL + '/firma-asistencia?token=' + token;
-      var msg = '📋 *Reporte de asistencia*\n\nHola ' + emp.nombre + ', tu reporte del ' + periodoInicio + ' al ' + periodoFin + ' esta listo.\n\nRevisalo y firmalo aqui:\n👉 ' + link + '\n\nEl link expira en 48 horas.';
-      var firmaVars = { '1': emp.nombre, '2': periodoInicio, '3': periodoFin, '4': link };
+      var msg = '📋 *Reporte de asistencia*\n\nHola ' + emp.nombre + ', tu reporte del ' + consolidatedInicio + ' al ' + periodoFin + ' esta listo.\n\nRevisalo y firmalo aqui:\n👉 ' + link + '\n\nEl link expira en 48 horas.';
+      var firmaVars = { '1': emp.nombre, '2': consolidatedInicio, '3': periodoFin, '4': link };
       await sendWATemplate(emp.phone, 'HX49c1d5cd7048ca9dc650d1e8670c7b24', firmaVars, msg);
 
-      console.log('[Firma Cron] Sent signature request to ' + emp.nombre + ' (' + periodoInicio + ' - ' + periodoFin + ')');
+      console.log('[Firma Cron] Sent signature request to ' + emp.nombre + ' (' + consolidatedInicio + ' - ' + periodoFin + ', consolidó ' + toDelete.length + ' reportes)');
 
       // Rate limit
       await new Promise(function(r) { setTimeout(r, 1500); });

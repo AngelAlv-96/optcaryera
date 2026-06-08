@@ -192,6 +192,11 @@ async function init() {
   var end = new Date(_firmaData.periodo_fin + 'T12:00:00');
   while (d <= end) { dates.push(d.toLocaleDateString('en-CA')); d.setDate(d.getDate() + 1); }
 
+  // Ventana de comida del empleado (se asume cuando no la fichan). Cada quien la suya.
+  var cw = (horarios && horarios.comida && horarios.comida[uid]) || { inicio: '14:00', fin: '15:00' };
+  var _cwMin = function(t){ var p = t.split(':'); return (+p[0]) * 60 + (+p[1]); };
+  var cwHrs = Math.max(0, (_cwMin(cw.fin) - _cwMin(cw.inicio)) / 60) || 1;
+
   // Calculate stats
   var totalDias = 0, diasTrab = 0, totalHoras = 0, retardos = 0, faltas = 0, totalRetMin = 0;
   var tableRows = '';
@@ -213,9 +218,13 @@ async function init() {
     if (!sched) return; // day off
 
     totalDias++;
+    // Comida: real si la registraron; si no (pero hay entrada), asumir 1h estándar (2:00–3:00 p.m.)
+    var comidaRegistrada = !!(rec.comida_inicio && rec.comida_fin);
+    var netHoras = rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas) : null;
+    if (hasEntry && !comidaRegistrada && netHoras !== null) netHoras = Math.max(0, netHoras - cwHrs);
     if (hasEntry) {
       diasTrab++;
-      if (rec.horas_trabajadas) totalHoras += parseFloat(rec.horas_trabajadas);
+      if (netHoras !== null) totalHoras += netHoras;
       if (rec.retardo_min > 0) { retardos++; totalRetMin += rec.retardo_min; estado = 'Retardo'; badgeClass = 'badge-late'; }
       else { estado = 'A tiempo'; badgeClass = 'badge-ok'; }
     } else {
@@ -235,10 +244,12 @@ async function init() {
     tableRows += '<td>' + fecha.slice(5) + '</td>';
     tableRows += '<td>' + dl + '</td>';
     tableRows += '<td class="td-center">' + formatHora(rec.entrada) + '</td>';
-    tableRows += '<td class="td-center">' + formatHora(rec.comida_inicio) + '</td>';
-    tableRows += '<td class="td-center">' + formatHora(rec.comida_fin) + '</td>';
+    var comIni = comidaRegistrada ? formatHora(rec.comida_inicio) : (hasEntry ? formatHora(fecha + 'T' + cw.inicio + ':00-06:00') : '—');
+    var comFin = comidaRegistrada ? formatHora(rec.comida_fin) : (hasEntry ? formatHora(fecha + 'T' + cw.fin + ':00-06:00') : '—');
+    tableRows += '<td class="td-center">' + comIni + '</td>';
+    tableRows += '<td class="td-center">' + comFin + '</td>';
     tableRows += '<td class="td-center">' + formatHora(rec.salida) + '</td>';
-    tableRows += '<td class="td-center">' + (rec.horas_trabajadas ? parseFloat(rec.horas_trabajadas).toFixed(1) + 'h' : '—') + '</td>';
+    tableRows += '<td class="td-center">' + (netHoras !== null ? netHoras.toFixed(1) + 'h' : '—') + '</td>';
     tableRows += '<td class="td-center">' + (estado ? '<span class="badge ' + badgeClass + '">' + estado + '</span>' : '') + '</td>';
     tableRows += '</tr>';
   });
