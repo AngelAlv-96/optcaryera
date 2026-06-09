@@ -16273,9 +16273,10 @@ async function loadClariConversations(append) {
     clariRealtimeSub = db.channel('clari-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'clari_conversations' }, function(payload) {
         if (document.getElementById('view-clari')?.style.display !== 'none') {
-          // Add new message to top of array and re-render
           clariConversations.unshift(payload.new);
-          renderClariConversations();
+          // Actualización incremental (solo la tarjeta afectada, sin parpadeo).
+          // Fallback a render completo si la conversación es nueva o no está en el DOM.
+          if (!_clariApplyIncoming(payload.new)) renderClariConversations();
         }
       })
       .subscribe(function(status) {
@@ -16304,6 +16305,72 @@ function getLineLbl(pid) {
   if (pid === CLARI_PID_ADS) return { tag: '📢 Ads', color: '#d4b84a', key: 'ads' };
   if (pid === CLARI_PID_MAIN) return { tag: '📱 Op', color: '#72b8c4', key: 'main' };
   return { tag: '', color: '#888', key: '' };
+}
+
+// HTML de una burbuja de mensaje (compartido por render de lista, historial completo y Realtime incremental)
+function _clariMsgHTML(m) {
+  var isBot = m.role === 'assistant';
+  var isSistema = isBot && m.content.startsWith('[Sistema]');
+  var isAdmin = isBot && m.content.startsWith('[Admin]');
+  var isCorte = isBot && m.content.startsWith('[Corte]');
+  var t = new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  var d = new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
+  var label = isBot ? (isSistema ? '📢 Sistema' : isAdmin ? '👤 Admin' : isCorte ? '📊 Corte' : '🤖 Clari') : '👤 ' + escH(m.user_name || 'Cliente');
+  var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
+  var chatImg = null;
+  var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
+  if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
+  var html = '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
+  html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
+  if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
+  html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
+  html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' · ' + d + ' ' + t + '</div>';
+  html += '</div></div>';
+  return html;
+}
+
+// Actualización INCREMENTAL al llegar un mensaje por Realtime: toca SOLO la tarjeta afectada
+// (burbuja + preview + hora + contador + puntito) y la sube al inicio — sin reconstruir la lista,
+// cero parpadeo. Devuelve false si la tarjeta no está en el DOM (conversación nueva o filtrada)
+// para que el caller haga el render completo.
+function _clariApplyIncoming(m) {
+  var list = document.getElementById('clari-conv-list');
+  if (!list || !m || !m.phone || !m.content) return false;
+  var input = list.querySelector('.clari-reply-input[data-phone="' + m.phone + '"]');
+  var card = input && input.closest('.clari-card');
+  if (!card) return false;
+  // Burbuja nueva en el hilo
+  var scroll = card.querySelector('.clari-msgs-scroll');
+  if (scroll) {
+    scroll.insertAdjacentHTML('beforeend', _clariMsgHTML(m));
+    var msgsBox = card.querySelector('.clari-msgs');
+    if (msgsBox && msgsBox.style.display !== 'none') scroll.scrollTop = scroll.scrollHeight;
+  }
+  // Header: preview, hora, contador, puntito sin leer
+  var preview = m.content.substring(0, 80) + (m.content.length > 80 ? '...' : '');
+  var icon = m.role !== 'assistant' ? '👤 ' : m.content.startsWith('[Sistema]') ? '📢 ' : m.content.startsWith('[Admin]') ? '👤 ' : m.content.startsWith('[Corte]') ? '📊 ' : '🤖 ';
+  var prevEl = card.querySelector('.clari-prev');
+  if (prevEl) prevEl.innerHTML = icon + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, ''));
+  var timeEl = card.querySelector('.clari-time');
+  if (timeEl) timeEl.textContent = timeAgo(m.created_at);
+  var cntEl = card.querySelector('.clari-count');
+  if (cntEl) cntEl.textContent = ((parseInt(cntEl.textContent, 10) || 0) + 1) + ' msgs';
+  var av = card.querySelector('.clari-avatar');
+  if (av) {
+    if (m.role !== 'assistant') { av.style.background = 'rgba(37,211,102,0.25)'; av.textContent = '🟢'; }
+    else { av.style.background = 'rgba(255,255,255,0.06)'; av.textContent = '💬'; }
+  }
+  // Subir la tarjeta al inicio (preservando foco/cursor si el admin estaba escribiendo en ella)
+  if (list.firstElementChild !== card) {
+    var act = document.activeElement;
+    var inCard = act && card.contains(act);
+    var selS = 0, selE = 0;
+    if (inCard) { try { selS = act.selectionStart; selE = act.selectionEnd; } catch(e) {} }
+    list.insertBefore(card, list.firstElementChild);
+    if (inCard) { act.focus(); try { act.setSelectionRange(selS, selE); } catch(e) {} }
+  }
+  return true;
 }
 
 function renderClariConversations() {
@@ -16389,40 +16456,20 @@ function renderClariConversations() {
     html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';
     html += '<div style="flex:1;min-width:0">';
     html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += '<div style="width:34px;height:34px;border-radius:50%;background:' + (unread ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.06)') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">' + (unread ? '🟢' : '💬') + '</div>';
+    html += '<div class="clari-avatar" style="width:34px;height:34px;border-radius:50%;background:' + (unread ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.06)') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">' + (unread ? '🟢' : '💬') + '</div>';
     html += '<div style="min-width:0">';
     html += '<div style="display:flex;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--white);gap:2px">' + (c.name || 'Sin nombre') + lineBadge + campaignBadge + purchBadge + botBadge + '</div>';
     html += '<div style="font-size:11px;color:var(--muted)">' + displayPhone + '</div>';
     html += '</div></div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastMsg.role !== 'assistant' ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Sistema]') ? '\ud83d\udce2 ' : lastMsg.content.startsWith('[Admin]') ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Corte]') ? '\ud83d\udcca ' : '\ud83e\udd16 ') + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '')) + '</div>';
+    html += '<div class="clari-prev" style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastMsg.role !== 'assistant' ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Sistema]') ? '\ud83d\udce2 ' : lastMsg.content.startsWith('[Admin]') ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Corte]') ? '\ud83d\udcca ' : '\ud83e\udd16 ') + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '')) + '</div>';
     html += '</div>';
     html += '<div style="text-align:right;flex-shrink:0;margin-left:12px">';
-    html += '<div style="font-size:10px;color:var(--muted)">' + time + '</div>';
-    html += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + msgs.length + ' msgs</div>';
+    html += '<div class="clari-time" style="font-size:10px;color:var(--muted)">' + time + '</div>';
+    html += '<div class="clari-count" style="font-size:10px;color:var(--muted);margin-top:2px">' + msgs.length + ' msgs</div>';
     html += '</div></div>';
     html += '<div class="clari-msgs" style="display:none;border-top:1px solid rgba(255,255,255,0.04)">';
     html += '<div class="clari-msgs-scroll" style="padding:12px;max-height:400px;overflow-y:auto">';
-    msgs.forEach(function(m) {
-      var isBot = m.role === 'assistant';
-      var isSistema = isBot && m.content.startsWith('[Sistema]');
-      var isAdmin = isBot && m.content.startsWith('[Admin]');
-      var isCorte = isBot && m.content.startsWith('[Corte]');
-      var t = new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-      var d = new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-      var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
-      var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
-      var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
-      /* Extract image URL if present [IMG:url] */
-      var chatImg = null;
-      var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
-      if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
-      html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
-      html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
-      if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
-      html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
-      html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
-      html += '</div></div>';
-    });
+    msgs.forEach(function(m) { html += _clariMsgHTML(m); });
     html += '</div>';
     html += '<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;align-items:center">';
     html += '<button class="btn btn-sm" onclick="toggleBotForConvo(\'' + c.phone + '\',this)" style="font-size:10px;white-space:nowrap;padding:6px 8px;background:' + (isBotOff ? 'rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b98140' : 'rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef444440') + '" title="' + (isBotOff ? 'Reactivar Clari para esta conversación' : 'Desactivar Clari — tú tomas el control') + '">' + (isBotOff ? '🤖 ON' : '🤖 OFF') + '</button>';
@@ -16475,26 +16522,7 @@ async function toggleClariConvo(card, phone) {
       var { data: fullMsgs } = await db.from('clari_conversations').select('*').eq('phone', phone).order('created_at', { ascending: true });
       if (fullMsgs && fullMsgs.length && scroll) {
         var html = '';
-        fullMsgs.forEach(function(m) {
-          var isBot = m.role === 'assistant';
-          var isSistema = isBot && m.content.startsWith('[Sistema]');
-          var isAdmin = isBot && m.content.startsWith('[Admin]');
-          var isCorte = isBot && m.content.startsWith('[Corte]');
-          var t = new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-          var d = new Date(m.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-          var bgColor = isBot ? (isSistema ? 'rgba(212,184,74,0.1)' : isAdmin ? 'rgba(114,184,196,0.1)' : isCorte ? 'rgba(180,138,212,0.1)' : 'rgba(255,255,255,0.05)') : 'rgba(37,211,102,0.12)';
-          var label = isBot ? (isSistema ? '\ud83d\udce2 Sistema' : isAdmin ? '\ud83d\udc64 Admin' : isCorte ? '\ud83d\udcca Corte' : '\ud83e\udd16 Clari') : '\ud83d\udc64 ' + escH(m.user_name || 'Cliente');
-          var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
-          var chatImg = null;
-          var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
-          if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
-          html += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
-          html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
-          if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
-          html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
-          html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
-          html += '</div></div>';
-        });
+        fullMsgs.forEach(function(m) { html += _clariMsgHTML(m); });
         scroll.innerHTML = html;
         // Also update the in-memory array so it stays consistent
         var existing = {};
@@ -16532,7 +16560,8 @@ async function enviarClariReply(input) {
     }
     input.value = '';
     toast('\u2713 Mensaje enviado');
-    setTimeout(function() { loadClariConversations(); }, 500);
+    // Con Realtime activo el mensaje aparece solo (incremental); recargar \u00fanicamente en modo fallback polling
+    if (clariAutoRefresh) setTimeout(function() { loadClariConversations(); }, 500);
   } catch(e) {
     toast('Error al enviar: ' + e.message, true);
   }
