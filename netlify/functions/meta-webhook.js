@@ -340,6 +340,32 @@ const COMPLAINT_KEYWORDS = [
   'basura', 'porqueria', 'porquería', 'incompetent'
 ];
 
+// \u2500\u2500 \ud83d\udee1\ufe0f Detector de intento de manipulaci\u00f3n / jailbreak a Clari (mismo que wa-webhook) \u2500\u2500
+function isPromptInjection(text){
+  var t = (text||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  var pats = [
+    /ignore (all |your |the |previous |above )*(instruction|rule|prompt|guideline)/,
+    /disregard (all |your |the |previous |above )/,
+    /system (prompt|instruction|message)/,
+    /(reveal|show|output|print|repeat|give me|tell me|display)[^.]{0,20}(system )?(instruction|prompt|rule|config|guideline)/,
+    /\bdan\b|do anything now|jail ?break|developer mode|unrestricted (mode|ai|assistant|system|version)/,
+    /forget (you are|your|everything|all|that you)/,
+    /you are now (a|an|named|unrestricted|dan|in)/,
+    /(pretend|act) (to be|as|like|you are)|roleplay as|simulate (a|an|being)/,
+    /(respond|reply|answer)[^.]{0,15}in json|output[^.]{0,10}(json|code|raw)/,
+    /bypass[^.]{0,20}(security|cybersecurity|filter|rule|restriction|safeguard)/,
+    /how (do i|to|can i)[^.]{0,15}(bypass|hack|exploit|break into)/,
+    /ignora (tus|las|todas|los|mis) (instruccion|regla|directriz|orden)/,
+    /olvida que eres|olvida (todas? )?tus (instruccion|regla)/,
+    /act[u\u00fa]a como (un|una) (sistema|ia|asistente sin)|finge (ser|que eres)/,
+    /(muestrame|dame|revela|imprime|dime|escribe) (tus|el|las|tu) (instruccion|prompt|regla|sistema|configuracion)/,
+    /modo (desarrollador|sin restricciones|libre|dios)/,
+    /eres ahora|eres (un sistema )?(sin restricciones|libre|dan)/,
+    /responde(me)?[^.]{0,10}json|formato json/,
+  ];
+  return pats.some(function(re){ return re.test(t); });
+}
+
 function isComplaintMessage(text) {
   if (!text) return false;
   var lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -1147,6 +1173,27 @@ exports.handler = async function(event) {
 
         // Get sender name
         var senderName = await getSenderProfile(senderId, channel);
+
+        // ── 🛡️ Intento de manipulación/jailbreak a Clari → alerta admin + respuesta segura (sin llamar al modelo) ──
+        if (isPromptInjection(messageText)) {
+          var _jbReplyM = 'Soy Clari, asistente de Ópticas Car & Era 👓 ¿Te ayudo con algo sobre lentes, una promoción o tu pedido?';
+          await saveMessage(senderId, 'user', '[Vía ' + channel + '] ' + messageText, senderName || ('clari-' + channel), channel);
+          await saveMessage(senderId, 'assistant', '[Jailbreak-Intento] ' + _jbReplyM, null, channel);
+          await sendMetaReply(senderId, _jbReplyM, channel);
+          try {
+            var _sidJB = process.env.TWILIO_ACCOUNT_SID, _tokJB = process.env.TWILIO_AUTH_TOKEN;
+            var _fromJB = process.env.TWILIO_FROM_NUMBER || 'whatsapp:+5216563110094';
+            if (_sidJB && _tokJB) {
+              var _jbAlertM = '🛡️ INTENTO DE MANIPULACIÓN A CLARI (' + channel.toUpperCase() + ')\n\n👤 ' + (senderName || senderId) + '\n📱 ' + senderId + ' (vía ' + channel + ')\n💬 "' + messageText.substring(0, 200) + '"\n\nClari NO obedeció. Es solo un aviso.';
+              await fetch('https://api.twilio.com/2010-04-01/Accounts/' + _sidJB + '/Messages.json', {
+                method: 'POST', headers: { 'Authorization': 'Basic ' + Buffer.from(_sidJB + ':' + _tokJB).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&Body=' + encodeURIComponent(_jbAlertM)
+              });
+            }
+          } catch(_jbeM) { console.warn('[Meta Jailbreak alert]', _jbeM.message); }
+          console.log('[Meta Jailbreak] ' + channel + ' ' + senderId);
+          continue;
+        }
 
         // Get AI response
         var reply = await getAIResponse(messageText, senderName, senderId, channel);

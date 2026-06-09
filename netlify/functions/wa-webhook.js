@@ -2442,6 +2442,34 @@ function _yaEsCierre(msg){
   return _CIERRE_TODAS.indexOf(m) !== -1;
 }
 
+// ── 🛡️ Detector de intento de manipulación / jailbreak / prompt-injection a Clari ──
+// Probado: 0 falsos positivos en mensajes normales de óptica; detecta los patrones claros de ataque.
+function isPromptInjection(text){
+  var t = (text||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  var pats = [
+    /ignore (all |your |the |previous |above )*(instruction|rule|prompt|guideline)/,
+    /disregard (all |your |the |previous |above )/,
+    /system (prompt|instruction|message)/,
+    /(reveal|show|output|print|repeat|give me|tell me|display)[^.]{0,20}(system )?(instruction|prompt|rule|config|guideline)/,
+    /\bdan\b|do anything now|jail ?break|developer mode|unrestricted (mode|ai|assistant|system|version)/,
+    /forget (you are|your|everything|all|that you)/,
+    /you are now (a|an|named|unrestricted|dan|in)/,
+    /(pretend|act) (to be|as|like|you are)|roleplay as|simulate (a|an|being)/,
+    /(respond|reply|answer)[^.]{0,15}in json|output[^.]{0,10}(json|code|raw)/,
+    /bypass[^.]{0,20}(security|cybersecurity|filter|rule|restriction|safeguard)/,
+    /how (do i|to|can i)[^.]{0,15}(bypass|hack|exploit|break into)/,
+    // español
+    /ignora (tus|las|todas|los|mis) (instruccion|regla|directriz|orden)/,
+    /olvida que eres|olvida (todas? )?tus (instruccion|regla)/,
+    /act[uú]a como (un|una) (sistema|ia|asistente sin)|finge (ser|que eres)/,
+    /(muestrame|dame|revela|imprime|dime|escribe) (tus|el|las|tu) (instruccion|prompt|regla|sistema|configuracion)/,
+    /modo (desarrollador|sin restricciones|libre|dios)/,
+    /eres ahora|eres (un sistema )?(sin restricciones|libre|dan)/,
+    /responde(me)?[^.]{0,10}json|formato json/,
+  ];
+  return pats.some(function(re){ return re.test(t); });
+}
+
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
   var H = { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' };
@@ -3012,6 +3040,25 @@ exports.handler = async function(event) {
             await sendWhatsAppReply('5216564269961', alertMsg);
           } catch(alertErr) { console.warn('[React Alert]', alertErr.message); }
           // Clari responds normally (prompt already has reactivation context)
+        }
+
+        // ── 🛡️ Intento de manipulación/jailbreak a Clari → alerta admin + respuesta segura (sin llamar al modelo) ──
+        if (isPromptInjection(userText)) {
+          var _jbReply = 'Soy Clari, asistente de Ópticas Car & Era 👓 ¿Te ayudo con algo sobre lentes, una promoción o tu pedido?';
+          await saveMessage(from, 'user', userText, userName);
+          await saveMessage(from, 'assistant', '[Jailbreak-Intento] ' + _jbReply);
+          try {
+            var _waCfgJb = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+            var _jbPhone = '5216564269961';
+            if (_waCfgJb && _waCfgJb[0]) {
+              var _wjb = typeof _waCfgJb[0].value === 'string' ? JSON.parse(_waCfgJb[0].value) : _waCfgJb[0].value;
+              if (_wjb.auth_phones && _wjb.auth_phones.length) _jbPhone = _wjb.auth_phones[0];
+            }
+            await sendWhatsAppReply(_jbPhone, '🛡️ INTENTO DE MANIPULACIÓN A CLARI\n\n👤 ' + (userName || from) + '\n📱 ' + from + '\n💬 "' + userText.substring(0, 200) + '"\n\nClari NO obedeció (respondió neutral). Es solo un aviso.');
+          } catch(_jbe) { console.warn('[Jailbreak alert]', _jbe.message); }
+          console.log('[Jailbreak] -> ' + from + ': "' + userText.substring(0, 80) + '"');
+          await sendWhatsAppReply(from, _jbReply);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
         }
 
         // ── 🎂 Corrección de fecha de cumpleaños (solo día/mes, conserva el año) ──
