@@ -2470,6 +2470,18 @@ function isPromptInjection(text){
   return pats.some(function(re){ return re.test(t); });
 }
 
+// ── 🔏 Validación de firma de Twilio (X-Twilio-Signature = HMAC-SHA1 de URL+params ordenados, base64) ──
+var _waCrypto = require('crypto');
+function validateTwilioSignature(authToken, signature, url, params) {
+  if (!authToken || !signature) return false;
+  try {
+    var data = Object.keys(params || {}).sort().reduce(function(acc, k){ return acc + k + params[k]; }, url);
+    var expected = _waCrypto.createHmac('sha1', authToken).update(Buffer.from(data, 'utf-8')).digest('base64');
+    var a = Buffer.from(signature), b = Buffer.from(expected);
+    return a.length === b.length && _waCrypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
+
 // ── MAIN HANDLER ──
 exports.handler = async function(event) {
   var H = { 'Content-Type': 'text/xml', 'Cache-Control': 'no-cache' };
@@ -2478,6 +2490,23 @@ exports.handler = async function(event) {
   if (event.httpMethod === 'POST') {
     try {
       var tw = parseBody(event.body);
+      // ── 🔏 Firma de Twilio — MODO MONITOR (registra; solo rechaza si WEBHOOK_ENFORCE_SIG=1). Prueba varias URLs candidatas. ──
+      try {
+        var _tsig = (event.headers && (event.headers['x-twilio-signature'] || event.headers['X-Twilio-Signature'])) || '';
+        var _cands = [];
+        if (event.rawUrl) _cands.push(event.rawUrl);
+        var _h = event.headers && (event.headers['x-forwarded-host'] || event.headers.host);
+        if (_h) _cands.push('https://' + _h + (event.path || ''));
+        _cands.push('https://optcaryera.netlify.app/.netlify/functions/wa-webhook');
+        var _tOk = _cands.some(function(u){ return validateTwilioSignature(process.env.TWILIO_AUTH_TOKEN, _tsig, u, tw); });
+        if (_tOk) { console.log('[SIG][Twilio] OK'); }
+        else {
+          console.warn('[SIG][Twilio] MISMATCH hasSig=' + (!!_tsig) + ' urls=' + JSON.stringify(_cands));
+          if (process.env.WEBHOOK_ENFORCE_SIG === '1' && process.env.TWILIO_AUTH_TOKEN) {
+            return { statusCode: 403, headers: H, body: '<Response></Response>' };
+          }
+        }
+      } catch (_tse) { console.warn('[SIG][Twilio] error ' + _tse.message); }
       var from = (tw.From || '').replace('whatsapp:+', '');
       var userText = (tw.Body || '').trim();
       var userName = tw.ProfileName || '';

@@ -1101,6 +1101,17 @@ async function diagComments(mode) {
 }
 
 // ── MAIN HANDLER ──
+// ── 🔏 Validación de firma de Meta (X-Hub-Signature-256 = HMAC-SHA256 del raw body con el App Secret) ──
+var _crypto = require('crypto');
+function validateMetaSignature(appSecret, sigHeader, rawBody) {
+  if (!appSecret || !sigHeader) return false;
+  try {
+    var expected = 'sha256=' + _crypto.createHmac('sha256', appSecret).update(rawBody, 'utf-8').digest('hex');
+    var a = Buffer.from(sigHeader), b = Buffer.from(expected);
+    return a.length === b.length && _crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
+}
+
 exports.handler = async function(event) {
   // Webhook verification (GET request from Meta)
   if (event.httpMethod === 'GET') {
@@ -1131,6 +1142,20 @@ exports.handler = async function(event) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
   }
+
+  // ── 🔏 Firma de Meta — MODO MONITOR (registra; solo rechaza si WEBHOOK_ENFORCE_SIG=1 y hay secret) ──
+  try {
+    var _msig = (event.headers && (event.headers['x-hub-signature-256'] || event.headers['X-Hub-Signature-256'])) || '';
+    var _rawBody = event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf-8') : (event.body || '');
+    if (validateMetaSignature(process.env.META_APP_SECRET, _msig, _rawBody)) {
+      console.log('[SIG][Meta] OK');
+    } else {
+      console.warn('[SIG][Meta] MISMATCH hasSig=' + (!!_msig) + ' hasSecret=' + (!!process.env.META_APP_SECRET));
+      if (process.env.WEBHOOK_ENFORCE_SIG === '1' && process.env.META_APP_SECRET) {
+        return { statusCode: 403, body: 'Invalid signature' };
+      }
+    }
+  } catch (_mse) { console.warn('[SIG][Meta] error ' + _mse.message); }
 
   try {
     var body = JSON.parse(event.body || '{}');
