@@ -3054,7 +3054,9 @@ exports.handler = async function(event) {
               var _wjb = typeof _waCfgJb[0].value === 'string' ? JSON.parse(_waCfgJb[0].value) : _waCfgJb[0].value;
               if (_wjb.auth_phones && _wjb.auth_phones.length) _jbPhone = _wjb.auth_phones[0];
             }
-            await sendWhatsAppReply(_jbPhone, '🛡️ INTENTO DE MANIPULACIÓN A CLARI\n\n👤 ' + (userName || from) + '\n📱 ' + from + '\n💬 "' + userText.substring(0, 200) + '"\n\nClari NO obedeció (respondió neutral). Es solo un aviso.');
+            var _jbTxt = '🛡️ Intento de manipulación a Clari\n\n👤 ' + (userName || from) + '\n📱 ' + from + '\n💬 "' + userText.substring(0, 200) + '"\n\nClari NO obedeció (respondió neutral). Es solo un aviso.';
+            // Vía plantilla aprobada (llega aunque la ventana 24h del admin esté cerrada); fallback a freeform.
+            await sendWhatsAppTemplate(_jbPhone, 'HXa076da6bd95ae70ece9545df84036f56', { '1': _jbTxt }, _jbTxt);
           } catch(_jbe) { console.warn('[Jailbreak alert]', _jbe.message); }
           console.log('[Jailbreak] -> ' + from + ': "' + userText.substring(0, 80) + '"');
           await sendWhatsAppReply(from, _jbReply);

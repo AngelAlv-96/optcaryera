@@ -1184,11 +1184,16 @@ exports.handler = async function(event) {
             var _sidJB = process.env.TWILIO_ACCOUNT_SID, _tokJB = process.env.TWILIO_AUTH_TOKEN;
             var _fromJB = process.env.TWILIO_FROM_NUMBER || 'whatsapp:+5216563110094';
             if (_sidJB && _tokJB) {
-              var _jbAlertM = '🛡️ INTENTO DE MANIPULACIÓN A CLARI (' + channel.toUpperCase() + ')\n\n👤 ' + (senderName || senderId) + '\n📱 ' + senderId + ' (vía ' + channel + ')\n💬 "' + messageText.substring(0, 200) + '"\n\nClari NO obedeció. Es solo un aviso.';
-              await fetch('https://api.twilio.com/2010-04-01/Accounts/' + _sidJB + '/Messages.json', {
-                method: 'POST', headers: { 'Authorization': 'Basic ' + Buffer.from(_sidJB + ':' + _tokJB).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&Body=' + encodeURIComponent(_jbAlertM)
-              });
+              var _jbAlertM = '🛡️ Intento de manipulación a Clari (' + channel.toUpperCase() + ')\n\n👤 ' + (senderName || senderId) + '\n📱 ' + senderId + ' (vía ' + channel + ')\n💬 "' + messageText.substring(0, 200) + '"\n\nClari NO obedeció. Es solo un aviso.';
+              var _twUrlJB = 'https://api.twilio.com/2010-04-01/Accounts/' + _sidJB + '/Messages.json';
+              var _authJB = 'Basic ' + Buffer.from(_sidJB + ':' + _tokJB).toString('base64');
+              // Intenta plantilla aprobada (llega fuera de la ventana 24h del admin); si falla, freeform.
+              var _rJB = await fetch(_twUrlJB, { method: 'POST', headers: { 'Authorization': _authJB, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': _jbAlertM })) });
+              if (!_rJB.ok) {
+                await fetch(_twUrlJB, { method: 'POST', headers: { 'Authorization': _authJB, 'Content-Type': 'application/x-www-form-urlencoded' },
+                  body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&Body=' + encodeURIComponent(_jbAlertM) });
+              }
             }
           } catch(_jbeM) { console.warn('[Meta Jailbreak alert]', _jbeM.message); }
           console.log('[Meta Jailbreak] ' + channel + ' ' + senderId);
