@@ -5475,18 +5475,40 @@ async function doLogin() {
   const e = (document.getElementById('l-email').value || '').trim().toLowerCase();
   const p = (document.getElementById('l-pass').value || '').trim();
   const err = document.getElementById('l-err');
-  // Ensure custom users are loaded from Supabase
-  await loadUsersFromSupabase();
-  const u = USUARIOS[e];
-  if (u && u.pass === p) {
-    currentUser = { id: e, ...u };
+  // ── Login del lado del SERVIDOR (seguro). Si la función falla, cae al método anterior → nadie queda fuera. ──
+  let loggedUser = null;
+  try {
+    const res = await fetch('/.netlify/functions/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: e, pass: p })
+    });
+    const j = await res.json().catch(function(){ return null; });
+    if (res.ok && j && j.ok && j.user) {
+      loggedUser = Object.assign({}, j.user, { pass: p }); // re-adjunta la contraseña tecleada para auth de dbwrite
+    } else if (res.status === 401) {
+      // El servidor confirmó credenciales inválidas → no hace falta fallback
+      err.style.display = 'block'; err.textContent = 'Usuario o contraseña incorrectos.';
+      _loginInProgress = false; return;
+    }
+    // Cualquier otro status (500/red) → cae al fallback de abajo
+  } catch (e2) { /* función no disponible → fallback */ }
+
+  if (!loggedUser) {
+    // Fallback (método anterior, en el navegador). Solo funciona mientras custom_users siga siendo legible.
+    await loadUsersFromSupabase();
+    const u = USUARIOS[e];
+    if (u && u.pass === p) loggedUser = Object.assign({ id: e }, u);
+  }
+
+  if (loggedUser) {
+    currentUser = loggedUser;
     // Admin/gerencia: localStorage (persiste al cerrar). Sucursal/lab: sessionStorage (se cierra)
-    var _persist = ['admin','gerencia'].includes(u.rol);
+    var _persist = ['admin','gerencia'].includes(currentUser.rol);
     if (_persist) localStorage.setItem('ce_session', JSON.stringify(currentUser));
     else sessionStorage.setItem('ce_session', JSON.stringify(currentUser));
     err.style.display = 'none';
     _loginInProgress = false;
-    setupApp(u);
+    setupApp(currentUser);
   } else {
     err.style.display = 'block';
     err.textContent = 'Usuario o contraseña incorrectos.';
