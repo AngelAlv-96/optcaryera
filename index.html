@@ -5453,17 +5453,19 @@ let allPac = [];
 let hcPacId = null;
 let cachedPacData = null;
 
+// NOTA SEGURIDAD: las contraseñas YA NO viven aquí (el HTML es público). El login valida en el
+// servidor (netlify/functions/login.js). Esto solo mapea usuario→rol/sucursal para la UI.
 const USUARIOS = {
-  'americas':    { pass:'americas01',  nombre:'Américas',     rol:'sucursal', sucursal:'Américas' },
-  'pinocelli':   { pass:'pinocelli01', nombre:'Pinocelli',    rol:'sucursal', sucursal:'Pinocelli' },
-  'magnolia':    { pass:'magnolia01',  nombre:'Magnolia',     rol:'sucursal', sucursal:'Magnolia' },
-  'vittoria':    { pass:'vittoria01', nombre:'Plaza Vía Vittoria', rol:'sucursal', sucursal:'Plaza Vía Vittoria' },
-  'gerencia':    { pass:'car2024ge', nombre:'Gerencia',       rol:'gerencia', sucursal:'Todas' },
-  'admin':       { pass:'car2024ad', nombre:'Administrador',  rol:'admin',    sucursal:'Todas' },
-  'carera':      { pass:'carera2024', nombre:'Administrador',  rol:'admin', sucursal:'Todas' },
-  'demo':        { pass:'demo2024',   nombre:'Demo (Pruebas)', rol:'admin',   sucursal:'Todas' },
-  'entrenador':  { pass:'trainercarera', nombre:'Entrenador',    rol:'sucursal',   sucursal:'Todas' },
-  'laboratorio': { pass:'lab2024',    nombre:'Laboratorio',    rol:'laboratorio', sucursal:'Todas' },
+  'americas':    { nombre:'Américas',     rol:'sucursal', sucursal:'Américas' },
+  'pinocelli':   { nombre:'Pinocelli',    rol:'sucursal', sucursal:'Pinocelli' },
+  'magnolia':    { nombre:'Magnolia',     rol:'sucursal', sucursal:'Magnolia' },
+  'vittoria':    { nombre:'Plaza Vía Vittoria', rol:'sucursal', sucursal:'Plaza Vía Vittoria' },
+  'gerencia':    { nombre:'Gerencia',       rol:'gerencia', sucursal:'Todas' },
+  'admin':       { nombre:'Administrador',  rol:'admin',    sucursal:'Todas' },
+  'carera':      { nombre:'Administrador',  rol:'admin', sucursal:'Todas' },
+  'demo':        { nombre:'Demo (Pruebas)', rol:'admin',   sucursal:'Todas' },
+  'entrenador':  { nombre:'Entrenador',    rol:'sucursal',   sucursal:'Todas' },
+  'laboratorio': { nombre:'Laboratorio',    rol:'laboratorio', sucursal:'Todas' },
 };
 let currentUser = null;
 function isTrainingMode() { return currentUser?.id === 'demo' || currentUser?.id === 'entrenador'; }
@@ -5475,8 +5477,8 @@ async function doLogin() {
   const e = (document.getElementById('l-email').value || '').trim().toLowerCase();
   const p = (document.getElementById('l-pass').value || '').trim();
   const err = document.getElementById('l-err');
-  // ── Login del lado del SERVIDOR (seguro). Si la función falla, cae al método anterior → nadie queda fuera. ──
-  let loggedUser = null;
+  // ── Login del lado del SERVIDOR (la contraseña se valida en netlify/functions/login.js, no en el navegador) ──
+  let loggedUser = null, serverError = false;
   try {
     const res = await fetch('/.netlify/functions/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -5485,20 +5487,10 @@ async function doLogin() {
     const j = await res.json().catch(function(){ return null; });
     if (res.ok && j && j.ok && j.user) {
       loggedUser = Object.assign({}, j.user, { pass: p }); // re-adjunta la contraseña tecleada para auth de dbwrite
-    } else if (res.status === 401) {
-      // El servidor confirmó credenciales inválidas → no hace falta fallback
-      err.style.display = 'block'; err.textContent = 'Usuario o contraseña incorrectos.';
-      _loginInProgress = false; return;
+    } else if (res.status !== 401) {
+      serverError = true; // 500/red: NO es "credenciales malas", es problema de conexión
     }
-    // Cualquier otro status (500/red) → cae al fallback de abajo
-  } catch (e2) { /* función no disponible → fallback */ }
-
-  if (!loggedUser) {
-    // Fallback (método anterior, en el navegador). Solo funciona mientras custom_users siga siendo legible.
-    await loadUsersFromSupabase();
-    const u = USUARIOS[e];
-    if (u && u.pass === p) loggedUser = Object.assign({ id: e }, u);
-  }
+  } catch (e2) { serverError = true; }
 
   if (loggedUser) {
     currentUser = loggedUser;
@@ -5511,7 +5503,7 @@ async function doLogin() {
     setupApp(currentUser);
   } else {
     err.style.display = 'block';
-    err.textContent = 'Usuario o contraseña incorrectos.';
+    err.textContent = serverError ? 'Error de conexión. Intenta de nuevo.' : 'Usuario o contraseña incorrectos.';
     _loginInProgress = false;
   }
 }
@@ -5612,18 +5604,11 @@ function setupApp(u) {
     const saved = localStorage.getItem('ce_session') || sessionStorage.getItem('ce_session');
     if (saved) {
       const u = JSON.parse(saved);
-      const fullUser = USUARIOS[u.id];
-      if (fullUser && fullUser.pass === u.pass) {
-        currentUser = { id: u.id, ...fullUser };
-        setupApp(fullUser);
-        // Re-apply permisos after Supabase custom users load
-        setTimeout(function() {
-          var fresh = USUARIOS[u.id];
-          if (fresh && fresh.permisos) {
-            currentUser = { id: u.id, ...fresh };
-            setupApp(fresh);
-          }
-        }, 1500);
+      // La sesión guardada YA fue validada en el servidor al hacer login (login.js). La restauramos tal cual.
+      // (La protección real es server-side: dbwrite valida usuario+contraseña en cada escritura.)
+      if (u && u.id && u.rol) {
+        currentUser = u;
+        setupApp(u);
       }
     }
   } catch(e) { console.warn('Session restore failed:', e); }
