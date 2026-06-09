@@ -16310,6 +16310,20 @@ function renderClariConversations() {
   const list = document.getElementById('clari-conv-list');
   const search = (document.getElementById('clari-search')?.value || '').toLowerCase();
   const lineFilter = document.getElementById('clari-line-filter')?.value || '';
+  // Si el admin está ESCRIBIENDO una respuesta, NO re-renderizar (borraría lo escrito).
+  // Se difiere y se reintenta en unos segundos hasta que deje de escribir.
+  var _act = document.activeElement;
+  if (_act && _act.classList && _act.classList.contains('clari-reply-input') && _act.value.trim()) {
+    clearTimeout(window._clariRenderRetry);
+    window._clariRenderRetry = setTimeout(function() { renderClariConversations(); }, 4000);
+    return;
+  }
+  // Snapshot de borradores no enviados (por teléfono) + foco/cursor, para restaurar tras re-render
+  var _clariDrafts = {}; var _clariFocusPhone = null; var _clariSelS = 0; var _clariSelE = 0;
+  list.querySelectorAll('.clari-reply-input').forEach(function(inp) {
+    if (inp.value) _clariDrafts[inp.dataset.phone] = inp.value;
+    if (inp === _act) { _clariFocusPhone = inp.dataset.phone; try { _clariSelS = inp.selectionStart; _clariSelE = inp.selectionEnd; } catch(e) {} }
+  });
   if (!clariConversations.length) {
     list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);font-size:12px">No hay conversaciones a\u00fan. Cuando alguien escriba al WhatsApp, las conversaciones aparecer\u00e1n aqu\u00ed.</div>';
     return;
@@ -16421,6 +16435,12 @@ function renderClariConversations() {
     html += '<div style="text-align:center;padding:16px"><button class="btn btn-g" onclick="clariPage++;loadClariConversations(true)" style="font-size:12px">Cargar m\u00e1s conversaciones...</button></div>';
   }
   list.innerHTML = html;
+  // Restaurar borradores escritos + foco/cursor (el re-render no debe perder lo que el admin escribe)
+  list.querySelectorAll('.clari-reply-input').forEach(function(inp) {
+    var ph = inp.dataset.phone;
+    if (_clariDrafts[ph]) inp.value = _clariDrafts[ph];
+    if (_clariFocusPhone === ph) { inp.focus(); try { inp.setSelectionRange(_clariSelS, _clariSelE); } catch(e) {} }
+  });
   // Re-open conversation that was open before refresh
   if (clariOpenPhone) {
     var cards = list.querySelectorAll('.clari-card');
