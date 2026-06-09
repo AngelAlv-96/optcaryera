@@ -1279,11 +1279,11 @@ var res=document.getElementById('gc-result');
 if(!tel||tel.length<7){res.innerHTML='<div style="color:#f87171;font-size:11px">Ingresa un tel\u00e9fono v\u00e1lido</div>';return}
 res.innerHTML='<div style="color:var(--t3);font-size:11px">Buscando...</div>';
 try{
-var pr=await fetch(SU+'/rest/v1/pacientes?telefono=ilike.*'+encodeURIComponent(tel.slice(-10))+'*&select=id,nombre,apellidos,telefono&limit=3',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var pr=await fetch('/.netlify/functions/tienda-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'paciente_by_phone',phone:tel.slice(-10),limit:3})});
 var pats=await pr.json();
 if(!Array.isArray(pats)||!pats.length){res.innerHTML='<div style="color:var(--t3);font-size:11px">No encontramos ese tel\u00e9fono. Puedes ingresar tu graduaci\u00f3n manualmente.</div><button onclick="tG(\'n\')" style="margin-top:6px;padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--ft)">Ingresar manualmente</button>';return}
 var patId=pats[0].id,patName=pats[0].nombre+(pats[0].apellidos?' '+pats[0].apellidos:'');
-var hr=await fetch(SU+'/rest/v1/historias_clinicas?paciente_id=eq.'+patId+'&select=lc_od_esfera,lc_od_cilindro,lc_od_eje,lc_oi_esfera,lc_oi_cilindro,lc_oi_eje,lc_od_add,lc_oi_add,lc_od_bc,lc_oi_bc,od_esfera,od_cilindro,od_eje,oi_esfera,oi_cilindro,oi_eje,od_add,oi_add&order=created_at.desc&limit=1',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var hr=await fetch('/.netlify/functions/tienda-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'historia_by_paciente',paciente_id:patId})});
 var hcs=await hr.json();
 if(!Array.isArray(hcs)||!hcs.length||(!hcs[0].lc_od_esfera&&!hcs[0].od_esfera)){res.innerHTML='<div style="color:var(--t3);font-size:11px">Hola '+patName.split(' ')[0]+', no encontramos graduaci\u00f3n LC en tu expediente. Ingresa manualmente o vis\u00edtanos.</div><button onclick="tG(\'n\')" style="margin-top:6px;padding:6px 12px;border-radius:var(--rs);border:1px solid var(--bd);background:transparent;color:var(--ac);font-size:11px;cursor:pointer;font-family:var(--ft)">Ingresar manualmente</button>';return}
 var hc=hcs[0];var oe=hc.lc_od_esfera||hc.od_esfera,oc=hc.lc_od_cilindro||hc.od_cilindro,oj=hc.lc_od_eje||hc.od_eje;
@@ -2330,9 +2330,9 @@ var email=_gUser.email||'';
 // Search by phone or email in ventas notas (which contain "Tel: xxx")
 var queries=[];
 if(phone&&phone.length>=7){
-queries.push(fetch(SU+'/rest/v1/ventas?notas=ilike.*'+encodeURIComponent(phone.slice(-10))+'*&canal_venta=eq.Tienda%20Web&select=folio,total,monto_pagado,estado,sucursal,sucursal_entrega,created_at,notas&order=created_at.desc&limit=20',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}}))}
+queries.push(fetch('/.netlify/functions/tienda-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ventas_web_by_contact',phone:phone.slice(-10)})}))}
 if(email){
-queries.push(fetch(SU+'/rest/v1/ventas?notas=ilike.*'+encodeURIComponent(email)+'*&canal_venta=eq.Tienda%20Web&select=folio,total,monto_pagado,estado,sucursal,sucursal_entrega,created_at,notas&order=created_at.desc&limit=20',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}}))}
+queries.push(fetch('/.netlify/functions/tienda-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ventas_web_by_contact',email:email})}))}
 if(!queries.length)return[];
 try{
 var results=await Promise.all(queries);
@@ -2445,7 +2445,7 @@ subEl.innerHTML='<div class="sub-empty">Agrega tu teléfono en "Perfil" para ver
 }else{
 try{
 // Look up patient by phone
-var pr=await fetch(SU+'/rest/v1/pacientes?telefono=ilike.*'+encodeURIComponent(phone.slice(-10))+'*&select=id,nombre,apellidos,telefono&limit=5',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var pr=await fetch('/.netlify/functions/tienda-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'paciente_by_phone',phone:phone.slice(-10),limit:5})});
 var pats=await pr.json();
 if(!Array.isArray(pats)||!pats.length){subEl.innerHTML='<div class="sub-empty">No encontramos una cuenta con ese teléfono.<br>Si ya eres cliente, verifica tu número en "Perfil".</div>';return}
 var patIds=pats.map(function(p){return p.id});

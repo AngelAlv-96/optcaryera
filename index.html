@@ -5165,9 +5165,10 @@ function mostrarNovedades() {
 const SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
 let db = null;
+var _ceJwt = null;                 // JWT de lectura autenticada (Fase 3 seguridad); null = solo publishable key
+var _ceApplyToken = function(){};  // se reasigna dentro del try; recrea `db` con el JWT como bearer
 try {
   const { createClient } = supabase;
-  db = createClient(SUPA_URL, SUPA_KEY);
 
   class SecureQueryBuilder {
     constructor(table, action, data) {
@@ -5221,22 +5222,42 @@ try {
     }
   }
 
-  const _dbFrom = db.from.bind(db);
-  db.from = function(table) {
-    const builder = _dbFrom(table);
-    builder.insert = function(data) { return new SecureQueryBuilder(table, 'insert', data); };
-    const _origUpdate = builder.update.bind(builder);
-    builder.update = function(data) { return new SecureQueryBuilder(table, 'update', data); };
-    builder.delete = function() { return new SecureQueryBuilder(table, 'delete', null); };
-    const _origUpsert = builder.upsert ? builder.upsert.bind(builder) : null;
-    builder.upsert = function(data, opts) {
-      const q = new SecureQueryBuilder(table, 'upsert', data);
-      if (opts?.onConflict) q._opts.onConflict = opts.onConflict;
-      if (opts?.ignoreDuplicates !== undefined) q._opts.ignoreDuplicates = opts.ignoreDuplicates;
-      return q;
+  // Aplica el proxy seguro de ESCRITURA sobre cualquier cliente (las escrituras siguen yendo por dbwrite).
+  function _ceWrapWrites(client) {
+    const _dbFrom = client.from.bind(client);
+    client.from = function(table) {
+      const builder = _dbFrom(table);
+      builder.insert = function(data) { return new SecureQueryBuilder(table, 'insert', data); };
+      builder.update = function(data) { return new SecureQueryBuilder(table, 'update', data); };
+      builder.delete = function() { return new SecureQueryBuilder(table, 'delete', null); };
+      builder.upsert = function(data, opts) {
+        const q = new SecureQueryBuilder(table, 'upsert', data);
+        if (opts?.onConflict) q._opts.onConflict = opts.onConflict;
+        if (opts?.ignoreDuplicates !== undefined) q._opts.ignoreDuplicates = opts.ignoreDuplicates;
+        return q;
+      };
+      return builder;
     };
-    return builder;
+    return client;
+  }
+
+  // Crea un cliente Supabase. Con jwt → lo manda como Authorization bearer (lecturas como rol authenticated)
+  // + autentica el canal Realtime. Sin jwt → solo publishable key (comportamiento histórico).
+  function _ceMakeClient(jwt) {
+    const opts = jwt ? { global: { headers: { Authorization: 'Bearer ' + jwt } } } : undefined;
+    const client = createClient(SUPA_URL, SUPA_KEY, opts);
+    _ceWrapWrites(client);
+    try { if (jwt && client.realtime && typeof client.realtime.setAuth === 'function') client.realtime.setAuth(jwt); } catch(e) { console.warn('realtime.setAuth:', e && e.message); }
+    return client;
+  }
+
+  // Reasigna el cliente global `db` con (o sin) JWT. Lo llaman doLogin y restoreSession.
+  _ceApplyToken = function(jwt) {
+    _ceJwt = jwt || null;
+    db = _ceMakeClient(_ceJwt);
   };
+
+  db = _ceMakeClient(null); // arranque: publishable key (RLS abierto). Tras login se recrea con el JWT.
   console.log('✓ Secure write proxy active');
 
 } catch(err) {
@@ -5478,7 +5499,7 @@ async function doLogin() {
   const p = (document.getElementById('l-pass').value || '').trim();
   const err = document.getElementById('l-err');
   // ── Login del lado del SERVIDOR (la contraseña se valida en netlify/functions/login.js, no en el navegador) ──
-  let loggedUser = null, serverError = false;
+  let loggedUser = null, loggedToken = null, serverError = false;
   try {
     const res = await fetch('/.netlify/functions/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -5487,6 +5508,7 @@ async function doLogin() {
     const j = await res.json().catch(function(){ return null; });
     if (res.ok && j && j.ok && j.user) {
       loggedUser = Object.assign({}, j.user, { pass: p }); // re-adjunta la contraseña tecleada para auth de dbwrite
+      loggedToken = j.token || null;                        // JWT de lectura (Fase 3); null si el secret no está seteado
     } else if (res.status !== 401) {
       serverError = true; // 500/red: NO es "credenciales malas", es problema de conexión
     }
@@ -5494,10 +5516,13 @@ async function doLogin() {
 
   if (loggedUser) {
     currentUser = loggedUser;
+    // Aplica el JWT de lectura autenticada (Fase 3). Si no vino token, _ceApplyToken(null) mantiene la publishable key.
+    try { _ceApplyToken(loggedToken); } catch(ex) { console.warn('applyToken:', ex && ex.message); }
     // Admin/gerencia: localStorage (persiste al cerrar). Sucursal/lab: sessionStorage (se cierra)
     var _persist = ['admin','gerencia'].includes(currentUser.rol);
-    if (_persist) localStorage.setItem('ce_session', JSON.stringify(currentUser));
-    else sessionStorage.setItem('ce_session', JSON.stringify(currentUser));
+    var _store = _persist ? localStorage : sessionStorage;
+    _store.setItem('ce_session', JSON.stringify(currentUser));
+    if (loggedToken) _store.setItem('ce_jwt', loggedToken); else _store.removeItem('ce_jwt');
     err.style.display = 'none';
     _loginInProgress = false;
     setupApp(currentUser);
@@ -5598,25 +5623,53 @@ function setupApp(u) {
     }
 }
 
-(function restoreSession() {
+// Pide un JWT de lectura a login.js (NO recrea db; solo devuelve el token o null). Best-effort con timeout.
+async function _ceFetchToken(id, pass) {
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(function(){ ctrl.abort(); }, 6000);
+    const res = await fetch('/.netlify/functions/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: id, pass: pass }), signal: ctrl.signal
+    });
+    clearTimeout(to);
+    if (!res.ok) return null;
+    const j = await res.json().catch(function(){ return null; });
+    return (j && j.ok && j.token) ? j.token : null;
+  } catch(e) { return null; }
+}
+
+(async function restoreSession() {
   try {
     // Try localStorage first (admin/gerencia), then sessionStorage (sucursal/lab)
+    const inLocal = !!localStorage.getItem('ce_session');
     const saved = localStorage.getItem('ce_session') || sessionStorage.getItem('ce_session');
-    if (saved) {
-      const u = JSON.parse(saved);
-      // La sesión guardada YA fue validada en el servidor al hacer login (login.js). La restauramos tal cual.
-      // (La protección real es server-side: dbwrite valida usuario+contraseña en cada escritura.)
-      if (u && u.id && u.rol) {
-        currentUser = u;
-        setupApp(u);
-      }
+    if (!saved) return;
+    const u = JSON.parse(saved);
+    // La sesión guardada YA fue validada en el servidor al hacer login (login.js). La restauramos tal cual.
+    // (La protección real es server-side: dbwrite valida usuario+contraseña en cada escritura.)
+    if (!(u && u.id && u.rol)) return;
+    currentUser = u;
+    var _store = inLocal ? localStorage : sessionStorage;
+    var _tok = _store.getItem('ce_jwt');
+    // Sesión previa a la Fase 3 (sin token guardado): conseguir uno ANTES de cargar — las lecturas lo necesitan tras el cutover.
+    if (!_tok && u.pass) {
+      var fresh = await _ceFetchToken(u.id, u.pass);
+      if (fresh) { _tok = fresh; try { _store.setItem('ce_jwt', fresh); } catch(e){} }
     }
+    try { _ceApplyToken(_tok || null); } catch(ex) { console.warn('applyToken restore:', ex && ex.message); }
+    setupApp(u);
+    // Con token ya aplicado: renueva en 2º plano para la PRÓXIMA carga (NO recrea db en vivo → el canal Realtime queda intacto).
+    if (_tok && u.pass) { _ceFetchToken(u.id, u.pass).then(function(t){ if (t) { try { _store.setItem('ce_jwt', t); } catch(e){} } }); }
   } catch(e) { console.warn('Session restore failed:', e); }
 })();
 
 function doLogout() {
   sessionStorage.removeItem('ce_session');
   localStorage.removeItem('ce_session');
+  sessionStorage.removeItem('ce_jwt');
+  localStorage.removeItem('ce_jwt');
+  try { _ceApplyToken(null); } catch(e){} // vuelve a publishable key (la pantalla de login no hace lecturas)
   currentUser = null;
   _loginInProgress = false;
   document.getElementById('login-screen').style.display = 'flex';
@@ -24789,10 +24842,16 @@ async function _msSha256(str) {
 }
 
 async function _msGetPins() {
+  // Fase 3: empleados_pins ya NO se lee con la publishable key (RLS lo oculta de anon).
+  // Se obtiene vía función service_role que valida usuario+contraseña.
   try {
-    var { data } = await db.from('app_config').select('value').eq('id', 'empleados_pins').single();
-    if (!data || !data.value) return {};
-    return typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
+    var res = await fetch('/.netlify/functions/pins-read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+    if (!res.ok) return {};
+    var j = await res.json().catch(function(){ return null; });
+    return (j && j.ok && j.pins) ? j.pins : {};
   } catch(e) { return {}; }
 }
 
@@ -24995,14 +25054,9 @@ async function _msSavePin(asesor, pin) {
   var hash = await _msSha256(pin + ':' + asesor);
   var pins = await _msGetPins();
   pins[asesor] = hash;
-  var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
-  if (existing.data) {
-    var { error } = await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
-    if (error) throw new Error(error.message || error);
-  } else {
-    var { error: errIns } = await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
-    if (errIns) throw new Error(errIns.message || errIns);
-  }
+  // Fase 3: upsert vía dbwrite (service_role) — evita el SELECT de existencia que RLS bloquearía ahora.
+  var { error } = await db.from('app_config').upsert({ id: 'empleados_pins', value: JSON.stringify(pins) }, { onConflict: 'id' });
+  if (error) throw new Error(error.message || error);
 }
 
 async function _miSobreStep1Continuar() {
@@ -25253,12 +25307,8 @@ async function _pinResetUno(asesor) {
   var pins = await _msGetPins();
   delete pins[asesor];
   try {
-    var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
-    if (existing.data) {
-      await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
-    } else {
-      await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
-    }
+    var { error: upErr } = await db.from('app_config').upsert({ id: 'empleados_pins', value: JSON.stringify(pins) }, { onConflict: 'id' });
+    if (upErr) throw new Error(upErr.message || upErr);
     toast('PIN de ' + asesor + ' eliminado');
     abrirPinsConfig();
   } catch(e) { toast('Error: ' + (e.message || e), true); }
@@ -25282,12 +25332,8 @@ async function guardarPinsConfig() {
       cambios++;
     }
     if (cambios === 0) { toast('Sin cambios'); return; }
-    var existing = await db.from('app_config').select('id').eq('id', 'empleados_pins').single();
-    if (existing.data) {
-      await db.from('app_config').update({ value: JSON.stringify(pins) }).eq('id', 'empleados_pins');
-    } else {
-      await db.from('app_config').insert({ id: 'empleados_pins', value: JSON.stringify(pins) });
-    }
+    var { error: upErr } = await db.from('app_config').upsert({ id: 'empleados_pins', value: JSON.stringify(pins) }, { onConflict: 'id' });
+    if (upErr) throw new Error(upErr.message || upErr);
     toast('✓ ' + cambios + ' PIN(s) guardado(s)');
     cerrarPinsConfig();
   } catch(e) {

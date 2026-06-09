@@ -220,13 +220,19 @@ const LAB_COLORS = {
 async function loadPortal() {
   if (!token) { showError('Link inválido', 'Este link no contiene un ticket válido.'); return; }
 
-  // Fetch venta by token
-  const { data: v, error } = await db.from('ventas')
-    .select('*, pacientes(nombre, apellidos, telefono)')
-    .eq('token_portal', token)
-    .single();
+  // Fetch venta by token — vía función service_role (Fase 3 seguridad: ventas/pacientes ya NO se leen
+  // con la publishable key; el token del link sigue siendo la autorización).
+  let v = null;
+  try {
+    const _r = await fetch('/.netlify/functions/portal-data', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    });
+    const _j = await _r.json().catch(function(){ return null; });
+    if (_j && _j.ok) v = _j.venta;
+  } catch(e) { /* error de red → v queda null → se muestra el error de abajo */ }
 
-  if (error || !v) { showError('Ticket no encontrado', 'Verifica que el link sea correcto o contacta a la óptica.'); return; }
+  if (!v) { showError('Ticket no encontrado', 'Verifica que el link sea correcto o contacta a la óptica.'); return; }
 
 
 
