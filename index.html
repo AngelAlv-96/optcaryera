@@ -16330,16 +16330,105 @@ function _clariMsgHTML(m) {
   return html;
 }
 
+// HTML de una tarjeta de conversación completa (compartido por el render de lista
+// y por el prepend incremental de conversaciones nuevas — sin redibujar la lista)
+function _clariCardHTML(c) {
+  var html = '';
+    var msgs = c.messages.sort(function(a, b) { return a.created_at > b.created_at ? 1 : -1; });
+    var lastMsg = msgs[msgs.length - 1];
+    var preview = lastMsg.content.substring(0, 80) + (lastMsg.content.length > 80 ? '...' : '');
+    var time = timeAgo(c.last);
+    var displayPhone = c.phone.length > 10 ? '+' + c.phone.substring(0, 2) + ' ' + c.phone.substring(2, 5) + ' ' + c.phone.substring(5, 8) + ' ' + c.phone.substring(8) : c.phone;
+    var unread = lastMsg.role === 'user';
+    var line = getLineLbl(c.via_phone_id);
+    var lineBadge = line.tag ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + line.color + '18;color:' + line.color + ';border:1px solid ' + line.color + '33;margin-left:6px;white-space:nowrap">' + line.tag + '</span>' : '';
+    // Campaign tags
+    var hasMagReact = c.messages.some(function(m) { return m.content && m.content.indexOf('[Magnolia-Reactivation]') !== -1; });
+    var hasLCRecompra = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Recompra]') !== -1; });
+    var hasReview = c.messages.some(function(m) { return m.content && m.content.indexOf('[Review]') !== -1; });
+    var hasLCReactivacion = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
+    var hasVIPReactivacion = c.messages.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1); });
+    var campaignBadge = hasMagReact ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b33;margin-left:4px;white-space:nowrap">🏪 Magnolia</span>' : hasLCReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444418;color:#ef4444;border:1px solid #ef444433;margin-left:4px;white-space:nowrap">👁 LC Reactivación</span>' : hasVIPReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#3b82f618;color:#3b82f6;border:1px solid #3b82f633;margin-left:4px;white-space:nowrap">⭐ VIP Reactivación</span>' : hasLCRecompra ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b5cf618;color:#8b5cf6;border:1px solid #8b5cf633;margin-left:4px;white-space:nowrap">🔄 LC Recompra</span>' : hasReview ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#10b98118;color:#10b981;border:1px solid #10b98133;margin-left:4px;white-space:nowrap">⭐ Encuesta</span>' : '';
+    // Purchase badge: paciente registrado + última compra (sucursal+folio)
+    var purchInfo = _clariPurchaseMap[_wcrmNorm10(c.phone)];
+    var purchBadge = '';
+    if (purchInfo) {
+      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? '#66bb6a' : '#72b8c4';
+      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? 'PVV' : '';
+      var badgeContent = '';
+      if (purchInfo.pacienteName) badgeContent += escH(purchInfo.pacienteName);
+      if (sucShort && purchInfo.folio) badgeContent += (badgeContent ? ' · ' : '') + sucShort + ' #' + purchInfo.folio;
+      var titleAttr = purchInfo.folio ? 'Paciente registrado · Última compra: folio ' + purchInfo.folio + ' en ' + purchInfo.sucursal : 'Paciente registrado (sin compras)';
+      if (badgeContent) {
+        purchBadge = '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + sucColor + '18;color:' + sucColor + ';border:1px solid ' + sucColor + '33;margin-left:4px;white-space:nowrap" title="' + titleAttr + '">🧾 ' + badgeContent + '</span>';
+      }
+    }
+    var replyPhoneId = c.via_phone_id || '';
+    var isBotOff = _botDisabledMap.hasOwnProperty(c.phone) && (Date.now() - _botDisabledMap[c.phone] < 7200000);
+    var botBadge = isBotOff ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444425;color:#ef4444;border:1px solid #ef444440;margin-left:4px;white-space:nowrap">🤖 Bot OFF</span>' : '';
+    html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px' + (isBotOff ? ';border-left:3px solid #ef4444' : '') + '">';
+    html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="display:flex;align-items:center;gap:8px">';
+    html += '<div class="clari-avatar" style="width:34px;height:34px;border-radius:50%;background:' + (unread ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.06)') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">' + (unread ? '🟢' : '💬') + '</div>';
+    html += '<div style="min-width:0">';
+    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--white);gap:2px">' + (c.name || 'Sin nombre') + lineBadge + campaignBadge + purchBadge + botBadge + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted)">' + displayPhone + '</div>';
+    html += '</div></div>';
+    html += '<div class="clari-prev" style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastMsg.role !== 'assistant' ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Sistema]') ? '\ud83d\udce2 ' : lastMsg.content.startsWith('[Admin]') ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Corte]') ? '\ud83d\udcca ' : '\ud83e\udd16 ') + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '')) + '</div>';
+    html += '</div>';
+    html += '<div style="text-align:right;flex-shrink:0;margin-left:12px">';
+    html += '<div class="clari-time" style="font-size:10px;color:var(--muted)">' + time + '</div>';
+    html += '<div class="clari-count" style="font-size:10px;color:var(--muted);margin-top:2px">' + msgs.length + ' msgs</div>';
+    html += '</div></div>';
+    html += '<div class="clari-msgs" style="display:none;border-top:1px solid rgba(255,255,255,0.04)">';
+    html += '<div class="clari-msgs-scroll" style="padding:12px;max-height:400px;overflow-y:auto">';
+    msgs.forEach(function(m) { html += _clariMsgHTML(m); });
+    html += '</div>';
+    html += '<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;align-items:center">';
+    html += '<button class="btn btn-sm" onclick="toggleBotForConvo(\'' + c.phone + '\',this)" style="font-size:10px;white-space:nowrap;padding:6px 8px;background:' + (isBotOff ? 'rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b98140' : 'rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef444440') + '" title="' + (isBotOff ? 'Reactivar Clari para esta conversación' : 'Desactivar Clari — tú tomas el control') + '">' + (isBotOff ? '🤖 ON' : '🤖 OFF') + '</button>';
+    html += '<input class="ord-input clari-reply-input" data-phone="' + c.phone + '" data-phone-id="' + replyPhoneId + '" placeholder="Responder como t\u00fa (no como Clari)..." style="flex:1;font-size:12px;padding:8px 12px" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();enviarClariReply(this)}">';
+    html += '<button class="btn btn-p btn-sm" onclick="enviarClariReply(this.previousElementSibling)" style="font-size:11px;white-space:nowrap">Enviar \u2709\uFE0F</button>';
+    html += '</div>';
+    html += '</div></div>';
+  return html;
+}
+
+// Conversación que es SOLO mensajes de campaña masiva sin respuesta del cliente (se oculta de la lista)
+function _clariEsCampaignOnly(c) {
+  var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
+  return !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3' || m.user_name === 'pin-lc-reactivacion' || m.user_name === 'pin-vip-reactivacion' || m.user_name === 'pin-fase3' || m.user_name === 'promo-followup'; });
+}
+
 // Actualización INCREMENTAL al llegar un mensaje por Realtime: toca SOLO la tarjeta afectada
 // (burbuja + preview + hora + contador + puntito) y la sube al inicio — sin reconstruir la lista,
-// cero parpadeo. Devuelve false si la tarjeta no está en el DOM (conversación nueva o filtrada)
-// para que el caller haga el render completo.
+// cero parpadeo. Si la conversación es NUEVA, su tarjeta se inserta al inicio (también sin redibujar).
+// Devuelve false solo si no puede actualizar incrementalmente (lista vacía/placeholder) → render completo.
 function _clariApplyIncoming(m) {
   var list = document.getElementById('clari-conv-list');
   if (!list || !m || !m.phone || !m.content) return false;
   var input = list.querySelector('.clari-reply-input[data-phone="' + m.phone + '"]');
   var card = input && input.closest('.clari-card');
-  if (!card) return false;
+  if (!card) {
+    // Conversación sin tarjeta en el DOM (nueva o fuera del filtro): prepend de UNA tarjeta, sin redibujar la lista
+    if (!list.querySelector('.clari-card')) return false; // lista vacía/placeholder → render completo
+    var msgsPhone = clariConversations.filter(function(x) { return x.phone === m.phone; });
+    if (!msgsPhone.length) return false;
+    var c = { phone: m.phone, name: '', messages: msgsPhone, last: m.created_at, via_phone_id: '' };
+    msgsPhone.forEach(function(x) {
+      if (x.user_name && !c.name) c.name = x.user_name;
+      if (x.created_at > c.last) c.last = x.created_at;
+      if (x.via_phone_id) c.via_phone_id = x.via_phone_id;
+    });
+    // Respetar las mismas reglas de visibilidad del render completo (si está oculta, no hay nada que dibujar)
+    if (_clariEsCampaignOnly(c)) return true;
+    var search = (document.getElementById('clari-search')?.value || '').toLowerCase();
+    if (search && !((c.name || '').toLowerCase().includes(search) || c.phone.includes(search))) return true;
+    var lineFilter = document.getElementById('clari-line-filter')?.value || '';
+    if (lineFilter && getLineLbl(c.via_phone_id).key !== lineFilter) return true;
+    list.insertAdjacentHTML('afterbegin', _clariCardHTML(c));
+    return true;
+  }
   // Burbuja nueva en el hilo
   var scroll = card.querySelector('.clari-msgs-scroll');
   if (scroll) {
@@ -16405,11 +16494,7 @@ function renderClariConversations() {
   });
   var convos = Object.values(grouped).sort(function(a, b) { return b.last > a.last ? 1 : -1; });
   // Ocultar conversaciones de campañas masivas (magnolia-reactivate, etc.) donde el cliente NO ha respondido
-  convos = convos.filter(function(c) {
-    var hasUserReply = c.messages.some(function(m) { return m.role === 'user'; });
-    var isCampaignOnly = !hasUserReply && c.messages.every(function(m) { return m.user_name === 'magnolia-reactivate' || m.user_name === 'review-cron' || m.user_name === 'lc-cron' || m.user_name === 'lc-reactivacion' || m.user_name === 'vip-reactivacion' || m.user_name === 'ame-fase3' || m.user_name === 'pin-lc-reactivacion' || m.user_name === 'pin-vip-reactivacion' || m.user_name === 'pin-fase3' || m.user_name === 'promo-followup'; });
-    return !isCampaignOnly;
-  });
+  convos = convos.filter(function(c) { return !_clariEsCampaignOnly(c); });
   if (search) convos = convos.filter(function(c) {
     var purch = _clariPurchaseMap[_wcrmNorm10(c.phone)];
     var folioMatch = purch && String(purch.folio || '').toLowerCase().includes(search);
@@ -16419,65 +16504,7 @@ function renderClariConversations() {
   if (lineFilter) convos = convos.filter(function(c) { return getLineLbl(c.via_phone_id).key === lineFilter; });
   if (!convos.length) { list.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px">Sin resultados.</div>'; return; }
   var html = '';
-  convos.forEach(function(c) {
-    var msgs = c.messages.sort(function(a, b) { return a.created_at > b.created_at ? 1 : -1; });
-    var lastMsg = msgs[msgs.length - 1];
-    var preview = lastMsg.content.substring(0, 80) + (lastMsg.content.length > 80 ? '...' : '');
-    var time = timeAgo(c.last);
-    var displayPhone = c.phone.length > 10 ? '+' + c.phone.substring(0, 2) + ' ' + c.phone.substring(2, 5) + ' ' + c.phone.substring(5, 8) + ' ' + c.phone.substring(8) : c.phone;
-    var unread = lastMsg.role === 'user';
-    var line = getLineLbl(c.via_phone_id);
-    var lineBadge = line.tag ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + line.color + '18;color:' + line.color + ';border:1px solid ' + line.color + '33;margin-left:6px;white-space:nowrap">' + line.tag + '</span>' : '';
-    // Campaign tags
-    var hasMagReact = c.messages.some(function(m) { return m.content && m.content.indexOf('[Magnolia-Reactivation]') !== -1; });
-    var hasLCRecompra = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Recompra]') !== -1; });
-    var hasReview = c.messages.some(function(m) { return m.content && m.content.indexOf('[Review]') !== -1; });
-    var hasLCReactivacion = c.messages.some(function(m) { return m.content && m.content.indexOf('[LC-Reactivacion]') !== -1; });
-    var hasVIPReactivacion = c.messages.some(function(m) { return m.content && (m.content.indexOf('[VIP-Reactivacion]') !== -1 || m.content.indexOf('[AME-Fase3]') !== -1); });
-    var campaignBadge = hasMagReact ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b33;margin-left:4px;white-space:nowrap">🏪 Magnolia</span>' : hasLCReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444418;color:#ef4444;border:1px solid #ef444433;margin-left:4px;white-space:nowrap">👁 LC Reactivación</span>' : hasVIPReactivacion ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#3b82f618;color:#3b82f6;border:1px solid #3b82f633;margin-left:4px;white-space:nowrap">⭐ VIP Reactivación</span>' : hasLCRecompra ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#8b5cf618;color:#8b5cf6;border:1px solid #8b5cf633;margin-left:4px;white-space:nowrap">🔄 LC Recompra</span>' : hasReview ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#10b98118;color:#10b981;border:1px solid #10b98133;margin-left:4px;white-space:nowrap">⭐ Encuesta</span>' : '';
-    // Purchase badge: paciente registrado + última compra (sucursal+folio)
-    var purchInfo = _clariPurchaseMap[_wcrmNorm10(c.phone)];
-    var purchBadge = '';
-    if (purchInfo) {
-      var sucColor = purchInfo.sucursal === 'Américas' ? '#b48ad4' : purchInfo.sucursal === 'Pinocelli' ? '#8ab0e8' : purchInfo.sucursal === 'Magnolia' ? '#d4b84a' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? '#66bb6a' : '#72b8c4';
-      var sucShort = purchInfo.sucursal === 'Américas' ? 'AME' : purchInfo.sucursal === 'Pinocelli' ? 'PIN' : purchInfo.sucursal === 'Magnolia' ? 'MAG' : purchInfo.sucursal === 'Plaza Vía Vittoria' ? 'PVV' : '';
-      var badgeContent = '';
-      if (purchInfo.pacienteName) badgeContent += escH(purchInfo.pacienteName);
-      if (sucShort && purchInfo.folio) badgeContent += (badgeContent ? ' · ' : '') + sucShort + ' #' + purchInfo.folio;
-      var titleAttr = purchInfo.folio ? 'Paciente registrado · Última compra: folio ' + purchInfo.folio + ' en ' + purchInfo.sucursal : 'Paciente registrado (sin compras)';
-      if (badgeContent) {
-        purchBadge = '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:' + sucColor + '18;color:' + sucColor + ';border:1px solid ' + sucColor + '33;margin-left:4px;white-space:nowrap" title="' + titleAttr + '">🧾 ' + badgeContent + '</span>';
-      }
-    }
-    var replyPhoneId = c.via_phone_id || '';
-    var isBotOff = _botDisabledMap.hasOwnProperty(c.phone) && (Date.now() - _botDisabledMap[c.phone] < 7200000);
-    var botBadge = isBotOff ? '<span style="font-size:9px;padding:1px 5px;border-radius:4px;background:#ef444425;color:#ef4444;border:1px solid #ef444440;margin-left:4px;white-space:nowrap">🤖 Bot OFF</span>' : '';
-    html += '<div class="card clari-card" style="transition:background .15s;margin-bottom:2px' + (isBotOff ? ';border-left:3px solid #ef4444' : '') + '">';
-    html += '<div style="padding:14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleClariConvo(this.parentElement,\'' + c.phone + '\')">';
-    html += '<div style="flex:1;min-width:0">';
-    html += '<div style="display:flex;align-items:center;gap:8px">';
-    html += '<div class="clari-avatar" style="width:34px;height:34px;border-radius:50%;background:' + (unread ? 'rgba(37,211,102,0.25)' : 'rgba(255,255,255,0.06)') + ';display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">' + (unread ? '🟢' : '💬') + '</div>';
-    html += '<div style="min-width:0">';
-    html += '<div style="display:flex;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:600;color:var(--white);gap:2px">' + (c.name || 'Sin nombre') + lineBadge + campaignBadge + purchBadge + botBadge + '</div>';
-    html += '<div style="font-size:11px;color:var(--muted)">' + displayPhone + '</div>';
-    html += '</div></div>';
-    html += '<div class="clari-prev" style="font-size:11px;color:var(--muted);margin-top:4px;margin-left:42px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (lastMsg.role !== 'assistant' ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Sistema]') ? '\ud83d\udce2 ' : lastMsg.content.startsWith('[Admin]') ? '\ud83d\udc64 ' : lastMsg.content.startsWith('[Corte]') ? '\ud83d\udcca ' : '\ud83e\udd16 ') + escH(preview.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '')) + '</div>';
-    html += '</div>';
-    html += '<div style="text-align:right;flex-shrink:0;margin-left:12px">';
-    html += '<div class="clari-time" style="font-size:10px;color:var(--muted)">' + time + '</div>';
-    html += '<div class="clari-count" style="font-size:10px;color:var(--muted);margin-top:2px">' + msgs.length + ' msgs</div>';
-    html += '</div></div>';
-    html += '<div class="clari-msgs" style="display:none;border-top:1px solid rgba(255,255,255,0.04)">';
-    html += '<div class="clari-msgs-scroll" style="padding:12px;max-height:400px;overflow-y:auto">';
-    msgs.forEach(function(m) { html += _clariMsgHTML(m); });
-    html += '</div>';
-    html += '<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:6px;align-items:center">';
-    html += '<button class="btn btn-sm" onclick="toggleBotForConvo(\'' + c.phone + '\',this)" style="font-size:10px;white-space:nowrap;padding:6px 8px;background:' + (isBotOff ? 'rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b98140' : 'rgba(239,68,68,0.15);color:#ef4444;border:1px solid #ef444440') + '" title="' + (isBotOff ? 'Reactivar Clari para esta conversación' : 'Desactivar Clari — tú tomas el control') + '">' + (isBotOff ? '🤖 ON' : '🤖 OFF') + '</button>';
-    html += '<input class="ord-input clari-reply-input" data-phone="' + c.phone + '" data-phone-id="' + replyPhoneId + '" placeholder="Responder como t\u00fa (no como Clari)..." style="flex:1;font-size:12px;padding:8px 12px" onkeydown="if(event.key===\'Enter\' && !event.shiftKey){event.preventDefault();enviarClariReply(this)}">';
-    html += '<button class="btn btn-p btn-sm" onclick="enviarClariReply(this.previousElementSibling)" style="font-size:11px;white-space:nowrap">Enviar \u2709\uFE0F</button>';
-    html += '</div>';
-    html += '</div></div>';
-  });
+  convos.forEach(function(c) { html += _clariCardHTML(c); });
   if (clariHasMore) {
     html += '<div style="text-align:center;padding:16px"><button class="btn btn-g" onclick="clariPage++;loadClariConversations(true)" style="font-size:12px">Cargar m\u00e1s conversaciones...</button></div>';
   }
