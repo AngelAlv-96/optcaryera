@@ -67,6 +67,52 @@ async function getCustomUsers() {
   return {};
 }
 
+// ════════ Anti-fuerza-bruta: rate-limiting + candado por IP ════════
+// Todo es FAIL-OPEN: si la tabla login_attempts o la config no existen (Angel aún no corrió el SQL),
+// no bloquea nada y el login funciona como siempre. Solo se activa cuando la infra está creada.
+function clientIp(event) {
+  const h = event.headers || {};
+  return (h['x-nf-client-connection-ip'] || (h['x-forwarded-for'] || '').split(',')[0] || '').trim();
+}
+async function svcGET(path) {
+  try {
+    const r = await fetch(SUPA_URL + '/rest/v1/' + path, { headers: { apikey: SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY } });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+async function getLoginPolicy() {
+  const def = { enabled: false, ips: [], exempt_roles: ['admin', 'gerencia'], max_fails: 10, window_min: 10 };
+  const data = await svcGET('app_config?id=eq.login_ip_allowlist&select=value');
+  if (Array.isArray(data) && data[0] && data[0].value) {
+    try { const v = data[0].value; return Object.assign(def, typeof v === 'string' ? JSON.parse(v) : v); } catch (e) {}
+  }
+  return def; // sin config → deshabilitado (no bloquea)
+}
+async function recentFailCount(ip, windowMin, maxFails) {
+  if (!ip) return 0; // sin IP detectable → no bloquear
+  const cutoff = new Date(Date.now() - windowMin * 60000).toISOString();
+  const data = await svcGET('login_attempts?ip=eq.' + encodeURIComponent(ip) + '&ok=eq.false&created_at=gte.' + encodeURIComponent(cutoff) + '&select=id&limit=' + (maxFails || 10));
+  return Array.isArray(data) ? data.length : 0; // null (tabla no existe) → 0 → fail-open
+}
+async function logAttempt(ip, username, ok) {
+  try {
+    await fetch(SUPA_URL + '/rest/v1/login_attempts', {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ ip: ip || null, username: username || null, ok: !!ok })
+    });
+  } catch (e) { /* tabla no existe aún → no pasa nada */ }
+}
+async function clearFails(ip) {
+  if (!ip) return;
+  try {
+    await fetch(SUPA_URL + '/rest/v1/login_attempts?ip=eq.' + encodeURIComponent(ip) + '&ok=eq.false', {
+      method: 'DELETE', headers: { apikey: SERVICE_KEY, 'Authorization': 'Bearer ' + SERVICE_KEY }
+    });
+  } catch (e) {}
+}
+
 exports.handler = async (event) => {
   const H = {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -85,6 +131,15 @@ exports.handler = async (event) => {
   const pass = (body.pass || body.password || '').toString();
   if (!id || !pass) return { statusCode: 400, headers: H, body: JSON.stringify({ ok: false, error: 'Faltan credenciales' }) };
 
+  // ── Rate limiting (anti-fuerza-bruta) — bloquea tras N fallos por IP en una ventana ──
+  const ip = clientIp(event);
+  const policy = await getLoginPolicy();
+  const windowMin = Number(policy.window_min) || 10;
+  const maxFails = Number(policy.max_fails) || 10;
+  if (await recentFailCount(ip, windowMin, maxFails) >= maxFails) {
+    return { statusCode: 429, headers: H, body: JSON.stringify({ ok: false, error: 'Demasiados intentos fallidos desde esta red. Espera unos minutos e intenta de nuevo.' }) };
+  }
+
   const custom = await getCustomUsers();
   const allUsers = {};
   Object.entries(BASE_USERS).forEach(([uid, u]) => { allUsers[uid.toLowerCase()] = u; });
@@ -92,8 +147,21 @@ exports.handler = async (event) => {
 
   const user = allUsers[id];
   if (!user || String(user.pass) !== String(pass)) {
+    await logAttempt(ip, id, false);
     return { statusCode: 401, headers: H, body: JSON.stringify({ ok: false, error: 'Usuario o contraseña incorrectos' }) };
   }
+
+  // ── Candado por IP: cuentas no-exentas (sucursal/lab) solo entran desde IPs autorizadas ──
+  //    Solo aplica si policy.enabled=true. admin/gerencia exentos (entran desde cualquier lado).
+  if (policy.enabled && !(policy.exempt_roles || []).includes(user.rol) && !(policy.ips || []).includes(ip)) {
+    await logAttempt(ip, id, false);
+    return { statusCode: 403, headers: H, body: JSON.stringify({ ok: false, error: 'Esta cuenta solo puede iniciar sesión desde la sucursal autorizada.' }) };
+  }
+
+  // Éxito: registra (solo logins reales, no los refresh de token) y limpia los fallos de esta IP.
+  if (!body.refresh) await logAttempt(ip, id, true);
+  await clearFails(ip);
+
   // Devolver el usuario SIN la contraseña (el frontend re-adjunta la tecleada para auth de dbwrite).
   const safeUser = {};
   Object.keys(user).forEach(function(k){ if (k !== 'pass') safeUser[k] = user[k]; });

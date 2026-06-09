@@ -5502,7 +5502,7 @@ async function doLogin() {
   const p = (document.getElementById('l-pass').value || '').trim();
   const err = document.getElementById('l-err');
   // ── Login del lado del SERVIDOR (la contraseña se valida en netlify/functions/login.js, no en el navegador) ──
-  let loggedUser = null, loggedToken = null, serverError = false;
+  let loggedUser = null, loggedToken = null, serverError = false, loginErrMsg = null;
   try {
     const res = await fetch('/.netlify/functions/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -5512,6 +5512,8 @@ async function doLogin() {
     if (res.ok && j && j.ok && j.user) {
       loggedUser = Object.assign({}, j.user, { pass: p }); // re-adjunta la contraseña tecleada para auth de dbwrite
       loggedToken = j.token || null;                        // JWT de lectura (Fase 3); null si el secret no está seteado
+    } else if (res.status === 429 || res.status === 403) {
+      loginErrMsg = (j && j.error) || 'Acceso bloqueado temporalmente.'; // rate-limit o candado por IP
     } else if (res.status !== 401) {
       serverError = true; // 500/red: NO es "credenciales malas", es problema de conexión
     }
@@ -5531,7 +5533,7 @@ async function doLogin() {
     setupApp(currentUser);
   } else {
     err.style.display = 'block';
-    err.textContent = serverError ? 'Error de conexión. Intenta de nuevo.' : 'Usuario o contraseña incorrectos.';
+    err.textContent = loginErrMsg || (serverError ? 'Error de conexión. Intenta de nuevo.' : 'Usuario o contraseña incorrectos.');
     _loginInProgress = false;
   }
 }
@@ -5633,7 +5635,7 @@ async function _ceFetchToken(id, pass) {
     const to = setTimeout(function(){ ctrl.abort(); }, 6000);
     const res = await fetch('/.netlify/functions/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user: id, pass: pass }), signal: ctrl.signal
+      body: JSON.stringify({ user: id, pass: pass, refresh: true }), signal: ctrl.signal
     });
     clearTimeout(to);
     if (!res.ok) return null;
