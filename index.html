@@ -16087,22 +16087,24 @@ async function syncUsersToSupabase(users) {
   } catch(e) { console.warn('Sync users to Supabase failed:', e.message); }
 }
 async function loadUsersFromSupabase() {
+  // SEGURIDAD: custom_users ya NO se lee directo (queda oculto de anon vía RLS). Solo admin/gerencia,
+  // vía función con auth del lado del servidor (users-admin).
   try {
-    const { data, error } = await db.from('app_config').select('value').eq('id', 'custom_users').single();
-    if (data && data.value) {
-      const remote = JSON.parse(data.value);
+    if (!currentUser || !['admin','gerencia'].includes(currentUser.rol)) return false;
+    const res = await fetch('/.netlify/functions/users-admin', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ auth: { id: currentUser.id, pass: currentUser.pass } })
+    });
+    if (!res.ok) return false;
+    const j = await res.json();
+    if (j && j.ok && j.users) {
       const local = getCustomUsers();
-      const merged = { ...local, ...remote };
+      const merged = { ...local, ...j.users };
       localStorage.setItem('ce_custom_users', JSON.stringify(merged));
       Object.assign(USUARIOS, merged);
       return true;
     }
-  } catch(e) {
-    if (!sessionStorage.getItem('ce_config_warned')) {
-      sessionStorage.setItem('ce_config_warned', '1');
-      console.warn('Tabla app_config no existe. Para compartir usuarios entre dispositivos, crea la tabla en Supabase SQL Editor.');
-    }
-  }
+  } catch(e) { console.warn('loadUsersFromSupabase:', e && e.message); }
   return false;
 }
 function getAllUsers() { return { ...USUARIOS, ...getCustomUsers() }; }
@@ -17175,8 +17177,9 @@ function cfgTab(tab) {
   });
 }
 
-function loadConfigUsers() {
+async function loadConfigUsers() {
   if (currentUser?.rol !== 'admin') { toast('Acceso denegado', true); go('dashboard'); return; }
+  await loadUsersFromSupabase(); // refresca custom_users vía función (admin) antes de listar
   const all = getAllUsers();
   const list = document.getElementById('cfg-users-list');
   const rolBadge = r => {
