@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const SUPA_URL = process.env.SUPABASE_URL || 'https://icsnlgeereepesbrdjhf.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ALLOWED_ORIGIN = process.env.URL || 'https://optcaryera.netlify.app';
+const PUBLISHABLE = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm'; // llave pública (anon), solo para el self-test del JWT
 // Secreto JWT del proyecto Supabase (HS256). Si NO está seteado, login.js devuelve token:null
 // y el frontend sigue usando la publishable key (sin romper nada). Solo al setearlo + cerrar RLS
 // (Fase 3 de seguridad) el JWT pasa a ser obligatorio para leer pacientes/historias/ventas.
@@ -80,6 +81,21 @@ exports.handler = async (event) => {
 
   let body;
   try { body = JSON.parse(event.body); } catch { return { statusCode: 400, headers: H, body: JSON.stringify({ ok: false, error: 'Invalid JSON' }) }; }
+
+  // ── Self-test del JWT (Fase 3): firma un token y lo prueba contra PostgREST. NO expone el token,
+  //    solo devuelve si la firma fue aceptada (secret correcto). Sin credenciales. Se quita tras verificar.
+  if (body && body.diag === 'jwt-selftest') {
+    if (!JWT_SECRET) return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, secretPresent: false }) };
+    const tok = mintReadToken('selftest', { rol: 'admin' });
+    try {
+      const r = await fetch(SUPA_URL + '/rest/v1/ventas?select=id&limit=1', { headers: { apikey: PUBLISHABLE, 'Authorization': 'Bearer ' + tok } });
+      const txt = await r.text();
+      return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, secretPresent: true, signatureValid: r.status === 200, status: r.status, hint: r.status === 200 ? 'SECRET OK' : txt.slice(0, 120) }) };
+    } catch (e) {
+      return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, secretPresent: true, error: e.message }) };
+    }
+  }
+
   const id = (body.user || body.id || '').toString().trim().toLowerCase();
   const pass = (body.pass || body.password || '').toString();
   if (!id || !pass) return { statusCode: 400, headers: H, body: JSON.stringify({ ok: false, error: 'Faltan credenciales' }) };
