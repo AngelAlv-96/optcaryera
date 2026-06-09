@@ -2451,7 +2451,7 @@ function isPromptInjection(text){
     /disregard (all |your |the |previous |above )/,
     /system (prompt|instruction|message)/,
     /(reveal|show|output|print|repeat|give me|tell me|display)[^.]{0,20}(system )?(instruction|prompt|rule|config|guideline)/,
-    /\bdan\b|do anything now|jail ?break|developer mode|unrestricted (mode|ai|assistant|system|version)/,
+    /\bdan (mode|jailbreak)\b|\bmodo dan\b|do anything now|jail ?break|developer mode|unrestricted (mode|ai|assistant|system|version)/,
     /forget (you are|your|everything|all|that you)/,
     /you are now (a|an|named|unrestricted|dan|in)/,
     /(pretend|act) (to be|as|like|you are)|roleplay as|simulate (a|an|being)/,
