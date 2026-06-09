@@ -5244,7 +5244,10 @@ try {
   // Crea un cliente Supabase. Con jwt → lo manda como Authorization bearer (lecturas como rol authenticated)
   // + autentica el canal Realtime. Sin jwt → solo publishable key (comportamiento histórico).
   function _ceMakeClient(jwt) {
-    const opts = jwt ? { global: { headers: { Authorization: 'Bearer ' + jwt } } } : undefined;
+    // No usamos Supabase Auth (GoTrue) — usamos nuestro propio JWT. Desactivar persistSession evita
+    // el warning "Multiple GoTrueClient instances" y que dos clientes peleen por el mismo storage key.
+    const opts = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
+    if (jwt) opts.global = { headers: { Authorization: 'Bearer ' + jwt } };
     const client = createClient(SUPA_URL, SUPA_KEY, opts);
     _ceWrapWrites(client);
     try { if (jwt && client.realtime && typeof client.realtime.setAuth === 'function') client.realtime.setAuth(jwt); } catch(e) { console.warn('realtime.setAuth:', e && e.message); }
@@ -5606,7 +5609,7 @@ function setupApp(u) {
     startDashRefresh();
     initRealtimeSubscriptions();
     setTimeout(function(){ try { initPullToRefresh(); } catch(e) { console.warn('PTR init:', e.message); } }, 1500);
-    loadAutoAuthFlag();
+    try { loadAutoAuthFlag(); } catch(e) { setTimeout(function(){ try { loadAutoAuthFlag(); } catch(_){} }, 1500); } // mod-auth.js puede no estar listo en restore — reintento, no aborta setupApp
     setTimeout(_conteoCheckTarea, 3000); // Check after 3s to let dashboard load first
     setTimeout(function(){ try { _initAlertaEfectivoGlobal(); } catch(e) { console.warn('Alerta efectivo init:', e.message); } }, 4000);
     // Entregas pendientes se cargan en dashboard sucursal (no banner flotante)
