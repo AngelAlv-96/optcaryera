@@ -37,7 +37,8 @@ async function getCustomUsers() {
 }
 
 // ── Cliente SMTP mínimo (smtp.gmail.com:465, TLS implícito, AUTH LOGIN) ──
-function smtpSend({ from, fromName, to, subject, html }) {
+// Anti-spam: multipart/alternative (texto plano + HTML), Date y Message-ID explícitos.
+function smtpSend({ from, fromName, to, subject, html, text }) {
   return new Promise((resolve, reject) => {
     const socket = tls.connect(465, 'smtp.gmail.com', { servername: 'smtp.gmail.com' });
     let buffer = '';
@@ -46,19 +47,36 @@ function smtpSend({ from, fromName, to, subject, html }) {
     const timer = setTimeout(() => fail('SMTP timeout'), 20000);
 
     const b64 = (s) => Buffer.from(s, 'utf8').toString('base64');
-    // Subject con acentos/emoji → RFC 2047
+    const b64wrap = (s) => b64(s).replace(/(.{76})/g, '$1\r\n');
+    // Subject con acentos → RFC 2047
     const subjEnc = '=?UTF-8?B?' + b64(subject) + '?=';
     const fromEnc = '=?UTF-8?B?' + b64(fromName) + '?=';
-    // Cuerpo en base64 → evita dot-stuffing y límites de línea
-    const bodyB64 = b64(html).replace(/(.{76})/g, '$1\r\n');
+    // Date RFC 5322 + Message-ID propios (su ausencia es señal de spam)
+    const d = new Date();
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const p2 = (n) => String(n).padStart(2, '0');
+    const dateHdr = days[d.getUTCDay()] + ', ' + p2(d.getUTCDate()) + ' ' + months[d.getUTCMonth()] + ' ' + d.getUTCFullYear() + ' ' + p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + ':' + p2(d.getUTCSeconds()) + ' +0000';
+    const msgId = '<' + Date.now() + '.' + Math.random().toString(36).slice(2, 10) + '@caryera.mx>';
+    const boundary = 'cye-' + Date.now().toString(36);
+    // multipart/alternative: texto plano + HTML (los correos solo-HTML puntúan peor en filtros)
     const message =
       'From: ' + fromEnc + ' <' + from + '>\r\n' +
       'To: <' + to + '>\r\n' +
       'Subject: ' + subjEnc + '\r\n' +
+      'Date: ' + dateHdr + '\r\n' +
+      'Message-ID: ' + msgId + '\r\n' +
       'MIME-Version: 1.0\r\n' +
+      'Content-Type: multipart/alternative; boundary="' + boundary + '"\r\n' +
+      '\r\n' +
+      '--' + boundary + '\r\n' +
+      'Content-Type: text/plain; charset=utf-8\r\n' +
+      'Content-Transfer-Encoding: base64\r\n' +
+      '\r\n' + b64wrap(text || 'Tu convenio empresarial con Ópticas Car & Era está activo.') + '\r\n' +
+      '--' + boundary + '\r\n' +
       'Content-Type: text/html; charset=utf-8\r\n' +
       'Content-Transfer-Encoding: base64\r\n' +
-      '\r\n' + bodyB64 + '\r\n';
+      '\r\n' + b64wrap(html) + '\r\n' +
+      '--' + boundary + '--\r\n';
 
     // Secuencia: [código esperado, comando a enviar después]
     const steps = [
@@ -97,6 +115,27 @@ function smtpSend({ from, fromName, to, subject, html }) {
     });
     socket.on('error', (e) => { clearTimeout(timer); fail('SMTP socket: ' + e.message); });
   });
+}
+
+function emailText(emp, cfg) {
+  const pct = (emp.beneficios && emp.beneficios.descuento_pct) || cfg.descuento_pct || 15;
+  const regalo = (emp.beneficios && emp.beneficios.regalo_monto) || cfg.regalo_monto || 500;
+  const minimo = (emp.beneficios && emp.beneficios.regalo_compra_minima) || cfg.regalo_compra_minima || 2000;
+  return '¡Bienvenido al programa, ' + emp.nombre + '!\n\n' +
+    'Tu convenio empresarial con Ópticas Car & Era ya está activo.\n\n' +
+    'CÓDIGO DE CONVENIO: ' + emp.codigo + '\n\n' +
+    'Beneficios para tus empleados (y su familia directa):\n' +
+    '- ' + pct + '% de descuento en lentes completos (acumulable con la promoción vigente)\n' +
+    '- $' + regalo + ' de regalo cada año por empleado (en compras desde $' + minimo + ')\n' +
+    '- El mismo descuento aplica para esposa(o) e hijos\n' +
+    '- Meses sin intereses con Aplazo, sin tarjeta de crédito\n' +
+    '- Examen de la vista gratis, sin cita\n\n' +
+    'Cómo lo usan: presentan el código ' + emp.codigo + ' junto con su gafete o credencial de trabajo en cualquier sucursal. Sin cita.\n\n' +
+    'Tu kit de bienvenida (pase con QR, flyer para imprimir e imagen para compartir con tu equipo):\n' +
+    'https://caryera.mx/convenio-kit?c=' + emp.codigo + '\n\n' +
+    'Ópticas Car & Era · Ciudad Juárez, Chih.\n' +
+    'Américas · Pinocelli · Magnolia · Plaza Vía Vittoria\n' +
+    'WhatsApp 656 311 0094 · caryera.mx';
 }
 
 function emailHTML(emp, cfg) {
@@ -184,8 +223,9 @@ exports.handler = async (event) => {
       from: GMAIL_USER,
       fromName: 'Ópticas Car & Era',
       to: emp.email,
-      subject: '🎉 Tu convenio empresarial está activo — Ópticas Car & Era',
-      html: emailHTML(emp, cfg)
+      subject: 'Tu convenio empresarial está activo — Ópticas Car & Era',
+      html: emailHTML(emp, cfg),
+      text: emailText(emp, cfg)
     });
     return out(200, { ok: true, to: emp.email });
   } catch (e) {
