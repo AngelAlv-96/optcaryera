@@ -6007,7 +6007,16 @@ function initPullToRefresh() {
   }
   function blocked(t) {
     if (!t || !t.closest) return false;
-    return !!t.closest('.m-overlay, .wcrm-modal, [id*="modal"], [id*="overlay"], input, textarea, select, canvas');
+    // El sidebar tiene scroll interno propio — el jalón ahí debe scrollear el menú, nunca disparar el refresco
+    if (t.closest('.m-overlay, .wcrm-modal, [id*="modal"], [id*="overlay"], input, textarea, select, canvas, .sidebar')) return true;
+    // Cualquier contenedor con scroll vertical propio que NO esté en su tope (hilos de chat,
+    // listas internas): el jalón debe scrollearlo a él, no disparar el refresco general
+    var el = t;
+    while (el && el !== document.body && el !== document.documentElement) {
+      if (el.scrollTop > 0 && el.scrollHeight > el.clientHeight + 5) return true;
+      el = el.parentElement;
+    }
+    return false;
   }
 
   document.addEventListener('touchstart', function(e){
