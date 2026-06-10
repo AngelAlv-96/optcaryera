@@ -104,6 +104,55 @@ exports.handler = async (event) => {
     }
   }
 
+  // ============ EMPLEADOS (alta opcional por RH — el código de la empresa es la credencial) ============
+  // RH registra a sus empleados desde el kit; así tenemos la base y podemos mandarles su pase por WA.
+  if (action === 'empleado_alta' || action === 'empleados_lista' || action === 'empleado_baja') {
+    const codigo = String(body.codigo || '').trim().toUpperCase();
+    if (!/^CE-[A-Z0-9]{4,8}$/.test(codigo)) return out(200, { ok: false, error: 'codigo_invalido' });
+    let emp;
+    try {
+      const rows = await supaREST('GET', `empresas_convenio?codigo=eq.${encodeURIComponent(codigo)}&select=id,nombre,status&limit=1`);
+      emp = rows && rows[0];
+    } catch (e) { return out(500, { ok: false, error: 'Error de servidor' }); }
+    if (!emp || emp.status !== 'activa') return out(200, { ok: false, error: 'no_activa' });
+
+    try {
+      if (action === 'empleados_lista') {
+        const lista = await supaREST('GET', `convenio_empleados?empresa_id=eq.${emp.id}&select=id,nombre,num_empleado,telefono,pase_enviado_at&order=created_at.desc&limit=2000`);
+        // Teléfono enmascarado: la lista la ve cualquiera con el código
+        const masked = (lista || []).map(e => ({ id: e.id, nombre: e.nombre, num_empleado: e.num_empleado, tel4: String(e.telefono || '').slice(-4), enviado: !!e.pase_enviado_at }));
+        return out(200, { ok: true, empleados: masked, total: masked.length });
+      }
+      if (action === 'empleado_alta') {
+        const nombre = String(body.nombre || '').trim().slice(0, 120);
+        const numEmp = String(body.num_empleado || '').trim().slice(0, 40);
+        const telefono = normPhone(body.telefono);
+        if (nombre.length < 3) return out(200, { ok: false, error: 'Escribe el nombre del empleado' });
+        if (telefono.length !== 10) return out(200, { ok: false, error: 'El teléfono debe tener 10 dígitos' });
+        // Tope sano anti-abuso (el código lo conocen los empleados): máx 3000 registros por empresa
+        const totalRes = await fetch(`${SUPA_URL}/rest/v1/convenio_empleados?empresa_id=eq.${emp.id}&select=id`, { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Prefer': 'count=exact', 'Range': '0-0' } });
+        const totalCount = parseInt((totalRes.headers.get('content-range') || '0/0').split('/')[1]) || 0;
+        if (totalCount >= 3000) return out(200, { ok: false, error: 'Se alcanzó el límite de empleados registrados' });
+        try {
+          const ins = await supaREST('POST', 'convenio_empleados', { empresa_id: emp.id, empresa_codigo: codigo, nombre, num_empleado: numEmp || null, telefono });
+          return out(200, { ok: true, empleado: { id: ins[0].id, nombre } });
+        } catch (e) {
+          if (/duplicate|unique/i.test(e.message)) return out(200, { ok: false, error: 'Ese teléfono ya está registrado en esta empresa' });
+          throw e;
+        }
+      }
+      if (action === 'empleado_baja') {
+        const empId = parseInt(body.empleado_id);
+        if (!empId) return out(200, { ok: false, error: 'empleado_id requerido' });
+        await supaREST('DELETE', `convenio_empleados?id=eq.${empId}&empresa_id=eq.${emp.id}`);
+        return out(200, { ok: true });
+      }
+    } catch (e) {
+      console.error('[empresas] empleados error:', e.message);
+      return out(500, { ok: false, error: 'Error de servidor' });
+    }
+  }
+
   // ============ REGISTRO PÚBLICO ============
   if (action === 'registro') {
     // Honeypot anti-bot: campo oculto que un humano deja vacío

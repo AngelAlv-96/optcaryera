@@ -10093,11 +10093,19 @@ async function loadConvenios() {
   stats.innerHTML = '<div class="ld"><div class="spin"></div> Cargando...</div>'; pend.innerHTML=''; act.innerHTML=''; usosEl.innerHTML='';
   try {
     const cfg = await _convGetConfig();
-    const [{ data: emps, error: e1 }, { data: usos, error: e2 }] = await Promise.all([
+    const [{ data: emps, error: e1 }, { data: usos, error: e2 }, { data: cemps }] = await Promise.all([
       db.from('empresas_convenio').select('*').order('created_at', { ascending: false }).limit(300),
-      db.from('convenio_usos').select('*').order('created_at', { ascending: false }).limit(30)
+      db.from('convenio_usos').select('*').order('created_at', { ascending: false }).limit(30),
+      db.from('convenio_empleados').select('empresa_id,pase_enviado_at').limit(5000)
     ]);
     if (e1) throw new Error(e1.message);
+    // Conteo de empleados registrados por RH (alta opcional) por empresa
+    const empStats = {};
+    (cemps||[]).forEach(function(c){
+      if (!empStats[c.empresa_id]) empStats[c.empresa_id] = { total: 0, pendientes: 0 };
+      empStats[c.empresa_id].total++;
+      if (!c.pase_enviado_at) empStats[c.empresa_id].pendientes++;
+    });
     const all = emps || [];
     const pendientes = all.filter(function(e){ return e.status==='pendiente'; });
     const activas = all.filter(function(e){ return e.status==='activa'; });
@@ -10131,7 +10139,11 @@ async function loadConvenios() {
 
     let h2 = '<h3 style="font-size:14px;color:#72c47e;margin:16px 0 8px">✅ Empresas activas ('+activas.length+')</h3>';
     h2 += activas.length ? activas.map(function(e){
+      const st = empStats[e.id] || { total: 0, pendientes: 0 };
+      const empBadge = st.total ? '<span style="font-size:11px;color:var(--muted);align-self:center">👥 '+st.total+' empleado'+(st.total!==1?'s':'')+(st.pendientes?' · '+st.pendientes+' sin pase':'')+'</span>' : '';
+      const pasesBtn = st.pendientes ? '<button class="btn btn-p btn-sm" id="conv-pases-'+e.id+'" onclick="_convEnviarPases('+e.id+',this)">📤 Enviar pases ('+st.pendientes+')</button>' : '';
       return empCard(e,
+        empBadge + pasesBtn +
         '<a class="btn btn-g btn-sm" style="text-decoration:none" href="/convenio-kit?c='+encodeURIComponent(e.codigo||'')+'" target="_blank" rel="noopener">📋 Kit</a>'+
         '<button class="btn btn-g btn-sm" onclick="reenviarCodigoConvenio('+e.id+')">📲 Reenviar código</button>'+
         '<button class="btn btn-g btn-sm" onclick="_convEnviarCorreo('+e.id+')">✉ Correo</button>'+
@@ -10235,6 +10247,31 @@ async function reactivarConvenio(id) {
     toast('✅ Convenio reactivado');
     loadConvenios();
   } catch(e) { toast('Error: '+e.message, true); }
+}
+
+// Envío de pases por WA a los empleados registrados por RH (lotes de 10, repite hasta terminar)
+async function _convEnviarPases(empresaId, btn) {
+  if (!confirm('Se enviará el pase de convenio por WhatsApp (plantilla aprobada) a todos los empleados registrados que aún no lo reciben, en lotes de 10.\n\n¿Continuar?')) return;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
+  let totalEnviados = 0, totalFallidos = 0;
+  try {
+    for (let i = 0; i < 100; i++) {
+      const res = await fetch('/.netlify/functions/convenio-pase-blast', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empresa_id: empresaId, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        toast(json.error === 'fuera_de_horario' ? '⏰ Los pases se envían entre 10am y 8pm — inténtalo en horario' : 'Error: ' + (json.error||'?'), true);
+        break;
+      }
+      totalEnviados += json.enviados || 0; totalFallidos += json.fallidos || 0;
+      if (btn) btn.textContent = '⏳ ' + totalEnviados + ' enviados… (' + (json.restantes||0) + ' restantes)';
+      if (!json.restantes) { toast('📤 Pases enviados: ' + totalEnviados + (totalFallidos ? ' · ' + totalFallidos + ' fallidos' : '')); break; }
+      await new Promise(function(r){ setTimeout(r, 3000); }); // respiro entre lotes
+    }
+  } catch(e) { toast('Error: ' + e.message, true); }
+  loadConvenios();
 }
 
 async function reenviarCodigoConvenio(id) {
