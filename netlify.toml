@@ -44,6 +44,10 @@
 [functions."cumple-cron"]
   schedule = "30 16,17 * * *"
 
+# Convenio pases — envía el pase a empleados nuevos sin pase cada 15 min (la función auto-guarda 10am-7pm CST + dedup [Convenio-Pase])
+[functions."convenio-pase-blast"]
+  schedule = "*/15 * * * *"
+
 # Firma asistencia page
 [[redirects]]
   from = "/firma-asistencia"
