@@ -27,13 +27,15 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
 .btn.sec{background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.12)}
 .btn.wa{background:#1faa53;color:#fff}
 .btn.wa:hover{background:#23c05e}
-.pasos-kit{max-width:620px;margin:0 auto 26px;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px 20px;font-size:13px;color:#bdb7b0;line-height:1.7}
-.pasos-kit b{color:var(--beige)}
+.intro{text-align:center;font-size:14px;color:var(--muted);max-width:520px;margin:0 auto 22px;line-height:1.6}
 .estado{max-width:480px;margin:60px auto;text-align:center;background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:34px 26px}
 .estado h2{font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px}
 .estado p{color:var(--muted);font-size:14px}
-.link-emp{text-align:center;font-size:13px;color:var(--muted);margin-bottom:26px}
-.link-emp a{color:var(--beige)}
+.links-kit{text-align:center;font-size:13px;color:var(--muted);margin-bottom:30px;line-height:1.9}
+.links-kit a{color:var(--beige);text-decoration:none}
+.links-kit a:hover{text-decoration:underline}
+.links-kit .sep{margin:0 8px;opacity:.5}
+@media(max-width:520px){ .links-kit .sep{display:none} .links-kit a{display:block;padding:3px 0} }
 
 /* ── Flyer (hoja blanca, lista para imprimir) ── */
 .paper{background:#fff;color:var(--ink);max-width:680px;margin:0 auto;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:44px 48px;position:relative;overflow:hidden}
@@ -65,7 +67,7 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
 /* ── Impresión: solo el flyer, tamaño carta ── */
 @media print{
   body{background:#fff}
-  .top,.controls,h1,.sub,.nota-dl,.pasos-kit,.link-emp{display:none!important}
+  .top,.controls,h1,.sub,.nota-dl,.intro,.links-kit{display:none!important}
   .wrap{padding:0;max-width:none}
   .paper{box-shadow:none;border-radius:0;max-width:none;margin:0;padding:34px 40px}
   @page{size:letter;margin:12mm}
@@ -85,21 +87,19 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
   <div id="kit" style="display:none">
     <h1>Kit de bienvenida</h1>
     <p class="sub" id="sub-empresa">—</p>
-
-    <div class="pasos-kit">
-      <b>Cómo avisarle a tu equipo en 2 minutos:</b><br>
-      1️⃣ <b>Comparte el aviso por WhatsApp</b> (botón verde) en tu grupo interno — lleva el código y el link con instrucciones para cada empleado.<br>
-      2️⃣ <b>Imprime el flyer</b> y pégalo en el tablón de avisos o recepción.<br>
-      3️⃣ Si prefieres correo interno, <b>descarga la imagen</b> y adjúntala.
-    </div>
+    <p class="intro">Comparte el convenio con tu equipo: mándalo por WhatsApp, imprime el flyer o descarga la imagen.</p>
 
     <div class="controls">
-      <a class="btn wa" id="btn-wa-share" href="#" target="_blank" rel="noopener">📲 Compartir aviso por WhatsApp</a>
-      <button class="btn" onclick="window.print()">🖨 Imprimir flyer</button>
-      <button class="btn sec" onclick="descargarImagen()">📥 Descargar imagen</button>
+      <a class="btn wa" id="btn-wa-share" href="#" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+      <button class="btn" onclick="window.print()">Imprimir flyer</button>
+      <button class="btn sec" onclick="descargarImagen()">Descargar imagen</button>
     </div>
-    <p class="link-emp">👀 Tus empleados verán su pase con QR, instrucciones y políticas aquí: <a id="link-empleado" href="#" target="_blank" rel="noopener">caryera.mx/convenio</a></p>
-    <p class="link-emp">👥 ¿Quieres que nosotros les enviemos su pase y llevar control de altas y bajas? <a id="link-portal" href="#"><b>Entra al portal de tu empresa →</b></a></p>
+
+    <div class="links-kit">
+      <a id="link-empleado" href="#" target="_blank" rel="noopener">Ver el pase de tus empleados</a>
+      <span class="sep">·</span>
+      <a id="link-portal" href="#">Portal de tu empresa (altas y bajas)</a>
+    </div>
 
     <!-- FLYER imprimible -->
     <div class="paper" id="flyer">
@@ -138,7 +138,7 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
       </div>
     </div>
 
-    <p class="nota-dl">💡 La imagen descargable está lista para mandarse por WhatsApp, correo interno o imprimirse en tablón de avisos.</p>
+    <p class="nota-dl">La imagen descargable está lista para mandarse por WhatsApp, correo interno o imprimirse en el tablón de avisos.</p>
   </div>
 
   <div id="error" class="estado" style="display:none">
@@ -193,9 +193,9 @@ function render() {
   // QR del flyer → pase digital del empleado (detalles + políticas); el POS extrae el código del URL si lo escanean
   const qr = qrcode(0, 'M'); qr.addData(urlEmpleado()); qr.make();
   document.getElementById('f-qr').innerHTML = qr.createImgTag(4, 6).replace('<img ', '<img style="width:120px;height:120px" ');
-  // Link a la vista del empleado + portal de administración
+  // Link a la vista del empleado + portal de administración (el texto es fijo, solo seteamos href)
   const le = document.getElementById('link-empleado');
-  le.href = urlEmpleado(); le.textContent = 'caryera.mx/convenio?c=' + EMP.codigo;
+  if (le) le.href = urlEmpleado();
   const lp = document.getElementById('link-portal');
   if (lp) lp.href = '/portal-empresa?c=' + EMP.codigo;
   // Aviso para compartir por WhatsApp (al equipo) → link del EMPLEADO

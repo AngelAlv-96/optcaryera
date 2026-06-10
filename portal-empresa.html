@@ -64,8 +64,11 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,34px);font-we
 .mini.danger:hover{color:var(--err);border-color:var(--err)}
 .mini.ok:hover{color:var(--ok);border-color:var(--ok)}
 .toggle-bajas{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;text-decoration:underline;padding:6px 0}
-.pie-links{text-align:center;font-size:12.5px;color:var(--muted);margin-top:8px}
-.pie-links a{color:var(--beige)}
+.pie-links{text-align:center;font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.8}
+.pie-links a{color:var(--beige);text-decoration:none}
+.pie-links a:hover{text-decoration:underline}
+.pie-links .sep{margin:0 6px;opacity:.5}
+@media(max-width:520px){ .pie-links .sep{display:none} .pie-links a{display:block;padding:2px 0} }
 </style>
 </head>
 <body>
@@ -88,30 +91,30 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,34px);font-we
     </div>
 
     <div class="card">
-      <h2>➕ Dar de alta a un empleado</h2>
-      <p class="desc">Al registrarlo, <b>nosotros le enviamos su pase digital por WhatsApp</b> (en horario de tienda, 10am–7pm) con su código, los beneficios y las instrucciones. Si reingresa alguien dado de baja, regístralo de nuevo con el mismo teléfono y se reactiva.</p>
+      <h2>Dar de alta a un empleado</h2>
+      <p class="desc">Al registrarlo, le enviamos su pase por WhatsApp (10am–7pm) con su código e instrucciones. Si reingresa alguien dado de baja, regístralo con el mismo teléfono y se reactiva.</p>
       <div id="alta-form">
         <input id="ae-nombre" type="text" maxlength="120" placeholder="Nombre del empleado">
         <input id="ae-num" type="text" maxlength="40" placeholder="# empleado (opc.)">
         <input id="ae-tel" type="tel" inputmode="numeric" maxlength="10" placeholder="WhatsApp (10 díg.)" onkeydown="if(event.key==='Enter')agregarEmpleado()">
-        <button class="btn" onclick="agregarEmpleado()">+ Agregar</button>
+        <button class="btn" onclick="agregarEmpleado()">Agregar</button>
       </div>
       <div id="alta-msg"></div>
     </div>
 
     <div class="card">
-      <h2>👥 Empleados vigentes <span id="vig-count" style="font-weight:400;color:var(--muted);font-size:12px"></span></h2>
-      <p class="desc">Cuando alguien deje de laborar en la empresa, dale <b>baja</b> aquí — deja de recibir comunicaciones y en sucursal sabremos que ya no está vigente.</p>
+      <h2>Empleados vigentes <span id="vig-count" style="font-weight:400;color:var(--muted);font-size:12px"></span></h2>
+      <p class="desc">Cuando alguien deje de laborar, dale <b>baja</b> aquí: deja de recibir comunicaciones y en sucursal sabremos que ya no está vigente.</p>
       <div id="lista-vigentes"></div>
     </div>
 
     <div class="card" id="card-bajas" style="display:none">
-      <h2 style="color:var(--muted)">📁 Dados de baja <span id="baja-count" style="font-weight:400;font-size:12px"></span></h2>
+      <h2 style="color:var(--muted)">Dados de baja <span id="baja-count" style="font-weight:400;font-size:12px"></span></h2>
       <div id="lista-bajas"></div>
     </div>
 
-    <p class="pie-links">📋 <a id="link-kit" href="#">Volver a tu kit de bienvenida</a> (flyer, imagen y aviso para compartir) · 👀 <a id="link-pase" href="#" target="_blank" rel="noopener">Ver el pase que reciben tus empleados</a></p>
-    <p class="pie-links" style="margin-top:14px;opacity:.8">Guarda el link de esta página: es tu acceso permanente. Los teléfonos solo se usan para el convenio — no se comparten con nadie.</p>
+    <p class="pie-links"><a id="link-kit" href="#">Volver a tu kit de bienvenida</a> <span class="sep">·</span> <a id="link-pase" href="#" target="_blank" rel="noopener">Ver el pase de tus empleados</a></p>
+    <p class="pie-links" style="margin-top:12px;opacity:.75">Guarda el link de esta página: es tu acceso permanente. Los teléfonos solo se usan para el convenio.</p>
   </div>
 
   <div id="error" class="estado" style="display:none">
@@ -186,7 +189,7 @@ async function cargarEmpleados() {
     const lv = document.getElementById('lista-vigentes');
     lv.innerHTML = vig.length
       ? vig.map(function(e){ return row(e, '<button class="mini danger" onclick="darBaja(' + e.id + ',\'' + e.nombre.replace(/[\\'"<>]/g,'') + '\')">Dar de baja</button>'); }).join('')
-      : '<p style="font-size:12.5px;color:var(--muted)">Aún no tienes empleados registrados. Da de alta al primero arriba. ☝️</p>';
+      : '<p style="font-size:12.5px;color:var(--muted)">Aún no tienes empleados registrados. Da de alta al primero en el recuadro de arriba.</p>';
 
     const cb = document.getElementById('card-bajas');
     if (bajas.length) {
