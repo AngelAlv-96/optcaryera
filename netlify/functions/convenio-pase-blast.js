@@ -82,10 +82,10 @@ exports.handler = async (event) => {
   if (!user || user.pass !== auth.pass) return out(401, { ok: false, error: 'Auth failed' });
   if (user.rol !== 'admin' && user.rol !== 'gerencia') return out(403, { ok: false, error: 'Solo admin/gerencia' });
 
-  // Guard horario 10am-8pm Chihuahua
+  // Guard horario 10am-7pm Chihuahua (horario de tienda L-S)
   const nowCH = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
   const hora = nowCH.getHours();
-  if (hora < 10 || hora >= 20) return out(200, { ok: false, error: 'fuera_de_horario', detalle: 'Los pases se envían entre 10am y 8pm' });
+  if (hora < 10 || hora >= 19) return out(200, { ok: false, error: 'fuera_de_horario', detalle: 'Los pases se envían entre 10am y 7pm' });
 
   const empresaId = parseInt(body.empresa_id);
   if (!empresaId) return out(400, { ok: false, error: 'empresa_id requerido' });

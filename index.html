@@ -10262,7 +10262,7 @@ async function _convEnviarPases(empresaId, btn) {
       });
       const json = await res.json();
       if (!json.ok) {
-        toast(json.error === 'fuera_de_horario' ? '⏰ Los pases se envían entre 10am y 8pm — inténtalo en horario' : 'Error: ' + (json.error||'?'), true);
+        toast(json.error === 'fuera_de_horario' ? '⏰ Los pases se envían entre 10am y 7pm — inténtalo en horario' : 'Error: ' + (json.error||'?'), true);
         break;
       }
       totalEnviados += json.enviados || 0; totalFallidos += json.fallidos || 0;

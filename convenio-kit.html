@@ -63,6 +63,10 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
 @media(max-width:560px){ .bens{grid-template-columns:1fr} .pasos{grid-template-columns:1fr} .paper{padding:30px 22px} .codigo-box .code{font-size:30px} }
 
 details.alta summary::-webkit-details-marker{display:none}
+/* min-width:0 evita el "grid blowout": sin esto los inputs no se encogen y empujan el botón fuera de la tarjeta */
+#alta-form{width:100%}
+#alta-form input{min-width:0}
+#alta-form button{white-space:nowrap}
 /* Form de alta: 4 columnas solo en pantallas anchas; 2 en medianas; 1 en móvil (el botón nunca se sale) */
 @media(max-width:760px){ #alta-form{grid-template-columns:1fr 1fr!important} #alta-form input:first-child{grid-column:1/-1} #alta-form button{grid-column:1/-1} }
 @media(max-width:480px){ #alta-form{grid-template-columns:1fr!important} }
@@ -119,7 +123,7 @@ details.alta summary::-webkit-details-marker{display:none}
         </div>
         <div id="alta-msg" style="font-size:12px;min-height:18px;margin-bottom:8px"></div>
         <div id="alta-lista" style="max-height:300px;overflow-y:auto"></div>
-        <p style="font-size:11.5px;color:var(--muted);margin-top:10px">El pase llega por WhatsApp en horario de tienda (10am–8pm). Los teléfonos solo se usan para el convenio — no se comparten con nadie.</p>
+        <p style="font-size:11.5px;color:var(--muted);margin-top:10px">El pase llega por WhatsApp en horario de tienda (10am–7pm). Los teléfonos solo se usan para el convenio — no se comparten con nadie.</p>
       </div>
     </details>
 
