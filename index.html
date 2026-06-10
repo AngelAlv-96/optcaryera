@@ -10129,7 +10129,9 @@ async function loadConvenios() {
     let h2 = '<h3 style="font-size:14px;color:#72c47e;margin:16px 0 8px">✅ Empresas activas ('+activas.length+')</h3>';
     h2 += activas.length ? activas.map(function(e){
       return empCard(e,
+        '<a class="btn btn-g btn-sm" style="text-decoration:none" href="/convenio-kit?c='+encodeURIComponent(e.codigo||'')+'" target="_blank" rel="noopener">📋 Kit</a>'+
         '<button class="btn btn-g btn-sm" onclick="reenviarCodigoConvenio('+e.id+')">📲 Reenviar código</button>'+
+        '<button class="btn btn-g btn-sm" onclick="_convEnviarCorreo('+e.id+')">✉ Correo</button>'+
         '<button class="btn btn-g btn-sm" style="color:#e0a060" onclick="suspenderConvenio('+e.id+')">⏸ Suspender</button>');
     }).join('') : '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Aún no hay empresas activas.</p>';
     if (otras.length) {
@@ -10166,7 +10168,25 @@ function _convMsgCodigo(e, cfg) {
     '• $' + (cfg.regalo_monto||500) + ' de regalo cada año (en compras desde $' + (cfg.regalo_compra_minima||2000) + ')\n' +
     '• Examen de la vista gratis, sin cita\n' +
     '• Acumulable con la promoción vigente y meses sin intereses con Aplazo\n\n' +
-    'Solo tienen que presentar el código ' + e.codigo + ' y su gafete o credencial de trabajo en cualquiera de nuestras 4 sucursales. ¡Gracias por afiliarte! 👓';
+    'Solo tienen que presentar el código ' + e.codigo + ' y su gafete o credencial de trabajo en cualquiera de nuestras 4 sucursales.\n\n' +
+    '📋 Tu KIT DE BIENVENIDA (código con QR, flyer para imprimir e imagen para avisarle a tu equipo):\n' +
+    'https://caryera.mx/convenio-kit?c=' + e.codigo + '\n\n¡Gracias por afiliarte! 👓';
+}
+
+// Correo de bienvenida (best-effort: si GMAIL_APP_PASSWORD no está configurada en Netlify, avisa y sigue)
+async function _convEnviarCorreo(empresaId) {
+  try {
+    const res = await fetch('/.netlify/functions/convenio-email', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empresa_id: empresaId, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+    });
+    const json = await res.json();
+    if (json.ok) { toast('✉️ Correo de bienvenida enviado a ' + json.to); return true; }
+    if (json.error === 'sin_correo') { toast('La empresa no registró correo — solo se envió WhatsApp'); return false; }
+    if (json.error === 'email_no_configurado') { toast('⚠️ Correo no configurado (falta GMAIL_APP_PASSWORD en Netlify) — solo salió WhatsApp', true); return false; }
+    toast('⚠️ El correo no se pudo enviar: ' + (json.error||'?'), true);
+    return false;
+  } catch(e) { console.warn('[Convenio email]', e); return false; }
 }
 
 async function aprobarConvenio(id) {
@@ -10180,6 +10200,7 @@ async function aprobarConvenio(id) {
     const cfg = await _convGetConfig();
     const r = await sendWA(e.telefono, _convMsgCodigo(e, cfg));
     toast(r && r.ok ? '✅ Convenio aprobado y código enviado por WA' : '✅ Convenio aprobado — el WA no se pudo enviar (fuera de ventana 24h). Código: '+e.codigo+' — mándaselo manualmente.');
+    _convEnviarCorreo(id); // correo de bienvenida en paralelo (best-effort)
     loadConvenios();
   } catch(e) { toast('Error: '+e.message, true); }
 }
