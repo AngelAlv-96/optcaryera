@@ -21,10 +21,10 @@ body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;
 
 /* Header */
 .header{position:sticky;top:0;z-index:10;background:rgba(17,17,16,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--beige-border)}
-.header-in{max-width:880px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:12px}
-.header-mark{width:38px;height:38px;background:var(--beige);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.header-text h1{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--beige);line-height:1.1}
-.header-text p{font-size:11.5px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase}
+.header-in{max-width:880px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:12px}
+.h-opticas{display:block;font-size:10px;color:var(--muted);letter-spacing:0.22em;text-transform:uppercase}
+.header-text h1{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--beige);line-height:1.1}
+.header-text p{font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-top:2px}
 
 /* Hero */
 .hero{padding:64px 0 46px;text-align:center}
@@ -96,10 +96,8 @@ body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;
 
 <div class="header">
   <div class="header-in">
-    <div class="header-mark">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111110" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-    </div>
     <div class="header-text">
+      <span class="h-opticas">Ópticas</span>
       <h1>Car &amp; Era</h1>
       <p>Convenios Empresariales</p>
     </div>
