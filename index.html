@@ -9964,6 +9964,9 @@ async function buscarConvenioVta() {
   const box = document.getElementById('cv-result');
   if (!box) return;
   let codigo = (document.getElementById('cv-codigo')?.value || '').trim().toUpperCase().replace(/\s+/g,'');
+  // Si la pistola escaneó el QR del pase/flyer (URL del kit), extraer el código del link
+  const urlMatch = codigo.match(/[?&]C=(CE-[A-Z0-9]{4,8})/) || codigo.match(/(CE-[A-Z0-9]{4,8})/);
+  if (urlMatch) codigo = urlMatch[1];
   if (codigo && !codigo.startsWith('CE-') && /^[A-Z0-9]{4,8}$/.test(codigo)) codigo = 'CE-' + codigo;
   if (!/^CE-[A-Z0-9]{4,8}$/.test(codigo)) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Código inválido. Formato: CE-XXXXX</p>'; return; }
   box.innerHTML = '<div class="ld"><div class="spin"></div> Buscando...</div>';
