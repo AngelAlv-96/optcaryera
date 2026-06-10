@@ -79,6 +79,11 @@
   to = "/convenio-kit.html"
   status = 200
 
+[[redirects]]
+  from = "/convenio"
+  to = "/convenio.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

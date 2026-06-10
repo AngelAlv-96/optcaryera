@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Beneficio empresarial — Ópticas Car & Era</title>
+<title>Kit de bienvenida — Convenios Car & Era</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -11,108 +11,66 @@
 <style>
 :root{
   --beige:#e2c6a6; --beige-dark:#b08d5f; --black:#111110; --ink:#1e1e1e;
-  --surface:#1c1b19; --surface2:#252420; --white:#f5f2ee; --muted:#9a948e; --err:#e08a8a; --ok:#7dbb7d;
+  --surface:#1c1b19; --surface2:#252420; --white:#f5f2ee; --muted:#9a948e; --err:#e08a8a;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:760px;margin:0 auto;padding:26px 18px 60px}
-.top{text-align:center;margin-bottom:24px}
+body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:26px 18px 60px}
+.top{text-align:center;margin-bottom:22px}
 .top img{height:46px;width:auto}
 .top p{font-size:11px;color:var(--muted);letter-spacing:0.26em;text-transform:uppercase;margin-top:5px}
-h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5.5vw,38px);font-weight:600;text-align:center;line-height:1.15;margin-bottom:6px}
-h1 em{color:var(--beige);font-style:normal}
-.sub{text-align:center;color:var(--muted);font-size:14.5px;margin-bottom:26px}
+h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-weight:600;text-align:center;margin-bottom:4px}
+.sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.btn{display:inline-flex;align-items:center;gap:8px;background:var(--beige);color:var(--black);font-weight:600;font-size:14px;border:none;border-radius:11px;padding:13px 22px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s;text-decoration:none}
+.btn:hover{background:#f0dfc8;transform:translateY(-1px)}
+.btn.sec{background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.12)}
+.btn.wa{background:#1faa53;color:#fff}
+.btn.wa:hover{background:#23c05e}
+.pasos-kit{max-width:620px;margin:0 auto 26px;background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px 20px;font-size:13px;color:#bdb7b0;line-height:1.7}
+.pasos-kit b{color:var(--beige)}
 .estado{max-width:480px;margin:60px auto;text-align:center;background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:34px 26px}
 .estado h2{font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px}
 .estado p{color:var(--muted);font-size:14px}
+.link-emp{text-align:center;font-size:13px;color:var(--muted);margin-bottom:26px}
+.link-emp a{color:var(--beige)}
 
-/* ── Pase digital del empleado ── */
-.pase{background:linear-gradient(160deg,#23211e 0%,#191815 100%);border:1.5px solid rgba(226,198,166,0.45);border-radius:20px;padding:26px 24px;text-align:center;max-width:430px;margin:0 auto 14px;box-shadow:0 14px 44px rgba(0,0,0,.45)}
-.pase .p-emp{font-size:13px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase}
-.pase .p-nombre{font-size:19px;font-weight:600;color:var(--beige-light,#f0dfc8);margin:2px 0 16px;color:#f0dfc8}
-.pase .p-qr{background:#fff;border-radius:14px;padding:12px;display:inline-block;line-height:0}
-.pase .p-qr img{width:172px;height:172px;display:block}
-.pase .p-lbl{font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-top:16px}
-.pase .p-code{font-size:38px;font-weight:700;letter-spacing:0.14em;color:var(--white)}
-.pase .p-gafete{display:inline-block;background:rgba(226,198,166,0.1);border:1px solid rgba(226,198,166,0.3);border-radius:100px;padding:7px 16px;font-size:12.5px;color:var(--beige);margin-top:12px;font-weight:500}
-.pase-nota{text-align:center;font-size:12.5px;color:var(--muted);max-width:430px;margin:0 auto 34px}
-
-/* Secciones */
-.sec{margin-bottom:34px}
-.sec h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin-bottom:14px;text-align:center}
-.bens{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:560px){.bens{grid-template-columns:1fr}}
-.ben{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:14px 16px;display:flex;gap:11px;align-items:flex-start;font-size:13.5px;color:#cfc9c2;line-height:1.5}
-.ben .i{font-size:19px;line-height:1.4}
-.ben b{color:var(--white)}
-.ben .fine{display:block;font-size:11.5px;color:var(--muted);margin-top:3px}
-.pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-@media(max-width:560px){.pasos{grid-template-columns:1fr}}
-.paso{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:16px 14px;text-align:center}
-.paso .n{width:30px;height:30px;border-radius:50%;background:rgba(226,198,166,0.12);border:1px solid rgba(226,198,166,0.35);color:var(--beige);font-weight:600;font-size:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
-.paso b{display:block;font-size:13.5px;color:var(--white);margin-bottom:4px}
-.paso span{font-size:12px;color:var(--muted);line-height:1.45;display:block}
-
-/* Políticas */
-.polis{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:20px 22px}
-.polis li{list-style:none;font-size:13px;color:#bdb7b0;padding:7px 0 7px 24px;position:relative;border-bottom:1px solid rgba(255,255,255,0.04)}
-.polis li:last-child{border-bottom:none}
-.polis li::before{content:'·';color:var(--beige);position:absolute;left:8px;font-weight:700;font-size:18px;line-height:1}
-.polis b{color:var(--white)}
-.sucs-box{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:18px 22px;text-align:center;font-size:13px;color:#bdb7b0}
-.sucs-box b{color:var(--beige)}
-.sucs-box .hor{font-size:12px;color:var(--muted);margin-top:6px}
-.btn{display:inline-flex;align-items:center;gap:8px;background:var(--beige);color:var(--black);font-weight:600;font-size:14px;border:none;border-radius:11px;padding:13px 22px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s;text-decoration:none}
-.btn:hover{background:#f0dfc8;transform:translateY(-1px)}
-.btn.sec2{background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.12)}
-.btn.wa{background:#1faa53;color:#fff}
-
-/* ── Herramientas RH (colapsadas) ── */
-details.rh{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin-top:10px}
-details.rh summary{cursor:pointer;list-style:none;padding:18px 22px;font-size:14.5px;font-weight:500;color:var(--beige);display:flex;justify-content:space-between;align-items:center}
-details.rh summary::after{content:'+';font-size:22px;font-weight:300}
-details.rh[open] summary::after{content:'−'}
-details.rh .rh-body{padding:0 22px 22px}
-.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
-.nota-dl{text-align:center;font-size:12px;color:var(--muted);margin-top:14px}
-
-/* ── Flyer imprimible (preview RH) ── */
-.paper{background:#fff;color:var(--ink);max-width:640px;margin:0 auto;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:40px 44px;position:relative;overflow:hidden}
+/* ── Flyer (hoja blanca, lista para imprimir) ── */
+.paper{background:#fff;color:var(--ink);max-width:680px;margin:0 auto;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.5);padding:44px 48px;position:relative;overflow:hidden}
 .paper .marca{text-align:center;border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:22px}
 .paper .marca img{height:54px;width:auto}
 .paper .marca .tag{font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:#888;margin-top:6px}
-.paper h2{font-family:'Cormorant Garamond',serif;font-size:29px;font-weight:600;text-align:center;line-height:1.15;margin-bottom:4px}
+.paper h2{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;text-align:center;line-height:1.15;margin-bottom:4px}
 .paper .para{text-align:center;font-size:14px;color:#666;margin-bottom:20px}
 .paper .para b{color:var(--ink)}
 .codigo-box{display:flex;align-items:center;justify-content:center;gap:26px;background:#f7f3ed;border:2.5px dashed var(--beige-dark);border-radius:14px;padding:20px 26px;margin-bottom:22px;flex-wrap:wrap}
 .codigo-box .lbl{font-size:10.5px;letter-spacing:0.2em;text-transform:uppercase;color:#888}
-.codigo-box .code{font-size:40px;font-weight:700;letter-spacing:0.12em;color:var(--ink);font-family:'Outfit',sans-serif}
+.codigo-box .code{font-size:42px;font-weight:700;letter-spacing:0.12em;color:var(--ink);font-family:'Outfit',sans-serif}
 .codigo-box .qr{background:#fff;padding:8px;border-radius:8px;border:1px solid #e5ddd0;line-height:0}
-.codigo-box .qr img{width:118px;height:118px;display:block}
+.codigo-box .qr img{width:120px;height:120px;display:block}
 .paper h3{font-size:15px;font-weight:700;letter-spacing:0.04em;margin-bottom:10px;color:var(--ink)}
-.fbens{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:20px}
-.fben{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#444;line-height:1.45}
-.fben .i{font-size:16px;line-height:1.3}
-.fpasos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
-.fpaso{background:#f7f3ed;border-radius:10px;padding:13px;text-align:center}
-.fpaso .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--beige);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
-.fpaso b{display:block;font-size:12.5px;color:var(--ink);margin-bottom:3px}
-.fpaso span{font-size:11.5px;color:#777;line-height:1.4;display:block}
+.bens{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:22px}
+.ben{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#444;line-height:1.45}
+.ben .i{font-size:16px;line-height:1.3}
+.pasos{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.paso{background:#f7f3ed;border-radius:10px;padding:13px 13px;text-align:center}
+.paso .n{width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--beige);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.paso b{display:block;font-size:12.5px;color:var(--ink);margin-bottom:3px}
+.paso span{font-size:11.5px;color:#777;line-height:1.4;display:block}
 .paper .qrlink{text-align:center;font-size:11px;color:#888;margin-bottom:14px}
-.paper .pie{border-top:1.5px solid #e5ddd0;padding-top:13px;text-align:center;font-size:11.5px;color:#888;line-height:1.6}
+.paper .pie{border-top:1.5px solid #e5ddd0;padding-top:14px;text-align:center;font-size:11.5px;color:#888;line-height:1.6}
 .paper .pie b{color:var(--ink)}
-@media(max-width:560px){ .fbens{grid-template-columns:1fr} .fpasos{grid-template-columns:1fr} .paper{padding:28px 20px} .codigo-box .code{font-size:30px} }
+@media(max-width:560px){ .bens{grid-template-columns:1fr} .pasos{grid-template-columns:1fr} .paper{padding:30px 22px} .codigo-box .code{font-size:30px} }
 
-/* Impresión: SOLO el flyer, tamaño carta */
+/* ── Impresión: solo el flyer, tamaño carta ── */
 @media print{
   body{background:#fff}
-  .top,.controls,h1,.sub,.pase,.pase-nota,.sec,.nota-dl,details.rh summary,.rh-note{display:none!important}
-  details.rh{border:none;background:none;margin:0}
-  details.rh .rh-body{padding:0}
+  .top,.controls,h1,.sub,.nota-dl,.pasos-kit,.link-emp{display:none!important}
   .wrap{padding:0;max-width:none}
-  .paper{box-shadow:none;border-radius:0;max-width:none;margin:0;padding:30px 36px}
+  .paper{box-shadow:none;border-radius:0;max-width:none;margin:0;padding:34px 40px}
   @page{size:letter;margin:12mm}
 }
+.nota-dl{text-align:center;font-size:12px;color:var(--muted);margin-top:18px}
 </style>
 </head>
 <body>
@@ -122,118 +80,64 @@ details.rh .rh-body{padding:0 22px 22px}
     <p>Convenios Empresariales</p>
   </div>
 
-  <div id="loading" class="estado"><h2>Cargando…</h2><p>Validando el código de convenio.</p></div>
+  <div id="loading" class="estado"><h2>Cargando tu kit…</h2><p>Validando el código de convenio.</p></div>
 
   <div id="kit" style="display:none">
-    <h1>Tu beneficio visual<br>por ser parte de <em id="t-empresa">—</em></h1>
-    <p class="sub">Guarda esta página: es tu pase para usar el convenio en cualquier sucursal.</p>
+    <h1>Kit de bienvenida</h1>
+    <p class="sub" id="sub-empresa">—</p>
 
-    <!-- PASE DIGITAL DEL EMPLEADO -->
-    <div class="pase">
-      <div class="p-emp">Convenio empresarial</div>
-      <div class="p-nombre" id="p-empresa">—</div>
-      <div class="p-qr" id="p-qr"></div>
-      <div class="p-lbl">Código de convenio</div>
-      <div class="p-code" id="p-codigo">—</div>
-      <div class="p-gafete">🪪 Preséntalo junto con tu gafete o credencial de trabajo</div>
+    <div class="pasos-kit">
+      <b>Cómo avisarle a tu equipo en 2 minutos:</b><br>
+      1️⃣ <b>Comparte el aviso por WhatsApp</b> (botón verde) en tu grupo interno — lleva el código y el link con instrucciones para cada empleado.<br>
+      2️⃣ <b>Imprime el flyer</b> y pégalo en el tablón de avisos o recepción.<br>
+      3️⃣ Si prefieres correo interno, <b>descarga la imagen</b> y adjúntala.
     </div>
-    <p class="pase-nota">En caja pueden escanear el QR o teclear el código. Sin registro previo y sin cita.</p>
 
-    <!-- BENEFICIOS -->
-    <div class="sec">
-      <h2>Lo que incluye tu convenio</h2>
+    <div class="controls">
+      <a class="btn wa" id="btn-wa-share" href="#" target="_blank" rel="noopener">📲 Compartir aviso por WhatsApp</a>
+      <button class="btn" onclick="window.print()">🖨 Imprimir flyer</button>
+      <button class="btn sec" onclick="descargarImagen()">📥 Descargar imagen</button>
+    </div>
+    <p class="link-emp">👀 Tus empleados verán su pase con QR, instrucciones y políticas aquí: <a id="link-empleado" href="#" target="_blank" rel="noopener">caryera.mx/convenio</a></p>
+
+    <!-- FLYER imprimible -->
+    <div class="paper" id="flyer">
+      <div class="marca">
+        <img src="logo-caryera-dark.svg" alt="Ópticas Car & Era">
+        <div class="tag">Convenio Empresarial</div>
+      </div>
+      <h2>Beneficio visual para nuestro equipo</h2>
+      <p class="para">Por convenio entre <b id="f-empresa">—</b> y Ópticas Car &amp; Era,<br>todos los colaboradores y su familia directa tienen estos beneficios:</p>
+      <div class="codigo-box">
+        <div>
+          <div class="lbl">Código de convenio</div>
+          <div class="code" id="f-codigo">—</div>
+          <div class="lbl" style="margin-top:4px">preséntalo con tu gafete</div>
+        </div>
+        <div class="qr" id="f-qr"></div>
+      </div>
       <div class="bens">
-        <div class="ben"><span class="i">💳</span><span><b><span id="b-pct">15%</span> de descuento</b> en lentes completos (armazón + micas graduadas).<span class="fine">Se suma a la promoción de temporada vigente (2x1 y más).</span></span></div>
-        <div class="ben"><span class="i">🎁</span><span><b><span id="b-regalo">$500</span> de regalo cada año</b> para tu compra.<span class="fine">Una vez por año, en compras desde <span id="b-minimo">$2,000</span>. Exclusivo para el empleado titular.</span></span></div>
-        <div class="ben"><span class="i">👨‍👩‍👧</span><span><b>Tu familia también</b>: el mismo descuento aplica para tu esposa(o) e hijos.<span class="fine">Acompañándote, o con el código + su identificación.</span></span></div>
-        <div class="ben"><span class="i">👁️</span><span><b>Examen de la vista gratis</b>, profesional y completo.<span class="fine">Sin compra mínima, sin cita, listo en minutos.</span></span></div>
-        <div class="ben"><span class="i">📅</span><span><b>Meses sin intereses</b> en quincenas con Aplazo.<span class="fine">Sin tarjeta de crédito, aprobación en minutos.</span></span></div>
-        <div class="ben"><span class="i">⚡</span><span><b>Lentes listos el mismo día</b> en la mayoría de graduaciones.<span class="fine">Laboratorio propio en Ciudad Juárez.</span></span></div>
+        <div class="ben"><span class="i">💳</span><span><b id="f-pct">15%</b> de descuento en lentes completos (acumulable con la promo vigente)</span></div>
+        <div class="ben"><span class="i">🎁</span><span><b id="f-regalo">$500</b> de regalo cada año (en compras desde <span id="f-minimo">$2,000</span>)</span></div>
+        <div class="ben"><span class="i">👨‍👩‍👧</span><span>El descuento también aplica para tu <b>esposa(o) e hijos</b></span></div>
+        <div class="ben"><span class="i">📅</span><span><b>Meses sin intereses</b> con Aplazo, sin tarjeta de crédito</span></div>
+        <div class="ben"><span class="i">👁️</span><span><b>Examen de la vista gratis</b>, profesional, sin cita</span></div>
+        <div class="ben"><span class="i">⚡</span><span><b>Lentes listos el mismo día</b> en la mayoría de graduaciones</span></div>
       </div>
-    </div>
-
-    <!-- CÓMO USARLO -->
-    <div class="sec">
-      <h2>¿Cómo lo uso?</h2>
+      <h3>¿Cómo lo uso?</h3>
       <div class="pasos">
-        <div class="paso"><div class="n">1</div><b>Ve a cualquier sucursal</b><span>Américas, Pinocelli, Magnolia o Plaza Vía Vittoria. Sin cita.</span></div>
-        <div class="paso"><div class="n">2</div><b>Muestra código + gafete</b><span>Enseña esta página (o el código <span class="p-code-mini">—</span>) y tu credencial de trabajo en caja.</span></div>
-        <div class="paso"><div class="n">3</div><b>Listo</b><span>El descuento se aplica directo en tu compra. El examen es gratis aunque no compres ese día.</span></div>
+        <div class="paso"><div class="n">1</div><b>Escanea el QR</b><span>Abre tu pase digital con los detalles y políticas del convenio.</span></div>
+        <div class="paso"><div class="n">2</div><b>Ve a cualquier sucursal</b><span>Sin cita. Lun–sáb 10–7, dom 11–5.</span></div>
+        <div class="paso"><div class="n">3</div><b>Presenta código + gafete</b><span>El descuento se aplica directo en caja.</span></div>
+      </div>
+      <div class="qrlink">El QR abre el pase digital del empleado con detalles, instrucciones y políticas del convenio.</div>
+      <div class="pie">
+        <b>Ópticas Car &amp; Era</b> · Ciudad Juárez, Chih. — Américas · Pinocelli · Magnolia · Plaza Vía Vittoria<br>
+        WhatsApp 656 311 0094 · caryera.mx
       </div>
     </div>
 
-    <!-- POLÍTICAS -->
-    <div class="sec">
-      <h2>Políticas del convenio</h2>
-      <ul class="polis">
-        <li><b>¿Quién puede usarlo?</b> Empleados activos de la empresa afiliada (con gafete, credencial de trabajo o recibo de nómina vigente) y su familia directa: esposa(o) e hijos.</li>
-        <li><b>Descuento del <span id="pol-pct">15%</span>:</b> aplica en lentes completos (armazón + micas graduadas). Es acumulable con la promoción de temporada vigente. No aplica en compras anteriores ni se canjea por efectivo.</li>
-        <li><b>Regalo de <span id="pol-regalo">$500</span>:</b> una vez por año calendario por empleado, en compras desde <span id="pol-minimo">$2,000</span>. Es personal del empleado titular (no aplica a familiares) y se valida con su número de teléfono en caja.</li>
-        <li><b>Examen de la vista:</b> gratuito, sin compra mínima y sin cita, para empleados y su familia directa.</li>
-        <li><b>Meses sin intereses:</b> el financiamiento con Aplazo está sujeto a la aprobación de esa plataforma.</li>
-        <li><b>Uso correcto:</b> el código es de uso exclusivo del personal de la empresa y su familia directa. Ópticas Car &amp; Era puede suspender códigos en caso de mal uso.</li>
-        <li><b>Vigencia:</b> el convenio permanece activo de forma continua; cualquier cambio en los beneficios se avisa a la empresa con anticipación.</li>
-      </ul>
-    </div>
-
-    <!-- SUCURSALES -->
-    <div class="sec">
-      <div class="sucs-box">
-        <b>Sucursales en Ciudad Juárez:</b> Américas · Pinocelli · Magnolia · Plaza Vía Vittoria
-        <div class="hor">Lunes a sábado 10:00 a.m.–7:00 p.m. · Domingo 11:00 a.m.–5:00 p.m. · WhatsApp 656 311 0094</div>
-      </div>
-    </div>
-
-    <!-- HERRAMIENTAS RH -->
-    <details class="rh" id="rh-tools">
-      <summary>🏢 ¿Administras el convenio de tu empresa? Herramientas para difundirlo</summary>
-      <div class="rh-body">
-        <p class="rh-note" style="font-size:12.5px;color:var(--muted);margin-bottom:16px">Imprime el flyer para el tablón de avisos, descarga la imagen para mandarla por WhatsApp o correo interno, o comparte el aviso directo.</p>
-        <div class="controls">
-          <button class="btn" onclick="window.print()">🖨 Imprimir flyer</button>
-          <button class="btn sec2" onclick="descargarImagen()">📥 Descargar imagen</button>
-          <a class="btn wa" id="btn-wa-share" href="#" target="_blank" rel="noopener">📲 Compartir aviso</a>
-        </div>
-
-        <!-- FLYER imprimible -->
-        <div class="paper" id="flyer">
-          <div class="marca">
-            <img src="logo-caryera-dark.svg" alt="Ópticas Car & Era">
-            <div class="tag">Convenio Empresarial</div>
-          </div>
-          <h2>Beneficio visual para nuestro equipo</h2>
-          <p class="para">Por convenio entre <b id="f-empresa">—</b> y Ópticas Car &amp; Era,<br>todos los colaboradores y su familia directa tienen estos beneficios:</p>
-          <div class="codigo-box">
-            <div>
-              <div class="lbl">Código de convenio</div>
-              <div class="code" id="f-codigo">—</div>
-              <div class="lbl" style="margin-top:4px">preséntalo con tu gafete</div>
-            </div>
-            <div class="qr" id="f-qr"></div>
-          </div>
-          <div class="fbens">
-            <div class="fben"><span class="i">💳</span><span><b id="f-pct">15%</b> de descuento en lentes completos (acumulable con la promo vigente)</span></div>
-            <div class="fben"><span class="i">🎁</span><span><b id="f-regalo">$500</b> de regalo cada año (en compras desde <span id="f-minimo">$2,000</span>)</span></div>
-            <div class="fben"><span class="i">👨‍👩‍👧</span><span>El descuento también aplica para tu <b>esposa(o) e hijos</b></span></div>
-            <div class="fben"><span class="i">📅</span><span><b>Meses sin intereses</b> con Aplazo, sin tarjeta de crédito</span></div>
-            <div class="fben"><span class="i">👁️</span><span><b>Examen de la vista gratis</b>, profesional, sin cita</span></div>
-            <div class="fben"><span class="i">⚡</span><span><b>Lentes listos el mismo día</b> en la mayoría de graduaciones</span></div>
-          </div>
-          <h3>¿Cómo lo uso?</h3>
-          <div class="fpasos">
-            <div class="fpaso"><div class="n">1</div><b>Ve a cualquier sucursal</b><span>Sin cita. Lun–sáb 10–7, dom 11–5.</span></div>
-            <div class="fpaso"><div class="n">2</div><b>Presenta el código + tu gafete</b><span>Muestra este flyer o escanea el QR con tu celular.</span></div>
-            <div class="fpaso"><div class="n">3</div><b>Recibe tus beneficios</b><span>El descuento se aplica directo en caja.</span></div>
-          </div>
-          <div class="qrlink">El QR abre esta página con los detalles y políticas del convenio: caryera.mx/convenio-kit</div>
-          <div class="pie">
-            <b>Ópticas Car &amp; Era</b> · Ciudad Juárez, Chih. — Américas · Pinocelli · Magnolia · Plaza Vía Vittoria<br>
-            WhatsApp 656 311 0094 · caryera.mx
-          </div>
-        </div>
-        <p class="nota-dl">💡 La imagen descargable está lista para WhatsApp, correo interno o tablón de avisos.</p>
-      </div>
-    </details>
+    <p class="nota-dl">💡 La imagen descargable está lista para mandarse por WhatsApp, correo interno o imprimirse en tablón de avisos.</p>
   </div>
 
   <div id="error" class="estado" style="display:none">
@@ -247,6 +151,7 @@ details.rh .rh-body{padding:0 22px 22px}
 <script>
 let EMP = null, CFG = { pct: 15, regalo: 500, minimo: 2000 };
 const fmt = n => '$' + Number(n).toLocaleString('en-US');
+const urlEmpleado = () => 'https://caryera.mx/convenio?c=' + EMP.codigo;
 
 async function init() {
   const codigo = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
@@ -259,7 +164,7 @@ async function init() {
     const json = await res.json();
     if (!json.ok) {
       return showError(json.error === 'no_activa'
-        ? 'Este convenio aún no está activo. Si tu empresa acaba de registrarse, espera la aprobación (le avisamos por WhatsApp).'
+        ? 'Este convenio aún no está activo. Si acabas de registrarte, espera la aprobación (te avisamos por WhatsApp).'
         : 'No encontramos un convenio con ese código. Verifica el link o escríbenos por WhatsApp al 656 311 0094.');
     }
     EMP = json.empresa;
@@ -275,33 +180,25 @@ function showError(msg) {
   document.getElementById('error-msg').textContent = msg;
 }
 
-function setText(id, v) { const el = document.getElementById(id); if (el) el.textContent = v; }
-
 function render() {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('kit').style.display = 'block';
-  // Empleado
-  setText('t-empresa', EMP.nombre);
-  setText('p-empresa', EMP.nombre);
-  setText('p-codigo', EMP.codigo);
-  document.querySelectorAll('.p-code-mini').forEach(function(el){ el.textContent = EMP.codigo; });
-  setText('b-pct', CFG.pct + '%'); setText('b-regalo', fmt(CFG.regalo)); setText('b-minimo', fmt(CFG.minimo));
-  setText('pol-pct', CFG.pct + '%'); setText('pol-regalo', fmt(CFG.regalo)); setText('pol-minimo', fmt(CFG.minimo));
-  // Flyer
-  setText('f-empresa', EMP.nombre);
-  setText('f-codigo', EMP.codigo);
-  setText('f-pct', CFG.pct + '%'); setText('f-regalo', fmt(CFG.regalo)); setText('f-minimo', fmt(CFG.minimo));
-  // QRs: el del PASE abre esta misma página (detalles+políticas, y en caja igual sirve para leer el código del URL);
-  // el del FLYER también — un solo destino evita confusiones. El código en texto va siempre al lado.
-  const kitUrl = 'https://caryera.mx/convenio-kit?c=' + EMP.codigo;
-  const qrP = qrcode(0, 'M'); qrP.addData(kitUrl); qrP.make();
-  document.getElementById('p-qr').innerHTML = qrP.createImgTag(4, 6).replace('<img ', '<img style="width:172px;height:172px" ');
-  const qrF = qrcode(0, 'M'); qrF.addData(kitUrl); qrF.make();
-  document.getElementById('f-qr').innerHTML = qrF.createImgTag(4, 6).replace('<img ', '<img style="width:118px;height:118px" ');
-  // Share WA (RH)
-  const txt = '👓 ¡Aviso para el equipo de ' + EMP.nombre + '!\n\nYa tenemos convenio con Ópticas Car & Era: ' + CFG.pct + '% de descuento en lentes, ' + fmt(CFG.regalo) + ' de regalo al año, examen de la vista gratis y más — también para tu familia directa.\n\n🎟 Código: ' + EMP.codigo + '\nPreséntalo con tu gafete en cualquier sucursal (Américas, Pinocelli, Magnolia o Plaza Vía Vittoria). Sin cita.\n\nDetalles, instrucciones y tu pase con QR: ' + kitUrl;
+  document.getElementById('sub-empresa').textContent = EMP.nombre + ' · Código ' + EMP.codigo;
+  document.getElementById('f-empresa').textContent = EMP.nombre;
+  document.getElementById('f-codigo').textContent = EMP.codigo;
+  document.getElementById('f-pct').textContent = CFG.pct + '%';
+  document.getElementById('f-regalo').textContent = fmt(CFG.regalo);
+  document.getElementById('f-minimo').textContent = fmt(CFG.minimo);
+  // QR del flyer → pase digital del empleado (detalles + políticas); el POS extrae el código del URL si lo escanean
+  const qr = qrcode(0, 'M'); qr.addData(urlEmpleado()); qr.make();
+  document.getElementById('f-qr').innerHTML = qr.createImgTag(4, 6).replace('<img ', '<img style="width:120px;height:120px" ');
+  // Link a la vista del empleado
+  const le = document.getElementById('link-empleado');
+  le.href = urlEmpleado(); le.textContent = 'caryera.mx/convenio?c=' + EMP.codigo;
+  // Aviso para compartir por WhatsApp (al equipo) → link del EMPLEADO
+  const txt = '👓 ¡Aviso para el equipo de ' + EMP.nombre + '!\n\nYa tenemos convenio con Ópticas Car & Era: ' + CFG.pct + '% de descuento en lentes, ' + fmt(CFG.regalo) + ' de regalo al año, examen de la vista gratis y más — también para tu familia directa.\n\n🎫 Código: ' + EMP.codigo + '\nPreséntalo con tu gafete en cualquier sucursal (Américas, Pinocelli, Magnolia o Plaza Vía Vittoria). Sin cita.\n\nTu pase digital con QR, detalles y políticas: ' + urlEmpleado();
   document.getElementById('btn-wa-share').href = 'https://wa.me/?text=' + encodeURIComponent(txt);
-  document.title = 'Beneficio ' + EMP.nombre + ' — Ópticas Car & Era';
+  document.title = 'Kit ' + EMP.codigo + ' — Convenios Car & Era';
 }
 
 // ── Imagen digital compartible (1080×1350, tema oscuro de la marca) ──
@@ -328,7 +225,7 @@ async function descargarImagen() {
   x.fillStyle = '#9a948e'; x.font = '500 24px Outfit, Arial'; x.fillText('CÓDIGO DE CONVENIO', W / 2 - 110, 540);
   x.fillStyle = '#f5f2ee'; x.font = '700 92px Outfit, Arial'; x.fillText(EMP.codigo, W / 2 - 110, 645);
   x.fillStyle = '#9a948e'; x.font = '400 22px Outfit, Arial'; x.fillText('preséntalo con tu gafete', W / 2 - 110, 690);
-  const qr = qrcode(0, 'M'); qr.addData('https://caryera.mx/convenio-kit?c=' + EMP.codigo); qr.make();
+  const qr = qrcode(0, 'M'); qr.addData(urlEmpleado()); qr.make();
   drawQR(x, qr, 740, 495, 220);
   const bens = [
     ['💳', CFG.pct + '% de descuento en lentes completos'],
@@ -347,7 +244,7 @@ async function descargarImagen() {
   x.textAlign = 'center';
   roundRect(x, 90, 1190, W - 180, 80, 16); x.fillStyle = 'rgba(226,198,166,0.10)'; x.fill();
   x.fillStyle = '#e2c6a6'; x.font = '600 28px Outfit, Arial';
-  x.fillText('Ve a cualquier sucursal · muestra el código y tu gafete · sin cita', W / 2, 1240);
+  x.fillText('Escanea el QR para ver tu pase · muestra el código y tu gafete · sin cita', W / 2, 1240);
   x.fillStyle = '#9a948e'; x.font = '400 23px Outfit, Arial';
   x.fillText('Américas · Pinocelli · Magnolia · Plaza Vía Vittoria — Cd. Juárez · caryera.mx', W / 2, 1308);
   const a = document.createElement('a');
