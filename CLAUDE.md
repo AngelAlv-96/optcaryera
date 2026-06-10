@@ -583,17 +583,58 @@ El changelog detallado de v138 a v259 vive en [`CHANGELOG.md`](CHANGELOG.md) (no
 - **Permisos**: `del_coberturas` para eliminar, editar fecha solo admin
 - **Vista**: `view-vision-segura` con búsqueda de paciente, lista rápida, panel de protecciones + historial de eventos
 
-## 🏢 CONVENIOS EMPRESARIALES (v366)
-- **Concepto**: empresas se afilian gratis → sus empleados (y esposa/hijos) obtienen beneficios presentando el CÓDIGO de la empresa (`CE-XXXXX`) + gafete/credencial de trabajo en sucursal.
-- **Beneficios** (defaults en `app_config` id=`convenio_config`, editables sin deploy): 15% descuento en lentes completos (post-promo, ACUMULABLE con la promo de temporada, igual que el cupón cumple 30%), $500 de regalo 1 vez al año POR EMPLEADO (solo relación=empleado, en compras desde $2,000 post-promo), MSI Aplazo, examen gratis. Overrides por empresa en `empresas_convenio.beneficios` (JSONB: descuento_pct/regalo_monto/regalo_compra_minima).
-- **Flujo alta**: `empresas.html` (público, `/empresas`) → POST `empresas.js` action `registro` (honeypot, dedup, genera código, inserta status `pendiente`, WA a admin_phones) → success screen con botón wa.me prellenado (abre ventana 24h para que el código llegue por freeform) → admin aprueba en vista **Convenios** (sidebar Reportes, solo admin/gerencia) → `sendWA` con código al contacto (si falla por ventana 24h, el toast da el código para mandarlo manual).
-- **Canje en POS**: botón "🏢 Convenio empresarial" (bajo el botón de promo) → modal código → valida `empresas_convenio` status=activa (lectura JWT) → datos del empleado (nombre/tel/relación) + check de regalo anual EN VIVO por teléfono → `_convVtaContext` + rama en `recalcVtaTotales` (bypass gate descuento; regalo se aplica/quita dinámico según el subtotal alcance la compra mínima; banner azul con estado) → al cerrar venta `_procesarVentaInner` inserta `convenio_usos` (con venta_folio + .select('id').single()). NO combinable con cupón cumple 30% en la misma venta. Limpieza patrón `_fresh` en `initVenta`.
-- **DB**: `empresas_convenio` (codigo UNIQUE global, status pendiente/activa/suspendida/rechazada) + `convenio_usos` (índice UNIQUE parcial `(empleado_telefono, anio) WHERE regalo_usado` = imposible doble regalo anual, ni en carrera). Ambas con RLS SELECT to authenticated + en ALLOWED_TABLES de dbwrite.
-- **Vista nueva con gating**: el bloque `if (u.permisos)` del sidebar sobreescribe TODOS los nav-items → `nav-report-convenios` se fuerza visible para admin/gerencia DESPUÉS de ese bloque (override explícito). Cualquier vista nueva fuera de los arrays de permisos necesita lo mismo.
-- **Clari**: bloque "CONVENIOS EMPRESARIALES" en DEFAULT_KNOWLEDGE (wa-webhook + meta-webhook) — comparte link, explica beneficios; ⛔ NUNCA genera/confirma códigos ni afiliaciones.
-- **Portal de empresa (v370)**: `/portal-empresa?c=CODIGO` = administración RH (alta/baja/reactivar empleados, stats). BAJA = vigente=false + baja_at (NUNCA delete — la base de teléfonos es nuestra); reingreso = alta del mismo tel reactiva; blast solo vigentes; el modal del POS muestra vigencia (🟢/🔴) por teléfono. Plantilla `convenio_empleado_pase_v2` HXd1c975c009e9a49dcc0ea668b15c45b4 APROBADA (la v1 fue rechazada: Meta no permite variables al inicio/final del cuerpo).
-- **Alta de empleados + pases (v369)**: RH puede (OPCIONAL) registrar empleados (nombre/#emp/tel) en el kit → tabla `convenio_empleados`; "📤 Enviar pases" (módulo Convenios) manda la plantilla `convenio_empleado_pase` (HX63d16fe2cfab877fd869e3133ebbfd3d) vía `convenio-pase-blast.js` — REGLAS DE BLAST aplicadas (MAX 10/run, re-check per-fono tag [Convenio-Pase] fail-closed, guard horario). Flujo 2 páginas: `/convenio-kit`=herramientas RH, `/convenio`=pase del empleado (QR codifica este URL; el modal del POS extrae el CE-XXXXX de URLs escaneadas).
-- **Kit de bienvenida (v367)**: `convenio-kit.html` (/convenio-kit?c=CODIGO, valida vía empresas.js, solo activas) = flyer imprimible (logo-caryera-dark.svg, QR del código en texto plano → escaneable con pistola en el input del modal POS) + imagen digital 1080×1350 descargable + share wa.me. `convenio-email.js` = correo de bienvenida (SMTP sin deps a smtp.gmail.com:465; env vars GMAIL_USER + GMAIL_APP_PASSWORD; fail-soft 'email_no_configurado' si faltan). aprobarConvenio → WA con link al kit + correo en paralelo; botones 📋 Kit / ✉ Correo en activas.
+## 🏢 CONVENIOS EMPRESARIALES (v366-v370, completo y en vivo)
+Programa B2B: una empresa se afilia gratis → sus empleados (y familia directa) obtienen beneficios visuales presentando el CÓDIGO de la empresa + gafete en sucursal. Todo público vive en `caryera.mx`; la gestión interna en el módulo "Convenios" del sistema.
+
+### Beneficios (defaults en `app_config` id=`convenio_config`, editables sin deploy)
+- **15% descuento** en lentes completos — se aplica POST-promo, ACUMULABLE con la promo de temporada (mismo mecanismo que el cupón cumple 30%) y extiende a esposa(o)/hijos.
+- **$500 de regalo 1 vez al año** POR EMPLEADO (solo relación=empleado, no familiares), en compras desde **$2,000** post-promo.
+- MSI con Aplazo + examen de la vista gratis.
+- Override por empresa en `empresas_convenio.beneficios` (JSONB: `descuento_pct`/`regalo_monto`/`regalo_compra_minima`).
+
+### Flujo end-to-end
+1. **Empresa se registra** → `empresas.html` (`/empresas`) → `empresas.js` action `registro` (honeypot, dedup por tel/nombre, genera código `CE-XXXXX` único, status `pendiente`, avisa a admin_phones por WA). Success screen con botón wa.me prellenado (abre ventana 24h).
+2. **Admin aprueba** → módulo **Convenios** (sidebar Reportes, solo admin/gerencia) → `aprobarConvenio`: status=activa + en paralelo (a) **WhatsApp** con código + link al kit (`sendWA`; si fuera de ventana 24h, el toast da el código para mandarlo manual), (b) **correo de bienvenida** (`_convEnviarCorreo` → `convenio-email.js`).
+3. **RH recibe 2 links** (en el WA y en el correo): **Kit** (`/convenio-kit?c=`) para difundir, y **Portal** (`/portal-empresa?c=`) para administrar empleados.
+4. **RH difunde** desde el Kit: compartir aviso por WhatsApp / imprimir flyer / descargar imagen. El aviso y los QR llevan al **pase del empleado** (`/convenio?c=`).
+5. **(Opcional) RH registra empleados** en el Portal → les enviamos su pase por WhatsApp ("📤 Enviar pases" en el módulo Convenios) y tenemos su base de teléfonos.
+6. **Empleado canjea en sucursal**: presenta código + gafete → cajera usa botón "🏢 Convenio empresarial" en el POS.
+
+### Páginas públicas (4) — cada una `?c=CODIGO`, valida contra `empresas.js` action `validar` (solo activas)
+- **`/empresas`** (`empresas.html`): landing + formulario de afiliación. Header con logo beige centrado.
+- **`/convenio-kit`** (`convenio-kit.html`): KIT DE RH (difusión). Compartir WA + imprimir flyer (`@media print`, logo-caryera-dark.svg, QR) + descargar imagen 1080×1350 (canvas). Links discretos al pase y al portal.
+- **`/convenio`** (`convenio.html`): PASE DEL EMPLEADO. Tarjeta con QR + código + beneficios + cómo usar + POLÍTICAS + sucursales/horarios. El QR codifica este URL.
+- **`/portal-empresa`** (`portal-empresa.html`): PORTAL DE RH (administración permanente). Stats (vigentes/pases/bajas) + alta + dar de baja + reactivar.
+
+### Funciones backend (3)
+- **`empresas.js`**: actions `registro`, `validar`, `empleado_alta` (dedup; si el tel estaba de baja → reactiva), `empleados_lista` (tel ENMASCARADO ···1234, tope 3000), `empleado_baja` (PATCH vigente=false + baja_at, NUNCA delete), `empleado_reactivar`. Patrón service_role.
+- **`convenio-email.js`**: correo de bienvenida desde `opticas@caryera.mx` (cliente SMTP sin deps sobre `tls` a smtp.gmail.com:465; multipart texto+HTML, Date/Message-ID anti-spam). Auth patrón whatsapp.js; destinatario/contenido desde DB. **Fail-soft** `email_no_configurado` si faltan env vars. Incluye bloque del Portal de empresa.
+- **`convenio-pase-blast.js`**: envía la plantilla del pase a los empleados `vigente=true` con `pase_enviado_at IS NULL`. REGLAS DE BLAST: MAX 10/run + sleep 1.5s, re-check per-fono tag `[Convenio-Pase]` fail-closed, guard 10am-7pm, auth admin/gerencia, marca `pase_enviado_at`. El frontend ("📤 Enviar pases") repite lotes hasta `restantes=0`.
+
+### POS — canje (patrón cupón cumple v338)
+Botón "🏢 Convenio empresarial" → modal: código (autocompleta `CE-`; extrae el código si la pistola escanea el URL del QR) → valida activa → nombre/tel/relación del empleado → al teclear el tel: (a) **vigencia** contra `convenio_empleados` (🟢 vigente / 🔴 dado de baja — informativo, no bloquea), (b) **check regalo anual** en vivo. `_convVtaContext` + rama en `recalcVtaTotales` (bypass gate de descuento; 15% post-promo + $500 si alcanza compra mínima, dinámico; banner azul). Al cerrar venta → `convenio_usos` con venta_folio. NO combinable con cupón cumple 30%. Limpieza patrón `_fresh` en `initVenta`.
+
+### DB (3 tablas, RLS SELECT to authenticated, en ALLOWED_TABLES de dbwrite)
+- **`empresas_convenio`**: codigo UNIQUE global, status pendiente/activa/suspendida/rechazada, beneficios JSONB.
+- **`convenio_usos`**: registro de cada canje; índice UNIQUE PARCIAL `(empleado_telefono, anio) WHERE regalo_usado` = imposible doble regalo anual ni en carrera.
+- **`convenio_empleados`**: alta de RH; UNIQUE (empresa_id, telefono); `vigente BOOLEAN` + `baja_at` (baja = vigente=false, NUNCA delete → conservamos la base); `pase_enviado_at`.
+
+### Plantilla Twilio (pase del empleado)
+`convenio_empleado_pase_v2` SID **`HXd1c975c009e9a49dcc0ea668b15c45b4`** (env var `CONVENIO_PASE_TEMPLATE_SID`), vars 1=nombre/2=empresa/3=código/4=código (el link se arma `caryera.mx/convenio?c={{4}}`). APROBADA por Meta. ⚠️ La v1 fue RECHAZADA: Meta no permite variables al inicio/final del cuerpo de la plantilla.
+
+### Correo empresarial (configurado y verificado v367)
+`opticas@caryera.mx` (Google Workspace): 2FA activada, App Password "Sistema Convenios", env vars Netlify `GMAIL_USER` + `GMAIL_APP_PASSWORD`. DKIM/SPF/DMARC activos en DNS. Nota: dominio nuevo (jun-2026) → los primeros correos pueden caer a Promociones/Spam hasta que la reputación madure; marcar "No es spam" ayuda.
+
+### Clari
+Bloque "CONVENIOS EMPRESARIALES" en DEFAULT_KNOWLEDGE (wa-webhook + meta-webhook): comparte link, explica beneficios, conoce el tag `[Convenio-Pase]`; ⛔ NUNCA genera/confirma códigos ni afiliaciones.
+
+### ⚠️ Lecciones
+- **Vista nueva con gating**: `if (u.permisos)` del sidebar sobreescribe TODOS los nav-items → `nav-report-convenios` se fuerza visible para admin/gerencia DESPUÉS de ese bloque (override explícito).
+- **Un link ≠ dos audiencias**: separar por job-to-be-done (kit=difundir una vez, portal=administrar siempre, pase=el empleado).
+- **Beneficiarios NUNCA se borran**: baja = vigente=false (conserva la base + permite reingreso = alta del mismo tel reactiva).
+- **Grid blowout**: inputs en CSS Grid necesitan `min-width:0` o empujan al botón fuera de la tarjeta.
+- **Correo sin deps**: cliente SMTP ~60 líneas sobre `tls` (AUTH LOGIN + base64), multipart texto+HTML + Date/Message-ID para no caer a spam.
+- **Regalo monetario anual**: el UNIQUE parcial en DB es la única garantía real contra doble canje (la verificación de UI es cortesía).
 
 ## 💰 CAJA Y CORTES
 - **3 fuentes de pagos**: `venta_pagos` (pagos de ventas), `creditos_abonos` (abonos a créditos SICAR), pagos online (Clip). Los 3 deben sumarse en desglose, efectivo esperado, terminal esperado y dólar esperado
