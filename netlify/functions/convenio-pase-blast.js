@@ -11,7 +11,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_WA = process.env.TWILIO_WA_NUMBER;
-const TEMPLATE_SID = process.env.CONVENIO_PASE_TEMPLATE_SID || 'HX63d16fe2cfab877fd869e3133ebbfd3d'; // convenio_empleado_pase
+const TEMPLATE_SID = process.env.CONVENIO_PASE_TEMPLATE_SID || 'HXd1c975c009e9a49dcc0ea668b15c45b4'; // convenio_empleado_pase_v2 (v1 rechazada: variable al final)
 const TAG = 'Convenio-Pase';
 const MAX_PER_RUN = 10;
 const RATE_LIMIT_MS = 1500;
@@ -104,7 +104,6 @@ exports.handler = async (event) => {
     if (dry) return out(200, { ok: true, dry: true, pendientesEsteLote: lote.length, hayMas });
     if (!lote.length) return out(200, { ok: true, enviados: 0, fallidos: 0, restantes: 0, mensaje: 'Sin pendientes' });
 
-    const linkBase = 'https://caryera.mx/convenio?c=' + emp.codigo;
     let enviados = 0, fallidos = 0;
     for (let i = 0; i < lote.length; i++) {
       const e = lote[i];
@@ -120,7 +119,7 @@ exports.handler = async (event) => {
         }
       } catch (err) { console.warn('[CONVENIO-PASE] recheck falló, salto:', err.message); continue; }
 
-      const r = await sendTemplate(phone, { '1': e.nombre, '2': emp.nombre, '3': emp.codigo, '4': linkBase });
+      const r = await sendTemplate(phone, { '1': e.nombre, '2': emp.nombre, '3': emp.codigo, '4': emp.codigo });
       if (r.ok) {
         enviados++;
         try { await supaREST('PATCH', `convenio_empleados?id=eq.${e.id}`, { pase_enviado_at: new Date().toISOString() }); } catch (err) {}
