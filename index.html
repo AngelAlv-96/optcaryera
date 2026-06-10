@@ -1267,6 +1267,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           Cambios de Precio
           <span class="nav-badge" id="badge-precio-cambios" style="display:none">0</span>
         </div>
+        <div class="nav-item" id="nav-report-convenios" style="display:none" onclick="go('convenios')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 9h1M9 12h1M9 15h1M14 9h1M14 12h1M14 15h1"/></svg>
+          Convenios
+          <span class="nav-badge" id="badge-convenios" style="display:none">0</span>
+        </div>
 
         <div class="nav-label" id="nav-admin-label" style="display:none">Administración</div>
         <div class="nav-item" id="nav-admin-config" style="display:none" onclick="go('configuracion')">
@@ -3609,6 +3614,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <button onclick="abrirSelectorPromo()" style="width:100%;padding:10px;background:rgba(212,184,74,0.1);border:1px solid rgba(212,184,74,0.25);border-radius:8px;color:var(--beige);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🏷 Aplicar promoción</button>
                 </div>
 
+                <!-- Convenio empresarial (siempre visible: el empleado presenta su código) -->
+                <div id="vta-convenio-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
+                  <button onclick="abrirConvenioVta()" style="width:100%;padding:8px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🏢 Convenio empresarial</button>
+                </div>
+
                 <!-- Folio Assignment Panel (NxM promos) -->
                 <div id="vta-folio-assign" style="display:none;padding:10px 14px;background:rgba(212,184,74,0.04);border-top:1px solid rgba(212,184,74,0.12)">
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -4546,6 +4556,23 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div id="aud-content-resumen"></div>
           <div id="aud-content-anomalias" style="display:none"></div>
           <div id="aud-content-conteos" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- CONVENIOS EMPRESARIALES -->
+      <div class="view" id="view-convenios">
+        <div class="topbar">
+          <div class="topbar-left"><h2>Convenios Empresariales</h2><p>Empresas afiliadas · Beneficios para empleados</p></div>
+          <div class="topbar-right">
+            <a class="btn btn-g btn-sm" href="/empresas.html" target="_blank" rel="noopener" style="text-decoration:none">🌐 Página pública</a>
+            <button class="btn btn-g btn-sm ptr-refresh-btn" onclick="loadConvenios()">🔄</button>
+          </div>
+        </div>
+        <div class="body" style="padding:12px">
+          <div id="conv-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px"></div>
+          <div id="conv-pendientes"></div>
+          <div id="conv-activas"></div>
+          <div id="conv-usos"></div>
         </div>
       </div>
 
@@ -5594,6 +5621,13 @@ function setupApp(u) {
         }
       });
     }
+    // 🏢 Convenios: visible solo admin/gerencia (override del gating por permisos, que no conoce esta vista)
+    var _navConv = document.getElementById('nav-report-convenios');
+    if (_navConv) {
+      var _convVisible = (u.rol === 'admin' || u.rol === 'gerencia');
+      _navConv.style.display = _convVisible ? '' : 'none';
+      if (_convVisible) setTimeout(function(){ try { _convCheckBadge(); } catch(e) {} }, 4000);
+    }
     // Hide entire nav-sections if all items inside are hidden
     document.querySelectorAll('.nav-section[id]').forEach(function(sec) {
       var items = sec.querySelectorAll('.nav-item');
@@ -5856,6 +5890,7 @@ function go(id) {
   if (id === 'auditoria-pedidos')   { loadAuditoriaPedidos(); }
   if (id === 'precio-cambios')      { loadPrecioCambios(); }
   if (id === 'lentes-contacto')     { initLcModule(); }
+  if (id === 'convenios')           { loadConvenios(); }
 }
 
 // ── Realtime Subscriptions ────────────────────────────────────
@@ -9888,6 +9923,305 @@ function _cancelarCumpleVta() {
   var ok=document.getElementById('vta-sin-anticipo-ok'); if(ok) ok.style.display='none';
   var b=document.getElementById('vta-cumple-banner'); if(b) b.style.display='none';
   renderVtaItems();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🏢 CONVENIOS EMPRESARIALES — beneficios para empleados de empresas afiliadas
+// Patrón = cupón de cumpleaños (v338): contexto en memoria, descuento pre-autorizado
+// en recalcVtaTotales, registro en convenio_usos al CERRAR la venta (con folio).
+// ══════════════════════════════════════════════════════════════════
+var _convVtaContext = null; // {empresaId, empresaCodigo, empresaNombre, pct, empleadoNombre, empleadoTel, relacion, regalo, regaloMonto, regaloMin, _regaloAplicado, _fresh}
+var _convConfig = null;
+async function _convGetConfig() {
+  if (_convConfig) return _convConfig;
+  var cfg = {};
+  try {
+    const { data } = await db.from('app_config').select('value').eq('id','convenio_config').single();
+    if (data && data.value) cfg = JSON.parse(data.value);
+  } catch(e) {}
+  _convConfig = Object.assign({ descuento_pct:15, regalo_monto:500, regalo_compra_minima:2000 }, cfg);
+  return _convConfig;
+}
+
+function abrirConvenioVta() {
+  const ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.innerHTML = `<div class="modal" style="max-width:480px;padding:24px">
+    <h3 style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--beige);margin-bottom:4px">🏢 Convenio empresarial</h3>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:12px">Pide el código de convenio de la empresa y verifica el GAFETE o credencial de trabajo del empleado.</p>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input id="cv-codigo" type="text" placeholder="Código (ej. CE-7K2M9)" autocomplete="off" style="flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none;box-sizing:border-box;text-transform:uppercase" onkeydown="if(event.key==='Enter')buscarConvenioVta()">
+      <button class="btn btn-p" onclick="buscarConvenioVta()">Buscar</button>
+    </div>
+    <div id="cv-result"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-g" onclick="this.closest('.m-overlay').remove()">Cerrar</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  setTimeout(function(){ var i=document.getElementById('cv-codigo'); if(i) i.focus(); }, 100);
+}
+
+async function buscarConvenioVta() {
+  const box = document.getElementById('cv-result');
+  if (!box) return;
+  let codigo = (document.getElementById('cv-codigo')?.value || '').trim().toUpperCase().replace(/\s+/g,'');
+  if (codigo && !codigo.startsWith('CE-') && /^[A-Z0-9]{4,8}$/.test(codigo)) codigo = 'CE-' + codigo;
+  if (!/^CE-[A-Z0-9]{4,8}$/.test(codigo)) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Código inválido. Formato: CE-XXXXX</p>'; return; }
+  box.innerHTML = '<div class="ld"><div class="spin"></div> Buscando...</div>';
+  try {
+    const cfg = await _convGetConfig();
+    const { data: emps, error } = await db.from('empresas_convenio').select('id,nombre,codigo,status,beneficios').eq('codigo', codigo).limit(1);
+    if (error) throw new Error(error.message);
+    const emp = emps && emps[0];
+    if (!emp) { box.innerHTML = '<p style="color:#e08080;font-size:12px">No existe ninguna empresa con ese código.</p>'; return; }
+    if (emp.status !== 'activa') {
+      box.innerHTML = '<p style="color:#e0a060;font-size:12px">La empresa <b>'+emp.nombre+'</b> tiene el convenio <b>'+emp.status+'</b>. No se pueden aplicar beneficios.</p>';
+      return;
+    }
+    const pct = (emp.beneficios && emp.beneficios.descuento_pct) || cfg.descuento_pct || 15;
+    const regaloMonto = (emp.beneficios && emp.beneficios.regalo_monto) || cfg.regalo_monto || 500;
+    const regaloMin = (emp.beneficios && emp.beneficios.regalo_compra_minima) || cfg.regalo_compra_minima || 2000;
+    box.innerHTML =
+      '<div style="background:rgba(114,196,126,0.08);border:1px solid rgba(114,196,126,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px">'+
+        '<div style="font-weight:700;font-size:13px;color:#72c47e">✅ '+emp.nombre+'</div>'+
+        '<div style="font-size:11px;color:var(--muted)">Convenio activo · '+pct+'% de descuento · $'+regaloMonto+' regalo/año (compras desde $'+regaloMin+')</div>'+
+      '</div>'+
+      '<div style="display:grid;gap:8px">'+
+        '<input id="cv-emp-nombre" type="text" placeholder="Nombre del empleado (como en su gafete)" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px;color:var(--white);font-family:\'Outfit\',sans-serif;font-size:13px;outline:none;box-sizing:border-box">'+
+        '<input id="cv-emp-tel" type="tel" inputmode="numeric" maxlength="10" placeholder="Teléfono del empleado (10 dígitos)" oninput="_convCheckRegaloUI()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px;color:var(--white);font-family:\'Outfit\',sans-serif;font-size:13px;outline:none;box-sizing:border-box">'+
+        '<select id="cv-relacion" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px;color:var(--white);font-family:\'Outfit\',sans-serif;font-size:13px;outline:none">'+
+          '<option value="empleado">Empleado(a) — presenta gafete</option>'+
+          '<option value="conyuge">Esposa(o) del empleado</option>'+
+          '<option value="hijo">Hijo(a) del empleado</option>'+
+        '</select>'+
+        '<label id="cv-regalo-wrap" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--white);cursor:pointer;background:rgba(212,184,74,0.06);border:1px solid rgba(212,184,74,0.2);border-radius:8px;padding:9px">'+
+          '<input type="checkbox" id="cv-regalo"> <span id="cv-regalo-txt">🎁 Aplicar $'+regaloMonto+' de regalo anual (compras desde $'+regaloMin+')</span>'+
+        '</label>'+
+        '<div id="cv-regalo-estado" style="font-size:11px;color:var(--muted)"></div>'+
+        '<button class="btn btn-p" onclick="_aplicarConvenioEnPOS('+emp.id+',\''+emp.codigo+'\',\''+(emp.nombre||'').replace(/[\\'"<>]/g,'')+'\','+pct+','+regaloMonto+','+regaloMin+',this)">Aplicar '+pct+'% a esta venta</button>'+
+      '</div>';
+  } catch(e) { box.innerHTML = '<p style="color:#e08080;font-size:12px">Error: ' + e.message + '</p>'; }
+}
+
+// Verifica si el teléfono ya usó su regalo anual (UNIQUE empleado_telefono+anio en convenio_usos)
+async function _convCheckRegaloUI() {
+  const tel = (document.getElementById('cv-emp-tel')?.value || '').replace(/\D/g,'');
+  const wrap = document.getElementById('cv-regalo-wrap');
+  const estado = document.getElementById('cv-regalo-estado');
+  const rel = document.getElementById('cv-relacion')?.value || 'empleado';
+  if (!wrap || !estado) return;
+  if (tel.length !== 10) { wrap.style.display='none'; estado.textContent=''; return; }
+  estado.textContent = 'Verificando regalo anual…';
+  try {
+    const anio = new Date().getFullYear();
+    const { data: usos } = await db.from('convenio_usos').select('id,venta_folio,created_at').eq('empleado_telefono', tel).eq('anio', anio).eq('regalo_usado', true).limit(1);
+    if (usos && usos.length) {
+      wrap.style.display = 'none';
+      const chk = document.getElementById('cv-regalo'); if (chk) chk.checked = false;
+      estado.innerHTML = '⚠️ Este teléfono <b>ya usó su regalo anual '+anio+'</b> (venta '+(usos[0].venta_folio||'—')+'). Solo aplica el descuento %.';
+      estado.style.color = '#e0a060';
+    } else {
+      wrap.style.display = rel==='empleado' ? 'flex' : 'none';
+      estado.textContent = rel==='empleado' ? '' : 'El regalo anual es solo para el empleado (no familiares).';
+      estado.style.color = 'var(--muted)';
+    }
+  } catch(e) { estado.textContent = ''; }
+}
+
+function _aplicarConvenioEnPOS(empresaId, empresaCodigo, empresaNombre, pct, regaloMonto, regaloMin, btn) {
+  const empleadoNombre = (document.getElementById('cv-emp-nombre')?.value || '').trim();
+  const empleadoTel = (document.getElementById('cv-emp-tel')?.value || '').replace(/\D/g,'');
+  const relacion = document.getElementById('cv-relacion')?.value || 'empleado';
+  const regalo = !!(document.getElementById('cv-regalo')?.checked) && relacion === 'empleado';
+  if (empleadoNombre.length < 3) { toast('Escribe el nombre del empleado (como en su gafete)', true); return; }
+  if (empleadoTel.length !== 10) { toast('Escribe el teléfono del empleado (10 dígitos)', true); return; }
+  if (_cumple30Active || (_cumpleVtaContext && _cumpleVtaContext.premio === '30pct')) { toast('Ya hay un cupón de cumpleaños activo — no se combinan en la misma venta', true); return; }
+  const ov = btn ? btn.closest('.m-overlay') : null; if (ov) ov.remove();
+  _convVtaContext = { empresaId: empresaId, empresaCodigo: empresaCodigo, empresaNombre: empresaNombre, pct: pct, empleadoNombre: empleadoNombre, empleadoTel: empleadoTel, relacion: relacion, regalo: regalo, regaloMonto: regaloMonto, regaloMin: regaloMin, _regaloAplicado: false, _fresh: true };
+  setTimeout(function(){ if (_convVtaContext) _convVtaContext._fresh = false; }, 500);
+  _showConvenioBanner();
+  recalcVtaTotales();
+}
+
+function _showConvenioBanner() {
+  var view = document.getElementById('view-ventas'); if (!view || !_convVtaContext) return;
+  var b = document.getElementById('vta-convenio-banner');
+  if (!b) { b = document.createElement('div'); b.id='vta-convenio-banner'; view.insertBefore(b, view.firstChild); }
+  b.style.cssText = 'margin:10px;padding:10px 14px;background:rgba(91,141,239,0.10);border:1px solid rgba(91,141,239,0.4);border-radius:10px;color:#7da6f5;font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:space-between';
+  b.innerHTML = '<span id="vta-convenio-banner-txt"></span><button onclick="_cancelarConvenioVta()" title="Quitar convenio de esta venta" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0">✕</button>';
+  b.style.display='flex';
+  _convUpdateBannerEstado();
+}
+
+function _convUpdateBannerEstado() {
+  var t = document.getElementById('vta-convenio-banner-txt');
+  if (!t || !_convVtaContext) return;
+  var c = _convVtaContext;
+  var regaloTxt = '';
+  if (c.regalo) {
+    regaloTxt = c._regaloAplicado
+      ? ' + <b>$'+c.regaloMonto+' de regalo anual</b> ✅'
+      : ' · 🎁 regalo $'+c.regaloMonto+' pendiente (se aplica al llegar a $'+c.regaloMin+' de compra)';
+  }
+  t.innerHTML = '🏢 Convenio <b>'+c.empresaNombre+'</b> ('+c.empresaCodigo+') — '+c.empleadoNombre+' ('+(c.relacion==='empleado'?'empleado':c.relacion==='conyuge'?'cónyuge':'hijo/a')+'): <b>'+c.pct+'% de descuento</b> aplicado'+regaloTxt+'. Se registra al cerrar la venta.';
+}
+
+function _cancelarConvenioVta() {
+  _convVtaContext = null;
+  var dE=document.getElementById('vta-descuento'); if(dE) dE.value='0';
+  var b=document.getElementById('vta-convenio-banner'); if(b) b.style.display='none';
+  recalcVtaTotales();
+}
+
+// ── Vista admin: Convenios (aprobar/suspender empresas + usos) ──
+async function _convCheckBadge() {
+  try {
+    const { count } = await db.from('empresas_convenio').select('id', { count: 'exact', head: true }).eq('status','pendiente');
+    const bd = document.getElementById('badge-convenios');
+    if (bd) { bd.textContent = count || 0; bd.style.display = count > 0 ? '' : 'none'; }
+  } catch(e) {}
+}
+
+async function loadConvenios() {
+  const stats = document.getElementById('conv-stats');
+  const pend = document.getElementById('conv-pendientes');
+  const act = document.getElementById('conv-activas');
+  const usosEl = document.getElementById('conv-usos');
+  if (!stats) return;
+  stats.innerHTML = '<div class="ld"><div class="spin"></div> Cargando...</div>'; pend.innerHTML=''; act.innerHTML=''; usosEl.innerHTML='';
+  try {
+    const cfg = await _convGetConfig();
+    const [{ data: emps, error: e1 }, { data: usos, error: e2 }] = await Promise.all([
+      db.from('empresas_convenio').select('*').order('created_at', { ascending: false }).limit(300),
+      db.from('convenio_usos').select('*').order('created_at', { ascending: false }).limit(30)
+    ]);
+    if (e1) throw new Error(e1.message);
+    const all = emps || [];
+    const pendientes = all.filter(function(e){ return e.status==='pendiente'; });
+    const activas = all.filter(function(e){ return e.status==='activa'; });
+    const otras = all.filter(function(e){ return e.status!=='pendiente' && e.status!=='activa'; });
+    const anio = new Date().getFullYear();
+    const regalosAnio = (usos||[]).filter(function(u){ return u.regalo_usado && u.anio===anio; }).length;
+
+    const card = function(n, lbl, color){ return '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;text-align:center"><div style="font-size:24px;font-weight:700;color:'+color+'">'+n+'</div><div style="font-size:11px;color:var(--muted)">'+lbl+'</div></div>'; };
+    stats.innerHTML = card(pendientes.length,'Pendientes','#e0a060') + card(activas.length,'Activas','#72c47e') + card(otras.length,'Suspendidas/Rechazadas','var(--muted)') + card((usos||[]).length,'Usos recientes','#7da6f5');
+    _convCheckBadge();
+
+    const empCard = function(e, botones) {
+      return '<div style="background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px 14px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
+          '<div style="min-width:200px">'+
+            '<div style="font-weight:700;font-size:14px;color:var(--white)">'+(e.nombre||'')+' <span style="font-size:11px;color:var(--beige);font-weight:600;background:var(--surface2);border-radius:5px;padding:2px 7px;margin-left:4px">'+(e.codigo||'—')+'</span></div>'+
+            '<div style="font-size:11px;color:var(--muted);margin-top:3px">'+(e.contacto_nombre||'—')+(e.contacto_puesto?' ('+e.contacto_puesto+')':'')+' · 📞 '+(e.telefono||'—')+(e.email?' · ✉ '+e.email:'')+'</div>'+
+            '<div style="font-size:11px;color:var(--muted)">'+(e.giro?e.giro+' · ':'')+(e.num_empleados?'~'+e.num_empleados+' empleados · ':'')+'registrada '+(e.created_at||'').slice(0,10)+(e.aprobado_por?' · aprobó: '+e.aprobado_por:'')+'</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">'+botones+'</div>'+
+        '</div></div>';
+    };
+
+    let h = '<h3 style="font-size:14px;color:#e0a060;margin:10px 0 8px">⏳ Solicitudes pendientes ('+pendientes.length+')</h3>';
+    h += pendientes.length ? pendientes.map(function(e){
+      return empCard(e,
+        '<button class="btn btn-p btn-sm" onclick="aprobarConvenio('+e.id+')">✅ Aprobar</button>'+
+        '<button class="btn btn-g btn-sm" style="color:#e08080" onclick="rechazarConvenio('+e.id+')">✕ Rechazar</button>');
+    }).join('') : '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Sin solicitudes pendientes.</p>';
+    pend.innerHTML = h;
+
+    let h2 = '<h3 style="font-size:14px;color:#72c47e;margin:16px 0 8px">✅ Empresas activas ('+activas.length+')</h3>';
+    h2 += activas.length ? activas.map(function(e){
+      return empCard(e,
+        '<button class="btn btn-g btn-sm" onclick="reenviarCodigoConvenio('+e.id+')">📲 Reenviar código</button>'+
+        '<button class="btn btn-g btn-sm" style="color:#e0a060" onclick="suspenderConvenio('+e.id+')">⏸ Suspender</button>');
+    }).join('') : '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Aún no hay empresas activas.</p>';
+    if (otras.length) {
+      h2 += '<h3 style="font-size:13px;color:var(--muted);margin:16px 0 8px">⏸ Suspendidas / rechazadas ('+otras.length+')</h3>';
+      h2 += otras.map(function(e){
+        return empCard(e, '<span style="font-size:11px;color:var(--muted);align-self:center">'+e.status+'</span><button class="btn btn-g btn-sm" onclick="reactivarConvenio('+e.id+')">▶ Reactivar</button>');
+      }).join('');
+    }
+    act.innerHTML = h2;
+
+    let h3 = '<h3 style="font-size:14px;color:#7da6f5;margin:16px 0 8px">📋 Usos recientes (últimos 30) · '+regalosAnio+' regalos $'+(cfg.regalo_monto||500)+' usados en lo que va del año</h3>';
+    if (usos && usos.length) {
+      h3 += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted);text-align:left"><th style="padding:6px">Fecha</th><th style="padding:6px">Empresa</th><th style="padding:6px">Empleado</th><th style="padding:6px">Relación</th><th style="padding:6px">Folio</th><th style="padding:6px">Sucursal</th><th style="padding:6px">Descuento</th><th style="padding:6px">🎁</th></tr></thead><tbody>';
+      h3 += usos.map(function(u){
+        var fecha = u.created_at ? new Date(u.created_at).toLocaleDateString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short' }) : '—';
+        return '<tr style="border-top:1px solid rgba(255,255,255,0.05)"><td style="padding:6px">'+fecha+'</td><td style="padding:6px">'+(u.empresa_codigo||'—')+'</td><td style="padding:6px">'+(u.empleado_nombre||'—')+'<div style="color:var(--muted);font-size:10px">'+(u.empleado_telefono||'')+'</div></td><td style="padding:6px">'+(u.relacion||'empleado')+'</td><td style="padding:6px">'+(u.venta_folio||'—')+'</td><td style="padding:6px">'+(u.sucursal||'—')+'</td><td style="padding:6px">$'+(parseFloat(u.monto_descuento)||0).toFixed(0)+'</td><td style="padding:6px">'+(u.regalo_usado?'🎁':'')+'</td></tr>';
+      }).join('');
+      h3 += '</tbody></table></div>';
+    } else {
+      h3 += '<p style="font-size:12px;color:var(--muted)">Aún no hay usos registrados.</p>';
+    }
+    usosEl.innerHTML = h3;
+  } catch(e) {
+    stats.innerHTML = '<p style="color:#e08080;font-size:12px">Error: '+e.message+'</p>';
+  }
+}
+
+function _convMsgCodigo(e, cfg) {
+  return '🏢 ¡Tu empresa ya está afiliada a Ópticas Car & Era!\n\n' +
+    'Empresa: ' + e.nombre + '\n' +
+    'Código de convenio: *' + e.codigo + '*\n\n' +
+    'Beneficios para tus empleados (y su familia directa):\n' +
+    '• ' + (cfg.descuento_pct||15) + '% de descuento en lentes completos\n' +
+    '• $' + (cfg.regalo_monto||500) + ' de regalo cada año (en compras desde $' + (cfg.regalo_compra_minima||2000) + ')\n' +
+    '• Examen de la vista gratis, sin cita\n' +
+    '• Acumulable con la promoción vigente y meses sin intereses con Aplazo\n\n' +
+    'Solo tienen que presentar el código ' + e.codigo + ' y su gafete o credencial de trabajo en cualquiera de nuestras 4 sucursales. ¡Gracias por afiliarte! 👓';
+}
+
+async function aprobarConvenio(id) {
+  try {
+    const { data: emps } = await db.from('empresas_convenio').select('*').eq('id', id).limit(1);
+    const e = emps && emps[0];
+    if (!e) { toast('Empresa no encontrada', true); return; }
+    if (!confirm('Aprobar el convenio de "'+e.nombre+'"?\n\nSe activa el código '+e.codigo+' y se le envía por WhatsApp a '+(e.contacto_nombre||'el contacto')+' ('+e.telefono+').')) return;
+    const upd = await db.from('empresas_convenio').update({ status:'activa', aprobado_por: currentUser?.nombre||currentUser?.id||null, aprobado_at: new Date().toISOString() }).eq('id', id).select('id').single();
+    if (upd.error) throw new Error(upd.error.message);
+    const cfg = await _convGetConfig();
+    const r = await sendWA(e.telefono, _convMsgCodigo(e, cfg));
+    toast(r && r.ok ? '✅ Convenio aprobado y código enviado por WA' : '✅ Convenio aprobado — el WA no se pudo enviar (fuera de ventana 24h). Código: '+e.codigo+' — mándaselo manualmente.');
+    loadConvenios();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+
+async function rechazarConvenio(id) {
+  const motivo = prompt('Motivo del rechazo (opcional):') || '';
+  try {
+    const upd = await db.from('empresas_convenio').update({ status:'rechazada', notas: motivo || null, aprobado_por: currentUser?.nombre||currentUser?.id||null, aprobado_at: new Date().toISOString() }).eq('id', id).select('id').single();
+    if (upd.error) throw new Error(upd.error.message);
+    toast('Solicitud rechazada');
+    loadConvenios();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+
+async function suspenderConvenio(id) {
+  if (!confirm('¿Suspender este convenio? Sus empleados dejarán de recibir beneficios hasta reactivarlo.')) return;
+  try {
+    const upd = await db.from('empresas_convenio').update({ status:'suspendida' }).eq('id', id).select('id').single();
+    if (upd.error) throw new Error(upd.error.message);
+    toast('Convenio suspendido');
+    loadConvenios();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+
+async function reactivarConvenio(id) {
+  try {
+    const upd = await db.from('empresas_convenio').update({ status:'activa' }).eq('id', id).select('id').single();
+    if (upd.error) throw new Error(upd.error.message);
+    toast('✅ Convenio reactivado');
+    loadConvenios();
+  } catch(e) { toast('Error: '+e.message, true); }
+}
+
+async function reenviarCodigoConvenio(id) {
+  try {
+    const { data: emps } = await db.from('empresas_convenio').select('*').eq('id', id).limit(1);
+    const e = emps && emps[0];
+    if (!e) { toast('Empresa no encontrada', true); return; }
+    const cfg = await _convGetConfig();
+    const r = await sendWA(e.telefono, _convMsgCodigo(e, cfg));
+    toast(r && r.ok ? '📲 Código reenviado a '+e.telefono : 'No se pudo enviar (fuera de ventana 24h). Código: '+e.codigo, !(r && r.ok));
+  } catch(e) { toast('Error: '+e.message, true); }
 }
 
 async function deletePac(id, nombre) {
@@ -19674,6 +20008,11 @@ function initVenta() {
     var _cdE=document.getElementById('vta-descuento'); if(_cdE) _cdE.value='0';
     var _cbn=document.getElementById('vta-cumple-banner'); if(_cbn) _cbn.style.display='none';
   }
+  // 🏢 Convenio empresarial: mismo patrón que el cupón cumple — no debe filtrarse a la siguiente venta.
+  if (_convVtaContext && !_convVtaContext._fresh) _convVtaContext = null;
+  if (!_convVtaContext) {
+    var _cvbn=document.getElementById('vta-convenio-banner'); if(_cvbn) _cvbn.style.display='none';
+  }
   document.getElementById('vta-pac-search').value='';
   document.getElementById('vta-pac-info').style.display='none';
   document.getElementById('vta-pac-info').innerHTML='';
@@ -20153,6 +20492,16 @@ function recalcVtaTotales() {
     const baseAfterPromo = Math.max(0, sub - promoDesc);
     desc = promoDesc + Math.round(baseAfterPromo*0.30*100)/100;
     const dEl=document.getElementById('vta-descuento'); if(dEl) dEl.value = desc.toFixed(2);
+  } else if (_convVtaContext) {
+    // 🏢 Convenio empresarial: % sobre el subtotal post-promo (acumulable con 2x1/combo) + regalo anual si alcanza la compra mínima.
+    const promoDesc = vtaPromoAplicada ? (vtaPromoAplicada.descuento||0) : 0;
+    const baseAfterPromo = Math.max(0, sub - promoDesc);
+    desc = promoDesc + Math.round(baseAfterPromo*((_convVtaContext.pct||15)/100)*100)/100;
+    _convVtaContext._regaloAplicado = !!(_convVtaContext.regalo && baseAfterPromo >= (_convVtaContext.regaloMin||2000));
+    if (_convVtaContext._regaloAplicado) desc += (_convVtaContext.regaloMonto||500);
+    desc = Math.min(desc, sub);
+    const dEl=document.getElementById('vta-descuento'); if(dEl) dEl.value = desc.toFixed(2);
+    _convUpdateBannerEstado();
   } else {
     desc=parseFloat(document.getElementById('vta-descuento')?.value)||0;
   }
@@ -20624,6 +20973,29 @@ async function _procesarVentaInner() {
         toast('🎂 Cupón de cumpleaños registrado ('+(_cumpleVtaContext.premio==='30pct'?'30%':'KIT')+')');
       } catch(e) { console.warn('[Cumple canje]', e); }
       _cumpleVtaContext = null; _cumple30Active = false;
+    }
+    // 🏢 Registrar uso de convenio empresarial (folio + descuento quedan en convenio_usos; UNIQUE tel+año protege el regalo)
+    if (_convVtaContext) {
+      try {
+        const _cvDesc = parseFloat(document.getElementById('vta-descuento')?.value)||0;
+        const _cvIns = await db.from('convenio_usos').insert({
+          empresa_id: _convVtaContext.empresaId,
+          empresa_codigo: _convVtaContext.empresaCodigo,
+          empleado_nombre: _convVtaContext.empleadoNombre,
+          empleado_telefono: _convVtaContext.empleadoTel,
+          relacion: _convVtaContext.relacion || 'empleado',
+          regalo_usado: !!_convVtaContext._regaloAplicado,
+          anio: new Date().getFullYear(),
+          venta_folio: folio,
+          sucursal: ventaSucursal,
+          monto_descuento: _cvDesc,
+          registrado_por: currentUser?.nombre||currentUser?.id||null
+        }).select('id').single();
+        if (_cvIns.error) throw new Error(_cvIns.error.message);
+        toast('🏢 Convenio '+_convVtaContext.empresaNombre+' registrado ('+_convVtaContext.pct+'%'+(_convVtaContext._regaloAplicado?' + $'+(_convVtaContext.regaloMonto||500)+' regalo':'')+')');
+      } catch(e) { console.warn('[Convenio uso]', e); toast('⚠️ Venta cobrada, pero el uso del convenio NO se registró: '+e.message, true); }
+      _convVtaContext = null;
+      var _cvbn2=document.getElementById('vta-convenio-banner'); if(_cvbn2) _cvbn2.style.display='none';
     }
     mostrarPostSale(venta.id, folio, estado, total, monAplicar, vtaPaciente?.nombre||'', vtaPaciente?.telefono||'', portalToken);
     cargarVtaPendientes();

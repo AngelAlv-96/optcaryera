@@ -68,6 +68,12 @@
   to = "/tienda.html"
   status = 200
 
+# Convenios empresariales
+[[redirects]]
+  from = "/empresas"
+  to = "/empresas.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

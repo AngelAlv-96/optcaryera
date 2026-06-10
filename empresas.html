@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Convenios Empresariales — Ópticas Car & Era</title>
+<meta name="description" content="Afilia a tu empresa sin costo y dale a tus empleados beneficios visuales: 15% de descuento, $500 de regalo al año, examen de la vista gratis y más.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --beige:#e2c6a6; --beige-light:#f0dfc8; --beige-dim:rgba(226,198,166,0.12);
+  --beige-border:rgba(226,198,166,0.2); --black:#111110;
+  --surface:#1c1b19; --surface2:#252420; --surface3:#2e2c28;
+  --white:#f5f2ee; --muted:#9a948e; --ok:#7dbb7d; --err:#e08a8a;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto;padding:0 22px}
+.serif{font-family:'Cormorant Garamond',serif}
+
+/* Header */
+.header{position:sticky;top:0;z-index:10;background:rgba(17,17,16,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--beige-border)}
+.header-in{max-width:880px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;gap:12px}
+.header-mark{width:38px;height:38px;background:var(--beige);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header-text h1{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--beige);line-height:1.1}
+.header-text p{font-size:11.5px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase}
+
+/* Hero */
+.hero{padding:64px 0 46px;text-align:center}
+.hero .eyebrow{display:inline-block;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--beige);background:var(--beige-dim);border:1px solid var(--beige-border);border-radius:100px;padding:7px 18px;margin-bottom:22px}
+.hero h2{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,6vw,52px);font-weight:600;line-height:1.12;margin-bottom:18px}
+.hero h2 em{color:var(--beige);font-style:normal}
+.hero p{font-size:17px;color:var(--muted);max-width:560px;margin:0 auto 30px}
+.btn{display:inline-block;background:var(--beige);color:var(--black);font-weight:600;font-size:16px;border:none;border-radius:12px;padding:15px 34px;cursor:pointer;transition:all .18s;text-decoration:none;font-family:'Outfit',sans-serif}
+.btn:hover{background:var(--beige-light);transform:translateY(-1px)}
+.hero .nota{font-size:13px;color:var(--muted);margin-top:14px}
+
+/* Benefits */
+.section{padding:46px 0}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,4.5vw,34px);font-weight:600;text-align:center;margin-bottom:8px}
+.sec-sub{text-align:center;color:var(--muted);font-size:15px;margin-bottom:34px}
+.benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.bcard{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:24px 22px;transition:border-color .2s}
+.bcard:hover{border-color:var(--beige-border)}
+.bcard .ico{font-size:26px;margin-bottom:12px}
+.bcard h3{font-size:16.5px;font-weight:600;margin-bottom:7px;color:var(--beige-light)}
+.bcard p{font-size:14px;color:var(--muted)}
+.bcard .fine{display:block;margin-top:8px;font-size:12px;color:var(--muted);opacity:.75}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;counter-reset:paso}
+.step{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:26px 22px;position:relative}
+.step .num{width:34px;height:34px;border-radius:50%;background:var(--beige-dim);border:1px solid var(--beige-border);color:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;margin-bottom:14px}
+.step h3{font-size:16px;font-weight:600;margin-bottom:6px}
+.step p{font-size:14px;color:var(--muted)}
+
+/* Form */
+.form-card{background:var(--surface);border:1px solid var(--beige-border);border-radius:18px;padding:30px 26px;max-width:560px;margin:0 auto}
+.fg{margin-bottom:16px}
+.fg label{display:block;font-size:13px;font-weight:500;color:var(--beige-light);margin-bottom:7px;letter-spacing:.02em}
+.fg label .opc{color:var(--muted);font-weight:300}
+.fg input,.fg select{width:100%;background:var(--surface2);border:1.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:13px 14px;color:var(--white);font-family:'Outfit',sans-serif;font-size:15px;outline:none;transition:all .15s}
+.fg input:focus,.fg select:focus{border-color:var(--beige);background:var(--surface3)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.row2{grid-template-columns:1fr}}
+.form-msg{display:none;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px}
+.form-msg.err{display:block;background:rgba(224,138,138,0.1);border:1px solid rgba(224,138,138,0.3);color:var(--err)}
+.btn-submit{width:100%;padding:16px}
+.btn-submit:disabled{opacity:.5;cursor:wait;transform:none}
+.priv{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
+
+/* Success */
+.success{display:none;text-align:center;padding:30px 10px}
+.success .check{width:72px;height:72px;border-radius:50%;background:rgba(125,187,125,0.12);border:1.5px solid rgba(125,187,125,0.4);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 20px}
+.success h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;margin-bottom:10px}
+.success p{color:var(--muted);font-size:15px;max-width:420px;margin:0 auto 22px}
+.btn-wa{display:inline-flex;align-items:center;gap:9px;background:#1faa53;color:#fff;font-weight:600;font-size:15px;border-radius:12px;padding:14px 26px;text-decoration:none;transition:all .18s}
+.btn-wa:hover{background:#23c05e;transform:translateY(-1px)}
+
+/* FAQ */
+.faq{max-width:640px;margin:0 auto}
+.faq details{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:16px 20px;margin-bottom:10px}
+.faq summary{cursor:pointer;font-weight:500;font-size:15px;color:var(--beige-light);list-style:none;display:flex;justify-content:space-between;align-items:center}
+.faq summary::after{content:'+';color:var(--beige);font-size:20px;font-weight:300}
+.faq details[open] summary::after{content:'−'}
+.faq details p{margin-top:10px;font-size:14px;color:var(--muted)}
+
+.footer{border-top:1px solid var(--beige-border);padding:30px 0 40px;text-align:center;margin-top:30px}
+.footer p{font-size:13px;color:var(--muted)}
+.footer .sucs{font-size:12.5px;color:var(--muted);opacity:.8;margin-top:6px}
+.hp{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-in">
+    <div class="header-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111110" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    </div>
+    <div class="header-text">
+      <h1>Car &amp; Era</h1>
+      <p>Convenios Empresariales</p>
+    </div>
+  </div>
+</div>
+
+<section class="hero wrap">
+  <span class="eyebrow">Programa para empresas · Sin costo</span>
+  <h2>Cuida la vista de tu equipo,<br><em>nosotros ponemos los beneficios</em></h2>
+  <p>Afilia a tu empresa en 2 minutos y todos tus empleados —y sus familias— obtienen descuentos y beneficios exclusivos en nuestras 4 sucursales de Ciudad Juárez.</p>
+  <a class="btn" href="#registro">Afiliar mi empresa</a>
+  <div class="nota">Registro gratuito · Sin contratos · Sin mínimo de empleados</div>
+</section>
+
+<section class="section wrap" id="beneficios">
+  <h2 class="sec-title">Beneficios para tus empleados</h2>
+  <p class="sec-sub">Todos los colaboradores de tu empresa los obtienen presentando el código de convenio y su gafete o credencial de trabajo.</p>
+  <div class="benefits">
+    <div class="bcard"><div class="ico">💳</div><h3>15% de descuento</h3><p>En lentes completos (armazón + micas graduadas), en cualquier sucursal.</p></div>
+    <div class="bcard"><div class="ico">🎁</div><h3>$500 de regalo cada año</h3><p>Cada empleado recibe $500 al año para su compra.<span class="fine">Aplica en compras desde $2,000.</span></p></div>
+    <div class="bcard"><div class="ico">👨‍👩‍👧</div><h3>Familia incluida</h3><p>El mismo descuento aplica para esposa(o) e hijos del empleado.</p></div>
+    <div class="bcard"><div class="ico">➕</div><h3>Acumulable con promociones</h3><p>El descuento de convenio se suma a la promoción de temporada vigente (2x1 y más).</p></div>
+    <div class="bcard"><div class="ico">📅</div><h3>Meses sin intereses</h3><p>Financiamiento en quincenas sin tarjeta de crédito, con Aplazo.</p></div>
+    <div class="bcard"><div class="ico">👁️</div><h3>Examen de la vista gratis</h3><p>Examen computarizado completo sin costo, listo en minutos y sin cita.</p></div>
+  </div>
+</section>
+
+<section class="section wrap">
+  <h2 class="sec-title">¿Cómo funciona?</h2>
+  <p class="sec-sub">Cero papeleo y cero costo para tu empresa.</p>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><h3>Registra tu empresa</h3><p>Llena el formulario de abajo. Revisamos tu solicitud y la aprobamos normalmente el mismo día.</p></div>
+    <div class="step"><div class="num">2</div><h3>Recibe tu código</h3><p>Te mandamos por WhatsApp el código de convenio de tu empresa para compartirlo con tu equipo.</p></div>
+    <div class="step"><div class="num">3</div><h3>Tu equipo lo disfruta</h3><p>Cada empleado presenta el código y su gafete o credencial de trabajo en sucursal. Listo.</p></div>
+  </div>
+</section>
+
+<section class="section wrap" id="registro">
+  <h2 class="sec-title">Afilia a tu empresa</h2>
+  <p class="sec-sub">Es gratis y te toma 2 minutos.</p>
+
+  <div class="form-card" id="form-card">
+    <div class="form-msg err" id="form-err"></div>
+    <form id="form-registro" onsubmit="return enviarRegistro(event)">
+      <div class="fg">
+        <label for="f-nombre">Nombre de la empresa</label>
+        <input id="f-nombre" type="text" maxlength="120" required placeholder="Ej. Maquilados del Norte S.A.">
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label for="f-giro">Giro <span class="opc">(opcional)</span></label>
+          <input id="f-giro" type="text" maxlength="80" placeholder="Ej. Maquiladora, comercio…">
+        </div>
+        <div class="fg">
+          <label for="f-num">Número de empleados <span class="opc">(aprox.)</span></label>
+          <input id="f-num" type="number" min="1" max="100000" placeholder="Ej. 120">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label for="f-contacto">Persona de contacto</label>
+          <input id="f-contacto" type="text" maxlength="120" required placeholder="Nombre completo">
+        </div>
+        <div class="fg">
+          <label for="f-puesto">Puesto <span class="opc">(opcional)</span></label>
+          <input id="f-puesto" type="text" maxlength="80" placeholder="Ej. RH, Gerente…">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label for="f-tel">WhatsApp de contacto</label>
+          <input id="f-tel" type="tel" inputmode="numeric" maxlength="14" required placeholder="10 dígitos">
+        </div>
+        <div class="fg">
+          <label for="f-email">Correo <span class="opc">(opcional)</span></label>
+          <input id="f-email" type="email" maxlength="120" placeholder="correo@empresa.com">
+        </div>
+      </div>
+      <!-- honeypot anti-bots -->
+      <div class="hp"><label>No llenar<input id="f-web" type="text" tabindex="-1" autocomplete="off"></label></div>
+      <button class="btn btn-submit" id="btn-enviar" type="submit">Enviar solicitud</button>
+      <p class="priv">Usamos tus datos únicamente para gestionar el convenio. No compartimos información con terceros.</p>
+    </form>
+  </div>
+
+  <div class="form-card success" id="success">
+    <div class="check">✓</div>
+    <h3>¡Solicitud recibida!</h3>
+    <p>Vamos a revisarla y en cuanto se apruebe te mandamos el <strong>código de convenio</strong> de tu empresa por WhatsApp, normalmente el mismo día.</p>
+    <p>Para agilizarlo, confírmanos por WhatsApp:</p>
+    <a class="btn-wa" id="wa-link" href="#" target="_blank" rel="noopener">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Confirmar por WhatsApp
+    </a>
+  </div>
+
+  <div class="faq" style="margin-top:40px">
+    <h2 class="sec-title" style="font-size:24px;margin-bottom:18px">Preguntas frecuentes</h2>
+    <details><summary>¿Tiene algún costo para mi empresa?</summary><p>No. El programa es completamente gratuito para la empresa y para los empleados. No firmas contratos ni adquieres compromisos.</p></details>
+    <details><summary>¿Cómo valida el empleado su beneficio en sucursal?</summary><p>Presenta el código de convenio de su empresa junto con su gafete, credencial de trabajo o recibo de nómina. Para familiares, basta con que acompañen al empleado o presenten el código con su identificación.</p></details>
+    <details><summary>¿Cómo funcionan los $500 de regalo?</summary><p>Cada empleado tiene $500 de regalo una vez al año, aplicables en compras desde $2,000. Se descuentan directo en caja además de su 15% de convenio.</p></details>
+    <details><summary>¿En qué sucursales aplica?</summary><p>En las 4 sucursales de Ciudad Juárez: Américas, Pinocelli, Magnolia y Plaza Vía Vittoria. Sin cita: tu equipo llega directo y el examen está listo en minutos.</p></details>
+    <details><summary>¿Cuántos empleados necesito para afiliarme?</summary><p>No hay mínimo. Desde negocios pequeños hasta plantas con miles de colaboradores.</p></details>
+  </div>
+</section>
+
+<div class="footer">
+  <p>Ópticas Car &amp; Era · Ciudad Juárez, Chihuahua</p>
+  <p class="sucs">Américas · Pinocelli · Magnolia · Plaza Vía Vittoria</p>
+</div>
+
+<script>
+const WA_NUM = '5216563110094';
+
+async function enviarRegistro(ev) {
+  ev.preventDefault();
+  const errEl = document.getElementById('form-err');
+  errEl.classList.remove('err'); errEl.style.display = 'none';
+  const btn = document.getElementById('btn-enviar');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+
+  const payload = {
+    action: 'registro',
+    nombre: document.getElementById('f-nombre').value.trim(),
+    giro: document.getElementById('f-giro').value.trim(),
+    num_empleados: document.getElementById('f-num').value,
+    contacto_nombre: document.getElementById('f-contacto').value.trim(),
+    contacto_puesto: document.getElementById('f-puesto').value.trim(),
+    telefono: document.getElementById('f-tel').value.trim(),
+    email: document.getElementById('f-email').value.trim(),
+    website: document.getElementById('f-web').value // honeypot
+  };
+
+  try {
+    const res = await fetch('/.netlify/functions/empresas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.ok) {
+      const txt = encodeURIComponent('Hola, registré a mi empresa "' + payload.nombre + '" en el programa de convenios empresariales.');
+      document.getElementById('wa-link').href = 'https://wa.me/' + WA_NUM + '?text=' + txt;
+      document.getElementById('form-card').style.display = 'none';
+      const s = document.getElementById('success');
+      s.style.display = 'block';
+      s.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      errEl.textContent = json.error || 'No se pudo enviar, intenta de nuevo.';
+      errEl.classList.add('err');
+      btn.disabled = false; btn.textContent = 'Enviar solicitud';
+    }
+  } catch (e) {
+    errEl.textContent = 'Error de conexión, intenta de nuevo.';
+    errEl.classList.add('err');
+    btn.disabled = false; btn.textContent = 'Enviar solicitud';
+  }
+  return false;
+}
+</script>
+</body>
+</html>

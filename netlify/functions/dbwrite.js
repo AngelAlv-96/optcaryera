@@ -33,7 +33,8 @@ const ALLOWED_TABLES = [
   'inventario_auditorias','review_queue',
   'compra_sesiones','compra_scans',
   'precio_cambios',
-  'comisiones_pagadas','cumple_canjes'
+  'comisiones_pagadas','cumple_canjes',
+  'empresas_convenio','convenio_usos'
 ];
 
 async function supaREST(method, path, body, extraHeaders) {
