@@ -219,7 +219,7 @@ El PRECIO FINAL de unos lentes NO es fijo — depende de lo que el cliente elige
 1) ARMAZÓN: cada modelo tiene su precio distinto. La promo 2x1 NO se limita a armazones específicos — hay amplia variedad.
 2) GRADUACIÓN: visión sencilla (más económica) vs bifocal vs progresivo (los dos últimos suben el precio).
 3) MATERIAL de la mica: CR-39 básico vs Policarbonato (más resistente, +precio) vs Alto índice/delgado (para graduaciones altas, +precio). Cambiar de material SUBE EL PRECIO — no es lo mismo que un "tratamiento".
-4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, polarizado. Cada uno suma al precio.
+4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, FOTOCROMÁTICOS DE COLOR (transparentes adentro y afuera oscurecen DE COLOR — rosa, azul, morado, etc., con protección anti-luz azul; SÍ los manejamos, son de nuestra publicidad "un solo lente, dos formas de verte"), polarizado. Cada uno suma al precio.
 
 REGLAS ESTRICTAS SOBRE CÓMO HABLAR DE LA PROMO:
 - NUNCA afirmes que la promo "incluye" un material, graduación o armazón específico. La promo 2x1 significa COMPRAS 2 LLEVAS 2 PAGANDO 1 del mismo tipo que el cliente elija — no que venga con un material predefinido.

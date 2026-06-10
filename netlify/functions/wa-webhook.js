@@ -228,7 +228,7 @@ El PRECIO FINAL de unos lentes NO es fijo — depende de lo que el cliente elige
 1) ARMAZÓN: cada modelo tiene su precio distinto. La promo 2x1 NO se limita a armazones específicos — hay amplia variedad.
 2) GRADUACIÓN: visión sencilla (más económica) vs bifocal vs progresivo (los dos últimos suben el precio).
 3) MATERIAL de la mica: CR-39 básico vs Policarbonato (más resistente, +precio) vs Alto índice/delgado (para graduaciones altas, +precio). Cambiar de material SUBE EL PRECIO — no es lo mismo que un "tratamiento".
-4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, polarizado. Cada uno suma al precio.
+4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, FOTOCROMÁTICOS DE COLOR (transparentes adentro y afuera oscurecen DE COLOR — rosa, azul, morado, etc., con protección anti-luz azul; SÍ los manejamos, son de nuestra publicidad "un solo lente, dos formas de verte"), polarizado. Cada uno suma al precio.
 
 REGLAS ESTRICTAS SOBRE CÓMO HABLAR DE LA PROMO:
 - NUNCA afirmes que la promo "incluye" un material, graduación o armazón específico. La promo 2x1 significa COMPRAS 2 LLEVAS 2 PAGANDO 1 del mismo tipo que el cliente elija — no que venga con un material predefinido.
@@ -2022,9 +2022,10 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
       'PROMOS VIGENTES DE ÓPTICAS CAR & ERA:\n' + activePromos + '\n\n' +
       'REGLAS:\n' +
       '- Responde en 2-4 líneas máximo, tono amigable, 1 emoji máximo.\n' +
-      '- Si la promo de la foto coincide con una promo VIGENTE actual → confirma y explica las condiciones reales tal como están arriba (sobre todo: qué está INCLUIDO y qué NO — material, tratamientos, graduación).\n' +
-      '- Si la promo de la foto NO coincide con ninguna vigente (diferente mes, promo vieja, otra óptica) → dile amablemente que esa promo ya no está vigente o que es de otra óptica, y menciona la promo vigente de hoy.\n' +
-      '- Si la foto es de OTRA ÓPTICA (marca_negocio diferente) → aclara "esa promo es de otra óptica", y menciona la promo vigente de Ópticas Car & Era.\n' +
+      '- TIPOS DE IMAGEN — distingue: (a) PROMO con precio/vigencia/condiciones, vs (b) PUBLICIDAD DE PRODUCTO (sin precio ni vigencia, solo describe un producto y sus beneficios). Ópticas Car & Era publica en redes anuncios de PRODUCTOS que manejamos, por ejemplo los FOTOCROMÁTICOS DE COLOR ("un solo lente, dos formas de verte": transparentes adentro, afuera oscurecen DE COLOR — rosa, azul, morado, etc. — con protección anti-luz azul). Estos SÍ los manejamos: son un tratamiento que se agrega al armar lentes graduados.\n' +
+      '- Si la imagen describe un producto que manejamos (fotocromáticos de color, blue light, transitions, polarizados, antirreflejante, etc.) y NO trae el nombre de OTRA óptica → trátala como PUBLICIDAD NUESTRA: confirma con seguridad que SÍ los manejamos, 1 línea del beneficio, e invita a sucursal a cotizarlos (el precio depende de graduación + material + el tratamiento). NUNCA digas que "no es promo de Car & Era" en este caso.\n' +
+      '- ⛔ SOLO digas "esa promo es de otra óptica" si marca_negocio trae EXPLÍCITAMENTE el nombre de otra óptica (Devlyn, Ben & Frank, Salud Digna, +Visión, etc.). Si marca_negocio es null o no se ve, NUNCA asumas que es de otra óptica — lo más probable es que sea publicidad nuestra que el cliente vio en nuestras redes o anuncios.\n' +
+      '- Si la foto trae precio/condiciones de una promo que NO coincide con la vigente (mes pasado, promo vieja) → dile amablemente que esa promoción ya no está vigente y menciona la promo vigente de hoy.\n' +
       '- IMPORTANTE sobre CR-39: si la foto dice "micas incluidas" o "graduación incluida", aclara que eso se refiere a material CR-39 básico con visión sencilla SIN tratamientos. Cualquier material distinto (policarbonato, alto índice), tratamiento (AR, blue light, transitions) o graduación especial (bifocal, progresivo) sube el precio.\n' +
       '- NO admitas culpa ni digas "te cobraron mal". NO prometas reembolsos ni modificaciones. Solo explica las condiciones reales.\n' +
       '- NO uses markdown (sin ** ni listas con -).\n\n' +
