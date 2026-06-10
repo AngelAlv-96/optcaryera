@@ -133,6 +133,8 @@ function emailText(emp, cfg) {
     'Cómo lo usan: presentan el código ' + emp.codigo + ' junto con su gafete o credencial de trabajo en cualquier sucursal. Sin cita.\n\n' +
     'Tu kit de bienvenida (pase con QR, flyer para imprimir e imagen para compartir con tu equipo):\n' +
     'https://caryera.mx/convenio-kit?c=' + emp.codigo + '\n\n' +
+    'Si deseas mantener el control de tus empleados (altas de nuevos ingresos y bajas), usa el portal de tu empresa — a cada empleado que registres le enviamos su pase por WhatsApp:\n' +
+    'https://caryera.mx/portal-empresa?c=' + emp.codigo + '\n\n' +
     'Ópticas Car & Era · Ciudad Juárez, Chih.\n' +
     'Américas · Pinocelli · Magnolia · Plaza Vía Vittoria\n' +
     'WhatsApp 656 311 0094 · caryera.mx';
@@ -143,6 +145,7 @@ function emailHTML(emp, cfg) {
   const regalo = (emp.beneficios && emp.beneficios.regalo_monto) || cfg.regalo_monto || 500;
   const minimo = (emp.beneficios && emp.beneficios.regalo_compra_minima) || cfg.regalo_compra_minima || 2000;
   const kitUrl = 'https://caryera.mx/convenio-kit?c=' + encodeURIComponent(emp.codigo);
+  const portalUrl = 'https://caryera.mx/portal-empresa?c=' + encodeURIComponent(emp.codigo);
   const beige = '#b08d5f', dark = '#1e1e1e', cream = '#f7f3ed';
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:${cream};font-family:Arial,Helvetica,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:${cream};padding:24px 0">
@@ -174,6 +177,10 @@ function emailHTML(emp, cfg) {
   <tr><td style="padding:22px 34px" align="center">
     <a href="${kitUrl}" style="display:inline-block;background:${dark};color:#e2c6a6;text-decoration:none;font-size:15px;font-weight:bold;padding:14px 30px;border-radius:10px">📋 Ver tu kit de bienvenida</a>
     <p style="margin:12px 0 0;font-size:12px;color:#999;line-height:1.6">En el kit encuentras tu c&oacute;digo con QR, un <strong>flyer listo para imprimir</strong> y una <strong>imagen para compartir</strong> con tu equipo por WhatsApp o correo interno.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:18px"><tr><td align="center" style="background:${cream};border-radius:12px;padding:16px 20px">
+      <p style="margin:0 0 10px;font-size:13px;color:#555;line-height:1.6">👥 Si deseas mantener el control de tus empleados — <strong>altas de nuevos ingresos y bajas</strong> de quienes dejen de laborar — usa este portal. Adem&aacute;s, a cada empleado que registres <strong>le enviamos su pase directo por WhatsApp</strong>.</p>
+      <a href="${portalUrl}" style="display:inline-block;background:#ffffff;color:${dark};text-decoration:none;font-size:13.5px;font-weight:bold;padding:11px 24px;border-radius:9px;border:1.5px solid ${beige}">🏢 Portal de tu empresa</a>
+    </td></tr></table>
   </td></tr>
   <tr><td style="background:${cream};padding:16px 34px;text-align:center;border-top:1px solid #e8e0d4">
     <p style="margin:0;font-size:12px;color:#999">&Oacute;pticas Car &amp; Era &middot; Ciudad Ju&aacute;rez, Chihuahua<br>Am&eacute;ricas &middot; Pinocelli &middot; Magnolia &middot; Plaza V&iacute;a Vittoria<br>WhatsApp: 656 311 0094 &middot; caryera.mx</p>
