@@ -9932,6 +9932,7 @@ function _cancelarCumpleVta() {
 // ══════════════════════════════════════════════════════════════════
 var _convVtaContext = null; // {empresaId, empresaCodigo, empresaNombre, pct, empleadoNombre, empleadoTel, relacion, regalo, regaloMonto, regaloMin, _regaloAplicado, _fresh}
 var _convConfig = null;
+var _convModalEmpresaId = null; // empresa del modal abierto (para verificar vigencia del teléfono)
 async function _convGetConfig() {
   if (_convConfig) return _convConfig;
   var cfg = {};
@@ -9983,6 +9984,7 @@ async function buscarConvenioVta() {
     const pct = (emp.beneficios && emp.beneficios.descuento_pct) || cfg.descuento_pct || 15;
     const regaloMonto = (emp.beneficios && emp.beneficios.regalo_monto) || cfg.regalo_monto || 500;
     const regaloMin = (emp.beneficios && emp.beneficios.regalo_compra_minima) || cfg.regalo_compra_minima || 2000;
+    _convModalEmpresaId = emp.id; // para verificar vigencia del teléfono contra el registro de la empresa
     box.innerHTML =
       '<div style="background:rgba(114,196,126,0.08);border:1px solid rgba(114,196,126,0.3);border-radius:8px;padding:10px 12px;margin-bottom:10px">'+
         '<div style="font-weight:700;font-size:13px;color:#72c47e">✅ '+emp.nombre+'</div>'+
@@ -9999,6 +10001,7 @@ async function buscarConvenioVta() {
         '<label id="cv-regalo-wrap" style="display:none;align-items:center;gap:8px;font-size:12px;color:var(--white);cursor:pointer;background:rgba(212,184,74,0.06);border:1px solid rgba(212,184,74,0.2);border-radius:8px;padding:9px">'+
           '<input type="checkbox" id="cv-regalo"> <span id="cv-regalo-txt">🎁 Aplicar $'+regaloMonto+' de regalo anual (compras desde $'+regaloMin+')</span>'+
         '</label>'+
+        '<div id="cv-vigencia" style="font-size:11px"></div>'+
         '<div id="cv-regalo-estado" style="font-size:11px;color:var(--muted)"></div>'+
         '<button class="btn btn-p" onclick="_aplicarConvenioEnPOS('+emp.id+',\''+emp.codigo+'\',\''+(emp.nombre||'').replace(/[\\'"<>]/g,'')+'\','+pct+','+regaloMonto+','+regaloMin+',this)">Aplicar '+pct+'% a esta venta</button>'+
       '</div>';
@@ -10012,7 +10015,20 @@ async function _convCheckRegaloUI() {
   const estado = document.getElementById('cv-regalo-estado');
   const rel = document.getElementById('cv-relacion')?.value || 'empleado';
   if (!wrap || !estado) return;
-  if (tel.length !== 10) { wrap.style.display='none'; estado.textContent=''; return; }
+  const vigEl = document.getElementById('cv-vigencia');
+  if (tel.length !== 10) { wrap.style.display='none'; estado.textContent=''; if (vigEl) vigEl.innerHTML=''; return; }
+  // Vigencia según el registro de la empresa (solo si RH usa el portal y dio de alta a su gente)
+  if (vigEl && _convModalEmpresaId) {
+    try {
+      const { data: regs } = await db.from('convenio_empleados').select('vigente,nombre').eq('empresa_id', _convModalEmpresaId).eq('telefono', tel).limit(1);
+      if (regs && regs.length) {
+        vigEl.innerHTML = regs[0].vigente !== false
+          ? '🟢 Registrado por su empresa como <b>' + regs[0].nombre + '</b> (vigente)'
+          : '🔴 <b>Su empresa lo dio de BAJA</b> — revisa con cuidado que el gafete esté vigente antes de aplicar beneficios';
+        vigEl.style.color = regs[0].vigente !== false ? '#72c47e' : '#e08080';
+      } else { vigEl.innerHTML = ''; }
+    } catch(e) { if (vigEl) vigEl.innerHTML = ''; }
+  }
   estado.textContent = 'Verificando regalo anual…';
   try {
     const anio = new Date().getFullYear();

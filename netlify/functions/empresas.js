@@ -106,7 +106,7 @@ exports.handler = async (event) => {
 
   // ============ EMPLEADOS (alta opcional por RH — el código de la empresa es la credencial) ============
   // RH registra a sus empleados desde el kit; así tenemos la base y podemos mandarles su pase por WA.
-  if (action === 'empleado_alta' || action === 'empleados_lista' || action === 'empleado_baja') {
+  if (action === 'empleado_alta' || action === 'empleados_lista' || action === 'empleado_baja' || action === 'empleado_reactivar') {
     const codigo = String(body.codigo || '').trim().toUpperCase();
     if (!/^CE-[A-Z0-9]{4,8}$/.test(codigo)) return out(200, { ok: false, error: 'codigo_invalido' });
     let emp;
@@ -118,10 +118,10 @@ exports.handler = async (event) => {
 
     try {
       if (action === 'empleados_lista') {
-        const lista = await supaREST('GET', `convenio_empleados?empresa_id=eq.${emp.id}&select=id,nombre,num_empleado,telefono,pase_enviado_at&order=created_at.desc&limit=2000`);
+        const lista = await supaREST('GET', `convenio_empleados?empresa_id=eq.${emp.id}&select=id,nombre,num_empleado,telefono,pase_enviado_at,vigente,baja_at&order=created_at.desc&limit=3000`);
         // Teléfono enmascarado: la lista la ve cualquiera con el código
-        const masked = (lista || []).map(e => ({ id: e.id, nombre: e.nombre, num_empleado: e.num_empleado, tel4: String(e.telefono || '').slice(-4), enviado: !!e.pase_enviado_at }));
-        return out(200, { ok: true, empleados: masked, total: masked.length });
+        const masked = (lista || []).map(e => ({ id: e.id, nombre: e.nombre, num_empleado: e.num_empleado, tel4: String(e.telefono || '').slice(-4), enviado: !!e.pase_enviado_at, vigente: e.vigente !== false, baja: e.baja_at ? String(e.baja_at).slice(0, 10) : null }));
+        return out(200, { ok: true, empleados: masked, total: masked.length, empresa: { nombre: emp.nombre } });
       }
       if (action === 'empleado_alta') {
         const nombre = String(body.nombre || '').trim().slice(0, 120);
@@ -137,14 +137,29 @@ exports.handler = async (event) => {
           const ins = await supaREST('POST', 'convenio_empleados', { empresa_id: emp.id, empresa_codigo: codigo, nombre, num_empleado: numEmp || null, telefono });
           return out(200, { ok: true, empleado: { id: ins[0].id, nombre } });
         } catch (e) {
-          if (/duplicate|unique/i.test(e.message)) return out(200, { ok: false, error: 'Ese teléfono ya está registrado en esta empresa' });
+          if (/duplicate|unique/i.test(e.message)) {
+            // Si ese teléfono existe pero está dado de BAJA → reingreso: se reactiva con los datos nuevos
+            const prev = await supaREST('GET', `convenio_empleados?empresa_id=eq.${emp.id}&telefono=eq.${telefono}&select=id,vigente&limit=1`);
+            if (prev && prev[0] && prev[0].vigente === false) {
+              await supaREST('PATCH', `convenio_empleados?id=eq.${prev[0].id}`, { vigente: true, baja_at: null, nombre, num_empleado: numEmp || null });
+              return out(200, { ok: true, empleado: { id: prev[0].id, nombre }, reactivado: true });
+            }
+            return out(200, { ok: false, error: 'Ese teléfono ya está registrado y vigente en esta empresa' });
+          }
           throw e;
         }
       }
       if (action === 'empleado_baja') {
+        // BAJA = marcar no vigente (NO se borra: conservamos el registro y sabemos su historial)
         const empId = parseInt(body.empleado_id);
         if (!empId) return out(200, { ok: false, error: 'empleado_id requerido' });
-        await supaREST('DELETE', `convenio_empleados?id=eq.${empId}&empresa_id=eq.${emp.id}`);
+        await supaREST('PATCH', `convenio_empleados?id=eq.${empId}&empresa_id=eq.${emp.id}`, { vigente: false, baja_at: new Date().toISOString() });
+        return out(200, { ok: true });
+      }
+      if (action === 'empleado_reactivar') {
+        const empId = parseInt(body.empleado_id);
+        if (!empId) return out(200, { ok: false, error: 'empleado_id requerido' });
+        await supaREST('PATCH', `convenio_empleados?id=eq.${empId}&empresa_id=eq.${emp.id}`, { vigente: true, baja_at: null });
         return out(200, { ok: true });
       }
     } catch (e) {

@@ -62,19 +62,10 @@ h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,36px);font-we
 .paper .pie b{color:var(--ink)}
 @media(max-width:560px){ .bens{grid-template-columns:1fr} .pasos{grid-template-columns:1fr} .paper{padding:30px 22px} .codigo-box .code{font-size:30px} }
 
-details.alta summary::-webkit-details-marker{display:none}
-/* min-width:0 evita el "grid blowout": sin esto los inputs no se encogen y empujan el botón fuera de la tarjeta */
-#alta-form{width:100%}
-#alta-form input{min-width:0}
-#alta-form button{white-space:nowrap}
-/* Form de alta: 4 columnas solo en pantallas anchas; 2 en medianas; 1 en móvil (el botón nunca se sale) */
-@media(max-width:760px){ #alta-form{grid-template-columns:1fr 1fr!important} #alta-form input:first-child{grid-column:1/-1} #alta-form button{grid-column:1/-1} }
-@media(max-width:480px){ #alta-form{grid-template-columns:1fr!important} }
-
 /* ── Impresión: solo el flyer, tamaño carta ── */
 @media print{
   body{background:#fff}
-  .top,.controls,h1,.sub,.nota-dl,.pasos-kit,.link-emp,details.alta{display:none!important}
+  .top,.controls,h1,.sub,.nota-dl,.pasos-kit,.link-emp{display:none!important}
   .wrap{padding:0;max-width:none}
   .paper{box-shadow:none;border-radius:0;max-width:none;margin:0;padding:34px 40px}
   @page{size:letter;margin:12mm}
@@ -108,24 +99,7 @@ details.alta summary::-webkit-details-marker{display:none}
       <button class="btn sec" onclick="descargarImagen()">📥 Descargar imagen</button>
     </div>
     <p class="link-emp">👀 Tus empleados verán su pase con QR, instrucciones y políticas aquí: <a id="link-empleado" href="#" target="_blank" rel="noopener">caryera.mx/convenio</a></p>
-
-    <!-- ALTA DE EMPLEADOS (opcional) -->
-    <details class="alta" id="alta-empleados" style="background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;margin:0 auto 26px;max-width:680px">
-      <summary style="cursor:pointer;list-style:none;padding:18px 22px;font-size:14.5px;font-weight:500;color:var(--beige);display:flex;justify-content:space-between;align-items:center">👥 Empleados de tu empresa — altas y bajas (opcional) <span id="alta-count" style="font-size:12px;color:var(--muted);font-weight:400"></span></summary>
-      <div style="padding:0 22px 22px">
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Si registras a tus empleados, <b style="color:var(--white)">nosotros les enviamos su pase digital directo por WhatsApp</b> — así nadie se queda sin enterarse de su beneficio. Solo necesitamos nombre y teléfono.</p>
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:14px">📌 <b style="color:var(--white)">Este es tu portal permanente</b>: tu lista queda guardada con nosotros. Vuelve a esta misma página cuando quieras (guarda el link) para <b style="color:var(--white)">dar de alta a nuevos ingresos</b> o <b style="color:var(--white)">dar de baja (✕) a quienes ya no laboren</b> en la empresa.</p>
-        <div style="display:grid;grid-template-columns:2fr 1fr 1.2fr auto;gap:8px;margin-bottom:6px" id="alta-form">
-          <input id="ae-nombre" type="text" maxlength="120" placeholder="Nombre del empleado" style="background:var(--surface2);border:1.5px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none">
-          <input id="ae-num" type="text" maxlength="40" placeholder="# empleado (opc.)" style="background:var(--surface2);border:1.5px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none">
-          <input id="ae-tel" type="tel" inputmode="numeric" maxlength="10" placeholder="WhatsApp (10 díg.)" style="background:var(--surface2);border:1.5px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')agregarEmpleado()">
-          <button class="btn" style="padding:11px 18px;font-size:13px" onclick="agregarEmpleado()">+ Agregar</button>
-        </div>
-        <div id="alta-msg" style="font-size:12px;min-height:18px;margin-bottom:8px"></div>
-        <div id="alta-lista" style="max-height:300px;overflow-y:auto"></div>
-        <p style="font-size:11.5px;color:var(--muted);margin-top:10px">El pase llega por WhatsApp en horario de tienda (10am–7pm). Los teléfonos solo se usan para el convenio — no se comparten con nadie.</p>
-      </div>
-    </details>
+    <p class="link-emp">👥 ¿Quieres que nosotros les enviemos su pase y llevar control de altas y bajas? <a id="link-portal" href="#"><b>Entra al portal de tu empresa →</b></a></p>
 
     <!-- FLYER imprimible -->
     <div class="paper" id="flyer">
@@ -219,71 +193,15 @@ function render() {
   // QR del flyer → pase digital del empleado (detalles + políticas); el POS extrae el código del URL si lo escanean
   const qr = qrcode(0, 'M'); qr.addData(urlEmpleado()); qr.make();
   document.getElementById('f-qr').innerHTML = qr.createImgTag(4, 6).replace('<img ', '<img style="width:120px;height:120px" ');
-  // Link a la vista del empleado
+  // Link a la vista del empleado + portal de administración
   const le = document.getElementById('link-empleado');
   le.href = urlEmpleado(); le.textContent = 'caryera.mx/convenio?c=' + EMP.codigo;
+  const lp = document.getElementById('link-portal');
+  if (lp) lp.href = '/portal-empresa?c=' + EMP.codigo;
   // Aviso para compartir por WhatsApp (al equipo) → link del EMPLEADO
   const txt = '👓 ¡Aviso para el equipo de ' + EMP.nombre + '!\n\nYa tenemos convenio con Ópticas Car & Era: ' + CFG.pct + '% de descuento en lentes, ' + fmt(CFG.regalo) + ' de regalo al año, examen de la vista gratis y más — también para tu familia directa.\n\n🎫 Código: ' + EMP.codigo + '\nPreséntalo con tu gafete en cualquier sucursal (Américas, Pinocelli, Magnolia o Plaza Vía Vittoria). Sin cita.\n\nTu pase digital con QR, detalles y políticas: ' + urlEmpleado();
   document.getElementById('btn-wa-share').href = 'https://wa.me/?text=' + encodeURIComponent(txt);
   document.title = 'Kit ' + EMP.codigo + ' — Convenios Car & Era';
-  cargarEmpleados();
-}
-
-// ── Alta opcional de empleados (RH) — les mandamos su pase por WhatsApp ──
-async function _empApi(payload) {
-  const res = await fetch('/.netlify/functions/empresas', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(Object.assign({ codigo: EMP.codigo }, payload))
-  });
-  return res.json();
-}
-
-async function cargarEmpleados() {
-  try {
-    const json = await _empApi({ action: 'empleados_lista' });
-    if (!json.ok) return;
-    const lista = json.empleados || [];
-    document.getElementById('alta-count').textContent = lista.length ? lista.length + ' registrados' : '';
-    // Si ya hay empleados registrados, la sección se abre sola (es el "portal" de RH al volver)
-    if (lista.length) document.getElementById('alta-empleados').open = true;
-    const box = document.getElementById('alta-lista');
-    if (!lista.length) { box.innerHTML = '<p style="font-size:12px;color:var(--muted)">Aún no has registrado empleados.</p>'; return; }
-    box.innerHTML = lista.map(function(e){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px">' +
-        '<span style="flex:1">' + e.nombre + (e.num_empleado ? ' <span style="color:var(--muted);font-size:11px">#' + e.num_empleado + '</span>' : '') + '</span>' +
-        '<span style="color:var(--muted);font-size:12px">···' + e.tel4 + '</span>' +
-        '<span style="font-size:11px;color:' + (e.enviado ? '#7dbb7d' : 'var(--muted)') + '">' + (e.enviado ? '✓ pase enviado' : 'pendiente') + '</span>' +
-        '<button onclick="quitarEmpleado(' + e.id + ')" title="Quitar" style="background:none;border:none;color:#e08a8a;cursor:pointer;font-size:14px;padding:0 4px">✕</button>' +
-      '</div>';
-    }).join('');
-  } catch (e) {}
-}
-
-async function agregarEmpleado() {
-  const msg = document.getElementById('alta-msg');
-  const nombre = document.getElementById('ae-nombre').value.trim();
-  const num = document.getElementById('ae-num').value.trim();
-  const tel = document.getElementById('ae-tel').value.replace(/\D/g, '');
-  msg.style.color = 'var(--err)';
-  if (nombre.length < 3) { msg.textContent = 'Escribe el nombre del empleado.'; return; }
-  if (tel.length !== 10) { msg.textContent = 'El WhatsApp debe tener 10 dígitos.'; return; }
-  msg.style.color = 'var(--muted)'; msg.textContent = 'Guardando…';
-  try {
-    const json = await _empApi({ action: 'empleado_alta', nombre: nombre, num_empleado: num, telefono: tel });
-    if (json.ok) {
-      msg.style.color = '#7dbb7d'; msg.textContent = '✓ ' + nombre + ' registrado.';
-      document.getElementById('ae-nombre').value = ''; document.getElementById('ae-num').value = ''; document.getElementById('ae-tel').value = '';
-      document.getElementById('ae-nombre').focus();
-      cargarEmpleados();
-    } else {
-      msg.style.color = 'var(--err)'; msg.textContent = json.error || 'No se pudo guardar.';
-    }
-  } catch (e) { msg.style.color = 'var(--err)'; msg.textContent = 'Error de conexión.'; }
-}
-
-async function quitarEmpleado(id) {
-  if (!confirm('¿Quitar a este empleado de la lista?')) return;
-  try { await _empApi({ action: 'empleado_baja', empleado_id: id }); cargarEmpleados(); } catch (e) {}
 }
 
 // ── Imagen digital compartible (1080×1350, tema oscuro de la marca) ──

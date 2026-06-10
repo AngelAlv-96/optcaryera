@@ -97,7 +97,7 @@ exports.handler = async (event) => {
     if (!emp) return out(200, { ok: false, error: 'empresa_no_encontrada' });
     if (emp.status !== 'activa') return out(200, { ok: false, error: 'empresa_no_activa' });
 
-    const pendientes = await supaREST('GET', `convenio_empleados?empresa_id=eq.${empresaId}&pase_enviado_at=is.null&select=id,nombre,telefono&order=created_at.asc&limit=${MAX_PER_RUN + 1}`);
+    const pendientes = await supaREST('GET', `convenio_empleados?empresa_id=eq.${empresaId}&pase_enviado_at=is.null&vigente=eq.true&select=id,nombre,telefono&order=created_at.asc&limit=${MAX_PER_RUN + 1}`);
     const lote = (pendientes || []).slice(0, MAX_PER_RUN);
     const hayMas = (pendientes || []).length > MAX_PER_RUN;
 
@@ -134,7 +134,7 @@ exports.handler = async (event) => {
     // Restantes después de este lote
     let restantes = 0;
     try {
-      const rr = await fetch(`${SUPA_URL}/rest/v1/convenio_empleados?empresa_id=eq.${empresaId}&pase_enviado_at=is.null&select=id`, { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Prefer': 'count=exact', 'Range': '0-0' } });
+      const rr = await fetch(`${SUPA_URL}/rest/v1/convenio_empleados?empresa_id=eq.${empresaId}&pase_enviado_at=is.null&vigente=eq.true&select=id`, { headers: { 'apikey': SERVICE_KEY, 'Authorization': `Bearer ${SERVICE_KEY}`, 'Prefer': 'count=exact', 'Range': '0-0' } });
       restantes = parseInt((rr.headers.get('content-range') || '0/0').split('/')[1]) || 0;
     } catch (e) {}
 

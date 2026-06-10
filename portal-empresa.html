@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de empresa — Convenios Car & Era</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --beige:#e2c6a6; --beige-dark:#b08d5f; --black:#111110; --ink:#1e1e1e;
+  --surface:#1c1b19; --surface2:#252420; --white:#f5f2ee; --muted:#9a948e; --err:#e08a8a; --ok:#7dbb7d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:780px;margin:0 auto;padding:26px 18px 60px}
+.top{text-align:center;margin-bottom:22px}
+.top img{height:46px;width:auto}
+.top p{font-size:11px;color:var(--muted);letter-spacing:0.26em;text-transform:uppercase;margin-top:5px}
+h1{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,5vw,34px);font-weight:600;text-align:center;margin-bottom:4px}
+.sub{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+.sub b{color:var(--beige)}
+.estado{max-width:480px;margin:60px auto;text-align:center;background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:34px 26px}
+.estado h2{font-family:'Cormorant Garamond',serif;font-size:24px;margin-bottom:8px}
+.estado p{color:var(--muted);font-size:14px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;text-align:center}
+.stat .n{font-size:24px;font-weight:700}
+.stat .l{font-size:11px;color:var(--muted)}
+
+/* Card genérica */
+.card{background:var(--surface);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:20px 22px;margin-bottom:18px}
+.card h2{font-size:15.5px;font-weight:600;color:var(--beige);margin-bottom:6px}
+.card .desc{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+.card .desc b{color:var(--white)}
+
+/* Form alta */
+#alta-form{display:grid;grid-template-columns:2fr 1fr 1.2fr auto;gap:8px;width:100%}
+#alta-form input{min-width:0;background:var(--surface2);border:1.5px solid rgba(255,255,255,0.08);border-radius:9px;padding:11px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none}
+#alta-form input:focus{border-color:var(--beige)}
+#alta-form button{white-space:nowrap}
+@media(max-width:760px){ #alta-form{grid-template-columns:1fr 1fr} #alta-form input:first-child{grid-column:1/-1} #alta-form button{grid-column:1/-1} }
+@media(max-width:480px){ #alta-form{grid-template-columns:1fr} }
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--beige);color:var(--black);font-weight:600;font-size:13.5px;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s;text-decoration:none}
+.btn:hover{background:#f0dfc8}
+.btn.sec{background:var(--surface2);color:var(--white);border:1px solid rgba(255,255,255,0.12)}
+#alta-msg{font-size:12px;min-height:18px;margin-top:8px}
+
+/* Lista */
+.emp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border-bottom:1px solid rgba(255,255,255,0.05);font-size:13px;flex-wrap:wrap}
+.emp-row:last-child{border-bottom:none}
+.emp-row .nom{flex:1;min-width:160px}
+.emp-row .nom small{color:var(--muted);font-size:11px}
+.emp-row .tel{color:var(--muted);font-size:12px}
+.badge{font-size:10.5px;font-weight:600;border-radius:100px;padding:3px 10px}
+.badge.vig{background:rgba(125,187,125,0.12);color:var(--ok);border:1px solid rgba(125,187,125,0.3)}
+.badge.baja{background:rgba(224,138,138,0.1);color:var(--err);border:1px solid rgba(224,138,138,0.3)}
+.badge.pase{background:rgba(226,198,166,0.1);color:var(--beige);border:1px solid rgba(226,198,166,0.25)}
+.mini{background:none;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:var(--muted);font-size:11px;padding:5px 10px;cursor:pointer;font-family:'Outfit',sans-serif;transition:all .15s}
+.mini:hover{color:var(--white);border-color:rgba(255,255,255,0.35)}
+.mini.danger:hover{color:var(--err);border-color:var(--err)}
+.mini.ok:hover{color:var(--ok);border-color:var(--ok)}
+.toggle-bajas{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Outfit',sans-serif;text-decoration:underline;padding:6px 0}
+.pie-links{text-align:center;font-size:12.5px;color:var(--muted);margin-top:8px}
+.pie-links a{color:var(--beige)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="logo-caryera.svg" alt="Ópticas Car & Era">
+    <p>Portal de Empresa · Convenios</p>
+  </div>
+
+  <div id="loading" class="estado"><h2>Cargando tu portal…</h2><p>Validando el código de convenio.</p></div>
+
+  <div id="portal" style="display:none">
+    <h1>Portal de tu empresa</h1>
+    <p class="sub"><b id="p-empresa">—</b> · Código <b id="p-codigo">—</b></p>
+
+    <div class="stats">
+      <div class="stat"><div class="n" style="color:var(--ok)" id="st-vigentes">0</div><div class="l">Empleados vigentes</div></div>
+      <div class="stat"><div class="n" style="color:var(--beige)" id="st-pases">0</div><div class="l">Pases enviados</div></div>
+      <div class="stat"><div class="n" style="color:var(--muted)" id="st-bajas">0</div><div class="l">Dados de baja</div></div>
+    </div>
+
+    <div class="card">
+      <h2>➕ Dar de alta a un empleado</h2>
+      <p class="desc">Al registrarlo, <b>nosotros le enviamos su pase digital por WhatsApp</b> (en horario de tienda, 10am–7pm) con su código, los beneficios y las instrucciones. Si reingresa alguien dado de baja, regístralo de nuevo con el mismo teléfono y se reactiva.</p>
+      <div id="alta-form">
+        <input id="ae-nombre" type="text" maxlength="120" placeholder="Nombre del empleado">
+        <input id="ae-num" type="text" maxlength="40" placeholder="# empleado (opc.)">
+        <input id="ae-tel" type="tel" inputmode="numeric" maxlength="10" placeholder="WhatsApp (10 díg.)" onkeydown="if(event.key==='Enter')agregarEmpleado()">
+        <button class="btn" onclick="agregarEmpleado()">+ Agregar</button>
+      </div>
+      <div id="alta-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>👥 Empleados vigentes <span id="vig-count" style="font-weight:400;color:var(--muted);font-size:12px"></span></h2>
+      <p class="desc">Cuando alguien deje de laborar en la empresa, dale <b>baja</b> aquí — deja de recibir comunicaciones y en sucursal sabremos que ya no está vigente.</p>
+      <div id="lista-vigentes"></div>
+    </div>
+
+    <div class="card" id="card-bajas" style="display:none">
+      <h2 style="color:var(--muted)">📁 Dados de baja <span id="baja-count" style="font-weight:400;font-size:12px"></span></h2>
+      <div id="lista-bajas"></div>
+    </div>
+
+    <p class="pie-links">📋 <a id="link-kit" href="#">Volver a tu kit de bienvenida</a> (flyer, imagen y aviso para compartir) · 👀 <a id="link-pase" href="#" target="_blank" rel="noopener">Ver el pase que reciben tus empleados</a></p>
+    <p class="pie-links" style="margin-top:14px;opacity:.8">Guarda el link de esta página: es tu acceso permanente. Los teléfonos solo se usan para el convenio — no se comparten con nadie.</p>
+  </div>
+
+  <div id="error" class="estado" style="display:none">
+    <h2>Código no válido</h2>
+    <p id="error-msg">No encontramos un convenio activo con ese código. Verifica el link o escríbenos por WhatsApp al 656 311 0094.</p>
+  </div>
+</div>
+
+<script>
+let EMP = null;
+
+async function api(payload) {
+  const r = await fetch('/.netlify/functions/empresas', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ codigo: EMP ? EMP.codigo : (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase() }, payload))
+  });
+  return r.json();
+}
+
+async function init() {
+  const codigo = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
+  if (!codigo) return showError('Falta el código en el link.');
+  try {
+    const v = await api({ action: 'validar', codigo });
+    if (!v.ok) {
+      return showError(v.error === 'no_activa'
+        ? 'Este convenio aún no está activo. Espera la aprobación (te avisamos por WhatsApp).'
+        : 'No encontramos un convenio con ese código. Verifica el link o escríbenos por WhatsApp al 656 311 0094.');
+    }
+    EMP = v.empresa;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('portal').style.display = 'block';
+    document.getElementById('p-empresa').textContent = EMP.nombre;
+    document.getElementById('p-codigo').textContent = EMP.codigo;
+    document.getElementById('link-kit').href = '/convenio-kit?c=' + EMP.codigo;
+    document.getElementById('link-pase').href = '/convenio?c=' + EMP.codigo;
+    document.title = 'Portal ' + EMP.nombre + ' — Convenios Car & Era';
+    cargarEmpleados();
+  } catch (e) { showError('Error de conexión. Intenta de nuevo.'); }
+}
+
+function showError(msg) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('error').style.display = 'block';
+  document.getElementById('error-msg').textContent = msg;
+}
+
+async function cargarEmpleados() {
+  try {
+    const json = await api({ action: 'empleados_lista' });
+    if (!json.ok) return;
+    const lista = json.empleados || [];
+    const vig = lista.filter(function(e){ return e.vigente; });
+    const bajas = lista.filter(function(e){ return !e.vigente; });
+    document.getElementById('st-vigentes').textContent = vig.length;
+    document.getElementById('st-pases').textContent = lista.filter(function(e){ return e.enviado; }).length;
+    document.getElementById('st-bajas').textContent = bajas.length;
+    document.getElementById('vig-count').textContent = vig.length ? '(' + vig.length + ')' : '';
+    document.getElementById('baja-count').textContent = '(' + bajas.length + ')';
+
+    const row = function(e, botones) {
+      return '<div class="emp-row">' +
+        '<span class="nom">' + e.nombre + (e.num_empleado ? ' <small>#' + e.num_empleado + '</small>' : '') + '</span>' +
+        '<span class="tel">···' + e.tel4 + '</span>' +
+        (e.vigente
+          ? '<span class="badge ' + (e.enviado ? 'pase">✓ pase enviado' : 'vig">activo') + '</span>'
+          : '<span class="badge baja">baja' + (e.baja ? ' · ' + e.baja : '') + '</span>') +
+        botones +
+      '</div>';
+    };
+
+    const lv = document.getElementById('lista-vigentes');
+    lv.innerHTML = vig.length
+      ? vig.map(function(e){ return row(e, '<button class="mini danger" onclick="darBaja(' + e.id + ',\'' + e.nombre.replace(/[\\'"<>]/g,'') + '\')">Dar de baja</button>'); }).join('')
+      : '<p style="font-size:12.5px;color:var(--muted)">Aún no tienes empleados registrados. Da de alta al primero arriba. ☝️</p>';
+
+    const cb = document.getElementById('card-bajas');
+    if (bajas.length) {
+      cb.style.display = 'block';
+      document.getElementById('lista-bajas').innerHTML = bajas.map(function(e){ return row(e, '<button class="mini ok" onclick="reactivar(' + e.id + ')">Reactivar</button>'); }).join('');
+    } else { cb.style.display = 'none'; }
+  } catch (e) {}
+}
+
+async function agregarEmpleado() {
+  const msg = document.getElementById('alta-msg');
+  const nombre = document.getElementById('ae-nombre').value.trim();
+  const num = document.getElementById('ae-num').value.trim();
+  const tel = document.getElementById('ae-tel').value.replace(/\D/g, '');
+  msg.style.color = 'var(--err)';
+  if (nombre.length < 3) { msg.textContent = 'Escribe el nombre del empleado.'; return; }
+  if (tel.length !== 10) { msg.textContent = 'El WhatsApp debe tener 10 dígitos.'; return; }
+  msg.style.color = 'var(--muted)'; msg.textContent = 'Guardando…';
+  try {
+    const json = await api({ action: 'empleado_alta', nombre: nombre, num_empleado: num, telefono: tel });
+    if (json.ok) {
+      msg.style.color = 'var(--ok)';
+      msg.textContent = json.reactivado ? '✓ ' + nombre + ' reactivado (reingreso).' : '✓ ' + nombre + ' dado de alta.';
+      document.getElementById('ae-nombre').value = ''; document.getElementById('ae-num').value = ''; document.getElementById('ae-tel').value = '';
+      document.getElementById('ae-nombre').focus();
+      cargarEmpleados();
+    } else {
+      msg.style.color = 'var(--err)'; msg.textContent = json.error || 'No se pudo guardar.';
+    }
+  } catch (e) { msg.style.color = 'var(--err)'; msg.textContent = 'Error de conexión.'; }
+}
+
+async function darBaja(id, nombre) {
+  if (!confirm('¿Dar de baja a ' + nombre + '?\n\nDejará de recibir comunicaciones del convenio y en sucursal sabremos que ya no labora en la empresa. Puedes reactivarlo si reingresa.')) return;
+  try { await api({ action: 'empleado_baja', empleado_id: id }); cargarEmpleados(); } catch (e) {}
+}
+
+async function reactivar(id) {
+  try { await api({ action: 'empleado_reactivar', empleado_id: id }); cargarEmpleados(); } catch (e) {}
+}
+
+init();
+</script>
+</body>
+</html>

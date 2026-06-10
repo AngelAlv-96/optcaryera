@@ -84,6 +84,11 @@
   to = "/convenio.html"
   status = 200
 
+[[redirects]]
+  from = "/portal-empresa"
+  to = "/portal-empresa.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
