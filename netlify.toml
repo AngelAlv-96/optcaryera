@@ -48,6 +48,28 @@
 [functions."convenio-pase-blast"]
   schedule = "*/15 * * * *"
 
+# ─── Página pública de presentación en el dominio propio ───
+# SOLO la RAÍZ de caryera.mx / www.caryera.mx muestra la presentación de la óptica.
+# optcaryera.netlify.app/ sigue sirviendo el SISTEMA (index.html) sin cambios.
+# Las rutas específicas (/convenio, /tienda, /empresas, etc.) funcionan igual en ambos dominios.
+[[redirects]]
+  from = "https://caryera.mx/"
+  to = "/presentacion.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "https://www.caryera.mx/"
+  to = "/presentacion.html"
+  status = 200
+  force = true
+
+# Acceso directo a la presentación por ruta (en cualquier dominio)
+[[redirects]]
+  from = "/presentacion"
+  to = "/presentacion.html"
+  status = 200
+
 # Firma asistencia page
 [[redirects]]
   from = "/firma-asistencia"

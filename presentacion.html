@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ópticas Car & Era — Ve bien. Véte bien. | Ciudad Juárez</title>
+<meta name="description" content="Ópticas con laboratorio propio en Ciudad Juárez. Lentes graduados desde 35 minutos, examen de la vista incluido, lentes de contacto y armazones de calidad. 4 sucursales: Américas, Pinocelli, Magnolia y Vía Vittoria.">
+<meta name="theme-color" content="#111110">
+<meta property="og:title" content="Ópticas Car & Era — Ve bien. Véte bien.">
+<meta property="og:description" content="Laboratorio propio · Lentes desde 35 minutos · Examen de la vista incluido · 4 sucursales en Ciudad Juárez.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://caryera.mx/banner.jpg">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --beige:#e2c6a6; --beige-light:#f0dfc8; --beige-dim:rgba(226,198,166,0.12);
+  --beige-border:rgba(226,198,166,0.2); --black:#111110;
+  --surface:#1c1b19; --surface2:#252420; --surface3:#2e2c28;
+  --white:#f5f2ee; --muted:#9a948e; --ok:#7dbb7d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px}
+.serif{font-family:'Cormorant Garamond',serif}
+a{color:inherit}
+
+/* Header */
+.header{position:sticky;top:0;z-index:20;background:rgba(17,17,16,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--beige-border)}
+.header-in{max-width:980px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.h-logo{display:block;height:42px;width:auto}
+.nav{display:flex;align-items:center;gap:26px}
+.nav a{font-size:14px;color:var(--muted);text-decoration:none;letter-spacing:.02em;transition:color .15s}
+.nav a:hover{color:var(--beige-light)}
+.nav .btn-wa-sm{display:inline-flex;align-items:center;gap:7px;background:#1faa53;color:#fff;font-weight:600;font-size:14px;border-radius:10px;padding:9px 16px;text-decoration:none;transition:all .18s}
+.nav .btn-wa-sm:hover{background:#23c05e;transform:translateY(-1px)}
+@media(max-width:760px){.nav a.navlink{display:none}}
+
+/* Hero */
+.hero{padding:78px 0 56px;text-align:center}
+.hero .eyebrow{display:inline-block;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:var(--beige);background:var(--beige-dim);border:1px solid var(--beige-border);border-radius:100px;padding:7px 18px;margin-bottom:26px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(46px,9vw,86px);font-weight:600;line-height:1.04;margin-bottom:20px;letter-spacing:-.01em}
+.hero h1 em{color:var(--beige);font-style:italic}
+.hero .lead{font-size:18px;color:var(--muted);max-width:600px;margin:0 auto 34px}
+.cta-row{display:flex;gap:13px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:16px;border:none;border-radius:12px;padding:15px 30px;cursor:pointer;transition:all .18s;text-decoration:none;font-family:'Outfit',sans-serif}
+.btn-primary{background:var(--beige);color:var(--black)}
+.btn-primary:hover{background:var(--beige-light);transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--white);border:1.5px solid var(--beige-border)}
+.btn-ghost:hover{border-color:var(--beige);background:var(--beige-dim)}
+.btn-wa{background:#1faa53;color:#fff}
+.btn-wa:hover{background:#23c05e;transform:translateY(-1px)}
+
+/* Trust strip */
+.trust{border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05);background:var(--surface)}
+.trust-in{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
+.trust-item{padding:26px 18px;text-align:center;border-right:1px solid rgba(255,255,255,.05)}
+.trust-item:last-child{border-right:none}
+.trust-item .big{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;color:var(--beige);line-height:1}
+.trust-item .lbl{font-size:12.5px;color:var(--muted);margin-top:7px;letter-spacing:.02em}
+@media(max-width:680px){.trust-in{grid-template-columns:1fr 1fr}.trust-item:nth-child(2){border-right:none}.trust-item:nth-child(1),.trust-item:nth-child(2){border-bottom:1px solid rgba(255,255,255,.05)}}
+
+/* Sections */
+.section{padding:60px 0}
+.sec-head{text-align:center;margin-bottom:40px}
+.sec-head .eyebrow{display:inline-block;font-size:11.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--beige);margin-bottom:12px}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(28px,5vw,40px);font-weight:600}
+.sec-sub{color:var(--muted);font-size:15.5px;margin-top:8px;max-width:560px;margin-left:auto;margin-right:auto}
+
+/* Services */
+.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:15px}
+.scard{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:15px;padding:28px 24px;transition:border-color .2s,transform .2s}
+.scard:hover{border-color:var(--beige-border);transform:translateY(-2px)}
+.scard .ico{font-size:28px;margin-bottom:14px;display:block}
+.scard h3{font-size:18px;font-weight:600;margin-bottom:8px;color:var(--beige-light);font-family:'Cormorant Garamond',serif}
+.scard p{font-size:14.5px;color:var(--muted)}
+
+/* Feature band (alt bg) */
+.band{background:var(--surface);border-top:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05)}
+.band2{display:grid;grid-template-columns:1.1fr 1fr;gap:42px;align-items:center}
+.band2 h2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,4.5vw,38px);font-weight:600;line-height:1.12;margin-bottom:16px}
+.band2 h2 em{color:var(--beige);font-style:italic}
+.band2 p{color:var(--muted);font-size:16px;margin-bottom:14px}
+.band2 ul{list-style:none;margin:18px 0 26px}
+.band2 ul li{font-size:15px;color:var(--white);padding:8px 0 8px 30px;position:relative}
+.band2 ul li::before{content:'✓';position:absolute;left:0;color:var(--beige);font-weight:600}
+.band-visual{background:linear-gradient(160deg,var(--surface2),var(--black));border:1px solid var(--beige-border);border-radius:18px;padding:40px 32px;text-align:center}
+.band-visual .num{font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:600;color:var(--beige);line-height:1}
+.band-visual .num small{font-size:24px}
+.band-visual .cap{color:var(--muted);font-size:14px;margin-top:8px}
+.band-visual hr{border:none;border-top:1px solid var(--beige-border);margin:24px 0}
+@media(max-width:720px){.band2{grid-template-columns:1fr;gap:28px}.band-visual{order:-1}}
+
+/* Sucursales */
+.sucs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.suc{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:16px;padding:26px 24px;display:flex;flex-direction:column}
+.suc:hover{border-color:var(--beige-border)}
+.suc .suc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.suc h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:var(--beige-light)}
+.suc .tag-new{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ok);border:1px solid rgba(125,187,125,.4);background:rgba(125,187,125,.1);border-radius:100px;padding:3px 10px}
+.suc .zona{font-size:12.5px;color:var(--beige);letter-spacing:.04em;margin-bottom:14px}
+.suc .addr{font-size:14px;color:var(--muted);margin-bottom:14px;flex:1}
+.suc .meta{display:flex;flex-direction:column;gap:7px;margin-bottom:18px}
+.suc .meta a,.suc .meta span{font-size:14px;color:var(--white);text-decoration:none;display:flex;align-items:center;gap:9px}
+.suc .meta a:hover{color:var(--beige-light)}
+.suc .meta .mi{color:var(--beige);width:16px;text-align:center}
+.suc .btn-map{display:block;text-align:center;background:var(--beige-dim);border:1px solid var(--beige-border);color:var(--beige-light);font-weight:500;font-size:14px;border-radius:10px;padding:12px;text-decoration:none;transition:all .15s}
+.suc .btn-map:hover{background:var(--beige);color:var(--black)}
+
+.hours-note{text-align:center;margin-top:30px;color:var(--muted);font-size:14.5px}
+.hours-note strong{color:var(--beige-light);font-weight:600}
+
+/* CTA band */
+.ctaband{background:linear-gradient(150deg,var(--surface2),var(--surface));border:1px solid var(--beige-border);border-radius:20px;padding:48px 32px;text-align:center}
+.ctaband h2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,4.5vw,36px);font-weight:600;margin-bottom:12px}
+.ctaband h2 em{color:var(--beige);font-style:italic}
+.ctaband p{color:var(--muted);font-size:16px;max-width:540px;margin:0 auto 26px}
+
+/* Footer */
+.footer{border-top:1px solid var(--beige-border);padding:48px 0 40px;margin-top:24px}
+.foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:34px;margin-bottom:34px}
+.foot-grid img{height:40px;margin-bottom:14px}
+.foot-grid .about{font-size:14px;color:var(--muted);max-width:300px}
+.foot-col h4{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--beige);margin-bottom:14px}
+.foot-col a,.foot-col span{display:block;font-size:14px;color:var(--muted);text-decoration:none;margin-bottom:10px;transition:color .15s}
+.foot-col a:hover{color:var(--beige-light)}
+.foot-bottom{border-top:1px solid rgba(255,255,255,.06);padding-top:22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--muted)}
+.foot-bottom .sys{color:var(--muted);opacity:.6;text-decoration:none}
+.foot-bottom .sys:hover{opacity:1;color:var(--beige)}
+@media(max-width:680px){.foot-grid{grid-template-columns:1fr 1fr}.foot-grid .brand-col{grid-column:1/-1}}
+
+/* Floating WA */
+.fab{position:fixed;right:18px;bottom:18px;z-index:30;width:58px;height:58px;border-radius:50%;background:#1faa53;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 22px rgba(0,0,0,.4);text-decoration:none;transition:transform .18s}
+.fab:hover{transform:scale(1.06)}
+.fab svg{width:30px;height:30px;fill:#fff}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-in">
+    <img src="logo-caryera.svg" alt="Ópticas Car &amp; Era" class="h-logo">
+    <nav class="nav">
+      <a class="navlink" href="#servicios">Servicios</a>
+      <a class="navlink" href="#sucursales">Sucursales</a>
+      <a class="navlink" href="#contacto">Contacto</a>
+      <a class="btn-wa-sm" href="https://wa.me/5216563110094" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="#fff"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.087zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+        WhatsApp
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero wrap">
+  <span class="eyebrow">Ópticas con laboratorio propio · Ciudad Juárez</span>
+  <h1>Ve bien.<br><em>Véte bien.</em></h1>
+  <p class="lead">Lentes graduados de calidad frontera, listos desde 35 minutos. Examen de la vista incluido y atención personalizada en nuestras 4 sucursales.</p>
+  <div class="cta-row">
+    <a class="btn btn-wa" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+    <a class="btn btn-ghost" href="#sucursales">Ver sucursales</a>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<div class="trust">
+  <div class="trust-in wrap">
+    <div class="trust-item"><div class="big">35<small> min</small></div><div class="lbl">Lentes listos desde</div></div>
+    <div class="trust-item"><div class="big">4</div><div class="lbl">Sucursales en Juárez</div></div>
+    <div class="trust-item"><div class="big">60</div><div class="lbl">Días de garantía</div></div>
+    <div class="trust-item"><div class="big">✓</div><div class="lbl">Examen de la vista incluido</div></div>
+  </div>
+</div>
+
+<!-- SERVICIOS -->
+<section class="section wrap" id="servicios">
+  <div class="sec-head">
+    <span class="eyebrow">Lo que hacemos</span>
+    <h2 class="sec-title">Todo para tu visión, en un solo lugar</h2>
+    <p class="sec-sub">Desde el examen hasta la entrega de tus lentes, con laboratorio propio para mayor rapidez y control de calidad.</p>
+  </div>
+  <div class="services">
+    <div class="scard"><span class="ico">👓</span><h3>Lentes graduados</h3><p>Armazones para toda la familia con micas de visión sencilla, bifocal o progresiva, y los tratamientos que necesites (antirreflejante, blue light, fotocromático).</p></div>
+    <div class="scard"><span class="ico">👨‍⚕️</span><h3>Examen de la vista incluido</h3><p>Sin costo al comprar tus lentes con armazón o lentes de contacto. Sin necesidad de cita: pásate cuando gustes.</p></div>
+    <div class="scard"><span class="ico">🕶️</span><h3>Lentes de sol graduados</h3><p>Protégete del sol viendo perfecto. También lentes clip-on solares y opciones polarizadas.</p></div>
+    <div class="scard"><span class="ico">👁️</span><h3>Lentes de contacto</h3><p>Todas las marcas: esféricos, tóricos (astigmatismo), multifocales y de color. Te asesoramos para elegir los tuyos.</p></div>
+    <div class="scard"><span class="ico">⚡</span><h3>Laboratorio propio</h3><p>Hacemos tus lentes aquí mismo. Muchos trabajos están listos desde 35 minutos, sin esperas de días.</p></div>
+    <div class="scard"><span class="ico">🛡️</span><h3>Garantía y respaldo</h3><p>60 días de garantía y la confianza de una óptica local que responde por su trabajo.</p></div>
+  </div>
+</section>
+
+<!-- LABORATORIO BAND -->
+<div class="band">
+  <section class="section wrap">
+    <div class="band2">
+      <div>
+        <h2>Calidad de frontera, <em>hecha aquí</em></h2>
+        <p>Tener nuestro propio laboratorio significa rapidez, precios justos y control total sobre cada par de lentes que entregamos.</p>
+        <ul>
+          <li>Lentes listos desde 35 minutos</li>
+          <li>Examen de la vista incluido en tu compra</li>
+          <li>Pago en efectivo, tarjeta, transferencia o a plazos con Aplazo</li>
+          <li>Atención sin cita — llega directo cuando puedas</li>
+        </ul>
+        <a class="btn btn-primary" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Pide informes</a>
+      </div>
+      <div class="band-visual">
+        <div class="num">35<small> min</small></div>
+        <div class="cap">Tiempo mínimo de entrega</div>
+        <hr>
+        <div class="serif" style="font-size:30px;color:var(--beige-light);line-height:1.15">Ve bien.<br>Véte bien.</div>
+        <div class="cap">Calidad frontera, hecha en Ciudad Juárez</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TIENDA + CONVENIOS -->
+<section class="section wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Más servicios</span>
+    <h2 class="sec-title">Pensado para ti y para tu empresa</h2>
+  </div>
+  <div class="services">
+    <div class="scard"><span class="ico">🛒</span><h3>Tienda en línea de lentes de contacto</h3><p>Pide tus lentes de contacto en línea y recógelos en sucursal. Con opción de suscripción y 10% de descuento exclusivo.</p><br><a class="btn btn-ghost" href="/tienda" style="font-size:14px;padding:11px 22px">Ir a la tienda</a></div>
+    <div class="scard"><span class="ico">🏢</span><h3>Convenios empresariales</h3><p>Afilia a tu empresa sin costo y dale a tus empleados —y sus familias— 15% de descuento, $500 de regalo al año y más.</p><br><a class="btn btn-ghost" href="/empresas" style="font-size:14px;padding:11px 22px">Conocer el programa</a></div>
+    <div class="scard"><span class="ico">💳</span><h3>Pagos y abonos en línea</h3><p>¿Tienes un pedido con saldo? Abona o paga en línea de forma segura desde tu celular, sin ir a sucursal.</p><br><a class="btn btn-ghost" href="https://clip.mx/@caryera" target="_blank" rel="noopener" style="font-size:14px;padding:11px 22px">Pagar en línea</a></div>
+  </div>
+</section>
+
+<!-- SUCURSALES -->
+<div class="band">
+<section class="section wrap" id="sucursales">
+  <div class="sec-head">
+    <span class="eyebrow">Encuéntranos</span>
+    <h2 class="sec-title">Nuestras 4 sucursales</h2>
+    <p class="sec-sub">En distintos puntos de Ciudad Juárez para quedarte siempre cerca.</p>
+  </div>
+  <div class="sucs">
+
+    <div class="suc">
+      <div class="suc-top"><h3>Américas</h3></div>
+      <div class="zona">Zona Pronaf · Norte</div>
+      <div class="addr">Dentro de Plaza de las Américas, entrada por Smart, entre Joyería Alex y Continental Music.</div>
+      <div class="meta">
+        <a href="tel:+526567038499"><span class="mi">☎</span>(656) 703-8499</a>
+      </div>
+      <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+de+las+Am%C3%A9ricas+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+    </div>
+
+    <div class="suc">
+      <div class="suc-top"><h3>Pinocelli</h3></div>
+      <div class="zona">Salvárcar · Suroriente</div>
+      <div class="addr">Plaza Pinocelli, Av. Miguel de la Madrid esquina con Ramacoi.</div>
+      <div class="meta">
+        <a href="tel:+526565591500"><span class="mi">☎</span>(656) 559-1500</a>
+      </div>
+      <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+Pinocelli+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+    </div>
+
+    <div class="suc">
+      <div class="suc-top"><h3>Magnolia</h3></div>
+      <div class="zona">El Granjero · Sur</div>
+      <div class="addr">Av. Manuel J. Clouthier (Jilotepec), a la altura de Plaza El Reloj, frente a Tostadas El Primo (plaza de Helados Trevly).</div>
+      <div class="meta">
+        <a href="tel:+526561748866"><span class="mi">☎</span>(656) 174-8866</a>
+      </div>
+      <a class="btn-map" href="https://maps.app.goo.gl/HBomFDEfJJNPna697" target="_blank" rel="noopener">Cómo llegar →</a>
+    </div>
+
+    <div class="suc">
+      <div class="suc-top"><h3>Vía Vittoria</h3><span class="tag-new">Nueva</span></div>
+      <div class="zona">Senderos · Oriente</div>
+      <div class="addr">Av. Ejército Nacional 12946, casi esquina con Neptuno, a un lado de Farmacias Similares. CP 32565.</div>
+      <div class="meta">
+        <a href="tel:+526566877482"><span class="mi">☎</span>(656) 687-7482</a>
+      </div>
+      <a class="btn-map" href="https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6" target="_blank" rel="noopener">Cómo llegar →</a>
+    </div>
+
+  </div>
+  <p class="hours-note"><strong>Horario:</strong> Lunes a sábado 10:00 a.m. – 7:00 p.m. · Domingos 11:00 a.m. – 5:00 p.m. — No necesitas cita.</p>
+</section>
+</div>
+
+<!-- CONTACTO CTA -->
+<section class="section wrap" id="contacto">
+  <div class="ctaband">
+    <h2>¿Listo para <em>ver bien</em>?</h2>
+    <p>Escríbenos por WhatsApp y con gusto te asesoramos, o pásate directo a la sucursal que te quede más cerca.</p>
+    <div class="cta-row">
+      <a class="btn btn-wa" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+      <a class="btn btn-ghost" href="mailto:opticas@caryera.mx">opticas@caryera.mx</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="brand-col">
+        <img src="logo-caryera.svg" alt="Ópticas Car &amp; Era">
+        <p class="about">Ópticas con laboratorio propio en Ciudad Juárez. Ve bien. Véte bien.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Servicios</h4>
+        <a href="#servicios">Lentes graduados</a>
+        <a href="#servicios">Lentes de contacto</a>
+        <a href="/tienda">Tienda en línea</a>
+        <a href="/empresas">Convenios empresariales</a>
+      </div>
+      <div class="foot-col">
+        <h4>Contacto</h4>
+        <a href="https://wa.me/5216563110094" target="_blank" rel="noopener">WhatsApp: 656 311 0094</a>
+        <a href="mailto:opticas@caryera.mx">opticas@caryera.mx</a>
+        <a href="https://www.instagram.com/opticascar.yera" target="_blank" rel="noopener">Instagram @opticascar.yera</a>
+        <a href="https://www.facebook.com/opticascaryera" target="_blank" rel="noopener">Facebook</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Ópticas Car &amp; Era · Ciudad Juárez, Chihuahua</span>
+      <a class="sys" href="https://optcaryera.netlify.app/" target="_blank" rel="noopener">Acceso al sistema</a>
+    </div>
+  </div>
+</footer>
+
+<!-- FLOATING WHATSAPP -->
+<a class="fab" href="https://wa.me/5216563110094" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.087zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+</a>
+
+</body>
+</html>
