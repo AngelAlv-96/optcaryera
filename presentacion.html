@@ -558,6 +558,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 (function(){
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Evitar que el navegador restaure el scroll a media página al recargar
+  // (con el pin del showcase eso encimaba las secciones y en móvil arrancaba en sucursales)
+  if('scrollRestoration' in history){ try { history.scrollRestoration = 'manual'; } catch(e){} }
+
   // ---------- base (sin GSAP): reveal IO + header + counters ----------
   var els = document.querySelectorAll('.reveal');
   if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});}
@@ -621,6 +625,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 
   // ---------- GSAP (mejoras si carga) ----------
   function initGsap(){
+    window.scrollTo(0, 0);                 // arrancar siempre arriba (todas las recargas)
     var sc = document.getElementById('showcase');
     if(!window.gsap || reduced){
       if(sc) sc.classList.add('sc-static');
@@ -648,6 +653,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
       window.addEventListener('resize', sizeClone);
 
       gsap.timeline({scrollTrigger:{trigger:sc, start:'top top', end:'+=350%', pin:true, scrub:.6,
+        anticipatePin:1, invalidateOnRefresh:true,
         onUpdate:function(self){
           var idx = Math.min(N, Math.round(self.progress*(N-1)) + 1);
           count.innerHTML = '<b>0' + idx + '</b> — 0' + N;
@@ -719,6 +725,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     // blobs parallax
     gsap.to('.blob.b1',{y:-60,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
     gsap.to('.blob.b2',{y:-100,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
+
+    // Recalcular cuando cambie el layout (fuentes/imágenes que cargan tarde):
+    // si el pin se mide antes de que todo cargue, las secciones se enciman.
+    ScrollTrigger.refresh();
+    if(document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ ScrollTrigger.refresh(); }); }
+    document.querySelectorAll('img').forEach(function(img){
+      if(!img.complete){ img.addEventListener('load', function(){ ScrollTrigger.refresh(); }, {once:true}); }
+    });
+    window.addEventListener('orientationchange', function(){ setTimeout(function(){ ScrollTrigger.refresh(); }, 250); });
   }
   if(document.readyState === 'complete'){ initGsap(); }
   else window.addEventListener('load', initGsap);
