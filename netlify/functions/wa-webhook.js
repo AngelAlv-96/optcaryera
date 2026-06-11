@@ -72,11 +72,11 @@ function getActivePromos() {
   // o mandan la foto del flyer — Clari debe reconocerla como NUESTRA y responder con info clara.
   var campanaFotoColor = '📣 CAMPAÑA ACTUAL EN REDES — FOTOCROMÁTICOS DE COLOR (flyer "UN SOLO LENTE. DOS FORMAS DE VERTE."):\n' +
     '• Estamos anunciando en Facebook/Instagram los lentes FOTOCROMÁTICOS DE COLOR. Muchos prospectos escriben por ese anuncio o mandan la foto del flyer — es publicidad NUESTRA: respóndele con total seguridad, NUNCA digas que es de otra óptica ni que no la conoces.\n' +
-    '• Qué son: micas GRADUADAS que adentro son transparentes y al salir al sol se oscurecen DE COLOR (rosa, azul, morado, entre otros). Incluyen protección anti-luz azul. Funcionan como lentes normales bajo techo y como lentes de sol de color al exterior — un solo lente para todo el día.\n' +
+    '• Qué son: micas GRADUADAS que adentro son transparentes y al salir al sol se oscurecen DE COLOR. Colores disponibles: ROSA, VERDE, AZUL y GRIS. Incluyen protección anti-luz azul. Funcionan como lentes normales bajo techo y como lentes de sol de color al exterior — un solo lente para todo el día.\n' +
     '• SÍ los manejamos en las 4 sucursales: es un tratamiento que se agrega a unos lentes graduados, con el armazón que el cliente elija.\n' +
     '• Si el cliente manda la foto del flyer o dice "quiero los del anuncio" / "los que cambian de color" / "los rosas": confirma con entusiasmo que SÍ son nuestros, 1 línea de beneficio, e invítalo a sucursal a cotizarlos y elegir su color (examen de la vista incluido al comprar).\n' +
     '• Precio: NO des un número — depende de la graduación + material + el tratamiento fotocromático de color. En sucursal arman la cotización exacta.\n' +
-    '• Si pregunta si combinan con el 2x1: el 2x1 aplica a lentes completos y el tratamiento fotocromático de color se cotiza como adicional — en sucursal le confirman la combinación exacta. NO prometas que va incluido.\n\n';
+    '• ✅ SÍ ENTRAN EN EL 2x1: los lentes con fotocromático de color participan en la promo 2x1 (compras 2 pagas 1). Dilo con seguridad si preguntan. El precio del par se cotiza en sucursal según graduación + material + tratamiento.\n\n';
 
   // Abril 15 - Junio 30, 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante TODO junio. Maestros hasta 18 de mayo.)
   if (year === 2026 && (month === 4 || month === 5 || month === 6)) {
@@ -238,7 +238,7 @@ El PRECIO FINAL de unos lentes NO es fijo — depende de lo que el cliente elige
 1) ARMAZÓN: cada modelo tiene su precio distinto. La promo 2x1 NO se limita a armazones específicos — hay amplia variedad.
 2) GRADUACIÓN: visión sencilla (más económica) vs bifocal vs progresivo (los dos últimos suben el precio).
 3) MATERIAL de la mica: CR-39 básico vs Policarbonato (más resistente, +precio) vs Alto índice/delgado (para graduaciones altas, +precio). Cambiar de material SUBE EL PRECIO — no es lo mismo que un "tratamiento".
-4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, FOTOCROMÁTICOS DE COLOR (transparentes adentro y afuera oscurecen DE COLOR — rosa, azul, morado, etc., con protección anti-luz azul; SÍ los manejamos, son de nuestra publicidad "un solo lente, dos formas de verte"), polarizado. Cada uno suma al precio.
+4) TRATAMIENTOS (opcionales): antirreflejante (AR), blue light, transitions/fotocromático, FOTOCROMÁTICOS DE COLOR (transparentes adentro y afuera oscurecen DE COLOR — rosa, verde, azul y gris — con protección anti-luz azul; SÍ los manejamos, son de nuestra publicidad "un solo lente, dos formas de verte", y SÍ entran en el 2x1), polarizado. Cada uno suma al precio.
 
 REGLAS ESTRICTAS SOBRE CÓMO HABLAR DE LA PROMO:
 - NUNCA afirmes que la promo "incluye" un material, graduación o armazón específico. La promo 2x1 significa COMPRAS 2 LLEVAS 2 PAGANDO 1 del mismo tipo que el cliente elija — no que venga con un material predefinido.
@@ -2032,7 +2032,7 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
       'PROMOS VIGENTES DE ÓPTICAS CAR & ERA:\n' + activePromos + '\n\n' +
       'REGLAS:\n' +
       '- Responde en 2-4 líneas máximo, tono amigable, 1 emoji máximo.\n' +
-      '- TIPOS DE IMAGEN — distingue: (a) PROMO con precio/vigencia/condiciones, vs (b) PUBLICIDAD DE PRODUCTO (sin precio ni vigencia, solo describe un producto y sus beneficios). Ópticas Car & Era publica en redes anuncios de PRODUCTOS que manejamos, por ejemplo los FOTOCROMÁTICOS DE COLOR ("un solo lente, dos formas de verte": transparentes adentro, afuera oscurecen DE COLOR — rosa, azul, morado, etc. — con protección anti-luz azul). Estos SÍ los manejamos: son un tratamiento que se agrega al armar lentes graduados.\n' +
+      '- TIPOS DE IMAGEN — distingue: (a) PROMO con precio/vigencia/condiciones, vs (b) PUBLICIDAD DE PRODUCTO (sin precio ni vigencia, solo describe un producto y sus beneficios). Ópticas Car & Era publica en redes anuncios de PRODUCTOS que manejamos, por ejemplo los FOTOCROMÁTICOS DE COLOR ("un solo lente, dos formas de verte": transparentes adentro, afuera oscurecen DE COLOR — rosa, verde, azul y gris — con protección anti-luz azul). Estos SÍ los manejamos: son un tratamiento que se agrega al armar lentes graduados, y SÍ entran en la promo 2x1.\n' +
       '- Si la imagen describe un producto que manejamos (fotocromáticos de color, blue light, transitions, polarizados, antirreflejante, etc.) y NO trae el nombre de OTRA óptica → trátala como PUBLICIDAD NUESTRA: confirma con seguridad que SÍ los manejamos, 1 línea del beneficio, e invita a sucursal a cotizarlos (el precio depende de graduación + material + el tratamiento). NUNCA digas que "no es promo de Car & Era" en este caso.\n' +
       '- ⛔ SOLO digas "esa promo es de otra óptica" si marca_negocio trae EXPLÍCITAMENTE el nombre de otra óptica (Devlyn, Ben & Frank, Salud Digna, +Visión, etc.). Si marca_negocio es null o no se ve, NUNCA asumas que es de otra óptica — lo más probable es que sea publicidad nuestra que el cliente vio en nuestras redes o anuncios.\n' +
       '- Si la foto trae precio/condiciones de una promo que NO coincide con la vigente (mes pasado, promo vieja) → dile amablemente que esa promoción ya no está vigente y menciona la promo vigente de hoy.\n' +
