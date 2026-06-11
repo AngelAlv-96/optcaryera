@@ -1,5 +1,5 @@
 // Service Worker — Car & Era PWA
-const CACHE_NAME = 'caryera-v378';
+const CACHE_NAME = 'caryera-v381';
 
 // Install — cache basic shell
 self.addEventListener('install', function(e) {
@@ -25,6 +25,9 @@ self.addEventListener('fetch', function(e) {
   if (e.request.url.includes('/.netlify/') || e.request.url.includes('supabase')) return;
   if (e.request.url.includes('localhost') || e.request.url.includes('127.0.0.1')) return;
   if (e.request.url.startsWith('chrome-extension')) return;
+  // Cross-origin navigations (iframes embebidos, p.ej. Google Maps) no se pueden
+  // satisfacer desde el SW — interceptarlas las aborta (ERR_ABORTED)
+  if (e.request.mode === 'navigate' && !e.request.url.startsWith(self.location.origin)) return;
 
   e.respondWith(
     fetch(e.request).then(function(res) {

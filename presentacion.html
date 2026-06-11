@@ -9,7 +9,7 @@
 <meta property="og:title" content="Ópticas Car & Era — Ve bien. Véte bien.">
 <meta property="og:description" content="Laboratorio propio · Lentes desde 35 minutos · Examen de la vista incluido · 4 sucursales en Ciudad Juárez.">
 <meta property="og:type" content="website">
-<meta property="og:image" content="https://caryera.mx/banner.jpg">
+<meta property="og:image" content="https://caryera.mx/media-modelo-azul.jpg">
 <link rel="icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,16 +26,26 @@
 html{scroll-behavior:smooth}
 body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 .wrap{max-width:1140px;margin:0 auto;padding:0 26px}
-.narrow{max-width:920px}
 .serif{font-family:'Cormorant Garamond',serif}
 a{color:inherit;text-decoration:none}
 ::selection{background:var(--beige);color:#fff}
+img{max-width:100%}
 
-/* reveal */
-.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
-.reveal.in{opacity:1;transform:none}
+/* reveal (fallback IO + GSAP enhance) */
+.reveal{opacity:0;transform:translateY(26px);filter:blur(7px);transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .85s cubic-bezier(.2,.7,.2,1),filter .85s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none;filter:none}
 .reveal[data-d="1"]{transition-delay:.08s}.reveal[data-d="2"]{transition-delay:.16s}.reveal[data-d="3"]{transition-delay:.24s}
-@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none}}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;filter:none!important;transition:none}}
+
+/* grain */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
+
+/* blobs */
+.blob{position:absolute;border-radius:50%;filter:blur(72px);pointer-events:none;z-index:0;will-change:transform}
+.blob.b1{width:420px;height:420px;left:-4%;top:0;background:radial-gradient(circle,rgba(240,205,156,.5),transparent 68%);animation:drift 17s ease-in-out infinite alternate}
+.blob.b2{width:340px;height:340px;right:2%;top:30%;background:radial-gradient(circle,rgba(228,190,150,.4),transparent 68%);animation:drift 21s ease-in-out -8s infinite alternate-reverse}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(46px,-34px) scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.blob{animation:none}}
 
 /* eyebrow */
 .eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--beige-deep)}
@@ -53,64 +63,78 @@ a{color:inherit;text-decoration:none}
 .nav a.navlink:hover::after{width:100%}
 .btn-wa-sm{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;font-weight:600;font-size:14px;border-radius:100px;padding:10px 18px;transition:all .2s}
 .btn-wa-sm:hover{background:#000;transform:translateY(-1px)}
+.hprog{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:linear-gradient(90deg,var(--beige),var(--beige-deep));transform-origin:0 50%;transform:scaleX(0)}
 @media(max-width:780px){.nav a.navlink{display:none}}
 
 /* buttons */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;border:none;border-radius:100px;padding:16px 32px;cursor:pointer;transition:all .2s;font-family:'Outfit',sans-serif}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;border:none;border-radius:100px;padding:16px 32px;cursor:pointer;transition:background .2s,box-shadow .2s,border-color .2s;font-family:'Outfit',sans-serif;will-change:transform}
 .btn-primary{background:var(--ink);color:#fff}
-.btn-primary:hover{background:#000;transform:translateY(-2px);box-shadow:0 12px 28px rgba(28,26,22,.18)}
+.btn-primary:hover{background:#000;box-shadow:0 12px 28px rgba(28,26,22,.18)}
 .btn-wa{background:var(--wa);color:#fff}
-.btn-wa:hover{background:#1c9a4b;transform:translateY(-2px);box-shadow:0 12px 28px rgba(31,170,83,.28)}
+.btn-wa:hover{background:#1c9a4b;box-shadow:0 12px 28px rgba(31,170,83,.28)}
 .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
-.btn-ghost:hover{border-color:var(--ink);transform:translateY(-2px)}
-.btn-sm{font-size:14.5px;padding:12px 22px}
+.btn-ghost:hover{border-color:var(--ink)}
 
 /* HERO */
-.hero{position:relative;text-align:center;padding:96px 0 60px;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-10%;left:50%;transform:translateX(-50%);width:900px;height:560px;background:radial-gradient(ellipse at center,rgba(179,137,90,.13),transparent 62%);pointer-events:none;z-index:0}
-.hero>*{position:relative;z-index:1}
-.hero .eyebrow{margin-bottom:30px}
-.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(56px,10.5vw,118px);font-weight:600;line-height:.98;letter-spacing:-.02em;margin-bottom:26px}
+.hero-shell{position:relative;overflow:hidden}
+.hero{position:relative;z-index:1;display:grid;grid-template-columns:1.05fr .95fr;gap:50px;align-items:center;padding:72px 26px 70px;max-width:1140px;margin:0 auto}
+.hero .eyebrow{margin-bottom:22px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(50px,7.6vw,92px);font-weight:600;line-height:.99;letter-spacing:-.018em;margin-bottom:22px}
 .hero h1 .it{display:block;font-style:italic;color:var(--beige-deep)}
-.hero .lead{font-size:19px;color:var(--ink2);max-width:600px;margin:0 auto 38px;font-weight:400}
-.cta-row{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.hero-mark{margin:54px auto 0;width:min(160px,46vw);height:auto;color:var(--beige);opacity:.9;animation:float 6s ease-in-out infinite}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.hero .lead{font-size:18px;color:var(--ink2);max-width:480px;margin-bottom:32px}
+.cta-row{display:flex;gap:13px;flex-wrap:wrap}
+.hero-proof{margin-top:28px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:var(--ink2);font-size:14px}
+.hero-proof .stars{color:var(--beige);letter-spacing:2px;font-size:15px}
+.hero-proof b{color:var(--ink);font-weight:600}
+.hero-proof .sep{width:1px;height:16px;background:var(--line)}
+.hero-photo{position:relative;border-radius:28px;overflow:hidden;box-shadow:0 30px 70px rgba(28,26,22,.16);aspect-ratio:4/5;max-height:600px}
+.hero-photo img{width:100%;height:112%;object-fit:cover;display:block;will-change:transform}
+.hero-badge{position:absolute;left:16px;bottom:16px;background:rgba(255,253,249,.92);backdrop-filter:blur(8px);border-radius:100px;padding:11px 20px;font-size:14px;font-weight:600;color:var(--ink);box-shadow:0 8px 28px rgba(28,26,22,.18);display:flex;align-items:center;gap:8px}
+.hero-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--wa)}
+@media(max-width:880px){.hero{grid-template-columns:1fr;gap:36px;padding-top:48px;text-align:center}.hero .lead{margin-left:auto;margin-right:auto}.cta-row{justify-content:center}.hero-proof{justify-content:center}.hero-photo{max-width:440px;margin:0 auto;width:100%}}
 
-/* stats bar */
-.statsbar{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.statsbar-in{display:grid;grid-template-columns:repeat(5,1fr)}
+/* marquee */
+.marquee{overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:18px 0;background:var(--paper2)}
+.mq-track{display:flex;width:max-content;animation:mq 30s linear infinite}
+.mq-track span{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:26px;color:var(--ink2);white-space:nowrap;padding:0 26px;display:flex;align-items:center;gap:52px}
+.mq-track span i{font-style:normal;color:var(--beige);font-size:15px}
+@keyframes mq{to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.mq-track{animation:none}}
+
+/* stats */
+.statsbar{border-bottom:1px solid var(--line)}
+.statsbar-in{display:grid;grid-template-columns:repeat(4,1fr)}
 .stat{padding:30px 16px;text-align:center;border-right:1px solid var(--line2)}
 .stat:last-child{border-right:none}
 .stat .n{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;color:var(--ink);line-height:1}
 .stat .n small{font-size:18px;color:var(--beige-deep)}
-.stat .l{font-size:12.5px;color:var(--ink3);margin-top:6px;letter-spacing:.01em}
-@media(max-width:860px){.statsbar-in{grid-template-columns:repeat(3,1fr)}.stat:nth-child(3){border-right:none}.stat:nth-child(1),.stat:nth-child(2),.stat:nth-child(3){border-bottom:1px solid var(--line2)}}
-@media(max-width:520px){.statsbar-in{grid-template-columns:repeat(2,1fr)}.stat{border-right:none;border-bottom:1px solid var(--line2)}.stat:nth-child(odd){border-right:1px solid var(--line2)}}
+.stat .l{font-size:12.5px;color:var(--ink3);margin-top:6px}
+@media(max-width:680px){.statsbar-in{grid-template-columns:1fr 1fr}.stat{border-right:none;border-bottom:1px solid var(--line2)}.stat:nth-child(odd){border-right:1px solid var(--line2)}.stat:nth-child(3),.stat:nth-child(4){border-bottom:none}}
 
 /* sections */
-.section{padding:96px 0}
-.sec-head{max-width:680px;margin:0 auto 56px;text-align:center}
+.section{padding:88px 0}
+.sec-head{max-width:680px;margin:0 auto 50px;text-align:center}
 .sec-head .eyebrow{margin-bottom:18px}
-.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,5.4vw,56px);font-weight:600;line-height:1.04;letter-spacing:-.015em}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,5.4vw,54px);font-weight:600;line-height:1.05;letter-spacing:-.015em}
 .sec-title em{font-style:italic;color:var(--beige-deep)}
-.sec-sub{color:var(--ink2);font-size:17px;margin-top:16px}
+.sec-title .w-wrap{display:inline-block;overflow:hidden;vertical-align:bottom}
+.sec-title .w-in{display:inline-block}
+.sec-sub{color:var(--ink2);font-size:16.5px;margin-top:14px}
 
 /* icon chip */
 .ico{width:48px;height:48px;border-radius:14px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center;color:var(--beige-deep);margin-bottom:20px}
 .ico svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
-/* services grid */
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.scard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:34px 30px;transition:transform .25s,box-shadow .25s,border-color .25s}
-.scard:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(28,26,22,.07);border-color:var(--beige-soft)}
-.scard h3{font-family:'Cormorant Garamond',serif;font-size:23px;font-weight:600;margin-bottom:9px}
-.scard p{font-size:15px;color:var(--ink2)}
-.scard .more{display:inline-block;margin-top:18px;font-size:14.5px;font-weight:600;color:var(--beige-deep)}
-.scard .more:hover{color:var(--ink)}
-@media(max-width:880px){.grid3{grid-template-columns:1fr}}
+/* services */
+.grid4s{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+.scard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;transition:transform .25s,box-shadow .25s,border-color .25s}
+.scard:hover{box-shadow:0 18px 40px rgba(28,26,22,.07);border-color:var(--beige-soft)}
+.scard h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px}
+.scard p{font-size:14.5px;color:var(--ink2)}
+@media(max-width:960px){.grid4s{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid4s{grid-template-columns:1fr}}
 
-/* split / showcase panel */
+/* split */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:54px;align-items:center}
 .split h2{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,4.6vw,46px);font-weight:600;line-height:1.06;letter-spacing:-.015em;margin-bottom:18px}
 .split h2 em{font-style:italic;color:var(--beige-deep)}
@@ -118,45 +142,39 @@ a{color:inherit;text-decoration:none}
 .checklist{list-style:none;margin:22px 0 30px}
 .checklist li{font-size:15.5px;padding:9px 0 9px 34px;position:relative;color:var(--ink)}
 .checklist li svg{position:absolute;left:0;top:11px;width:20px;height:20px;stroke:var(--beige-deep);stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.panel{position:relative;border-radius:26px;padding:54px 40px;text-align:center;background:linear-gradient(150deg,var(--beige-tint),#fff);border:1px solid var(--beige-soft);overflow:hidden;min-height:300px;display:flex;flex-direction:column;justify-content:center}
-.panel::after{content:'';position:absolute;bottom:-80px;right:-60px;width:260px;height:260px;background:radial-gradient(circle,rgba(179,137,90,.14),transparent 70%)}
-.panel .pnum{font-family:'Cormorant Garamond',serif;font-size:84px;font-weight:600;color:var(--beige-deep);line-height:1;position:relative}
-.panel .pnum small{font-size:30px}
-.panel .pcap{color:var(--ink2);font-size:15px;margin-top:6px;position:relative}
-.panel .pdiv{width:50px;height:1px;background:var(--beige);margin:26px auto;position:relative}
-.panel .pslogan{font-family:'Cormorant Garamond',serif;font-size:30px;font-style:italic;color:var(--ink);line-height:1.2;position:relative}
-/* PHOTO-READY: para meter foto, en .panel agregar background-image y quitar el contenido */
-@media(max-width:880px){.split{grid-template-columns:1fr;gap:32px}.panel{order:-1;min-height:240px;padding:44px 30px}}
+.panel-img{position:relative;border-radius:26px;overflow:hidden;min-height:440px;box-shadow:0 24px 60px rgba(28,26,22,.12)}
+.panel-img img{position:absolute;inset:0;width:100%;height:112%;object-fit:cover;will-change:transform}
+.badge-float{position:absolute;left:18px;bottom:18px;background:rgba(255,253,249,.92);backdrop-filter:blur(8px);border-radius:18px;padding:14px 22px;box-shadow:0 8px 28px rgba(28,26,22,.18)}
+.badge-float .bn{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--beige-deep);line-height:1}
+.badge-float .bn small{font-size:17px}
+.badge-float .bl{font-size:12.5px;color:var(--ink2);margin-top:2px}
+@media(max-width:880px){.split{grid-template-columns:1fr;gap:32px}.panel-img{order:-1;min-height:320px}}
 
-/* steps */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.step{position:relative;padding-top:8px}
-.step .sn{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#fff;background:var(--ink);width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px}
-.step h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px}
-.step p{font-size:15px;color:var(--ink2)}
-.step:not(:last-child)::before{content:'';position:absolute;top:20px;left:52px;right:-12px;height:1px;background:var(--line);z-index:-1}
-@media(max-width:880px){.steps{grid-template-columns:1fr;gap:30px}.step:not(:last-child)::before{display:none}}
-
-/* marcas */
-.brand-row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:760px;margin:0 auto}
-.brand-chip{font-size:15px;font-weight:500;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:100px;padding:11px 24px;transition:border-color .2s,transform .2s}
-.brand-chip:hover{border-color:var(--beige);transform:translateY(-2px)}
-.brand-chip.more{color:var(--ink3);background:transparent;border-style:dashed}
+/* lookbook */
+.lookbook{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:920px;margin:0 auto}
+.lb{border-radius:26px;overflow:hidden;position:relative}
+.lb img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;transition:transform .6s cubic-bezier(.2,.7,.2,1);will-change:transform}
+.lb:hover img{transform:scale(1.04)}
+.lb .cap{position:absolute;left:16px;bottom:16px;background:rgba(255,253,249,.9);backdrop-filter:blur(8px);border-radius:100px;padding:9px 18px;font-size:13.5px;font-weight:600;color:var(--ink);z-index:2}
+@media(max-width:680px){.lookbook{grid-template-columns:1fr}}
 
 /* sucursales */
 .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-.suc{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 30px;display:flex;flex-direction:column;transition:box-shadow .25s,border-color .25s}
+.suc{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px 18px 26px;display:flex;flex-direction:column;transition:box-shadow .25s,border-color .25s}
 .suc:hover{box-shadow:0 16px 38px rgba(28,26,22,.06);border-color:var(--beige-soft)}
-.suc .suc-top{display:flex;align-items:center;gap:12px;margin-bottom:4px}
-.suc h3{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600}
+.suc-map{height:200px;border-radius:14px;overflow:hidden;margin-bottom:20px;border:1px solid var(--line2);background:var(--beige-tint)}
+.suc-map iframe{width:100%;height:100%;border:0;display:block}
+.suc .suc-body{padding:0 10px;display:flex;flex-direction:column;flex:1;align-items:stretch}
+.suc .suc-top{display:flex;align-items:center;gap:12px;margin-bottom:2px}
+.suc h3{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:600}
 .suc .tag-new{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--beige-deep);border:1px solid var(--beige-soft);background:var(--beige-tint);border-radius:100px;padding:3px 11px}
-.suc .zona{font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:14px}
-.suc .addr{font-size:15px;color:var(--ink2);margin-bottom:16px;flex:1}
-.suc .tel{font-size:15px;color:var(--ink);display:inline-flex;align-items:center;gap:9px;margin-bottom:20px}
+.suc .zona{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:10px}
+.suc .addr{font-size:14.5px;color:var(--ink2);margin-bottom:12px;flex:1}
+.suc .tel{font-size:15px;color:var(--ink);display:flex;align-items:center;gap:9px;margin-bottom:16px}
 .suc .tel svg{width:17px;height:17px;stroke:var(--beige-deep);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .suc .btn-map{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--beige-tint);border:1px solid var(--beige-soft);color:var(--beige-deep);font-weight:600;font-size:14.5px;border-radius:100px;padding:13px;transition:all .2s}
 .suc .btn-map:hover{background:var(--ink);border-color:var(--ink);color:#fff}
-.hours-note{text-align:center;margin-top:34px;color:var(--ink2);font-size:15px}
+.hours-note{text-align:center;margin-top:32px;color:var(--ink2);font-size:15px}
 .hours-note strong{color:var(--ink);font-weight:600}
 @media(max-width:680px){.grid4{grid-template-columns:1fr}}
 
@@ -170,19 +188,6 @@ a{color:inherit;text-decoration:none}
 .reviews-cta{text-align:center;margin-top:36px}
 @media(max-width:880px){.reviews{grid-template-columns:1fr}}
 
-/* faq */
-.faq{max-width:760px;margin:0 auto}
-.faq details{border-bottom:1px solid var(--line);padding:4px 0}
-.faq summary{cursor:pointer;list-style:none;padding:24px 4px;font-size:18px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:16px;transition:color .15s}
-.faq summary:hover{color:var(--beige-deep)}
-.faq summary::-webkit-details-marker{display:none}
-.faq summary .pm{flex-shrink:0;width:26px;height:26px;position:relative}
-.faq summary .pm::before,.faq summary .pm::after{content:'';position:absolute;background:var(--beige-deep);transition:transform .25s}
-.faq summary .pm::before{top:12px;left:4px;width:18px;height:1.6px}
-.faq summary .pm::after{top:4px;left:12px;width:1.6px;height:18px}
-.faq details[open] summary .pm::after{transform:rotate(90deg);opacity:0}
-.faq .ans{padding:0 4px 26px;font-size:15.5px;color:var(--ink2);max-width:660px}
-
 /* CTA */
 .cta-final{position:relative;background:var(--ink);border-radius:30px;padding:72px 40px;text-align:center;overflow:hidden}
 .cta-final::before{content:'';position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(179,137,90,.32),transparent 65%);pointer-events:none}
@@ -192,6 +197,7 @@ a{color:inherit;text-decoration:none}
 .cta-final h2{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,5vw,52px);font-weight:600;color:#fff;line-height:1.04;margin-bottom:14px;letter-spacing:-.015em}
 .cta-final h2 em{font-style:italic;color:var(--beige)}
 .cta-final p{color:rgba(255,255,255,.7);font-size:17px;max-width:520px;margin:0 auto 32px}
+.cta-final .cta-row{justify-content:center}
 .cta-final .btn-ghost{color:#fff;border-color:rgba(255,255,255,.25)}
 .cta-final .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
 
@@ -204,8 +210,6 @@ a{color:inherit;text-decoration:none}
 .foot-col a{display:block;font-size:14.5px;color:var(--ink2);margin-bottom:11px;transition:color .15s}
 .foot-col a:hover{color:var(--ink)}
 .foot-bottom{padding-top:26px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--ink3)}
-.foot-bottom a.sys{color:var(--ink3);transition:color .15s}
-.foot-bottom a.sys:hover{color:var(--beige-deep)}
 @media(max-width:680px){.foot-grid{grid-template-columns:1fr 1fr}.foot-grid .brand-col{grid-column:1/-1}}
 
 /* FAB */
@@ -231,38 +235,52 @@ a{color:inherit;text-decoration:none}
       </a>
     </nav>
   </div>
+  <div class="hprog" id="hprog"></div>
 </header>
 
 <a id="top"></a>
 
 <!-- HERO -->
-<section class="hero wrap">
-  <span class="eyebrow"><span class="ln"></span>Laboratorio propio · Ciudad Juárez</span>
-  <h1>Ve bien.<span class="it">Véte bien.</span></h1>
-  <p class="lead">Lentes graduados de calidad frontera, listos desde 35 minutos. Examen de la vista incluido y atención sin cita en nuestras 4 sucursales.</p>
-  <div class="cta-row">
-    <a class="btn btn-wa" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
-    <a class="btn btn-ghost" href="#sucursales">Ver sucursales</a>
+<div class="hero-shell">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow h-anim"><span class="ln"></span>Laboratorio propio · Ciudad Juárez</span>
+      <h1><span class="h-anim" style="display:block">Ve bien.</span><span class="it h-anim">Véte bien.</span></h1>
+      <p class="lead h-anim">Lentes graduados de calidad frontera, listos desde 35 minutos. Examen de la vista incluido y atención sin cita.</p>
+      <div class="cta-row h-anim">
+        <a class="btn btn-wa btn-mag" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+        <a class="btn btn-ghost btn-mag" href="#sucursales">Ver sucursales</a>
+      </div>
+      <div class="hero-proof h-anim">
+        <span class="stars">★★★★★</span>
+        <span><b>+30,000</b> pacientes atendidos</span>
+        <span class="sep"></span>
+        <span><b>4</b> sucursales</span>
+      </div>
+    </div>
+    <div class="hero-photo" id="hero-photo">
+      <img src="media-modelo-azul.jpg" alt="Clienta feliz con sus lentes nuevos de Ópticas Car & Era" id="hero-img" fetchpriority="high">
+      <div class="hero-badge"><span class="dot"></span>Atención sin cita, hoy mismo</div>
+    </div>
+  </section>
+</div>
+
+<!-- MARQUEE -->
+<div class="marquee" aria-hidden="true">
+  <div class="mq-track">
+    <span>Ve bien. Véte bien. <i>✦</i> Lentes desde 35 minutos <i>✦</i> Examen de la vista incluido <i>✦</i> Laboratorio propio <i>✦</i> 4 sucursales en Juárez <i>✦</i> 60 días de garantía <i>✦</i></span>
+    <span>Ve bien. Véte bien. <i>✦</i> Lentes desde 35 minutos <i>✦</i> Examen de la vista incluido <i>✦</i> Laboratorio propio <i>✦</i> 4 sucursales en Juárez <i>✦</i> 60 días de garantía <i>✦</i></span>
   </div>
-  <svg class="hero-mark" viewBox="0 0 220 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <g stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="56" cy="38" r="26"/>
-      <circle cx="164" cy="38" r="26"/>
-      <path d="M82 32c8-6 28-6 36 0"/>
-      <path d="M30 30C18 24 9 23 2 26"/>
-      <path d="M190 30c12-6 21-7 28-4"/>
-    </g>
-  </svg>
-</section>
+</div>
 
 <!-- STATS -->
 <div class="statsbar">
   <div class="statsbar-in wrap">
-    <div class="stat"><div class="n">35<small> min</small></div><div class="l">Lentes listos desde</div></div>
-    <div class="stat"><div class="n">+30k</div><div class="l">Pacientes atendidos</div></div>
-    <div class="stat"><div class="n">4</div><div class="l">Sucursales en Juárez</div></div>
-    <div class="stat"><div class="n">60</div><div class="l">Días de garantía</div></div>
-    <div class="stat"><div class="n">✓</div><div class="l">Examen incluido</div></div>
+    <div class="stat"><div class="n"><span data-cnt="35">0</span><small> min</small></div><div class="l">Lentes listos desde</div></div>
+    <div class="stat"><div class="n">+<span data-cnt="30">0</span>k</div><div class="l">Pacientes atendidos</div></div>
+    <div class="stat"><div class="n"><span data-cnt="4">0</span></div><div class="l">Sucursales en Juárez</div></div>
+    <div class="stat"><div class="n"><span data-cnt="60">0</span></div><div class="l">Días de garantía</div></div>
   </div>
 </div>
 
@@ -270,167 +288,123 @@ a{color:inherit;text-decoration:none}
 <section class="section wrap" id="servicios">
   <div class="sec-head reveal">
     <span class="eyebrow"><span class="ln"></span>Lo que hacemos</span>
-    <h2 class="sec-title">Todo para tu visión, en un solo lugar</h2>
+    <h2 class="sec-title" data-words>Todo para tu visión, en un solo lugar</h2>
     <p class="sec-sub">Del examen a la entrega, con laboratorio propio para mayor rapidez y control de calidad.</p>
   </div>
-  <div class="grid3">
+  <div class="grid4s">
     <div class="scard reveal">
       <div class="ico"><svg viewBox="0 0 24 24"><circle cx="6.5" cy="14" r="3.5"/><circle cx="17.5" cy="14" r="3.5"/><path d="M10 13c.8-.7 3.2-.7 4 0M3 12c-.6-1.5-.6-3 .5-4M21 12c.6-1.5.6-3-.5-4"/></svg></div>
       <h3>Lentes graduados</h3>
-      <p>Armazones para toda la familia con micas de visión sencilla, bifocal o progresiva, y los tratamientos que necesites: antirreflejante, blue light, fotocromático.</p>
+      <p>Armazones para toda la familia, micas de visión sencilla, bifocal o progresiva, con los tratamientos que necesites.</p>
     </div>
     <div class="scard reveal" data-d="1">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
-      <h3>Examen de la vista incluido</h3>
-      <p>Sin costo al comprar tus lentes con armazón o lentes de contacto —o solo las micas si traes tu armazón. Sin necesidad de cita: pásate cuando gustes.</p>
-    </div>
-    <div class="scard reveal" data-d="2">
       <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg></div>
       <h3>Lentes de sol graduados</h3>
-      <p>Protégete del sol viendo perfecto. También clip-on solares y opciones polarizadas para manejar y exteriores.</p>
-    </div>
-    <div class="scard reveal">
-      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6a6 6 0 0 0 0 12"/></svg></div>
-      <h3>Lentes de contacto</h3>
-      <p>Todas las marcas: esféricos, tóricos para astigmatismo, multifocales y de color. Te asesoramos para elegir los tuyos.</p>
-    </div>
-    <div class="scard reveal" data-d="1">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg></div>
-      <h3>Laboratorio propio</h3>
-      <p>Hacemos tus lentes aquí mismo. Muchos trabajos quedan listos desde 35 minutos, sin esperas de días.</p>
+      <p>Protégete del sol viendo perfecto, con opciones polarizadas y clip-on.</p>
     </div>
     <div class="scard reveal" data-d="2">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5l-8-3Z"/><path d="m9 12 2 2 4-4"/></svg></div>
-      <h3>Garantía y respaldo</h3>
-      <p>60 días de garantía y la confianza de una óptica local que responde por su trabajo.</p>
+      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6a6 6 0 0 0 0 12"/></svg></div>
+      <h3>Lentes de contacto</h3>
+      <p>Todas las marcas: esféricos, tóricos, multifocales y de color. También en nuestra tienda en línea.</p>
+    </div>
+    <div class="scard reveal" data-d="3">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <h3>Examen incluido</h3>
+      <p>Sin costo al comprar tus lentes — aunque traigas tu propio armazón. Sin cita.</p>
     </div>
   </div>
 </section>
 
 <!-- LABORATORIO -->
-<section class="section wrap">
+<section class="section wrap" style="padding-top:0">
   <div class="split reveal">
     <div>
       <span class="eyebrow"><span class="ln"></span>Nuestro diferenciador</span>
-      <h2 style="margin-top:18px">Calidad de frontera, <em>hecha aquí</em></h2>
+      <h2 style="margin-top:18px" data-words>Calidad de frontera, hecha aquí</h2>
       <p>Tener nuestro propio laboratorio significa rapidez, precios justos y control total sobre cada par de lentes que entregamos.</p>
       <ul class="checklist">
         <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Lentes listos desde 35 minutos</li>
         <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Examen de la vista incluido en tu compra</li>
         <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Efectivo, tarjeta, transferencia o a plazos con Aplazo</li>
-        <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>Atención sin cita — llega directo cuando puedas</li>
+        <li><svg viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></svg>60 días de garantía en tu compra</li>
       </ul>
-      <a class="btn btn-primary" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Pide informes</a>
+      <a class="btn btn-primary btn-mag" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Pide informes</a>
     </div>
-    <!-- PHOTO-READY: aquí va la foto del laboratorio (reemplazar el contenido del .panel por background-image) -->
-    <div class="panel">
-      <div class="pnum">35<small> min</small></div>
-      <div class="pcap">Tiempo mínimo de entrega</div>
-      <div class="pdiv"></div>
-      <div class="pslogan">Ve bien.<br>Véte bien.</div>
+    <div class="panel-img">
+      <img src="media-solar-cafe.jpg" alt="Clienta con sus lentes nuevos y un par de sol en Ópticas Car & Era" loading="lazy" decoding="async" data-prlx="6">
+      <div class="badge-float">
+        <div class="bn">35<small> min</small></div>
+        <div class="bl">Lentes listos desde</div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- PASOS -->
-<section class="section wrap narrow">
-  <div class="sec-head reveal">
-    <span class="eyebrow"><span class="ln"></span>Así de fácil</span>
-    <h2 class="sec-title">Tus lentes nuevos en <em>3 pasos</em></h2>
-    <p class="sec-sub">Sin cita, sin complicaciones, sin esperas largas.</p>
-  </div>
-  <div class="steps">
-    <div class="step reveal"><div class="sn">1</div><h3>Llega a la sucursal</h3><p>Pásate a la que te quede más cerca, cuando gustes. El examen de la vista va incluido con tu compra.</p></div>
-    <div class="step reveal" data-d="1"><div class="sn">2</div><h3>Elige tus lentes</h3><p>Te asesoramos para escoger armazón, material y tratamientos según tu graduación y tu presupuesto.</p></div>
-    <div class="step reveal" data-d="2"><div class="sn">3</div><h3>Recógelos el mismo día</h3><p>Los hacemos en nuestro laboratorio. Muchos trabajos quedan listos desde 35 minutos.</p></div>
-  </div>
-</section>
-
-<!-- MARCAS -->
-<section class="section wrap" style="text-align:center">
-  <div class="sec-head reveal">
-    <span class="eyebrow" style="justify-content:center"><span class="ln"></span>Marcas que manejamos</span>
-    <h2 class="sec-title">Lentes de contacto de las mejores marcas</h2>
-    <p class="sec-sub">Y armazones de marca y diseño para todos los estilos y presupuestos.</p>
-  </div>
-  <div class="brand-row reveal">
-    <span class="brand-chip">Acuvue</span>
-    <span class="brand-chip">Air Optix</span>
-    <span class="brand-chip">Biofinity</span>
-    <span class="brand-chip">Dailies</span>
-    <span class="brand-chip">Freshlook</span>
-    <span class="brand-chip">Soflens</span>
-    <span class="brand-chip more">y muchas más</span>
-  </div>
-</section>
-
-<!-- MÁS SERVICIOS -->
-<section class="section wrap">
-  <div class="sec-head reveal">
-    <span class="eyebrow"><span class="ln"></span>Más servicios</span>
-    <h2 class="sec-title">Pensado para ti y para tu empresa</h2>
-  </div>
-  <div class="grid3">
-    <div class="scard reveal">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M5 7h14l-1 13H6L5 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg></div>
-      <h3>Tienda en línea de lentes de contacto</h3>
-      <p>Pide tus lentes de contacto en línea y recógelos en sucursal. Con opción de suscripción y 10% de descuento exclusivo.</p>
-      <a class="more" href="/tienda">Ir a la tienda →</a>
+<!-- LOOKBOOK -->
+<section class="section wrap" style="padding-top:0">
+  <div class="lookbook">
+    <div class="lb reveal">
+      <img src="media-dos-pares.jpg" alt="Cliente eligiendo entre armazón transparente y lentes de sol" loading="lazy" decoding="async" data-prlx="-5">
+      <span class="cap">Graduados y de sol</span>
     </div>
-    <div class="scard reveal" data-d="1">
-      <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 21V7l6-3 6 3v14M15 21V10l6 3v8M3 21h18M7 9v0M7 13v0M7 17v0"/></svg></div>
-      <h3>Convenios empresariales</h3>
-      <p>Afilia a tu empresa sin costo y dale a tus empleados —y sus familias— 15% de descuento, $500 de regalo al año y más.</p>
-      <a class="more" href="/empresas">Conocer el programa →</a>
-    </div>
-    <div class="scard reveal" data-d="2">
-      <div class="ico"><svg viewBox="0 0 24 24"><rect x="2.5" y="5.5" width="19" height="13" rx="2.5"/><path d="M2.5 10h19"/></svg></div>
-      <h3>Pagos y abonos en línea</h3>
-      <p>¿Tienes un pedido con saldo? Abona o paga en línea de forma segura desde tu celular, sin ir a sucursal.</p>
-      <a class="more" href="https://clip.mx/@caryera" target="_blank" rel="noopener">Pagar en línea →</a>
+    <div class="lb reveal" data-d="1">
+      <img src="media-aviador.jpg" alt="Clienta estrenando lentes graduados y de sol" loading="lazy" decoding="async" data-prlx="5">
+      <span class="cap">Para cada momento</span>
     </div>
   </div>
 </section>
 
 <!-- SUCURSALES -->
-<section class="section wrap" id="sucursales">
+<section class="section wrap" id="sucursales" style="padding-top:0">
   <div class="sec-head reveal">
     <span class="eyebrow"><span class="ln"></span>Encuéntranos</span>
-    <h2 class="sec-title">Nuestras 4 sucursales</h2>
+    <h2 class="sec-title" data-words>Nuestras 4 sucursales</h2>
     <p class="sec-sub">En distintos puntos de Ciudad Juárez para quedarte siempre cerca.</p>
   </div>
   <div class="grid4">
 
     <div class="suc reveal">
-      <div class="suc-top"><h3>Américas</h3></div>
-      <div class="zona">Zona Pronaf · Norte</div>
-      <div class="addr">Dentro de Plaza de las Américas, entrada por Smart, entre Joyería Alex y Continental Music.</div>
-      <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 703-8499</div>
-      <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+de+las+Am%C3%A9ricas+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+      <div class="suc-map"><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3382!2d-106.452!3d31.7408!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDQ0JzI2LjkiTiAxMDbCsDI3JzA3LjIiVw%3D%3D!5e0!3m2!1ses-419!2smx!4v1718000000000" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa sucursal Américas"></iframe></div>
+      <div class="suc-body">
+        <div class="suc-top"><h3>Américas</h3></div>
+        <div class="zona">Zona Pronaf · Norte</div>
+        <div class="addr">Dentro de Plaza de las Américas, entrada por Smart, entre Joyería Alex y Continental Music.</div>
+        <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 703-8499</div>
+        <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+de+las+Am%C3%A9ricas+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+      </div>
     </div>
 
     <div class="suc reveal" data-d="1">
-      <div class="suc-top"><h3>Pinocelli</h3></div>
-      <div class="zona">Salvárcar · Suroriente</div>
-      <div class="addr">Plaza Pinocelli, Av. Miguel de la Madrid esquina con Ramacoi.</div>
-      <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 559-1500</div>
-      <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+Pinocelli+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+      <div class="suc-map"><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3382!2d-106.4104!3d31.6352!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDM4JzA2LjciTiAxMDbCsDI0JzM3LjQiVw%3D%3D!5e0!3m2!1ses-419!2smx!4v1718000000000" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa sucursal Pinocelli"></iframe></div>
+      <div class="suc-body">
+        <div class="suc-top"><h3>Pinocelli</h3></div>
+        <div class="zona">Salvárcar · Suroriente</div>
+        <div class="addr">Plaza Pinocelli, Av. Miguel de la Madrid esquina con Ramacoi.</div>
+        <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 559-1500</div>
+        <a class="btn-map" href="https://www.google.com/maps/search/?api=1&query=%C3%93pticas+Car+y+Era+Plaza+Pinocelli+Ciudad+Ju%C3%A1rez" target="_blank" rel="noopener">Cómo llegar →</a>
+      </div>
     </div>
 
     <div class="suc reveal">
-      <div class="suc-top"><h3>Magnolia</h3></div>
-      <div class="zona">El Granjero · Sur</div>
-      <div class="addr">Av. Manuel J. Clouthier (Jilotepec), a la altura de Plaza El Reloj, frente a Tostadas El Primo (plaza de Helados Trevly).</div>
-      <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 174-8866</div>
-      <a class="btn-map" href="https://maps.app.goo.gl/HBomFDEfJJNPna697" target="_blank" rel="noopener">Cómo llegar →</a>
+      <div class="suc-map"><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3382!2d-106.396!3d31.664!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDM5JzUwLjQiTiAxMDbCsDIzJzQ1LjYiVw%3D%3D!5e0!3m2!1ses-419!2smx!4v1718000000000" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa sucursal Magnolia"></iframe></div>
+      <div class="suc-body">
+        <div class="suc-top"><h3>Magnolia</h3></div>
+        <div class="zona">El Granjero · Sur</div>
+        <div class="addr">Av. Manuel J. Clouthier (Jilotepec), a la altura de Plaza El Reloj, frente a Tostadas El Primo.</div>
+        <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 174-8866</div>
+        <a class="btn-map" href="https://maps.app.goo.gl/HBomFDEfJJNPna697" target="_blank" rel="noopener">Cómo llegar →</a>
+      </div>
     </div>
 
     <div class="suc reveal" data-d="1">
-      <div class="suc-top"><h3>Vía Vittoria</h3><span class="tag-new">Nueva</span></div>
-      <div class="zona">Senderos · Oriente</div>
-      <div class="addr">Av. Ejército Nacional 12946, casi esquina con Neptuno, a un lado de Farmacias Similares. CP 32565.</div>
-      <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 687-7482</div>
-      <a class="btn-map" href="https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6" target="_blank" rel="noopener">Cómo llegar →</a>
+      <div class="suc-map"><iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3382!2d-106.379!3d31.676!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDQwJzMzLjYiTiAxMDbCsDIyJzQ0LjQiVw%3D%3D!5e0!3m2!1ses-419!2smx!4v1718000000000" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Mapa sucursal Vía Vittoria"></iframe></div>
+      <div class="suc-body">
+        <div class="suc-top"><h3>Vía Vittoria</h3><span class="tag-new">Nueva</span></div>
+        <div class="zona">Senderos · Oriente</div>
+        <div class="addr">Av. Ejército Nacional 12946, casi esquina con Neptuno, a un lado de Farmacias Similares.</div>
+        <div class="tel"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>(656) 687-7482</div>
+        <a class="btn-map" href="https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6" target="_blank" rel="noopener">Cómo llegar →</a>
+      </div>
     </div>
 
   </div>
@@ -438,11 +412,11 @@ a{color:inherit;text-decoration:none}
 </section>
 
 <!-- RESEÑAS -->
-<section class="section wrap" id="resenas">
+<section class="section wrap" id="resenas" style="padding-top:0">
   <div class="sec-head reveal">
     <span class="eyebrow"><span class="ln"></span>Lo que dicen de nosotros</span>
-    <h2 class="sec-title">Pacientes que ya <em>ven bien</em></h2>
-    <p class="sec-sub">Miles de juarenses confían su visión en Car &amp; Era. Lee las reseñas reales en Google.</p>
+    <h2 class="sec-title" data-words>Pacientes que ya ven bien</h2>
+    <p class="sec-sub">Lee las reseñas reales de cada sucursal en Google Maps.</p>
   </div>
   <div class="reviews">
     <div class="review reveal">
@@ -462,35 +436,19 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="reviews-cta reveal">
-    <a class="btn btn-ghost" href="https://www.google.com/search?q=%C3%93pticas+Car+y+Era+Ciudad+Ju%C3%A1rez+rese%C3%B1as" target="_blank" rel="noopener">Ver reseñas en Google →</a>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section class="section wrap">
-  <div class="sec-head reveal">
-    <span class="eyebrow"><span class="ln"></span>Preguntas frecuentes</span>
-    <h2 class="sec-title">Resolvemos tus dudas</h2>
-  </div>
-  <div class="faq reveal">
-    <details><summary>¿Necesito cita para que me atiendan?<span class="pm"></span></summary><div class="ans">No. Puedes llegar directo a cualquiera de nuestras sucursales en el horario de atención y con gusto te atendemos.</div></details>
-    <details><summary>¿El examen de la vista tiene costo?<span class="pm"></span></summary><div class="ans">El examen va incluido sin costo al comprar tus lentes (armazón o lentes de contacto). Incluso si traes tu propio armazón y solo compras las micas graduadas, el examen va incluido.</div></details>
-    <details><summary>¿Cuánto tardan en estar listos mis lentes?<span class="pm"></span></summary><div class="ans">Al tener laboratorio propio, muchos trabajos quedan listos desde 35 minutos. El tiempo exacto depende de tu graduación, material y tratamientos.</div></details>
-    <details><summary>¿Qué formas de pago aceptan?<span class="pm"></span></summary><div class="ans">Efectivo, tarjeta de débito/crédito, transferencia y pagos a plazos (meses sin intereses) con Aplazo. También puedes abonar a tu pedido en línea.</div></details>
-    <details><summary>¿Tienen garantía?<span class="pm"></span></summary><div class="ans">Sí, ofrecemos 60 días de garantía y el respaldo de una óptica local que responde por su trabajo.</div></details>
-    <details><summary>¿Manejan lentes de contacto?<span class="pm"></span></summary><div class="ans">Sí, de todas las marcas: esféricos, tóricos (para astigmatismo), multifocales y de color. Además puedes pedirlos en nuestra tienda en línea y recogerlos en sucursal, con opción de suscripción y 10% de descuento.</div></details>
+    <a class="btn btn-ghost btn-mag" href="https://www.google.com/search?q=%C3%93pticas+Car+y+Era+Ciudad+Ju%C3%A1rez+rese%C3%B1as" target="_blank" rel="noopener">Ver reseñas en Google →</a>
   </div>
 </section>
 
 <!-- CTA FINAL -->
-<section class="section wrap" id="contacto" style="padding-top:20px">
+<section class="section wrap" id="contacto" style="padding-top:0">
   <div class="cta-final reveal">
     <span class="eyebrow" style="justify-content:center"><span class="ln"></span>Estamos para ti</span>
     <h2>¿Listo para <em>ver bien</em>?</h2>
     <p>Escríbenos por WhatsApp y con gusto te asesoramos, o pásate directo a la sucursal que te quede más cerca.</p>
     <div class="cta-row">
-      <a class="btn btn-wa" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
-      <a class="btn btn-ghost" href="mailto:opticas@caryera.mx">opticas@caryera.mx</a>
+      <a class="btn btn-wa btn-mag" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+      <a class="btn btn-ghost btn-mag" href="mailto:opticas@caryera.mx">opticas@caryera.mx</a>
     </div>
   </div>
 </section>
@@ -508,6 +466,7 @@ a{color:inherit;text-decoration:none}
       <a href="#servicios">Lentes de contacto</a>
       <a href="/tienda">Tienda en línea</a>
       <a href="/empresas">Convenios empresariales</a>
+      <a href="https://clip.mx/@caryera" target="_blank" rel="noopener">Pagos en línea</a>
     </div>
     <div class="foot-col">
       <h4>Contacto</h4>
@@ -527,19 +486,119 @@ a{color:inherit;text-decoration:none}
   <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.087zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
 </a>
 
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js" defer></script>
 <script>
-// Scroll reveal
 (function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- base (sin GSAP): reveal IO + header + counters ----------
   var els = document.querySelectorAll('.reveal');
-  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});return;}
-  var io = new IntersectionObserver(function(entries){
-    entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
-  },{threshold:0.12,rootMargin:'0px 0px -50px 0px'});
-  els.forEach(function(e){io.observe(e)});
-  // header border on scroll
-  var hdr=document.getElementById('hdr');
-  var onScroll=function(){ hdr.classList.toggle('scrolled', window.scrollY>8); };
+  if(!('IntersectionObserver' in window)){els.forEach(function(e){e.classList.add('in')});}
+  else{
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+    },{threshold:0.12,rootMargin:'0px 0px -50px 0px'});
+    els.forEach(function(e){io.observe(e)});
+  }
+
+  var hdr=document.getElementById('hdr'), prog=document.getElementById('hprog');
+  var onScroll=function(){
+    hdr.classList.toggle('scrolled', window.scrollY>8);
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    prog.style.transform = 'scaleX(' + (max>0 ? Math.min(1, window.scrollY/max) : 0) + ')';
+  };
   window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+  var counters = document.querySelectorAll('[data-cnt]');
+  function runCount(el){
+    var target = parseInt(el.getAttribute('data-cnt'),10), t0=null, DUR=1100;
+    if(reduced){ el.textContent = target; return; }
+    function tick(ts){
+      if(!t0) t0=ts;
+      var p = Math.min(1,(ts-t0)/DUR), e = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(target*e);
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  if('IntersectionObserver' in window){
+    var cio = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting){ runCount(en.target); cio.unobserve(en.target); } });
+    },{threshold:0.6});
+    counters.forEach(function(c){cio.observe(c)});
+  } else { counters.forEach(function(c){ c.textContent=c.getAttribute('data-cnt'); }); }
+
+  // tilt tarjetas (desktop)
+  if(window.matchMedia('(pointer: fine)').matches && !reduced){
+    document.querySelectorAll('.scard,.review').forEach(function(card){
+      card.addEventListener('pointermove',function(e){
+        var r=card.getBoundingClientRect();
+        var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        card.style.transform='perspective(900px) rotateY('+(x*6).toFixed(2)+'deg) rotateX('+(-y*6).toFixed(2)+'deg) translateY(-4px)';
+      });
+      card.addEventListener('pointerleave',function(){ card.style.transform=''; });
+    });
+  }
+
+  // botones magnéticos (desktop)
+  if(window.matchMedia('(pointer: fine)').matches && !reduced){
+    document.querySelectorAll('.btn-mag').forEach(function(b){
+      b.addEventListener('pointermove',function(e){
+        var r=b.getBoundingClientRect();
+        var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        b.style.transform='translate('+(x*8).toFixed(1)+'px,'+(y*6).toFixed(1)+'px)';
+      });
+      b.addEventListener('pointerleave',function(){ b.style.transform=''; });
+    });
+  }
+
+  // ---------- GSAP (mejoras si carga) ----------
+  function initGsap(){
+    if(!window.gsap || reduced) return;
+    gsap.registerPlugin(ScrollTrigger);
+
+    // entrada del hero
+    gsap.set('.h-anim',{y:34,opacity:0});
+    gsap.set('#hero-photo',{clipPath:'inset(8% 8% 8% 8% round 28px)',opacity:0,scale:.97});
+    var tl = gsap.timeline({defaults:{ease:'power3.out'}});
+    tl.to('.h-anim',{y:0,opacity:1,duration:.9,stagger:.1},.1)
+      .to('#hero-photo',{clipPath:'inset(0% 0% 0% 0% round 28px)',opacity:1,scale:1,duration:1.1,ease:'power2.inOut'},.35);
+
+    // parallax foto hero
+    gsap.fromTo('#hero-img',{yPercent:-6},{yPercent:6,ease:'none',
+      scrollTrigger:{trigger:'#hero-photo',start:'top bottom',end:'bottom top',scrub:true}});
+
+    // parallax imágenes data-prlx
+    document.querySelectorAll('[data-prlx]').forEach(function(img){
+      var amt = parseFloat(img.getAttribute('data-prlx'));
+      gsap.fromTo(img,{yPercent:-Math.abs(amt)},{yPercent:Math.abs(amt)*(amt<0?-1:1),ease:'none',
+        scrollTrigger:{trigger:img.parentElement,start:'top bottom',end:'bottom top',scrub:true}});
+    });
+
+    // títulos palabra por palabra
+    document.querySelectorAll('[data-words]').forEach(function(h){
+      var words = h.textContent.trim().split(/\s+/);
+      h.innerHTML = words.map(function(w){return '<span class="w-wrap"><span class="w-in">'+w+'</span></span>'}).join(' ');
+      gsap.from(h.querySelectorAll('.w-in'),{yPercent:115,duration:.7,stagger:.05,ease:'power3.out',
+        scrollTrigger:{trigger:h,start:'top 86%',once:true}});
+    });
+
+    // marquee acelera levemente con el scroll (vida)
+    var track = document.querySelector('.mq-track');
+    if(track){
+      ScrollTrigger.create({
+        trigger:'body',start:'top top',end:'max',
+        onUpdate:function(self){ track.style.animationDuration = (30 - Math.min(10, Math.abs(self.getVelocity())/400)) + 's'; }
+      });
+    }
+
+    // blobs parallax
+    gsap.to('.blob.b1',{y:-60,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
+    gsap.to('.blob.b2',{y:-100,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
+  }
+  if(document.readyState === 'complete'){ initGsap(); }
+  else window.addEventListener('load', initGsap);
 })();
 </script>
 
