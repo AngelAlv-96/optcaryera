@@ -31,11 +31,11 @@ a{color:inherit;text-decoration:none}
 ::selection{background:var(--beige);color:#fff}
 img{max-width:100%}
 
-/* reveal (fallback IO + GSAP enhance) */
-.reveal{opacity:0;transform:translateY(26px);filter:blur(7px);transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .85s cubic-bezier(.2,.7,.2,1),filter .85s cubic-bezier(.2,.7,.2,1)}
-.reveal.in{opacity:1;transform:none;filter:none}
+/* reveal (fallback IO + GSAP enhance) — sin blur: pintar blur animado en secciones grandes causa jank */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
 .reveal[data-d="1"]{transition-delay:.08s}.reveal[data-d="2"]{transition-delay:.16s}.reveal[data-d="3"]{transition-delay:.24s}
-@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;filter:none!important;transition:none}}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none}}
 
 /* grain */
 body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
@@ -135,11 +135,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 @media(max-width:560px){.grid4s{grid-template-columns:1fr}}
 
 /* showcase modelos (full-viewport, scroll-driven) */
-.showcase{position:relative;height:100vh;overflow:hidden;background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.showcase{position:relative;height:100vh;height:100svh;overflow:hidden;background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .sc-head{position:absolute;top:38px;left:0;right:0;text-align:center;z-index:5;pointer-events:none}
 .sc-head .eyebrow{justify-content:center}
 .sc-head h2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.6vw,38px);font-weight:600;margin-top:10px}
-.sc-words{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;width:500vw;z-index:1;pointer-events:none}
+.sc-words{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;width:500vw;z-index:1;pointer-events:none;will-change:transform}
+.sc-frames{will-change:transform}
 .sc-w{width:100vw;display:flex;justify-content:center}
 .sc-w span{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:clamp(100px,19vw,260px);line-height:1;color:var(--beige-soft);white-space:nowrap;user-select:none}
 .sc-frames{position:absolute;top:0;bottom:0;left:0;display:flex;width:500vw;z-index:2}
@@ -372,7 +373,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     <div class="sc-slide"><img src="frame-2.png" alt="Armazón rectangular clásico" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Clásico</div><div class="ds">Línea rectangular</div></div></div>
     <div class="sc-slide"><img src="frame-3.png" alt="Armazón retro de acetato grueso" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Retro</div><div class="ds">Acetato bold</div></div></div>
     <div class="sc-slide"><img src="frame-4.png" alt="Armazón cat-eye de metal" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Cat-Eye</div><div class="ds">Metal fino</div></div></div>
-    <div class="sc-slide"><img src="frame-5.png" alt="Armazón redondo de metal" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Metal</div><div class="ds">Detalle dorado</div></div></div>
+    <div class="sc-slide"><img src="frame-5.png" alt="Armazón redondo de metal" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Metal</div><div class="ds">Detalle plateado</div></div></div>
   </div>
   <div class="sc-lens" id="sc-lens">
     <div class="sc-lens-clip"><div class="sc-clone" id="sc-clone"></div></div>
@@ -559,8 +560,11 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Evitar que el navegador restaure el scroll a media página al recargar
-  // (con el pin del showcase eso encimaba las secciones y en móvil arrancaba en sucursales)
+  // (con el pin del showcase eso encimaba las secciones y en móvil arrancaba en sucursales).
+  // El scrollTo va AQUÍ (parse, antes de que el usuario pueda scrollear) y NO en load:
+  // hacerlo en load jalaba al usuario de regreso arriba si ya había empezado a bajar.
   if('scrollRestoration' in history){ try { history.scrollRestoration = 'manual'; } catch(e){} }
+  if(!location.hash){ window.scrollTo(0, 0); }
 
   // ---------- base (sin GSAP): reveal IO + header + counters ----------
   var els = document.querySelectorAll('.reveal');
@@ -625,13 +629,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 
   // ---------- GSAP (mejoras si carga) ----------
   function initGsap(){
-    window.scrollTo(0, 0);                 // arrancar siempre arriba (todas las recargas)
     var sc = document.getElementById('showcase');
     if(!window.gsap || reduced){
       if(sc) sc.classList.add('sc-static');
       return;
     }
     gsap.registerPlugin(ScrollTrigger);
+    // En móvil, esconder/mostrar la barra de URL dispara resize en pleno scroll;
+    // sin esto ScrollTrigger recalcula a medio scroll y la página da saltos.
+    ScrollTrigger.config({ ignoreMobileResize: true });
 
     // ---- showcase modelos: pin + scrub + lente graduada ----
     (function(){
@@ -713,26 +719,18 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
         scrollTrigger:{trigger:h,start:'top 86%',once:true}});
     });
 
-    // marquee acelera levemente con el scroll (vida)
-    var track = document.querySelector('.mq-track');
-    if(track){
-      ScrollTrigger.create({
-        trigger:'body',start:'top top',end:'max',
-        onUpdate:function(self){ track.style.animationDuration = (30 - Math.min(10, Math.abs(self.getVelocity())/400)) + 's'; }
-      });
-    }
+    // (el marquee va a velocidad constante: mutarle animationDuration en cada
+    // tick de scroll hacía brincar la animación CSS)
 
     // blobs parallax
     gsap.to('.blob.b1',{y:-60,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
     gsap.to('.blob.b2',{y:-100,ease:'none',scrollTrigger:{trigger:'.hero-shell',start:'top top',end:'bottom top',scrub:true}});
 
-    // Recalcular cuando cambie el layout (fuentes/imágenes que cargan tarde):
-    // si el pin se mide antes de que todo cargue, las secciones se enciman.
+    // Recalcular SOLO en momentos seguros (no por cada imagen lazy: eso disparaba
+    // refresh() en pleno scroll y causaba saltos). Las imágenes viven en contenedores
+    // de altura fija (aspect-ratio/absolute), así que no mueven el layout.
     ScrollTrigger.refresh();
     if(document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ ScrollTrigger.refresh(); }); }
-    document.querySelectorAll('img').forEach(function(img){
-      if(!img.complete){ img.addEventListener('load', function(){ ScrollTrigger.refresh(); }, {once:true}); }
-    });
     window.addEventListener('orientationchange', function(){ setTimeout(function(){ ScrollTrigger.refresh(); }, 250); });
   }
   if(document.readyState === 'complete'){ initGsap(); }
