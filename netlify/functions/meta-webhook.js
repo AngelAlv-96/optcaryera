@@ -65,9 +65,19 @@ function getActivePromos() {
   // Hot Sale APLAZO ELIMINADO (ya no existe): la promo de descuento HS2026 de Aplazo terminó. Aplazo SIGUE como método de pago/financiamiento (eso va en el knowledge general, no aquí).
   var hotSaleAplazo = '';
 
+  // Campaña pautada en redes: fotocromáticos de color. MUCHOS prospectos escriben por este anuncio
+  // o mandan la foto del flyer — Clari debe reconocerla como NUESTRA y responder con info clara.
+  var campanaFotoColor = '📣 CAMPAÑA ACTUAL EN REDES — FOTOCROMÁTICOS DE COLOR (flyer "UN SOLO LENTE. DOS FORMAS DE VERTE."):\n' +
+    '• Estamos anunciando en Facebook/Instagram los lentes FOTOCROMÁTICOS DE COLOR. Muchos prospectos escriben por ese anuncio o mandan la foto del flyer — es publicidad NUESTRA: respóndele con total seguridad, NUNCA digas que es de otra óptica ni que no la conoces.\n' +
+    '• Qué son: micas GRADUADAS que adentro son transparentes y al salir al sol se oscurecen DE COLOR (rosa, azul, morado, entre otros). Incluyen protección anti-luz azul. Funcionan como lentes normales bajo techo y como lentes de sol de color al exterior — un solo lente para todo el día.\n' +
+    '• SÍ los manejamos en las 4 sucursales: es un tratamiento que se agrega a unos lentes graduados, con el armazón que el cliente elija.\n' +
+    '• Si el cliente manda la foto del flyer o dice "quiero los del anuncio" / "los que cambian de color" / "los rosas": confirma con entusiasmo que SÍ son nuestros, 1 línea de beneficio, e invítalo a sucursal a cotizarlos y elegir su color (examen de la vista incluido al comprar).\n' +
+    '• Precio: NO des un número — depende de la graduación + material + el tratamiento fotocromático de color. En sucursal arman la cotización exacta.\n' +
+    '• Si pregunta si combinan con el 2x1: el 2x1 aplica a lentes completos y el tratamiento fotocromático de color se cotiza como adicional — en sucursal le confirman la combinación exacta. NO prometas que va incluido.\n\n';
+
   // Abril 15 - Junio 30, 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante TODO junio. Maestros hasta 18 de mayo.)
   if (year === 2026 && (month === 4 || month === 5 || month === 6)) {
-    return hotSaleCarEra + 'PROMOCIÓN VIGENTE (DURANTE JUNIO 2026):\n' +
+    return hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE (DURANTE JUNIO 2026):\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
       '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
@@ -93,7 +103,7 @@ function getActivePromos() {
       'REGLA CUANDO PREGUNTEN POR 3x1: La promo 3x1 tuvo vigencia hasta el 14 de abril. Menciónalo brevemente ("Esa promo estuvo vigente hasta el 14 de abril") y de inmediato presenta la promo actual con entusiasmo: "Ahora tenemos 2x1 en lentes completos + un solar graduado adicional por $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad, NO como consuelo. No inventes otras promos.' + hotSaleAplazo;
   }
 
-  return hotSaleCarEra + 'PROMOCIÓN VIGENTE:\n' +
+  return hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional por $499 (par extra dentro de la promo).\n' +
