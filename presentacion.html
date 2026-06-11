@@ -134,6 +134,39 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 @media(max-width:960px){.grid4s{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.grid4s{grid-template-columns:1fr}}
 
+/* showcase modelos (full-viewport, scroll-driven) */
+.showcase{position:relative;height:100vh;overflow:hidden;background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.sc-head{position:absolute;top:38px;left:0;right:0;text-align:center;z-index:5;pointer-events:none}
+.sc-head .eyebrow{justify-content:center}
+.sc-head h2{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,3.6vw,38px);font-weight:600;margin-top:10px}
+.sc-words{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;width:500vw;z-index:1;pointer-events:none}
+.sc-w{width:100vw;display:flex;justify-content:center}
+.sc-w span{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:clamp(100px,19vw,260px);line-height:1;color:var(--beige-soft);white-space:nowrap;user-select:none}
+.sc-frames{position:absolute;top:0;bottom:0;left:0;display:flex;width:500vw;z-index:2}
+.sc-slide{width:100vw;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.sc-slide img{width:min(640px,84vw);height:auto;filter:drop-shadow(0 36px 44px rgba(28,26,22,.28))}
+.sc-cap{margin-top:34px;text-align:center}
+.sc-cap .nm{font-family:'Cormorant Garamond',serif;font-size:25px;font-weight:600}
+.sc-cap .ds{font-size:13.5px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+.sc-count{position:absolute;left:0;right:0;bottom:32px;text-align:center;z-index:5;font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--ink3);pointer-events:none}
+.sc-count b{color:var(--ink);font-weight:600;font-size:24px}
+.sc-hint{position:absolute;right:30px;bottom:32px;z-index:5;font-size:12.5px;color:var(--ink3);pointer-events:none}
+@media(max-width:680px){.sc-hint{display:none}}
+/* lente de prueba que distorsiona (efecto graduación) */
+.sc-lens{position:absolute;width:270px;height:270px;left:0;top:0;border-radius:50%;z-index:4;pointer-events:none;transform:translate(-50%,-50%);opacity:0}
+.sc-lens::before{content:'';position:absolute;inset:0;border-radius:50%;border:9px solid rgba(255,253,249,.7);box-shadow:0 18px 50px rgba(28,26,22,.18), inset 0 0 0 1px rgba(179,137,90,.35), inset 14px 18px 32px rgba(255,255,255,.5);z-index:2}
+.sc-lens::after{content:'';position:absolute;top:13%;left:16%;width:34%;height:20%;border-radius:50%;background:linear-gradient(120deg,rgba(255,255,255,.55),transparent 70%);transform:rotate(-18deg);z-index:3}
+.sc-lens-clip{position:absolute;inset:9px;border-radius:50%;overflow:hidden;z-index:1;background:rgba(247,239,226,.35)}
+.sc-clone{position:absolute;left:0;top:0;filter:url(#lensWarp)}
+.sc-clone .sc-words{position:absolute}
+/* fallback estático (sin GSAP / reduced motion) */
+.showcase.sc-static{height:auto;padding:80px 0}
+.showcase.sc-static .sc-head{position:static;margin-bottom:40px}
+.showcase.sc-static .sc-words,.showcase.sc-static .sc-lens,.showcase.sc-static .sc-count,.showcase.sc-static .sc-hint{display:none}
+.showcase.sc-static .sc-frames{position:static;width:auto;flex-wrap:wrap;justify-content:center;gap:10px}
+.showcase.sc-static .sc-slide{width:min(420px,90vw);height:auto;padding:20px 0}
+.showcase.sc-static .sc-slide img{width:min(340px,80vw)}
+
 /* split */
 .split{display:grid;grid-template-columns:1fr 1fr;gap:54px;align-items:center}
 .split h2{font-family:'Cormorant Garamond',serif;font-size:clamp(30px,4.6vw,46px);font-weight:600;line-height:1.06;letter-spacing:-.015em;margin-bottom:18px}
@@ -313,6 +346,39 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
       <p>Sin costo al comprar tus lentes — aunque traigas tu propio armazón. Sin cita.</p>
     </div>
   </div>
+</section>
+
+<!-- SHOWCASE MODELOS NUEVOS -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="lensWarp" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves="1" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+<section class="showcase" id="showcase">
+  <div class="sc-head">
+    <span class="eyebrow"><span class="ln"></span>Recién llegados</span>
+    <h2>Modelos nuevos en sucursal</h2>
+  </div>
+  <div class="sc-words" id="sc-words">
+    <div class="sc-w"><span>Redondo</span></div>
+    <div class="sc-w"><span>Clásico</span></div>
+    <div class="sc-w"><span>Retro</span></div>
+    <div class="sc-w"><span>Cat-Eye</span></div>
+    <div class="sc-w"><span>Metal</span></div>
+  </div>
+  <div class="sc-frames" id="sc-frames">
+    <div class="sc-slide"><img src="frame-1.png" alt="Armazón redondo de acetato" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Redondo</div><div class="ds">Acetato ligero</div></div></div>
+    <div class="sc-slide"><img src="frame-2.png" alt="Armazón rectangular clásico" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Clásico</div><div class="ds">Línea rectangular</div></div></div>
+    <div class="sc-slide"><img src="frame-3.png" alt="Armazón retro de acetato grueso" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Retro</div><div class="ds">Acetato bold</div></div></div>
+    <div class="sc-slide"><img src="frame-4.png" alt="Armazón cat-eye de metal" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Cat-Eye</div><div class="ds">Metal fino</div></div></div>
+    <div class="sc-slide"><img src="frame-5.png" alt="Armazón redondo de metal" loading="lazy" decoding="async"><div class="sc-cap"><div class="nm">Metal</div><div class="ds">Detalle dorado</div></div></div>
+  </div>
+  <div class="sc-lens" id="sc-lens">
+    <div class="sc-lens-clip"><div class="sc-clone" id="sc-clone"></div></div>
+  </div>
+  <div class="sc-count" id="sc-count"><b>01</b> — 05</div>
+  <div class="sc-hint" id="sc-hint">Mueve el cursor: así distorsiona una mica graduada</div>
 </section>
 
 <!-- LABORATORIO -->
@@ -555,8 +621,65 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 
   // ---------- GSAP (mejoras si carga) ----------
   function initGsap(){
-    if(!window.gsap || reduced) return;
+    var sc = document.getElementById('showcase');
+    if(!window.gsap || reduced){
+      if(sc) sc.classList.add('sc-static');
+      return;
+    }
     gsap.registerPlugin(ScrollTrigger);
+
+    // ---- showcase modelos: pin + scrub + lente graduada ----
+    (function(){
+      if(!sc) return;
+      var words = document.getElementById('sc-words'),
+          frames = document.getElementById('sc-frames'),
+          clone = document.getElementById('sc-clone'),
+          lens = document.getElementById('sc-lens'),
+          count = document.getElementById('sc-count'),
+          hint = document.getElementById('sc-hint');
+      var N = 5;
+      clone.innerHTML = '<div class="sc-words">' + words.innerHTML + '</div>';
+      var cloneWords = clone.firstChild;
+      function sizeClone(){
+        clone.style.width = sc.clientWidth + 'px';
+        clone.style.height = sc.clientHeight + 'px';
+      }
+      sizeClone();
+      window.addEventListener('resize', sizeClone);
+
+      gsap.timeline({scrollTrigger:{trigger:sc, start:'top top', end:'+=350%', pin:true, scrub:.6,
+        onUpdate:function(self){
+          var idx = Math.min(N, Math.round(self.progress*(N-1)) + 1);
+          count.innerHTML = '<b>0' + idx + '</b> — 0' + N;
+        }}})
+        .to([frames, words, cloneWords], {xPercent:-(100*(N-1)/N), ease:'none'}, 0);
+
+      var fine = window.matchMedia('(pointer: fine)').matches;
+      function placeLens(x, y){
+        lens.style.left = x + 'px';
+        lens.style.top = y + 'px';
+        clone.style.left = (126 - x) + 'px';
+        clone.style.top = (126 - y) + 'px';
+        clone.style.transformOrigin = x + 'px ' + y + 'px';
+        clone.style.transform = 'scale(1.16)';
+      }
+      if(fine){
+        sc.addEventListener('pointermove', function(e){
+          var r = sc.getBoundingClientRect();
+          placeLens(e.clientX - r.left, e.clientY - r.top);
+          lens.style.opacity = 1;
+        });
+        sc.addEventListener('pointerleave', function(){ lens.style.opacity = 0; });
+      } else {
+        hint.textContent = 'Así distorsiona una mica graduada';
+        lens.style.opacity = 1;
+        var t = {a:0};
+        gsap.to(t, {a:Math.PI*2, duration:10, repeat:-1, ease:'none', onUpdate:function(){
+          var W = sc.clientWidth, H = sc.clientHeight;
+          placeLens(W/2 + Math.cos(t.a)*W*0.26, H*0.46 + Math.sin(t.a*2)*H*0.14);
+        }});
+      }
+    })();
 
     // entrada del hero
     gsap.set('.h-anim',{y:34,opacity:0});
