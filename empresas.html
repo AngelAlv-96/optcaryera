@@ -110,15 +110,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .ico{width:48px;height:48px;border-radius:14px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center;color:var(--beige-deep);margin-bottom:20px}
 .ico svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
-/* benefits */
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.scard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;transition:transform .25s,box-shadow .25s,border-color .25s}
-.scard:hover{box-shadow:0 18px 40px rgba(28,26,22,.07);border-color:var(--beige-soft)}
-.scard h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px}
-.scard p{font-size:14.5px;color:var(--ink2)}
-.scard .fine{display:block;margin-top:8px;font-size:13px;color:var(--ink3)}
-@media(max-width:880px){.grid3{grid-template-columns:1fr 1fr}}
-@media(max-width:560px){.grid3{grid-template-columns:1fr}}
+/* benefits — ligero, sin tarjetas: solo ícono + texto, con aire */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:44px 40px;align-items:start;max-width:980px;margin:0 auto}
+.scard{background:transparent;border:none;padding:0}
+.scard .ico{width:44px;height:44px;border-radius:12px;margin-bottom:16px;transition:transform .25s}
+.scard:hover .ico{transform:translateY(-3px)}
+.scard h3{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;margin-bottom:7px}
+.scard p{font-size:14.5px;color:var(--ink2);max-width:300px}
+.scard .fine{display:block;margin-top:7px;font-size:13px;color:var(--ink3)}
+@media(max-width:880px){.grid3{grid-template-columns:1fr 1fr;gap:36px 32px}}
+@media(max-width:560px){.grid3{grid-template-columns:1fr;gap:30px}}
 
 /* steps */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
@@ -589,7 +590,7 @@ async function enviarRegistro(ev) {
 
   // tilt tarjetas + botones magnéticos (desktop)
   if(window.matchMedia('(pointer: fine)').matches && !reduced){
-    document.querySelectorAll('.scard,.step').forEach(function(card){
+    document.querySelectorAll('.step').forEach(function(card){
       card.addEventListener('pointermove',function(e){
         var r=card.getBoundingClientRect();
         var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
