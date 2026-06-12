@@ -3,142 +3,302 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Convenios Empresariales — Ópticas Car & Era</title>
-<meta name="description" content="Afilia a tu empresa sin costo y dale a tus empleados beneficios visuales: 15% de descuento, $500 de regalo al año, examen de la vista gratis y más.">
+<title>Convenios Empresariales — Ópticas Car & Era | Ciudad Juárez</title>
+<meta name="description" content="Afilia a tu empresa sin costo y dale a tus empleados beneficios visuales: 15% de descuento, $500 de regalo al año, examen de la vista gratis y más. 4 sucursales en Ciudad Juárez.">
+<meta name="theme-color" content="#f6f1ea">
+<script>
+try{ history.scrollRestoration = 'manual'; }catch(e){}
+if(!location.hash){ window.scrollTo(0,0); }
+</script>
+<meta property="og:title" content="Convenios Empresariales — Ópticas Car & Era">
+<meta property="og:description" content="Cuida la vista de tu equipo sin costo: 15% de descuento, $500 de regalo al año, examen gratis y familia incluida. 4 sucursales en Ciudad Juárez.">
+<meta property="og:type" content="website">
+<link rel="icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --beige:#e2c6a6; --beige-light:#f0dfc8; --beige-dim:rgba(226,198,166,0.12);
-  --beige-border:rgba(226,198,166,0.2); --black:#111110;
-  --surface:#1c1b19; --surface2:#252420; --surface3:#2e2c28;
-  --white:#f5f2ee; --muted:#9a948e; --ok:#7dbb7d; --err:#e08a8a;
+  --paper:#f6f1ea; --paper2:#fffdf9; --card:#ffffff;
+  --ink:#1c1a16; --ink2:#615b52; --ink3:#8c857a;
+  --line:#e9e0d2; --line2:#f0e9dd;
+  --beige:#b3895a; --beige-deep:#9a7245; --beige-soft:#efe4d2; --beige-tint:#f7efe2;
+  --wa:#1faa53; --ok:#3f9c54; --err:#c0584f;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased}
-.wrap{max-width:880px;margin:0 auto;padding:0 22px}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1080px;margin:0 auto;padding:0 26px}
 .serif{font-family:'Cormorant Garamond',serif}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--beige);color:#fff}
+img{max-width:100%}
 
-/* Header */
-.header{position:sticky;top:0;z-index:10;background:rgba(17,17,16,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--beige-border)}
-.header-in{max-width:880px;margin:0 auto;padding:14px 22px;display:flex;align-items:center;justify-content:center;text-align:center}
-.h-logo{display:block;height:46px;width:auto;margin:0 auto}
-.header-text p{font-size:12px;color:var(--muted);letter-spacing:0.28em;text-transform:uppercase;margin-top:5px}
+/* reveal */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal[data-d="1"]{transition-delay:.08s}.reveal[data-d="2"]{transition-delay:.16s}.reveal[data-d="3"]{transition-delay:.24s}.reveal[data-d="4"]{transition-delay:.32s}.reveal[data-d="5"]{transition-delay:.40s}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none}}
 
-/* Hero */
-.hero{padding:64px 0 46px;text-align:center}
-.hero .eyebrow{display:inline-block;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:var(--beige);background:var(--beige-dim);border:1px solid var(--beige-border);border-radius:100px;padding:7px 18px;margin-bottom:22px}
-.hero h2{font-family:'Cormorant Garamond',serif;font-size:clamp(34px,6vw,52px);font-weight:600;line-height:1.12;margin-bottom:18px}
-.hero h2 em{color:var(--beige);font-style:normal}
-.hero p{font-size:17px;color:var(--muted);max-width:560px;margin:0 auto 30px}
-.btn{display:inline-block;background:var(--beige);color:var(--black);font-weight:600;font-size:16px;border:none;border-radius:12px;padding:15px 34px;cursor:pointer;transition:all .18s;text-decoration:none;font-family:'Outfit',sans-serif}
-.btn:hover{background:var(--beige-light);transform:translateY(-1px)}
-.hero .nota{font-size:13px;color:var(--muted);margin-top:14px}
+/* grain */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
 
-/* Benefits */
-.section{padding:46px 0}
-.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(26px,4.5vw,34px);font-weight:600;text-align:center;margin-bottom:8px}
-.sec-sub{text-align:center;color:var(--muted);font-size:15px;margin-bottom:34px}
-.benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.bcard{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:24px 22px;transition:border-color .2s}
-.bcard:hover{border-color:var(--beige-border)}
-.bcard .ico{font-size:26px;margin-bottom:12px}
-.bcard h3{font-size:16.5px;font-weight:600;margin-bottom:7px;color:var(--beige-light)}
-.bcard p{font-size:14px;color:var(--muted)}
-.bcard .fine{display:block;margin-top:8px;font-size:12px;color:var(--muted);opacity:.75}
+/* blobs */
+.blob{position:absolute;border-radius:50%;filter:blur(72px);pointer-events:none;z-index:0;will-change:transform}
+.blob.b1{width:420px;height:420px;left:-6%;top:-4%;background:radial-gradient(circle,rgba(240,205,156,.5),transparent 68%);animation:drift 17s ease-in-out infinite alternate}
+.blob.b2{width:320px;height:320px;right:-2%;top:24%;background:radial-gradient(circle,rgba(228,190,150,.4),transparent 68%);animation:drift 21s ease-in-out -8s infinite alternate-reverse}
+@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(46px,-34px) scale(1.14)}}
+@media(prefers-reduced-motion:reduce){.blob{animation:none}}
 
-/* Steps */
-.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;counter-reset:paso}
-.step{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:14px;padding:26px 22px;position:relative}
-.step .num{width:34px;height:34px;border-radius:50%;background:var(--beige-dim);border:1px solid var(--beige-border);color:var(--beige);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:15px;margin-bottom:14px}
-.step h3{font-size:16px;font-weight:600;margin-bottom:6px}
-.step p{font-size:14px;color:var(--muted)}
+/* eyebrow */
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--beige-deep)}
+.eyebrow .ln{width:26px;height:1px;background:var(--beige)}
 
-/* Form */
-.form-card{background:var(--surface);border:1px solid var(--beige-border);border-radius:18px;padding:30px 26px;max-width:560px;margin:0 auto}
+/* header */
+.header{position:sticky;top:0;z-index:40;background:rgba(246,241,234,.82);backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
+.header.scrolled{border-bottom-color:var(--line);background:rgba(246,241,234,.92)}
+.header-in{max-width:1080px;margin:0 auto;padding:15px 26px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.h-logo{display:block;height:40px;width:auto}
+.nav{display:flex;align-items:center;gap:30px}
+.nav a.navlink{font-size:14.5px;font-weight:500;color:var(--ink2);position:relative;transition:color .15s}
+.nav a.navlink:hover{color:var(--ink)}
+.nav a.navlink::after{content:'';position:absolute;left:0;bottom:-5px;width:0;height:1.5px;background:var(--beige);transition:width .22s}
+.nav a.navlink:hover::after{width:100%}
+.btn-wa-sm{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;font-weight:600;font-size:14px;border-radius:100px;padding:10px 18px;transition:all .2s}
+.btn-wa-sm:hover{background:#000;transform:translateY(-1px)}
+.hprog{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:linear-gradient(90deg,var(--beige),var(--beige-deep));transform-origin:0 50%;transform:scaleX(0)}
+@media(max-width:780px){.nav a.navlink{display:none}}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;font-size:16px;border:none;border-radius:100px;padding:16px 32px;cursor:pointer;transition:background .2s,box-shadow .2s,border-color .2s,transform .15s;font-family:'Outfit',sans-serif;will-change:transform}
+.btn-primary{background:var(--ink);color:#fff}
+.btn-primary:hover{background:#000;box-shadow:0 12px 28px rgba(28,26,22,.18)}
+.btn-wa{background:var(--wa);color:#fff}
+.btn-wa:hover{background:#1c9a4b;box-shadow:0 12px 28px rgba(31,170,83,.28)}
+.btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--ink)}
+
+/* HERO */
+.hero-shell{position:relative;overflow:hidden}
+.hero{position:relative;z-index:1;text-align:center;padding:78px 26px 56px;max-width:760px;margin:0 auto}
+.hero .eyebrow{justify-content:center;margin-bottom:24px}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(42px,6.6vw,74px);font-weight:600;line-height:1.02;letter-spacing:-.018em;margin-bottom:22px}
+.hero h1 .it{display:block;font-style:italic;color:var(--beige-deep)}
+.hero .lead{font-size:18px;color:var(--ink2);max-width:560px;margin:0 auto 32px}
+.cta-row{display:flex;gap:13px;flex-wrap:wrap;justify-content:center}
+.hero-note{margin-top:20px;font-size:13.5px;color:var(--ink3)}
+
+/* stats */
+.statsbar{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper2)}
+.statsbar-in{display:grid;grid-template-columns:repeat(4,1fr)}
+.stat{padding:28px 16px;text-align:center;border-right:1px solid var(--line2)}
+.stat:last-child{border-right:none}
+.stat .n{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;color:var(--ink);line-height:1}
+.stat .n small{font-size:18px;color:var(--beige-deep)}
+.stat .l{font-size:12.5px;color:var(--ink3);margin-top:6px}
+@media(max-width:680px){.statsbar-in{grid-template-columns:1fr 1fr}.stat{border-right:none;border-bottom:1px solid var(--line2)}.stat:nth-child(odd){border-right:1px solid var(--line2)}.stat:nth-child(3),.stat:nth-child(4){border-bottom:none}}
+
+/* sections */
+.section{padding:80px 0}
+.sec-head{max-width:680px;margin:0 auto 46px;text-align:center}
+.sec-head .eyebrow{justify-content:center;margin-bottom:18px}
+.sec-title{font-family:'Cormorant Garamond',serif;font-size:clamp(32px,5vw,50px);font-weight:600;line-height:1.05;letter-spacing:-.015em}
+.sec-title em{font-style:italic;color:var(--beige-deep)}
+.sec-sub{color:var(--ink2);font-size:16.5px;margin-top:14px}
+
+/* icon chip */
+.ico{width:48px;height:48px;border-radius:14px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center;color:var(--beige-deep);margin-bottom:20px}
+.ico svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* benefits */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.scard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;transition:transform .25s,box-shadow .25s,border-color .25s}
+.scard:hover{box-shadow:0 18px 40px rgba(28,26,22,.07);border-color:var(--beige-soft)}
+.scard h3{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;margin-bottom:8px}
+.scard p{font-size:14.5px;color:var(--ink2)}
+.scard .fine{display:block;margin-top:8px;font-size:13px;color:var(--ink3)}
+@media(max-width:880px){.grid3{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid3{grid-template-columns:1fr}}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;position:relative}
+.step .num{width:42px;height:42px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-weight:600;font-size:20px;margin-bottom:18px}
+.step h3{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;margin-bottom:7px}
+.step p{font-size:14.5px;color:var(--ink2)}
+@media(max-width:780px){.steps{grid-template-columns:1fr}}
+
+/* form */
+.form-card{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:38px 34px;max-width:600px;margin:0 auto;box-shadow:0 24px 60px rgba(28,26,22,.07)}
 .fg{margin-bottom:16px}
-.fg label{display:block;font-size:13px;font-weight:500;color:var(--beige-light);margin-bottom:7px;letter-spacing:.02em}
-.fg label .opc{color:var(--muted);font-weight:300}
-.fg input,.fg select{width:100%;background:var(--surface2);border:1.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:13px 14px;color:var(--white);font-family:'Outfit',sans-serif;font-size:15px;outline:none;transition:all .15s}
-.fg input:focus,.fg select:focus{border-color:var(--beige);background:var(--surface3)}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg label{display:block;font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px;letter-spacing:.01em}
+.fg label .opc{color:var(--ink3);font-weight:400}
+.fg input,.fg select{width:100%;background:var(--paper2);border:1.5px solid var(--line);border-radius:12px;padding:14px 15px;color:var(--ink);font-family:'Outfit',sans-serif;font-size:15px;outline:none;transition:all .15s}
+.fg input::placeholder{color:var(--ink3)}
+.fg input:focus,.fg select:focus{border-color:var(--beige);background:#fff;box-shadow:0 0 0 4px rgba(179,137,90,.1)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:520px){.row2{grid-template-columns:1fr}}
-.form-msg{display:none;border-radius:10px;padding:12px 14px;font-size:14px;margin-bottom:14px}
-.form-msg.err{display:block;background:rgba(224,138,138,0.1);border:1px solid rgba(224,138,138,0.3);color:var(--err)}
-.btn-submit{width:100%;padding:16px}
-.btn-submit:disabled{opacity:.5;cursor:wait;transform:none}
-.priv{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}
+.form-msg{display:none;border-radius:12px;padding:12px 15px;font-size:14px;margin-bottom:16px}
+.form-msg.err{display:block;background:rgba(192,88,79,.08);border:1px solid rgba(192,88,79,.28);color:var(--err)}
+.btn-submit{width:100%;padding:17px;margin-top:6px}
+.btn-submit:disabled{opacity:.55;cursor:wait;transform:none}
+.priv{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:16px}
 
-/* Success */
-.success{display:none;text-align:center;padding:30px 10px}
-.success .check{width:72px;height:72px;border-radius:50%;background:rgba(125,187,125,0.12);border:1.5px solid rgba(125,187,125,0.4);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 20px}
-.success h3{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;margin-bottom:10px}
-.success p{color:var(--muted);font-size:15px;max-width:420px;margin:0 auto 22px}
-.btn-wa{display:inline-flex;align-items:center;gap:9px;background:#1faa53;color:#fff;font-weight:600;font-size:15px;border-radius:12px;padding:14px 26px;text-decoration:none;transition:all .18s}
-.btn-wa:hover{background:#23c05e;transform:translateY(-1px)}
+/* success */
+.success{display:none;text-align:center;padding:40px 20px}
+.success .check{width:74px;height:74px;border-radius:50%;background:rgba(63,156,84,.1);border:1.5px solid rgba(63,156,84,.4);display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--ok);margin:0 auto 22px}
+.success h3{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;margin-bottom:12px}
+.success p{color:var(--ink2);font-size:15.5px;max-width:440px;margin:0 auto 18px}
 
 /* FAQ */
-.faq{max-width:640px;margin:0 auto}
-.faq details{background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:16px 20px;margin-bottom:10px}
-.faq summary{cursor:pointer;font-weight:500;font-size:15px;color:var(--beige-light);list-style:none;display:flex;justify-content:space-between;align-items:center}
-.faq summary::after{content:'+';color:var(--beige);font-size:20px;font-weight:300}
+.faq{max-width:680px;margin:0 auto}
+.faq details{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 24px;margin-bottom:12px;transition:border-color .2s}
+.faq details[open]{border-color:var(--beige-soft)}
+.faq summary{cursor:pointer;font-weight:600;font-size:15.5px;color:var(--ink);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'+';color:var(--beige-deep);font-size:22px;font-weight:300;line-height:1}
 .faq details[open] summary::after{content:'−'}
-.faq details p{margin-top:10px;font-size:14px;color:var(--muted)}
+.faq details p{margin-top:12px;font-size:14.5px;color:var(--ink2);line-height:1.65}
 
-.footer{border-top:1px solid var(--beige-border);padding:30px 0 40px;text-align:center;margin-top:30px}
-.footer p{font-size:13px;color:var(--muted)}
-.footer .sucs{font-size:12.5px;color:var(--muted);opacity:.8;margin-top:6px}
+/* CTA final */
+.cta-final{position:relative;background:var(--ink);border-radius:30px;padding:64px 40px;text-align:center;overflow:hidden}
+.cta-final::before{content:'';position:absolute;top:-30%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(179,137,90,.32),transparent 65%);pointer-events:none}
+.cta-final>*{position:relative}
+.cta-final .eyebrow{justify-content:center;color:var(--beige);margin-bottom:18px}
+.cta-final .eyebrow .ln{background:var(--beige)}
+.cta-final h2{font-family:'Cormorant Garamond',serif;font-size:clamp(32px,4.6vw,48px);font-weight:600;color:#fff;line-height:1.04;margin-bottom:14px;letter-spacing:-.015em}
+.cta-final h2 em{font-style:italic;color:var(--beige)}
+.cta-final p{color:rgba(255,255,255,.7);font-size:16.5px;max-width:520px;margin:0 auto 30px}
+.cta-final .btn-ghost{color:#fff;border-color:rgba(255,255,255,.25)}
+.cta-final .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.06)}
+
+/* footer */
+.footer{padding:60px 0 44px}
+.foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:40px;padding-bottom:36px;border-bottom:1px solid var(--line)}
+.foot-grid img{height:38px;margin-bottom:16px}
+.foot-grid .about{font-size:14.5px;color:var(--ink2);max-width:300px}
+.foot-col h4{font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:16px}
+.foot-col a{display:block;font-size:14.5px;color:var(--ink2);margin-bottom:11px;transition:color .15s}
+.foot-col a:hover{color:var(--ink)}
+.foot-bottom{padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--ink3)}
+@media(max-width:680px){.foot-grid{grid-template-columns:1fr 1fr}.foot-grid .brand-col{grid-column:1/-1}}
+
+/* FAB */
+.fab{position:fixed;right:20px;bottom:20px;z-index:50;width:58px;height:58px;border-radius:50%;background:var(--wa);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 26px rgba(31,170,83,.4);transition:transform .2s}
+.fab:hover{transform:scale(1.07)}
+.fab svg{width:30px;height:30px;fill:#fff}
+
 .hp{position:absolute;left:-9999px;opacity:0;height:0;overflow:hidden}
 </style>
 </head>
 <body>
 
-<div class="header">
+<!-- HEADER -->
+<header class="header" id="hdr">
   <div class="header-in">
-    <div class="header-text">
-      <img src="logo-caryera.svg" alt="Ópticas Car &amp; Era" class="h-logo">
-      <p>Convenios Empresariales</p>
+    <a href="https://caryera.mx"><img src="logo-caryera-dark.svg" alt="Ópticas Car &amp; Era" class="h-logo"></a>
+    <nav class="nav">
+      <a class="navlink" href="#beneficios">Beneficios</a>
+      <a class="navlink" href="#como">Cómo funciona</a>
+      <a class="navlink" href="#preguntas">Preguntas</a>
+      <a class="btn-wa-sm" href="#registro">Afiliar empresa</a>
+    </nav>
+  </div>
+  <div class="hprog" id="hprog"></div>
+</header>
+
+<a id="top"></a>
+
+<!-- HERO -->
+<div class="hero-shell">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <section class="hero">
+    <span class="eyebrow h-anim"><span class="ln"></span>Programa para empresas · Sin costo</span>
+    <h1 class="h-anim">Cuida la vista de tu equipo,<span class="it">nosotros ponemos los beneficios.</span></h1>
+    <p class="lead h-anim">Afilia a tu empresa en 2 minutos y todos tus empleados —y sus familias— obtienen descuentos y beneficios exclusivos en nuestras 4 sucursales de Ciudad Juárez.</p>
+    <div class="cta-row h-anim">
+      <a class="btn btn-primary btn-mag" href="#registro">Afiliar mi empresa</a>
+      <a class="btn btn-ghost btn-mag" href="#beneficios">Ver beneficios</a>
     </div>
+    <div class="hero-note h-anim">Registro gratuito · Sin contratos · Sin mínimo de empleados</div>
+  </section>
+</div>
+
+<!-- STATS -->
+<div class="statsbar">
+  <div class="statsbar-in wrap">
+    <div class="stat"><div class="n"><span data-cnt="15">0</span><small>%</small></div><div class="l">De descuento</div></div>
+    <div class="stat"><div class="n"><small>$</small><span data-cnt="500">0</span></div><div class="l">De regalo al año</div></div>
+    <div class="stat"><div class="n"><span data-cnt="4">0</span></div><div class="l">Sucursales en Juárez</div></div>
+    <div class="stat"><div class="n">★</div><div class="l">Examen incluido gratis</div></div>
   </div>
 </div>
 
-<section class="hero wrap">
-  <span class="eyebrow">Programa para empresas · Sin costo</span>
-  <h2>Cuida la vista de tu equipo,<br><em>nosotros ponemos los beneficios</em></h2>
-  <p>Afilia a tu empresa en 2 minutos y todos tus empleados —y sus familias— obtienen descuentos y beneficios exclusivos en nuestras 4 sucursales de Ciudad Juárez.</p>
-  <a class="btn" href="#registro">Afiliar mi empresa</a>
-  <div class="nota">Registro gratuito · Sin contratos · Sin mínimo de empleados</div>
-</section>
-
+<!-- BENEFICIOS -->
 <section class="section wrap" id="beneficios">
-  <h2 class="sec-title">Beneficios para tus empleados</h2>
-  <p class="sec-sub">Todos los colaboradores de tu empresa los obtienen presentando el código de convenio y su gafete o credencial de trabajo.</p>
-  <div class="benefits">
-    <div class="bcard"><div class="ico">💳</div><h3>15% de descuento</h3><p>En lentes completos (armazón + micas graduadas), en cualquier sucursal.</p></div>
-    <div class="bcard"><div class="ico">🎁</div><h3>$500 de regalo cada año</h3><p>Cada empleado recibe $500 al año para su compra.<span class="fine">Aplica en compras desde $2,000.</span></p></div>
-    <div class="bcard"><div class="ico">👨‍👩‍👧</div><h3>Familia incluida</h3><p>El mismo descuento aplica para esposa(o) e hijos del empleado.</p></div>
-    <div class="bcard"><div class="ico">➕</div><h3>Acumulable con promociones</h3><p>El descuento de convenio se suma a la promoción de temporada vigente (2x1 y más).</p></div>
-    <div class="bcard"><div class="ico">📅</div><h3>Meses sin intereses</h3><p>Financiamiento en quincenas sin tarjeta de crédito, con Aplazo.</p></div>
-    <div class="bcard"><div class="ico">👁️</div><h3>Examen de la vista gratis</h3><p>Examen profesional completo sin costo, listo en minutos y sin cita.</p></div>
+  <div class="sec-head reveal">
+    <span class="eyebrow"><span class="ln"></span>Lo que reciben</span>
+    <h2 class="sec-title">Beneficios para <em>tu equipo</em></h2>
+    <p class="sec-sub">Todos los colaboradores los obtienen presentando el código de convenio y su gafete o credencial de trabajo.</p>
+  </div>
+  <div class="grid3">
+    <div class="scard reveal">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9 9h.01M15 15h.01M16 8l-8 8"/></svg></div>
+      <h3>15% de descuento</h3>
+      <p>En lentes completos (armazón + micas graduadas), en cualquier sucursal.</p>
+    </div>
+    <div class="scard reveal" data-d="1">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/><path d="M12 8S11 3 8.5 3a2.5 2.5 0 0 0 0 5zM12 8s1-5 3.5-5a2.5 2.5 0 0 1 0 5z"/></svg></div>
+      <h3>$500 de regalo al año</h3>
+      <p>Cada empleado recibe $500 al año para su compra.<span class="fine">Aplica en compras desde $2,000.</span></p>
+    </div>
+    <div class="scard reveal" data-d="2">
+      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M15.5 20c.1-2 .6-3.4 2-4.2"/></svg></div>
+      <h3>Familia incluida</h3>
+      <p>El mismo descuento aplica para esposa(o) e hijos del empleado.</p>
+    </div>
+    <div class="scard reveal" data-d="3">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></div>
+      <h3>Acumulable con promociones</h3>
+      <p>El descuento de convenio se suma a la promoción de temporada vigente (2x1 y más).</p>
+    </div>
+    <div class="scard reveal" data-d="4">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></div>
+      <h3>Meses sin intereses</h3>
+      <p>Financiamiento en quincenas sin tarjeta de crédito, con Aplazo.</p>
+    </div>
+    <div class="scard reveal" data-d="5">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+      <h3>Examen de la vista gratis</h3>
+      <p>Examen profesional completo sin costo, listo en minutos y sin cita.</p>
+    </div>
   </div>
 </section>
 
-<section class="section wrap">
-  <h2 class="sec-title">¿Cómo funciona?</h2>
-  <p class="sec-sub">Cero papeleo y cero costo para tu empresa.</p>
+<!-- CÓMO FUNCIONA -->
+<section class="section wrap" id="como" style="padding-top:0">
+  <div class="sec-head reveal">
+    <span class="eyebrow"><span class="ln"></span>Cero papeleo</span>
+    <h2 class="sec-title">¿Cómo <em>funciona</em>?</h2>
+    <p class="sec-sub">Tres pasos, sin costo y sin compromisos para tu empresa.</p>
+  </div>
   <div class="steps">
-    <div class="step"><div class="num">1</div><h3>Registra tu empresa</h3><p>Llena el formulario de abajo. Revisamos tu solicitud y la aprobamos normalmente el mismo día.</p></div>
-    <div class="step"><div class="num">2</div><h3>Recibe tu código</h3><p>Te mandamos por WhatsApp el código de convenio de tu empresa para compartirlo con tu equipo.</p></div>
-    <div class="step"><div class="num">3</div><h3>Tu equipo lo disfruta</h3><p>Cada empleado presenta el código y su gafete o credencial de trabajo en sucursal. Listo.</p></div>
+    <div class="step reveal"><div class="num">1</div><h3>Registra tu empresa</h3><p>Llena el formulario de abajo. Revisamos tu solicitud y la aprobamos normalmente el mismo día.</p></div>
+    <div class="step reveal" data-d="1"><div class="num">2</div><h3>Recibe tu código</h3><p>Te mandamos por WhatsApp el código de convenio de tu empresa para compartirlo con tu equipo.</p></div>
+    <div class="step reveal" data-d="2"><div class="num">3</div><h3>Tu equipo lo disfruta</h3><p>Cada empleado presenta el código y su gafete o credencial de trabajo en sucursal. Listo.</p></div>
   </div>
 </section>
 
-<section class="section wrap" id="registro">
-  <h2 class="sec-title">Afilia a tu empresa</h2>
-  <p class="sec-sub">Es gratis y te toma 2 minutos.</p>
+<!-- REGISTRO -->
+<section class="section wrap" id="registro" style="padding-top:0">
+  <div class="sec-head reveal">
+    <span class="eyebrow"><span class="ln"></span>Empieza ahora</span>
+    <h2 class="sec-title">Afilia a tu <em>empresa</em></h2>
+    <p class="sec-sub">Es gratis y te toma 2 minutos.</p>
+  </div>
 
-  <div class="form-card" id="form-card">
-    <div class="form-msg err" id="form-err"></div>
+  <div class="form-card reveal" id="form-card">
+    <div class="form-msg" id="form-err"></div>
     <form id="form-registro" onsubmit="return enviarRegistro(event)">
       <div class="fg">
         <label for="f-nombre">Nombre de la empresa</label>
@@ -176,7 +336,7 @@ body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;
       </div>
       <!-- honeypot anti-bots -->
       <div class="hp"><label>No llenar<input id="f-web" type="text" tabindex="-1" autocomplete="off"></label></div>
-      <button class="btn btn-submit" id="btn-enviar" type="submit">Enviar solicitud</button>
+      <button class="btn btn-primary btn-submit" id="btn-enviar" type="submit">Enviar solicitud</button>
       <p class="priv">Usamos tus datos únicamente para gestionar el convenio. No compartimos información con terceros.</p>
     </form>
   </div>
@@ -186,14 +346,20 @@ body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;
     <h3>¡Solicitud recibida!</h3>
     <p>Vamos a revisarla y en cuanto se apruebe te mandamos el <strong>código de convenio</strong> de tu empresa por WhatsApp, normalmente el mismo día.</p>
     <p>Para agilizarlo, confírmanos por WhatsApp:</p>
-    <a class="btn-wa" id="wa-link" href="#" target="_blank" rel="noopener">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    <a class="btn btn-wa btn-mag" id="wa-link" href="#" target="_blank" rel="noopener">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
       Confirmar por WhatsApp
     </a>
   </div>
+</section>
 
-  <div class="faq" style="margin-top:40px">
-    <h2 class="sec-title" style="font-size:24px;margin-bottom:18px">Preguntas frecuentes</h2>
+<!-- PREGUNTAS -->
+<section class="section wrap" id="preguntas" style="padding-top:0">
+  <div class="sec-head reveal">
+    <span class="eyebrow"><span class="ln"></span>Dudas comunes</span>
+    <h2 class="sec-title">Preguntas <em>frecuentes</em></h2>
+  </div>
+  <div class="faq reveal">
     <details><summary>¿Tiene algún costo para mi empresa?</summary><p>No. El programa es completamente gratuito para la empresa y para los empleados. No firmas contratos ni adquieres compromisos.</p></details>
     <details><summary>¿Cómo valida el empleado su beneficio en sucursal?</summary><p>Presenta el código de convenio de su empresa junto con su gafete, credencial de trabajo o recibo de nómina. Para familiares, basta con que acompañen al empleado o presenten el código con su identificación.</p></details>
     <details><summary>¿Cómo funcionan los $500 de regalo?</summary><p>Cada empleado tiene $500 de regalo una vez al año, aplicables en compras desde $2,000. Se descuentan directo en caja además de su 15% de convenio.</p></details>
@@ -202,10 +368,51 @@ body{background:var(--black);color:var(--white);font-family:'Outfit',sans-serif;
   </div>
 </section>
 
-<div class="footer">
-  <p>Ópticas Car &amp; Era · Ciudad Juárez, Chihuahua</p>
-  <p class="sucs">Américas · Pinocelli · Magnolia · Plaza Vía Vittoria</p>
-</div>
+<!-- CTA FINAL -->
+<section class="section wrap" style="padding-top:0">
+  <div class="cta-final reveal">
+    <span class="eyebrow"><span class="ln"></span>Estamos para tu empresa</span>
+    <h2>Dale a tu equipo una razón más para <em>ver bien</em></h2>
+    <p>Afilia a tu empresa hoy mismo, sin costo, o escríbenos por WhatsApp y con gusto te asesoramos.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary btn-mag" href="#registro" style="background:#fff;color:var(--ink)">Afiliar mi empresa</a>
+      <a class="btn btn-ghost btn-mag" href="https://wa.me/5216563110094" target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer wrap">
+  <div class="foot-grid">
+    <div class="brand-col">
+      <img src="logo-caryera-dark.svg" alt="Ópticas Car &amp; Era">
+      <p class="about">Ópticas con laboratorio propio en Ciudad Juárez. Ve bien. Véte bien.</p>
+    </div>
+    <div class="foot-col">
+      <h4>Convenios</h4>
+      <a href="#beneficios">Beneficios</a>
+      <a href="#como">Cómo funciona</a>
+      <a href="#registro">Afiliar empresa</a>
+      <a href="#preguntas">Preguntas frecuentes</a>
+    </div>
+    <div class="foot-col">
+      <h4>Contacto</h4>
+      <a href="https://wa.me/5216563110094" target="_blank" rel="noopener">WhatsApp: 656 311 0094</a>
+      <a href="mailto:opticas@caryera.mx">opticas@caryera.mx</a>
+      <a href="https://caryera.mx">caryera.mx</a>
+      <a href="https://www.instagram.com/opticascar.yera" target="_blank" rel="noopener">Instagram @opticascar.yera</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 Ópticas Car &amp; Era · Ciudad Juárez, Chihuahua</span>
+    <span>Américas · Pinocelli · Magnolia · Plaza Vía Vittoria</span>
+  </div>
+</footer>
+
+<!-- FAB -->
+<a class="fab" href="https://wa.me/5216563110094" target="_blank" rel="noopener" aria-label="WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.51 5.26l-.999 3.648 3.978-1.087zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+</a>
 
 <script>
 const WA_NUM = '5216563110094';
@@ -255,6 +462,82 @@ async function enviarRegistro(ev) {
   }
   return false;
 }
+
+/* ---------- micro-interacciones (estilo presentacion.html) ---------- */
+(function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // reveal
+  var els = document.querySelectorAll('.reveal');
+  if(!('IntersectionObserver' in window)){ els.forEach(function(e){e.classList.add('in')}); }
+  else{
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+    },{threshold:0.12,rootMargin:'0px 0px -50px 0px'});
+    els.forEach(function(e){io.observe(e)});
+  }
+
+  // header + barra de progreso
+  var hdr=document.getElementById('hdr'), prog=document.getElementById('hprog');
+  function onScroll(){
+    hdr.classList.toggle('scrolled', window.scrollY>8);
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    prog.style.transform = 'scaleX(' + (max>0 ? Math.min(1, window.scrollY/max) : 0) + ')';
+  }
+  window.addEventListener('scroll',onScroll,{passive:true}); onScroll();
+
+  // contadores
+  var counters = document.querySelectorAll('[data-cnt]');
+  function runCount(el){
+    var target = parseInt(el.getAttribute('data-cnt'),10), t0=null, DUR=1100;
+    if(reduced){ el.textContent = target; return; }
+    function tick(ts){
+      if(!t0) t0=ts;
+      var p = Math.min(1,(ts-t0)/DUR), e = 1-Math.pow(1-p,3);
+      el.textContent = Math.round(target*e);
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  if('IntersectionObserver' in window){
+    var cio = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){ if(en.isIntersecting){ runCount(en.target); cio.unobserve(en.target); } });
+    },{threshold:0.6});
+    counters.forEach(function(c){cio.observe(c)});
+  } else { counters.forEach(function(c){ c.textContent=c.getAttribute('data-cnt'); }); }
+
+  // entrada del hero
+  if(!reduced){
+    var hAnim = document.querySelectorAll('.h-anim');
+    hAnim.forEach(function(el,i){
+      el.style.opacity=0; el.style.transform='translateY(22px)';
+      el.style.transition='opacity .8s cubic-bezier(.2,.7,.2,1) '+(i*0.09+0.1)+'s, transform .8s cubic-bezier(.2,.7,.2,1) '+(i*0.09+0.1)+'s';
+    });
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      hAnim.forEach(function(el){ el.style.opacity=1; el.style.transform='none'; });
+    }); });
+  }
+
+  // tilt tarjetas + botones magnéticos (desktop)
+  if(window.matchMedia('(pointer: fine)').matches && !reduced){
+    document.querySelectorAll('.scard,.step').forEach(function(card){
+      card.addEventListener('pointermove',function(e){
+        var r=card.getBoundingClientRect();
+        var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        card.style.transform='perspective(900px) rotateY('+(x*5).toFixed(2)+'deg) rotateX('+(-y*5).toFixed(2)+'deg) translateY(-4px)';
+      });
+      card.addEventListener('pointerleave',function(){ card.style.transform=''; });
+    });
+    document.querySelectorAll('.btn-mag').forEach(function(b){
+      b.addEventListener('pointermove',function(e){
+        var r=b.getBoundingClientRect();
+        var x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        b.style.transform='translate('+(x*8).toFixed(1)+'px,'+(y*6).toFixed(1)+'px)';
+      });
+      b.addEventListener('pointerleave',function(){ b.style.transform=''; });
+    });
+  }
+})();
 </script>
 </body>
 </html>
