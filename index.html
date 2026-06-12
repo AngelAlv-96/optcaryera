@@ -20919,6 +20919,7 @@ async function _procesarVentaInner() {
         foliosGen = [folio];
         for (let i = 2; i <= vtaPromoAplicada.folios_lab; i++) foliosGen.push(`${folio}-${i}`);
         if (vtaFolioSlots.length) {
+          _reconcileSlotIndices();
           foliosDetalle = vtaFolioSlots.map((slot, s) => {
             // Folio addon (solar) — CR-39 Bco + Tinte Solar
             if (slot.es_addon) {
@@ -20938,8 +20939,8 @@ async function _procesarVentaInner() {
                 usado: false
               };
             }
-            const armIt = slot.armazonIdx>=0 ? vtaItems[slot.armazonIdx] : null;
-            const matIt = slot.materialIdx>=0 ? vtaItems[slot.materialIdx] : null;
+            const armIt = _slotArmItem(slot);
+            const matIt = _slotMatItem(slot);
             return {
             folio: foliosGen[s] || `${folio}-${s+1}`,
             slot_label: slot.label,
@@ -24864,7 +24865,28 @@ function quitarPromoVenta() {
   toast('Promo removida');
 }
 
-let vtaFolioSlots = []; // [{label, paciente_id, paciente_nombre, armazonIdx, materialIdx}]
+let vtaFolioSlots = []; // [{label, paciente_id, paciente_nombre, armazonIdx, materialIdx, armazonCid, materialCid}]
+
+// --- Referencia estable a ítems del carrito por id (evita índices obsoletos al reordenar/agregar/quitar) ---
+// Bug V0019 (v386): los slots referenciaban vtaItems por índice; al aplicar el addon solar el arreglo
+// se reordena/recorre y el índice terminaba apuntando a la línea equivocada (el solar en vez del lente
+// "Foto Blue Light") → la orden de lab perdía el "Foto". Ahora cada ítem tiene _cid estable y los slots
+// guardan materialCid/armazonCid; antes de cada render y al cerrar la venta se reconcilian los índices.
+var _vtaCidSeq = 0;
+function _vtaCid(it) { if (it && !it._cid) it._cid = ++_vtaCidSeq; return it ? it._cid : null; }
+function _ensureCartCids() { (vtaItems || []).forEach(it => { if (it && !it._cid) it._cid = ++_vtaCidSeq; }); }
+function _vtaItemByCid(cid) { return cid == null ? null : (vtaItems || []).find(it => it && it._cid === cid) || null; }
+function _slotMatItem(slot) { let it = _vtaItemByCid(slot.materialCid); if (!it && slot.materialIdx >= 0) it = vtaItems[slot.materialIdx]; return it || null; }
+function _slotArmItem(slot) { let it = _vtaItemByCid(slot.armazonCid); if (!it && slot.armazonIdx >= 0) it = vtaItems[slot.armazonIdx]; return it || null; }
+function _reconcileSlotIndices() {
+  _ensureCartCids();
+  (vtaFolioSlots || []).forEach(slot => {
+    if (slot.materialCid != null) { const it = _vtaItemByCid(slot.materialCid); slot.materialIdx = it ? vtaItems.indexOf(it) : -1; }
+    if (slot.armazonCid != null) { const it = _vtaItemByCid(slot.armazonCid); slot.armazonIdx = it ? vtaItems.indexOf(it) : -1; }
+  });
+}
+function _pickSlotMat(s, val) { const i = parseInt(val); const slot = vtaFolioSlots[s]; if (!slot) return; slot.materialIdx = i; slot.materialCid = (i >= 0 && vtaItems[i]) ? _vtaCid(vtaItems[i]) : null; renderFolioSlots(); }
+function _pickSlotArm(s, val) { const i = parseInt(val); const slot = vtaFolioSlots[s]; if (!slot) return; slot.armazonIdx = i; slot.armazonCid = (i >= 0 && vtaItems[i]) ? _vtaCid(vtaItems[i]) : null; renderFolioSlots(); }
 
 function autoAsignarFolios() {
   if (!vtaPromoAplicada || vtaPromoAplicada.folios_lab <= 1) return;
@@ -24887,6 +24909,7 @@ function renderFolioSlots() {
   const cont = document.getElementById('vta-folio-slots');
   const panel = document.getElementById('vta-folio-assign');
   if (!vtaFolioSlots.length) { panel.style.display = 'none'; return; }
+  _reconcileSlotIndices();
   panel.style.display = '';
   const titular = vtaPaciente ? `${vtaPaciente.nombre || ''} ${vtaPaciente.apellidos || ''}`.trim() : 'Sin paciente';
   const arms = vtaItems.map((it,i)=>({i,d:it.descripcion,p:it.subtotal,q:it.cantidad})).filter((_,i)=>(vtaItems[i].categoria||'')==='Armazón');
@@ -24959,8 +24982,8 @@ function renderFolioSlots() {
       const tk = usedCount >= m.q;
       return `<option value="${m.i}" ${m.i===slot.materialIdx?'selected':''} ${tk?'disabled':''}>${m.d}${m.q>1?' (x'+m.q+')':''} · $${(m.p/m.q).toFixed(2)}${tk?' ✓':''}</option>`;
     }).join('');
-    const armIt = slot.armazonIdx>=0?vtaItems[slot.armazonIdx]:null;
-    const matIt = slot.materialIdx>=0?vtaItems[slot.materialIdx]:null;
+    const armIt = _slotArmItem(slot);
+    const matIt = _slotMatItem(slot);
     const tot = (armIt?armIt.subtotal:0)+(matIt?matIt.subtotal:0);
     return `<div style="background:${bgColor};border:1px solid ${borderColor};border-radius:8px;padding:8px 10px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -24970,13 +24993,13 @@ function renderFolioSlots() {
       <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px">
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔲</span>
-          <select onchange="vtaFolioSlots[${s}].armazonIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;${_inputSt}">
+          <select onchange="_pickSlotArm(${s},this.value)" style="flex:1;${_inputSt}">
             <option value="-1" ${slot.armazonIdx<0?'selected':''}>— Armazón —</option>${armOpts}
           </select>
         </div>
         <div style="display:flex;align-items:center;gap:4px">
           <span style="font-size:10px;width:14px;flex-shrink:0">🔬</span>
-          <select onchange="vtaFolioSlots[${s}].materialIdx=parseInt(this.value);renderFolioSlots()" style="flex:1;${_inputSt}">
+          <select onchange="_pickSlotMat(${s},this.value)" style="flex:1;${_inputSt}">
             <option value="-1" ${slot.materialIdx<0?'selected':''}>— Material —</option>${matOpts}
           </select>
         </div>
