@@ -26,3 +26,9 @@ Thumbs.db
 optcaryera-v138 (2)/
 
 *.bak
+
+# Listas de prospectos / archivos de trabajo (datos de contacto — NO publicar)
+prospectos-mailmeteor.csv
+_prospectos.*
+_pxml/
+_clari_test.js
