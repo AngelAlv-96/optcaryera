@@ -143,6 +143,12 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .btn-submit{width:100%;padding:17px;margin-top:6px}
 .btn-submit:disabled{opacity:.55;cursor:wait;transform:none}
 .priv{font-size:12.5px;color:var(--ink3);text-align:center;margin-top:16px}
+.fhint{display:block;font-size:12px;color:var(--ink3);margin-top:7px;transition:color .15s}
+.fhint.ok{color:var(--ok)}
+.fhint.bad{color:var(--err)}
+.fg input.is-bad{border-color:rgba(192,88,79,.55);box-shadow:0 0 0 4px rgba(192,88,79,.08)}
+.fg input.is-ok{border-color:rgba(63,156,84,.5);box-shadow:0 0 0 4px rgba(63,156,84,.08)}
+#f-rfc{text-transform:uppercase}
 
 /* success */
 .success{display:none;text-align:center;padding:40px 20px}
@@ -301,8 +307,17 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     <div class="form-msg" id="form-err"></div>
     <form id="form-registro" onsubmit="return enviarRegistro(event)">
       <div class="fg">
-        <label for="f-nombre">Nombre de la empresa</label>
-        <input id="f-nombre" type="text" maxlength="120" required placeholder="Ej. Maquilados del Norte S.A.">
+        <label for="f-nombre">Nombre comercial de la empresa</label>
+        <input id="f-nombre" type="text" maxlength="120" required placeholder="Ej. Maquilados del Norte">
+      </div>
+      <div class="fg">
+        <label for="f-razon">Razón social <span class="opc">(nombre legal, como en el RFC)</span></label>
+        <input id="f-razon" type="text" maxlength="160" required placeholder="Ej. Maquilados del Norte S.A. de C.V.">
+      </div>
+      <div class="fg">
+        <label for="f-rfc">RFC de la empresa</label>
+        <input id="f-rfc" type="text" maxlength="13" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Ej. ABC680524P76" oninput="onRfcInput()">
+        <small class="fhint" id="rfc-hint">12 caracteres (persona moral) o 13 (persona física).</small>
       </div>
       <div class="row2">
         <div class="fg">
@@ -332,6 +347,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
         <div class="fg">
           <label for="f-email">Correo <span class="opc">(opcional)</span></label>
           <input id="f-email" type="email" maxlength="120" placeholder="correo@empresa.com">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label for="f-fijo">Teléfono fijo de la empresa <span class="opc">(opcional)</span></label>
+          <input id="f-fijo" type="tel" inputmode="numeric" maxlength="14" placeholder="Ej. 656 123 4567">
+        </div>
+        <div class="fg">
+          <label for="f-web">Sitio web o red social <span class="opc">(opcional)</span></label>
+          <input id="f-web2" type="text" maxlength="160" placeholder="empresa.com o @empresa">
         </div>
       </div>
       <!-- honeypot anti-bots -->
@@ -417,22 +442,66 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 <script>
 const WA_NUM = '5216563110094';
 
+/* Validación de RFC (formato + dígito verificador oficial del SAT).
+   Misma lógica en el servidor (empresas.js) — el cliente solo da feedback. */
+function rfcValido(rfc){
+  rfc = String(rfc||'').toUpperCase().replace(/[\s\-]/g,'');
+  if(rfc==='XAXX010101000'||rfc==='XEXX010101000') return true; // genéricos SAT
+  var m = rfc.match(/^([A-ZÑ&]{3,4})(\d{2})(\d{2})(\d{2})([A-Z\d]{2})([A-Z\d])$/);
+  if(!m) return false;
+  var mm=parseInt(m[3],10), dd=parseInt(m[4],10);
+  if(mm<1||mm>12||dd<1||dd>31) return false;
+  var sin=m[1]+m[2]+m[3]+m[4]+m[5];
+  var dic='0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ';
+  var calc = sin.length===11 ? ' '+sin : sin; // persona moral: rellena con espacio
+  var suma=0;
+  for(var i=0;i<12;i++){ suma += dic.indexOf(calc.charAt(i))*(13-i); }
+  var r=11-(suma%11);
+  var esperado = r===11?'0' : r===10?'A' : String(r);
+  return esperado===m[6];
+}
+
+function onRfcInput(){
+  var inp=document.getElementById('f-rfc'), hint=document.getElementById('rfc-hint');
+  var v=inp.value.toUpperCase().replace(/[^A-ZÑ&0-9]/g,'');
+  if(inp.value!==v) inp.value=v;
+  inp.classList.remove('is-ok','is-bad'); hint.classList.remove('ok','bad');
+  if(v.length<12){ hint.textContent='12 caracteres (persona moral) o 13 (persona física).'; return; }
+  if(rfcValido(v)){ inp.classList.add('is-ok'); hint.classList.add('ok'); hint.textContent='✓ RFC válido'; }
+  else { inp.classList.add('is-bad'); hint.classList.add('bad'); hint.textContent='✕ El RFC no es válido — revísalo.'; }
+}
+
 async function enviarRegistro(ev) {
   ev.preventDefault();
   const errEl = document.getElementById('form-err');
   errEl.classList.remove('err'); errEl.style.display = 'none';
+
+  const rfc = document.getElementById('f-rfc').value.toUpperCase().replace(/[\s\-]/g,'');
+  if (!rfcValido(rfc)) {
+    errEl.textContent = 'El RFC de la empresa no es válido. Revísalo antes de enviar.';
+    errEl.classList.add('err');
+    onRfcInput();
+    document.getElementById('f-rfc').focus();
+    errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+
   const btn = document.getElementById('btn-enviar');
   btn.disabled = true; btn.textContent = 'Enviando…';
 
   const payload = {
     action: 'registro',
     nombre: document.getElementById('f-nombre').value.trim(),
+    razon_social: document.getElementById('f-razon').value.trim(),
+    rfc: rfc,
     giro: document.getElementById('f-giro').value.trim(),
     num_empleados: document.getElementById('f-num').value,
     contacto_nombre: document.getElementById('f-contacto').value.trim(),
     contacto_puesto: document.getElementById('f-puesto').value.trim(),
     telefono: document.getElementById('f-tel').value.trim(),
     email: document.getElementById('f-email').value.trim(),
+    telefono_fijo: document.getElementById('f-fijo').value.trim(),
+    sitio_web: document.getElementById('f-web2').value.trim(),
     website: document.getElementById('f-web').value // honeypot
   };
 
