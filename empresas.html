@@ -10,6 +10,24 @@
 try{ history.scrollRestoration = 'manual'; }catch(e){}
 if(!location.hash){ window.scrollTo(0,0); }
 </script>
+<!-- Meta Pixel (Car y Era Tienda) -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '26143384325317414');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel -->
+
 <meta property="og:title" content="Convenios Empresariales — Ópticas Car & Era">
 <meta property="og:description" content="Cuida la vista de tu equipo sin costo: 15% de descuento, $500 de regalo al año, examen gratis y familia incluida. 4 sucursales en Ciudad Juárez.">
 <meta property="og:type" content="website">
@@ -530,6 +548,7 @@ async function enviarRegistro(ev) {
     });
     const json = await res.json();
     if (json.ok) {
+      if (typeof fbq === 'function') { fbq('track', 'CompleteRegistration', { content_name: 'convenio_empresarial' }); }
       const txt = encodeURIComponent('Hola, registré a mi empresa "' + payload.nombre + '" en el programa de convenios empresariales.');
       document.getElementById('wa-link').href = 'https://wa.me/' + WA_NUM + '?text=' + txt;
       document.getElementById('form-card').style.display = 'none';
