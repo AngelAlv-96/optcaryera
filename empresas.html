@@ -128,16 +128,16 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .ico{width:48px;height:48px;border-radius:14px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center;color:var(--beige-deep);margin-bottom:20px}
 .ico svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
 
-/* benefits — ligero, sin tarjetas: solo ícono + texto, con aire */
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:44px 40px;align-items:start;max-width:980px;margin:0 auto}
-.scard{background:transparent;border:none;padding:0}
-.scard .ico{width:44px;height:44px;border-radius:12px;margin-bottom:16px;transition:transform .25s}
+/* benefits — compacto: ícono a la izquierda + texto, 2 columnas */
+.grid3{display:grid;grid-template-columns:1fr 1fr;gap:26px 44px;align-items:start;max-width:860px;margin:0 auto}
+.scard{display:flex;gap:15px;align-items:flex-start;background:transparent;border:none;padding:0;text-align:left}
+.scard .ico{flex:0 0 auto;width:42px;height:42px;border-radius:12px;margin:0;transition:transform .25s}
 .scard:hover .ico{transform:translateY(-3px)}
-.scard h3{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:600;margin-bottom:7px}
-.scard p{font-size:14.5px;color:var(--ink2);max-width:300px}
-.scard .fine{display:block;margin-top:7px;font-size:13px;color:var(--ink3)}
-@media(max-width:880px){.grid3{grid-template-columns:1fr 1fr;gap:36px 32px}}
-@media(max-width:560px){.grid3{grid-template-columns:1fr;gap:30px}}
+.scard .txt{min-width:0}
+.scard h3{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;margin-bottom:4px;line-height:1.15}
+.scard p{font-size:14px;color:var(--ink2);line-height:1.55}
+.scard .fine{display:block;margin-top:5px;font-size:12.5px;color:var(--ink3)}
+@media(max-width:680px){.grid3{grid-template-columns:1fr;gap:22px;max-width:430px}}
 
 /* steps */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
@@ -274,33 +274,33 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
   <div class="grid3">
     <div class="scard reveal">
       <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M9 9h.01M15 15h.01M16 8l-8 8"/></svg></div>
-      <h3>15% de descuento</h3>
-      <p>En lentes completos (armazón + micas graduadas), en cualquier sucursal.</p>
+      <div class="txt"><h3>15% de descuento</h3>
+      <p>En lentes completos (armazón + micas graduadas), en cualquier sucursal.</p></div>
     </div>
     <div class="scard reveal" data-d="1">
       <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8"/><path d="M12 8S11 3 8.5 3a2.5 2.5 0 0 0 0 5zM12 8s1-5 3.5-5a2.5 2.5 0 0 1 0 5z"/></svg></div>
-      <h3>$500 de regalo al año</h3>
-      <p>Cada empleado recibe $500 al año para su compra.<span class="fine">Aplica en compras desde $2,000.</span></p>
+      <div class="txt"><h3>$500 de regalo al año</h3>
+      <p>Cada empleado recibe $500 al año para su compra.<span class="fine">Aplica en compras desde $2,000.</span></p></div>
     </div>
     <div class="scard reveal" data-d="2">
       <div class="ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.2"/><path d="M3 20c0-3.3 2.7-5 6-5s6 1.7 6 5M15.5 20c.1-2 .6-3.4 2-4.2"/></svg></div>
-      <h3>Familia incluida</h3>
-      <p>El mismo descuento aplica para esposa(o) e hijos del empleado.</p>
+      <div class="txt"><h3>Familia incluida</h3>
+      <p>El mismo descuento aplica para esposa(o) e hijos del empleado.</p></div>
     </div>
     <div class="scard reveal" data-d="3">
       <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg></div>
-      <h3>Acumulable con promociones</h3>
-      <p>El descuento de convenio se suma a la promoción de temporada vigente (2x1 y más).</p>
+      <div class="txt"><h3>Acumulable con promociones</h3>
+      <p>El descuento de convenio se suma a la promoción de temporada vigente (2x1 y más).</p></div>
     </div>
     <div class="scard reveal" data-d="4">
       <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></div>
-      <h3>Meses sin intereses</h3>
-      <p>Financiamiento en quincenas sin tarjeta de crédito, con Aplazo.</p>
+      <div class="txt"><h3>Meses sin intereses</h3>
+      <p>Financiamiento en quincenas sin tarjeta de crédito, con Aplazo.</p></div>
     </div>
     <div class="scard reveal" data-d="5">
       <div class="ico"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></div>
-      <h3>Examen de la vista gratis</h3>
-      <p>Examen profesional completo sin costo, listo en minutos y sin cita.</p>
+      <div class="txt"><h3>Examen de la vista gratis</h3>
+      <p>Examen profesional completo sin costo, listo en minutos y sin cita.</p></div>
     </div>
   </div>
 </section>
