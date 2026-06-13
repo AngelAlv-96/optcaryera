@@ -45,7 +45,8 @@ img{max-width:100%;display:block}
 ::selection{background:var(--beige);color:#fff}
 
 /* top bar */
-.bar{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:20px clamp(20px,4vw,54px)}
+.bar{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:20px clamp(20px,4vw,54px);pointer-events:none}
+.bar a,.bar .phone{pointer-events:auto}
 .bar img{height:36px;width:auto}
 .bar .phone{font-size:14px;font-weight:500;color:var(--ink2)}
 @media(max-width:760px){.bar .phone{display:none}}
