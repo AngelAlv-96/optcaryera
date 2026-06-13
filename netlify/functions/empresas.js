@@ -71,6 +71,24 @@ function normPhone(t) {
   return d;
 }
 
+// Validación de RFC: formato + dígito verificador oficial del SAT (misma lógica que empresas.html)
+function rfcValido(rfc) {
+  rfc = String(rfc || '').toUpperCase().replace(/[\s\-]/g, '');
+  if (rfc === 'XAXX010101000' || rfc === 'XEXX010101000') return true; // genéricos SAT
+  const m = rfc.match(/^([A-ZÑ&]{3,4})(\d{2})(\d{2})(\d{2})([A-Z\d]{2})([A-Z\d])$/);
+  if (!m) return false;
+  const mm = parseInt(m[3], 10), dd = parseInt(m[4], 10);
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+  const sin = m[1] + m[2] + m[3] + m[4] + m[5];
+  const dic = '0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ';
+  const calc = sin.length === 11 ? ' ' + sin : sin; // persona moral: rellena con espacio
+  let suma = 0;
+  for (let i = 0; i < 12; i++) suma += dic.indexOf(calc.charAt(i)) * (13 - i);
+  const r = 11 - (suma % 11);
+  const esperado = r === 11 ? '0' : r === 10 ? 'A' : String(r);
+  return esperado === m[6];
+}
+
 exports.handler = async (event) => {
   const H = {
     'Access-Control-Allow-Origin': '*',
@@ -174,23 +192,28 @@ exports.handler = async (event) => {
     if (body.website) return out(200, { ok: true }); // fingir éxito al bot
 
     const nombre = String(body.nombre || '').trim().slice(0, 120);
+    const razonSocial = String(body.razon_social || '').trim().slice(0, 160);
     const contacto = String(body.contacto_nombre || '').trim().slice(0, 120);
     const puesto = String(body.contacto_puesto || '').trim().slice(0, 80);
     const telefono = normPhone(body.telefono);
     const email = String(body.email || '').trim().slice(0, 120);
     const giro = String(body.giro || '').trim().slice(0, 80);
-    const rfc = String(body.rfc || '').trim().toUpperCase().slice(0, 13);
+    const rfc = String(body.rfc || '').trim().toUpperCase().replace(/[\s\-]/g, '').slice(0, 13);
+    const telefonoFijo = String(body.telefono_fijo || '').trim().slice(0, 40);
+    const sitioWeb = String(body.sitio_web || '').trim().slice(0, 160);
     const numEmpleados = parseInt(body.num_empleados) || null;
 
     if (nombre.length < 3) return out(200, { ok: false, error: 'Escribe el nombre de la empresa' });
+    if (razonSocial.length < 3) return out(200, { ok: false, error: 'Escribe la razón social de la empresa' });
+    if (!rfcValido(rfc)) return out(200, { ok: false, error: 'El RFC de la empresa no es válido. Revísalo.' });
     if (contacto.length < 3) return out(200, { ok: false, error: 'Escribe el nombre del contacto' });
     if (telefono.length !== 10) return out(200, { ok: false, error: 'El teléfono debe tener 10 dígitos' });
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return out(200, { ok: false, error: 'Correo inválido' });
 
     try {
-      // Duplicado: misma empresa (nombre) o mismo teléfono con solicitud viva
+      // Duplicado: mismo RFC, mismo teléfono o misma empresa (nombre) con solicitud viva
       const dup = await supaREST('GET',
-        `empresas_convenio?or=(telefono.eq.${telefono},nombre.ilike.${encodeURIComponent(nombre)})&status=in.(pendiente,activa)&select=id,nombre,status&limit=1`);
+        `empresas_convenio?or=(rfc.eq.${encodeURIComponent(rfc)},telefono.eq.${telefono},nombre.ilike.${encodeURIComponent(nombre)})&status=in.(pendiente,activa)&select=id,nombre,status&limit=1`);
       if (dup && dup[0]) {
         return out(200, { ok: false, error: dup[0].status === 'activa'
           ? 'Esta empresa ya está registrada y activa. Si perdiste tu código, escríbenos por WhatsApp.'
@@ -203,9 +226,10 @@ exports.handler = async (event) => {
         const codigo = generarCodigo();
         try {
           const rows = await supaREST('POST', 'empresas_convenio', {
-            nombre, rfc: rfc || null, giro: giro || null,
+            nombre, razon_social: razonSocial, rfc, giro: giro || null,
             contacto_nombre: contacto, contacto_puesto: puesto || null,
-            telefono, email: email || null, num_empleados: numEmpleados,
+            telefono, email: email || null, telefono_fijo: telefonoFijo || null,
+            sitio_web: sitioWeb || null, num_empleados: numEmpleados,
             codigo, status: 'pendiente'
           });
           inserted = rows && rows[0];
@@ -220,7 +244,7 @@ exports.handler = async (event) => {
         const cfgRows = await supaREST('GET', 'app_config?id=eq.whatsapp_config&select=value');
         const waCfg = cfgRows && cfgRows[0] ? JSON.parse(cfgRows[0].value) : {};
         const admins = waCfg.admin_phones || [];
-        const msg = `🏢 NUEVA SOLICITUD DE CONVENIO EMPRESARIAL\n\nEmpresa: ${nombre}${giro ? '\nGiro: ' + giro : ''}\nContacto: ${contacto}${puesto ? ' (' + puesto + ')' : ''}\nTel: ${telefono}${email ? '\nEmail: ' + email : ''}${numEmpleados ? '\nEmpleados: ~' + numEmpleados : ''}\nCódigo asignado: ${inserted.codigo}\n\nApruébala en el sistema → Convenios.`;
+        const msg = `🏢 NUEVA SOLICITUD DE CONVENIO EMPRESARIAL\n\nEmpresa: ${nombre}\nRazón social: ${razonSocial}\nRFC: ${rfc}${giro ? '\nGiro: ' + giro : ''}\nContacto: ${contacto}${puesto ? ' (' + puesto + ')' : ''}\nTel: ${telefono}${telefonoFijo ? '\nTel fijo: ' + telefonoFijo : ''}${email ? '\nEmail: ' + email : ''}${sitioWeb ? '\nWeb: ' + sitioWeb : ''}${numEmpleados ? '\nEmpleados: ~' + numEmpleados : ''}\nCódigo asignado: ${inserted.codigo}\n\nApruébala en el sistema → Convenios.`;
         for (let a = 0; a < admins.length; a++) {
           await sendWAFreeform(admins[a], msg);
           if (a < admins.length - 1) await new Promise(r => setTimeout(r, 1200));

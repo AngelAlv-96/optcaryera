@@ -10138,7 +10138,8 @@ async function loadConvenios() {
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'+
           '<div style="min-width:200px">'+
             '<div style="font-weight:700;font-size:14px;color:var(--white)">'+(e.nombre||'')+' <span style="font-size:11px;color:var(--beige);font-weight:600;background:var(--surface2);border-radius:5px;padding:2px 7px;margin-left:4px">'+(e.codigo||'—')+'</span></div>'+
-            '<div style="font-size:11px;color:var(--muted);margin-top:3px">'+(e.contacto_nombre||'—')+(e.contacto_puesto?' ('+e.contacto_puesto+')':'')+' · 📞 '+(e.telefono||'—')+(e.email?' · ✉ '+e.email:'')+'</div>'+
+            ((e.razon_social||e.rfc)?'<div style="font-size:11px;color:var(--beige);margin-top:3px">🧾 '+(e.razon_social||'—')+(e.rfc?' · RFC: <b>'+e.rfc+'</b>':'')+'</div>':'')+
+            '<div style="font-size:11px;color:var(--muted);margin-top:3px">'+(e.contacto_nombre||'—')+(e.contacto_puesto?' ('+e.contacto_puesto+')':'')+' · 📞 '+(e.telefono||'—')+(e.telefono_fijo?' · ☎ '+e.telefono_fijo:'')+(e.email?' · ✉ '+e.email:'')+(e.sitio_web?' · 🌐 '+e.sitio_web:'')+'</div>'+
             '<div style="font-size:11px;color:var(--muted)">'+(e.giro?e.giro+' · ':'')+(e.num_empleados?'~'+e.num_empleados+' empleados · ':'')+'registrada '+(e.created_at||'').slice(0,10)+(e.aprobado_por?' · aprobó: '+e.aprobado_por:'')+'</div>'+
           '</div>'+
           '<div style="display:flex;gap:6px;flex-wrap:wrap">'+botones+'</div>'+

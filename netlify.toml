@@ -115,6 +115,17 @@
   to = "/portal-empresa.html"
   status = 200
 
+# Aviso de Privacidad (legal)
+[[redirects]]
+  from = "/aviso-privacidad"
+  to = "/aviso-privacidad.html"
+  status = 200
+
+[[redirects]]
+  from = "/privacidad"
+  to = "/aviso-privacidad.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]
