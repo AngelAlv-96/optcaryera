@@ -88,6 +88,12 @@
   to = "/.netlify/functions/landing"
   status = 200
 
+# Landing promo 2x1 + solar $499 (campañas WhatsApp)
+[[redirects]]
+  from = "/2x1"
+  to = "/promo-2x1.html"
+  status = 200
+
 # Tienda online LC
 [[redirects]]
   from = "/tienda"
