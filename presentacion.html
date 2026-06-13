@@ -12,6 +12,17 @@
 try{ history.scrollRestoration = 'manual'; }catch(e){}
 if(!location.hash){ window.scrollTo(0,0); }
 </script>
+<!-- Analítica + conversiones (GA4 + Google Ads). La parte de Ads queda inerte hasta pegar tu ID. -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N84GYVTQKX"></script>
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-N84GYVTQKX');
+var GADS_ID='AW-18235456953';            /* ID de conversiones de Google Ads */
+var GADS_LBL_LEAD='rjLZCMqBlb4cELn7q_dD'; /* etiqueta conversión "Contacto WhatsApp" */
+var GADS_ON=GADS_ID.indexOf('XXXX')<0;
+if(GADS_ON)gtag('config',GADS_ID);
+function gAdsConv(label){if(!GADS_ON||!label||label.indexOf('XXXX')>=0)return;gtag('event','conversion',{send_to:GADS_ID+'/'+label});}
+document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="wa.me"],a[href^="tel:"]'):null;if(a)gAdsConv(GADS_LBL_LEAD);},true);
+</script>
 <meta property="og:title" content="Ópticas Car & Era — Ve bien. Véte bien.">
 <meta property="og:description" content="Laboratorio propio · Lentes desde 35 minutos · Examen de la vista incluido · 4 sucursales en Ciudad Juárez.">
 <meta property="og:type" content="website">

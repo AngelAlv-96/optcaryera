@@ -25,6 +25,17 @@
 <!-- Google Analytics 4 — Replace G-N84GYVTQKX with your Measurement ID -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-N84GYVTQKX"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-N84GYVTQKX');</script>
+<!-- Google Ads — conversiones. Pega tu ID y etiquetas cuando crees la cuenta de Google Ads (ver instrucciones). Hasta entonces queda inerte (no hace nada). -->
+<script>
+var GADS_ID='AW-18235456953';            /* ID de conversiones de Google Ads */
+var GADS_LBL_LEAD='rjLZCMqBlb4cELn7q_dD'; /* etiqueta conversión "Contacto WhatsApp" */
+var GADS_LBL_PURCHASE='L8VxCM2Blb4cELn7q_dD'; /* etiqueta conversión "Compra" */
+var GADS_ON=GADS_ID.indexOf('XXXX')<0;
+if(GADS_ON)gtag('config',GADS_ID);
+function gAdsConv(label,value){if(!GADS_ON||typeof gtag!=='function'||!label||label.indexOf('XXXX')>=0)return;var d={send_to:GADS_ID+'/'+label};if(value){d.value=value;d.currency='MXN';}gtag('event','conversion',d);}
+/* Cualquier clic a WhatsApp = lead (un solo listener cubre todos los enlaces wa.me) */
+document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="wa.me"]'):null;if(a)gAdsConv(GADS_LBL_LEAD);},true);
+</script>
 <!-- Meta Pixel — Replace 26143384325317414 with your Pixel ID -->
 <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');</script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
@@ -1405,6 +1416,7 @@ if(!r.ok){var errTxt=await r.text();console.error('dbwrite error:',r.status,errT
 var rsRaw=await r.json();console.log('dbwrite response:',JSON.stringify(rsRaw));var rs=rsRaw.data||rsRaw;if(rs&&rs.data)rs=rs.data;var rsFirst=Array.isArray(rs)?rs[0]:(rs&&rs.id?rs:null);var fo=rsFirst?rsFirst.folio:'ONL-WEB',vid=rsFirst?rsFirst.id:null;console.log('Parsed: fo='+fo+' vid='+vid+' rsFirst='+JSON.stringify(rsFirst));
 saveOrder(fo,tot,s,cart.map(function(c){return c.nombre+' x'+c.qty}));
 if(typeof gtag==='function')gtag('event','purchase',{transaction_id:fo,value:tot,currency:'MXN',items:cart.map(function(c){return{item_id:c.key||'',item_name:c.nombre,price:c.precio,quantity:c.qty}})});
+if(typeof gAdsConv==='function')gAdsConv(GADS_LBL_PURCHASE,tot);
 if(typeof fbq==='function')fbq('track','Purchase',{value:tot,currency:'MXN',content_ids:cart.map(function(c){return c.key||c.nombre}),content_type:'product'});
 var subWA=_subActive?'\n🔄 *SUSCRIPCIÓN* recompra cada '+subFreq+' días (10% desc desde siguiente compra)':'';
 fetch('/.netlify/functions/whatsapp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auth:{id:'tienda',pass:'tienda2024'},to:WA,text:'🛒 *PEDIDO WEB*\n👤 '+n+'\n📱 '+t+'\n🏪 '+s+'\n💳 Pago en línea'+subWA+'\n\n'+cart.map(function(c){return'• '+c.nombre+' x'+c.qty+' $'+(c.precio*c.qty).toLocaleString('es-MX')+(c.grad?'\n  '+c.grad:'')}).join('\n')+'\n\n💰 *$'+tot.toLocaleString('es-MX')+'*\n📋 '+fo+(nt?'\n📝 '+nt:'')})}).catch(function(){});

@@ -55,6 +55,7 @@ body{font-family:'Outfit',sans-serif;${bgStyle}color:#f5f2ee;min-height:100vh;di
 </style>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-N84GYVTQKX"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','G-N84GYVTQKX');</script>
+<script>var GADS_ID='AW-18235456953';var GADS_LBL_LEAD='rjLZCMqBlb4cELn7q_dD';var GADS_ON=GADS_ID.indexOf('XXXX')<0;if(GADS_ON)gtag('config',GADS_ID);function gAdsConv(label){if(!GADS_ON||!label||label.indexOf('XXXX')>=0)return;gtag('event','conversion',{send_to:GADS_ID+'/'+label});}document.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href*="wa.me"],a[href^="tel:"]'):null;if(a)gAdsConv(GADS_LBL_LEAD);},true);</script>
 <script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','26143384325317414');fbq('track','PageView');fbq('track','Lead');</script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=26143384325317414&ev=PageView&noscript=1"/></noscript>
 </head>
