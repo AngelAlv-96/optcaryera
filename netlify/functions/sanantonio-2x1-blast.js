@@ -40,7 +40,7 @@ function normalizePhone(phone) {
 
 function firstName(name) {
   const n = String(name || "").trim();
-  if (!n) return "";
+  if (!n) return "cliente"; // Twilio rechaza variable vacía (error 21656)
   return n.split(/\s+/)[0].slice(0, 20);
 }
 
