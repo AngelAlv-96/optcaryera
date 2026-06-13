@@ -29351,6 +29351,15 @@ function amRenderPending() {
 function amKeyHandler(e) {
   // Only active when alta-masiva view is open
   if (!document.getElementById('view-alta-masiva').classList.contains('active')) return;
+  // Atajo "+" = reimprimir 1 etiqueta de la última impresa.
+  // Funciona aunque el cursor esté en el campo de escaneo, siempre que esté vacío
+  // (para no secuestrar un código que contenga "+" mientras se teclea/escanea).
+  if (e.key === '+') {
+    if (e.target.tagName === 'INPUT' && e.target.value) return;
+    e.preventDefault();
+    amReimprimirUltima();
+    return;
+  }
   // Ignore if typing in an input (except price field in pending)
   if (e.target.tagName === 'INPUT' && e.target.id !== 'am-marcas-input') {
     if (e.key === 'Enter') { e.preventDefault(); amConfirmar(0); }
@@ -29557,6 +29566,7 @@ async function amGuardarTodo() {
 // ── PRINT ZPL ──
 var _amPrinterConnected = false;
 var _amPrinterName = '';
+var _amLastPrintedRow = null; // última etiqueta impresa (para atajo "+" reimprimir 1)
 var AM_BP_URL = 'http://localhost:9200'; // ZPL Bridge (zpl_bridge.py) — HTTP ok for localhost (secure context)
 
 async function amCheckPrinter() {
@@ -29779,6 +29789,8 @@ async function amImprimirEtiqueta(row, qty) {
     if (!r.ok || !data.ok) throw new Error(data.error || 'Error impresora');
     if (dot) { dot.style.background = '#c8f04a'; setTimeout(function(){ if(dot) dot.style.background='#4af0c8'; }, 800); }
     if (txt) txt.textContent = '✓ ' + row.marca + ' ' + row.modelo + (qty > 1 ? ' ×' + qty : '');
+    // recuerda la última etiqueta impresa para el atajo "+" (reimprimir 1)
+    _amLastPrintedRow = { marca: row.marca, modelo: row.modelo, nombre: row.nombre, codigo: row.codigo, precio: row.precio };
     toast('🖨 ' + (qty > 1 ? qty + ' etiquetas: ' : 'Etiqueta: ') + row.modelo);
   } catch(e) {
     if (dot) dot.style.background = '#f04a6a';
@@ -29789,6 +29801,12 @@ async function amImprimirEtiqueta(row, qty) {
 
 async function amReimprimirEtiqueta(i) {
   if (amRows[i]) await amImprimirEtiqueta(amRows[i]);
+}
+
+// Reimprime 1 etiqueta de la última que se imprimió (atajo "+")
+async function amReimprimirUltima() {
+  if (!_amLastPrintedRow) { toast('Aún no se ha impreso ninguna etiqueta', true); return; }
+  await amImprimirEtiqueta(_amLastPrintedRow, 1);
 }
 
 async function amReimprimirCantidad(i) {
