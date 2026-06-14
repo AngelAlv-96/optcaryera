@@ -94,6 +94,17 @@
   to = "/promo-2x1.html"
   status = 200
 
+# Landing Visión Segura (protección de lentes)
+[[redirects]]
+  from = "/vision-segura"
+  to = "/vision-segura.html"
+  status = 200
+
+[[redirects]]
+  from = "/visionsegura"
+  to = "/vision-segura.html"
+  status = 200
+
 # Tienda online LC
 [[redirects]]
   from = "/tienda"
