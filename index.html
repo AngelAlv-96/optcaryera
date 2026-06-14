@@ -2633,7 +2633,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 
           <!-- BUSCAR ORDEN PARA GARANTÍA -->
           <div class="card" id="gta-buscar-card" style="overflow:visible">
-            <div class="card-head"><h3>Buscar orden original</h3></div>
+            <div class="card-head"><h3>Buscar orden original</h3><a onclick="garantiaManual()" style="cursor:pointer;font-size:12px">➕ Garant&iacute;a sin orden</a></div>
             <div style="padding:16px;overflow:visible">
               <div style="position:relative">
                 <input type="text" id="gta-search" placeholder="Nombre, tel&eacute;fono o folio del paciente..." autocomplete="off" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 14px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none;box-sizing:border-box" oninput="debounceGtaSearch()" onkeyup="if(event.key==='Enter')buscarOrdenGarantia()">
@@ -2684,7 +2684,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   </select>
                 </div>
                 <div>
-                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Rx realizada por *</label>
+                  <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Rx realizada por <span style="font-size:10px;opacity:.7">(obligatorio solo en Rx)</span></label>
                   <select id="gta-autoriza" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 10px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none;box-sizing:border-box">
                     <option value="">Seleccionar usuario...</option>
                   </select>
@@ -19003,6 +19003,83 @@ function nuevaGarantia() {
   document.getElementById('gta-search').focus();
 }
 
+// ── Garantía SIN orden en el sistema (manual) — para pedidos viejos / no cargados ──
+function garantiaManual() {
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.id = 'gta-manual-overlay';
+  ov.style.zIndex = '99999';
+  ov.innerHTML = '<div class="modal" style="max-width:460px;padding:20px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:15px;font-weight:700;color:var(--white)">🛡️ Garantía sin orden</div><span onclick="this.closest(\'.m-overlay\').remove()" style="cursor:pointer;color:var(--muted);font-size:18px">✕</span></div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Para garantías de pedidos que no están en el sistema (compras viejas u órdenes no cargadas). Busca al paciente:</div>'
+    + '<input type="text" id="gta-manual-search" placeholder="Nombre o teléfono del paciente..." autocomplete="off" oninput="_gtaManualBuscar()" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 14px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;outline:none;box-sizing:border-box">'
+    + '<div id="gta-manual-results" style="margin-top:10px;max-height:300px;overflow-y:auto"></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ document.getElementById('gta-manual-search')?.focus(); }, 50);
+}
+
+var _gtaManualTimer = null;
+function _gtaManualBuscar() {
+  clearTimeout(_gtaManualTimer);
+  _gtaManualTimer = setTimeout(async function() {
+    var q = (document.getElementById('gta-manual-search')?.value || '').trim();
+    var box = document.getElementById('gta-manual-results');
+    if (!box) return;
+    if (q.length < 2) { box.innerHTML = ''; return; }
+    var sf = buildSmartFilter(q);
+    var pQuery = db.from('pacientes').select('id, nombre, apellidos, telefono');
+    if (sf) pQuery = applySmartFilter(pQuery, sf, q);
+    var { data: pacs } = await pQuery.limit(10);
+    if (!pacs || !pacs.length) { box.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted)">Sin resultados</div>'; return; }
+    box.innerHTML = pacs.map(function(p){
+      return '<div onclick="_iniciarGarantiaManual(\'' + p.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(226,198,166,0.06)\'" onmouseout="this.style.background=\'\'">'
+        + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--white)">' + (p.nombre||'') + ' ' + (p.apellidos||'') + '</div>'
+        + '<div style="font-size:11px;color:var(--muted)">' + (p.telefono||'Sin teléfono') + '</div></div></div>';
+    }).join('');
+  }, 280);
+}
+
+async function _iniciarGarantiaManual(pacienteId) {
+  var { data: pac } = await db.from('pacientes').select('id, nombre, apellidos, telefono').eq('id', pacienteId).single();
+  if (!pac) { toast('Paciente no encontrado', true); return; }
+  document.getElementById('gta-manual-overlay')?.remove();
+  var nombre = (pac.nombre + ' ' + (pac.apellidos||'')).trim();
+  gtaOrdenOriginal = {
+    id: null, _manual: true,
+    paciente_id: pac.id, pacientes: pac,
+    notas_laboratorio: '',
+    sucursal: currentUser?.sucursal || '—',
+    tipo_lente:'', material:'', tratamiento:'', tinte:'', armazon:'',
+    od_esfera:'', od_cilindro:'', od_eje:'', od_add:'',
+    oi_esfera:'', oi_cilindro:'', oi_eje:'', oi_add:'',
+    dip:'', altura:'',
+    estado_lab: 'Entregado',
+    created_at: new Date().toISOString()
+  };
+  document.getElementById('gta-buscar-card').style.display = 'none';
+  document.getElementById('gta-form-card').style.display = '';
+  document.getElementById('gta-orden-info').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    + '<div style="font-size:14px;font-weight:700;color:var(--beige)">Garantía manual</div>'
+    + '<span style="font-size:11px;padding:2px 8px;background:rgba(212,184,74,0.15);color:#d4b84a;border-radius:8px">Sin orden</span>'
+    + '</div><div style="font-size:13px;color:var(--white);font-weight:600">' + nombre + '</div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + (pac.telefono||'') + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">Sin orden original en el sistema · ' + (currentUser?.sucursal||'—') + '</div>';
+  document.getElementById('gta-rx-anterior').innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px">Sin orden original. Si es garantía de Rx, ingresa la graduación nueva abajo.</div>';
+  document.getElementById('gta-tipo').value = '';
+  document.getElementById('gta-motivo').value = '';
+  document.getElementById('gta-responsable').value = '';
+  await cargarAsesoresGta();
+  document.getElementById('gta-notas').value = '';
+  document.getElementById('gta-rx-section').style.display = 'none';
+  document.getElementById('gta-rx-modo').value = '';
+  document.getElementById('gta-rx-rapida').style.display = 'none';
+  document.getElementById('gta-rx-hc-info').style.display = 'none';
+  document.querySelectorAll('.gta-tipo-btn').forEach(function(b){ b.className = 'btn btn-g btn-sm gta-tipo-btn'; });
+  document.getElementById('gta-motivos-wrap').innerHTML = '';
+  ['gta-od-esf','gta-od-cil','gta-od-eje','gta-od-add','gta-oi-esf','gta-oi-cil','gta-oi-eje','gta-oi-add','gta-dip','gta-alt'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
+}
+
 var _asesoresConfig = null;
 async function cargarAsesoresConfig() {
   if (_asesoresConfig) return _asesoresConfig;
@@ -19048,6 +19125,8 @@ async function cargarAsesoresGta() {
 }
 
 const GTA_ESTADOS_PERMITIDOS = ['Entregado', 'Listo para entrega', 'Recibido en óptica'];
+// admin/gerencia pueden FORZAR una garantía aunque la orden no esté entregada (casos viejos / estado no actualizado)
+function _gtaPuedeForzar() { return ['admin','gerencia'].includes(currentUser?.rol); }
 
 let gtaSearchTimer = null;
 function debounceGtaSearch() {
@@ -19107,7 +19186,10 @@ async function buscarOrdenGarantia() {
       const esPermitido = GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab);
       const esGta = folio.startsWith('GTA-');
       const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
-      html += `<div onclick="${esPermitido && !esGta && !yaConGta ? `seleccionarOrdenGarantia('${o.id}')` : ''}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:${esPermitido && !esGta && !yaConGta ? 'pointer' : 'default'};border-bottom:1px solid rgba(255,255,255,0.04);opacity:${esPermitido && !esGta && !yaConGta ? '1' : '0.4'}" ${esPermitido && !esGta && !yaConGta ? 'onmouseover="this.style.background=\'rgba(226,198,166,0.06)\'" onmouseout="this.style.background=\'\'"' : ''}>
+      const puedeForzar = _gtaPuedeForzar();
+      const selFolio = !esGta && !yaConGta && (esPermitido || puedeForzar);
+      const forzando = selFolio && !esPermitido;
+      html += `<div onclick="${selFolio ? `seleccionarOrdenGarantia('${o.id}')` : ''}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:${selFolio ? 'pointer' : 'default'};border-bottom:1px solid rgba(255,255,255,0.04);opacity:${selFolio ? '1' : '0.4'}" ${selFolio ? 'onmouseover="this.style.background=\'rgba(226,198,166,0.06)\'" onmouseout="this.style.background=\'\'"' : ''}>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--white)">${esGta?'🔄 ':''}${folio} — ${nombre}</div>
           <div style="font-size:11px;color:var(--muted)">${o.tipo_lente||''} · ${o.material||''}</div>
@@ -19116,7 +19198,7 @@ async function buscarOrdenGarantia() {
           <span style="font-size:10px;padding:2px 6px;background:${st.dot}18;color:${st.dot};border-radius:6px;font-weight:600">${o.estado_lab}</span>
           ${esGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya es garantía</div>' : ''}
           ${yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya tiene garantía</div>' : ''}
-          ${!esPermitido && !esGta && !yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">No entregado</div>' : ''}
+          ${forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : (!esPermitido && !esGta && !yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">No entregado</div>' : '')}
         </div>
       </div>`;
     });
@@ -19166,8 +19248,10 @@ async function cargarOrdenesParaGarantia(pacienteId, nombre) {
     const esPermitido = GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab);
     const esGta = folio.startsWith('GTA-');
     const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
-    const bloqueado = !esPermitido || esGta || yaConGta;
-    const motBloqueo = esGta ? 'Ya es garantía' : yaConGta ? 'Ya tiene garantía' : !esPermitido ? 'Solo órdenes entregadas' : '';
+    const puedeForzar = _gtaPuedeForzar();
+    const bloqueado = esGta || yaConGta || (!esPermitido && !puedeForzar);
+    const forzando = !bloqueado && !esPermitido; // admin/gerencia forzando orden no entregada
+    const motBloqueo = esGta ? 'Ya es garantía' : yaConGta ? 'Ya tiene garantía' : (!esPermitido && !puedeForzar) ? 'Solo órdenes entregadas' : '';
 
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:${bloqueado?'default':'pointer'};border-radius:8px;transition:background .15s;opacity:${bloqueado?'0.45':'1'}" ${bloqueado?'':`onmouseover="this.style.background='rgba(226,198,166,0.05)'" onmouseout="this.style.background=''" onclick="seleccionarOrdenGarantia('${o.id}')"`}>
       <div>
@@ -19176,7 +19260,7 @@ async function cargarOrdenesParaGarantia(pacienteId, nombre) {
       </div>
       <div style="text-align:right">
         <span style="font-size:10px;padding:2px 8px;background:${st.dot}18;color:${st.dot};border-radius:8px;font-weight:600">${o.estado_lab}</span>
-        ${bloqueado ? `<div style="font-size:9px;color:#e08080;margin-top:2px">${motBloqueo}</div>` : '<div style="font-size:9px;color:#72c47e;margin-top:2px">✓ Seleccionar</div>'}
+        ${bloqueado ? `<div style="font-size:9px;color:#e08080;margin-top:2px">${motBloqueo}</div>` : (forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : '<div style="font-size:9px;color:#72c47e;margin-top:2px">✓ Seleccionar</div>')}
       </div>
     </div>`;
   }).join('');
@@ -19191,7 +19275,13 @@ async function seleccionarOrdenGarantia(ordenId) {
   const folio0 = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
   if (folio0.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
   if ((o.notas_laboratorio||'').includes('GTA_FOLIO:')) { toast('Esta orden ya tiene una garantía registrada', true); return; }
-  if (!GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab)) { toast('Solo se puede garantizar órdenes entregadas o listas para entrega. Estado actual: ' + o.estado_lab, true); return; }
+  if (!GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab)) {
+    if (_gtaPuedeForzar()) {
+      if (!confirm('⚠️ Esta orden no está entregada (estado actual: ' + o.estado_lab + ').\n\n¿Forzar la garantía de todos modos?')) return;
+    } else {
+      toast('Solo se puede garantizar órdenes entregadas o listas para entrega. Estado actual: ' + o.estado_lab, true); return;
+    }
+  }
 
   const dd = document.getElementById('gta-search-dropdown');
   if (dd) dd.style.display = 'none';
@@ -19221,7 +19311,7 @@ async function seleccionarOrdenGarantia(ordenId) {
       <tr><td style="padding:3px 6px;color:var(--beige);font-weight:700">OD</td><td style="text-align:center">${o.od_esfera||''}</td><td style="text-align:center">${o.od_cilindro||''}</td><td style="text-align:center">${o.od_eje||''}</td><td style="text-align:center">${o.od_add||''}</td></tr>
       <tr><td style="padding:3px 6px;color:var(--beige);font-weight:700">OI</td><td style="text-align:center">${o.oi_esfera||''}</td><td style="text-align:center">${o.oi_cilindro||''}</td><td style="text-align:center">${o.oi_eje||''}</td><td style="text-align:center">${o.oi_add||''}</td></tr>
     </table>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">DIP: ${o.dip || (o.notas_laboratorio||'').match(/DIP:\\s*(\\S+)/)?.[1] || '—'} · ALT: ${o.altura || (o.notas_laboratorio||'').match(/ALT:\\s*(\\S+)/)?.[1] || '—'}</div>`;
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">DIP: ${o.dip || (o.notas_laboratorio||'').match(/DIP:\s*(\S+)/)?.[1] || '—'} · ALT: ${o.altura || (o.notas_laboratorio||'').match(/ALT:\s*(\S+)/)?.[1] || '—'}</div>`;
 
   document.getElementById('gta-tipo').value = '';
   document.getElementById('gta-motivo').value = '';
@@ -19343,6 +19433,9 @@ function setTipoGarantia(tipo) {
     b.className = b.dataset.tipo === tipo ? 'btn btn-p btn-sm gta-tipo-btn' : 'btn btn-g btn-sm gta-tipo-btn';
   });
   document.getElementById('gta-rx-section').style.display = tipo === 'rx' ? '' : 'none';
+  // En garantía manual (sin orden) no existe "Nueva consulta HC" (no hay orden que vincular) → solo corrección rápida
+  var _hcBtn = document.getElementById('gta-rx-hc-btn');
+  if (_hcBtn) _hcBtn.style.display = (gtaOrdenOriginal && gtaOrdenOriginal._manual) ? 'none' : '';
 
   const wrap = document.getElementById('gta-motivos-wrap');
   const motivos = GTA_MOTIVOS[tipo] || [];
@@ -19414,15 +19507,16 @@ async function procesarGarantia() {
 
   if (!tipo) { toast('Selecciona el tipo de garantía', true); return; }
   if (!motivo) { toast('Ingresa el motivo de la garantía', true); return; }
-  if (!autoriza) { toast('Selecciona quién realizó la Rx', true); return; }
-  if (!responsable) { toast('Selecciona el responsable/causa', true); return; }
+  // "Rx realizada por" SOLO es obligatorio en garantías de graduación (Rx).
+  // Para armazón/lentes no aplica. "Responsable/Causa" es opcional.
+  if (tipo === 'rx' && !autoriza) { toast('En garantías de Rx, selecciona quién realizó la graduación', true); return; }
 
   const { data: fresh } = await db.from('ordenes_laboratorio').select('estado_lab, notas_laboratorio').eq('id', gtaOrdenOriginal.id).single();
   if (fresh) {
     const freshFolio = (fresh.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
     if (freshFolio.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
     if ((fresh.notas_laboratorio||'').includes('GTA_FOLIO:')) { toast('Esta orden ya tiene una garantía registrada', true); return; }
-    if (!GTA_ESTADOS_PERMITIDOS.includes(fresh.estado_lab)) { toast('La orden cambió de estado y ya no es elegible para garantía', true); return; }
+    if (!GTA_ESTADOS_PERMITIDOS.includes(fresh.estado_lab) && !_gtaPuedeForzar()) { toast('La orden cambió de estado y ya no es elegible para garantía', true); return; }
   }
 
   const o = gtaOrdenOriginal;
@@ -19439,10 +19533,13 @@ async function procesarGarantia() {
   if (!confirm(`¿Procesar garantía de ${tipoLabel}?\n\nFolio original: ${folio}\nNuevo folio: ${nuevoFolio}\nPaciente: ${nombre}\nMotivo: ${motivo}\nAutoriza: ${autoriza}`)) return;
 
   try {
-    const notasOrig = (o.notas_laboratorio || '') + ` | GARANTÍA: ${tipoLabel} - ${motivo} - ${new Date().toLocaleDateString('es-MX')} | GTA_FOLIO: ${nuevoFolio}`;
-    await db.from('ordenes_laboratorio').update({
-      notas_laboratorio: notasOrig
-    }).eq('id', o.id);
+    // Solo anotar la orden original si EXISTE en el sistema (las garantías manuales/SICAR no tienen orden real)
+    if (o.id) {
+      const notasOrig = (o.notas_laboratorio || '') + ` | GARANTÍA: ${tipoLabel} - ${motivo} - ${new Date().toLocaleDateString('es-MX')} | GTA_FOLIO: ${nuevoFolio}`;
+      await db.from('ordenes_laboratorio').update({
+        notas_laboratorio: notasOrig
+      }).eq('id', o.id);
+    }
 
     // DIP and altura are NOT columns in ordenes_laboratorio — they go in notas_laboratorio
     const origNotasRaw = o.notas_laboratorio || '';
