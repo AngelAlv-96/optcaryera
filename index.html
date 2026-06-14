@@ -20842,7 +20842,12 @@ async function cargarVtaPendientes() {
     if (fEl) fEl.textContent = folio;
   } catch(e) {}
   var tcEl = document.getElementById('vta-tc-val');
-  if (tcEl) tcEl.textContent = _tipoCambio ? _tipoCambio.toFixed(2) : '...';
+  if (tcEl) {
+    // Si el tipo de cambio aún no cargó (condición de carrera al entrar al POS), tráelo ahora
+    // para no dejar el "$... MXN" pegado. cargarTipoCambio() es async y ya estamos en contexto async.
+    if (!_tipoCambio) { try { await cargarTipoCambio(); } catch(e){} }
+    tcEl.textContent = _tipoCambio ? _tipoCambio.toFixed(2) : '...';
+  }
   var sesEl = document.getElementById('vta-sesion-user');
   if (sesEl) sesEl.textContent = (currentUser?.nombre || '—') + ' · ' + (currentUser?.sucursal || '');
 }
