@@ -981,8 +981,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 @media (max-width: 420px) {
   .stats { grid-template-columns: 1fr; }
   .fgrid.g4 { grid-template-columns: 1fr; }
+}
+/* POS: apilar carrito debajo en móvil/tablet (los teléfonos grandes son ~430px CSS, por eso 820) */
+@media (max-width: 820px) {
   #vta-grid { grid-template-columns: 1fr !important; }
-  #vta-grid > div:last-child { position: static !important; }
+  #vta-grid > div:last-child { position: static !important; margin-top: 12px; }
   #vta-fab-add { display:flex !important; }
 }
 #vta-fab-add { display:none;position:fixed;bottom:20px;right:20px;z-index:9998;width:52px;height:52px;border-radius:50%;background:var(--beige);color:var(--bg);border:none;font-size:24px;font-weight:700;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,0,0,0.4);cursor:pointer }
@@ -3617,6 +3620,11 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <!-- Convenio empresarial (siempre visible: el empleado presenta su código) -->
                 <div id="vta-convenio-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
                   <button onclick="abrirConvenioVta()" style="width:100%;padding:8px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🏢 Convenio empresarial</button>
+                </div>
+
+                <!-- Visión Segura (seguro de lentes — el empleado lo ofrece y lo agrega a la venta) -->
+                <div id="vta-seguro-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
+                  <button onclick="abrirSeguroVta()" style="width:100%;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🛡️ Agregar Visión Segura</button>
                 </div>
 
                 <!-- Folio Assignment Panel (NxM promos) -->
@@ -9923,6 +9931,42 @@ function _cancelarCumpleVta() {
   var ok=document.getElementById('vta-sin-anticipo-ok'); if(ok) ok.style.display='none';
   var b=document.getElementById('vta-cumple-banner'); if(b) b.style.display='none';
   renderVtaItems();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🛡️ VISIÓN SEGURA en POS — el empleado lo ofrece y lo agrega a la venta.
+// Se cobra como ítem 'Cobertura' (suma al total, sale en el ticket) y se registra
+// la protección al cerrar la venta (ligada al armazón, 1 seguro por armazón).
+function abrirSeguroVta() {
+  var armSug = '';
+  try { var ai = (vtaItems||[]).find(function(it){ return it.categoria === 'Armazón'; }); if (ai) armSug = ai.descripcion || ''; } catch(e){}
+  var planesHtml = ['BASICO','PLUS','PREMIUM'].map(function(k){
+    var p = VS_PLANES[k];
+    var d = k==='BASICO' ? '1 cambio de micas/año' : k==='PLUS' ? '2 cambios + 1 reposición' : 'Cambios ilimitados + 2 reposiciones';
+    return '<button onclick="_agregarSeguroVta(\''+k+'\')" style="width:100%;text-align:left;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;color:var(--white);font-family:Outfit,sans-serif;transition:all .15s" onmouseover="this.style.borderColor=\'#79c47e\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,0.1)\'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700">'+p.nombre+'</span><span style="font-weight:700;color:#79c47e">$'+p.precio.toLocaleString()+'</span></div>'
+      + '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+d+' · 12 meses</div></button>';
+  }).join('');
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open'; ov.id = 'vs-pos-overlay'; ov.style.zIndex = '99999';
+  ov.innerHTML = '<div class="modal" style="max-width:430px;padding:22px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:17px;font-weight:700;color:var(--beige)">🛡️ Agregar Visión Segura</div><span onclick="this.closest(\'.m-overlay\').remove()" style="cursor:pointer;color:var(--muted);font-size:20px">✕</span></div>'
+    + '<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Protege UN armazón por 12 meses. En promos 2x1/3x1, agrega un seguro por cada armazón que el cliente quiera proteger.</div>'
+    + '<label style="display:block;font-size:11px;color:var(--muted);margin-bottom:4px">Armazón a proteger</label>'
+    + '<input id="vs-pos-armazon" value="'+armSug.replace(/"/g,'&quot;')+'" placeholder="Modelo del armazón" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px 12px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px;margin-bottom:14px;box-sizing:border-box">'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Elige el plan:</div>'
+    + planesHtml
+    + '</div>';
+  document.body.appendChild(ov);
+}
+
+function _agregarSeguroVta(plan) {
+  var p = VS_PLANES[plan]; if (!p) return;
+  var arm = (document.getElementById('vs-pos-armazon')?.value || '').trim();
+  vtaItems.push({ producto_id:null, descripcion:'🛡️ Visión Segura '+p.nombre+(arm?' ('+arm+')':''), cantidad:1, precio_unitario:p.precio, descuento_item:0, subtotal:p.precio, categoria:'Cobertura', _vsPlan:plan, _vsArmazon:arm });
+  var _ov=document.getElementById('vs-pos-overlay'); if(_ov) _ov.remove();
+  renderVtaItems();
+  toast('🛡️ Visión Segura '+p.nombre+' agregada ($'+p.precio.toLocaleString()+')');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -21172,6 +21216,21 @@ async function _procesarVentaInner() {
       } catch(e) { console.warn('[Convenio uso]', e); toast('⚠️ Venta cobrada, pero el uso del convenio NO se registró: '+e.message, true); }
       _convVtaContext = null;
       var _cvbn2=document.getElementById('vta-convenio-banner'); if(_cvbn2) _cvbn2.style.display='none';
+    }
+    // 🛡️ Registrar Visión Segura agregada en el POS (1 protección por armazón, ligada al paciente)
+    var _segItems = (vtaItems||[]).filter(function(it){ return it._vsPlan; });
+    for (var _si=0; _si<_segItems.length; _si++) {
+      try {
+        var _seg = _segItems[_si];
+        if (!vtaPaciente?.id) { toast('⚠️ Visión Segura no registrada: la venta no tiene paciente', true); break; }
+        var _segArm = (_seg._vsArmazon||'').trim() || ('Folio '+folio);
+        var _segEx = await db.from('vision_segura').select('id').eq('id_armazon', _segArm).eq('estado','VIGENTE').limit(1);
+        if (_segEx.data && _segEx.data.length) { toast('⚠️ "'+_segArm+'" ya tenía Visión Segura vigente — no se duplicó', true); continue; }
+        var _segIni = new Date(); var _segFin = new Date(_segIni); _segFin.setMonth(_segFin.getMonth()+12);
+        var _segIns = await db.from('vision_segura').insert({ id_px: vtaPaciente.id, id_armazon: _segArm, plan: _seg._vsPlan, fecha_inicio: _segIni.toISOString().split('T')[0], fecha_fin: _segFin.toISOString().split('T')[0], eventos_lentes_usados:0, eventos_reposicion_usados:0, ultima_fecha_lentes:null, estado:'VIGENTE' }).select('id').single();
+        if (_segIns.error) throw new Error(_segIns.error.message);
+        toast('🛡️ Visión Segura '+(VS_PLANES[_seg._vsPlan]?.nombre||_seg._vsPlan)+' registrada para '+_segArm);
+      } catch(e) { console.warn('[VS POS]', e); toast('⚠️ Venta cobrada pero Visión Segura NO se registró: '+e.message, true); }
     }
     mostrarPostSale(venta.id, folio, estado, total, monAplicar, vtaPaciente?.nombre||'', vtaPaciente?.telefono||'', portalToken);
     cargarVtaPendientes();
