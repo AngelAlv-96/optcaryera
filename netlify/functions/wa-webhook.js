@@ -294,9 +294,12 @@ VISIÓN SEGURA (protección extra):
 💙 Básico $499: 1 cambio de micas gratis + 50% desc. reposición por daño
 💚 Plus $999: 2 eventos/año + 1 reposición gratis por daño
 ❤️ Premium $1999: Cambios ilimitados (cada 50 días) + 2 reposiciones gratis
-Vigencia 12 meses. Se contrata EN SUCURSAL al momento de la compra o recogida (precio especial solo ese día).
+Vigencia 12 meses. Cada Visión Segura protege UN SOLO armazón.
+⚠️ EN PROMOS 2x1 / 3x1 (2 o 3 armazones): una Visión Segura cubre SOLO UNO de los armazones. Para proteger los demás, el cliente debe contratar un plan POR CADA armazón adicional — acláraselo SIEMPRE al ofrecerla a alguien con compra 2x1/3x1 (ej. "cada seguro protege un armazón; si quieres proteger los 2 que llevaste, es un plan por cada uno").
+CÓMO SE CONTRATA: en sucursal al momento de la compra, O por aquí mismo (WhatsApp) con link de pago — tú se lo puedes generar.
 CUÁNDO OFRECERLA (proactivo, pero SIN ser pushy): menciónala TÚ una sola vez, en 1-2 líneas, cuando el cliente (a) pregunte por garantía / qué pasa si se rompen, rayan o maltratan los lentes / si los niños los rompen / cuánto duran, o (b) ya esté cerrando o confirmando la compra de sus lentes (mejor momento para ofrecerla como protección extra). Ejemplo: "¿Quieres protegerlos? Con Visión Segura desde $499, si se rompen o te cambia la graduación te cambiamos las micas — pregúntala al pasar 💙". Si el cliente no muestra interés, NO insistas ni la repitas.
 ⛔ NUNCA la ofrezcas a un cliente que YA COMPRÓ y está preguntando por SU garantía, su pedido o un problema con lentes que ya tiene (ves folio, ves [Sistema] en el historial, o dice "mis lentes" / "mi pedido" / "mi garantía" / "se me rompieron los que compré" / "ya los compré aquí"). La garantía incluida es GRATIS y va APARTE; Visión Segura es una protección OPCIONAL que se contrata SOLO al momento de comprar, NUNCA es requisito para que le respeten su garantía. Ofrecérsela ahí lo confunde y le hace creer que tiene que PAGAR para validar su garantía — eso está PROHIBIDO. Visión Segura SOLO se ofrece en compras NUEVAS o a prospectos que aún no compran.
+PARA COBRARLA POR WHATSAPP: cuando un cliente que YA compró sus lentes confirme que quiere contratar Visión Segura y PAGAR ahora, confirma el plan y al FINAL de tu mensaje agrega el comando CREAR_VS|PLAN (PLAN = BASICO, PLUS o PREMIUM; ejemplo: CREAR_VS|PLUS). El sistema genera y envía el link de pago de Clip y registra la protección automáticamente al pagar. NUNCA muestres ni expliques el comando CREAR_VS al cliente; solo inclúyelo cuando confirme que quiere pagar. La protección se liga a los lentes que compró; si el sistema no encuentra su compra registrada, te avisará y entonces le pides que pase a sucursal a contratarla. Recuerda: si compró 2x1/3x1 y quiere proteger más de un armazón, genera un CREAR_VS por cada armazón (uno a la vez, conforme pague).
 
 REGLAS IMPORTANTES:
 1. EXAMEN DE VISTA: Gratuito INCLUIDO al comprar lentes — sea lentes completos (armazón + graduación), SOLO las micas graduadas (aunque el cliente traiga su PROPIO armazón), o lentes de contacto. Si trae armazón propio: en sucursal le cotizan el costo de las micas graduadas (el precio depende del tipo de graduación y material que necesite) y el examen va INCLUIDO igual. NO ofrezcas examen solo ni receta sin compra.
@@ -2388,6 +2391,101 @@ async function notifyAdminPendingSale(saleData, customerPhone) {
   }
 }
 
+// ── 🛡️ VISIÓN SEGURA por WhatsApp: genera link de pago Clip + guarda mapeo para el webhook ──
+var VS_PRICES = { BASICO: 499, PLUS: 999, PREMIUM: 1999 };
+var VS_LABELS = { BASICO: 'Básico', PLUS: 'Plus', PREMIUM: 'Premium' };
+
+async function crearLinkVisionSegura(phone, plan) {
+  plan = (plan || '').toUpperCase();
+  if (!VS_PRICES[plan]) return { ok: false, reason: 'plan_invalido' };
+  var monto = VS_PRICES[plan];
+  var tel10 = (phone || '').replace(/\D/g, '').slice(-10);
+  if (tel10.length !== 10) return { ok: false, reason: 'no_paciente' };
+
+  // 1. Buscar paciente por teléfono (eq 10 dígitos, fallback ilike)
+  var pacs = await supaFetch('pacientes?telefono=eq.' + tel10 + '&select=id,nombre,apellidos&limit=1');
+  if (!pacs || !pacs.length) {
+    pacs = await supaFetch('pacientes?telefono=ilike.*' + tel10 + '*&select=id,nombre,apellidos&limit=1');
+  }
+  if (!pacs || !pacs.length) return { ok: false, reason: 'no_paciente' };
+  var pac = pacs[0];
+  var nombre = (pac.nombre + ' ' + (pac.apellidos || '')).trim();
+
+  // 2. Órdenes recientes del paciente → candidatos de armazón (más reciente primero)
+  var ords = await supaFetch('ordenes_laboratorio?paciente_id=eq.' + pac.id + '&select=armazon,notas_laboratorio,created_at&order=created_at.desc&limit=12');
+  if (!ords || !ords.length) return { ok: false, reason: 'no_compra' };
+
+  // 3. Elegir el armazón MÁS RECIENTE que NO tenga ya una protección VIGENTE (regla: 1 seguro por armazón)
+  var idArmazon = null;
+  for (var i = 0; i < ords.length; i++) {
+    var folio = ((ords[i].notas_laboratorio || '').match(/Folio:\s*([^\s|]+)/) || [])[1] || '';
+    var cand = (ords[i].armazon || '').trim() || (folio ? ('Folio ' + folio) : '');
+    if (!cand) continue;
+    var ya = await supaFetch('vision_segura?id_armazon=eq.' + encodeURIComponent(cand) + '&estado=eq.VIGENTE&select=id&limit=1');
+    if (!ya || !ya.length) { idArmazon = cand; break; }
+  }
+  if (!idArmazon) return { ok: false, reason: 'todos_protegidos' };
+
+  // 4. Crear checkout en Clip
+  var SITE = process.env.URL || 'https://optcaryera.netlify.app';
+  var token = process.env.CLIP_WEBHOOK_TOKEN ? ('?token=' + process.env.CLIP_WEBHOOK_TOKEN) : '';
+  var clipBody = {
+    amount: monto,
+    currency: 'MXN',
+    purchase_description: 'Vision Segura ' + VS_LABELS[plan] + ' - Opticas Car y Era',
+    redirection_url: {
+      success: SITE + '/vision-segura?pago=ok',
+      error: SITE + '/vision-segura?pago=error',
+      default: SITE + '/vision-segura'
+    },
+    metadata: { me_reference_id: 'VS-' + plan, customer_info: { name: nombre } },
+    webhook_url: SITE + '/.netlify/functions/clip-webhook' + token
+  };
+  var resp = await fetch('https://api.payclip.com/v2/checkout', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic ' + Buffer.from((process.env.CLIP_API_KEY || '') + ':' + (process.env.CLIP_API_SECRET || '')).toString('base64')
+    },
+    body: JSON.stringify(clipBody)
+  });
+  var data = await resp.json();
+  if (!resp.ok || !data.payment_request_url || !data.payment_request_id) {
+    console.error('[VS] Clip API error:', resp.status, JSON.stringify(data).slice(0, 300));
+    return { ok: false, reason: 'clip_error' };
+  }
+
+  // 5. Guardar mapeo pendiente para que clip-webhook registre la protección al pagar
+  var pendKey = 'vs_pending_' + data.payment_request_id;
+  await supaFetch('app_config?on_conflict=id', {
+    method: 'POST',
+    body: JSON.stringify({ id: pendKey, value: JSON.stringify({
+      id_px: pac.id, id_armazon: idArmazon, plan: plan, phone: tel10, monto: monto, nombre: nombre, created: Date.now()
+    }) }),
+    prefer: 'return=minimal,resolution=merge-duplicates'
+  });
+
+  return { ok: true, url: data.payment_request_url, monto: monto, label: VS_LABELS[plan], plan: plan, armazon: idArmazon, nombre: nombre };
+}
+
+async function notifyAdminVS(phone, vsRes) {
+  try {
+    var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+    var adminPhones = [];
+    if (cfgData && cfgData[0] && cfgData[0].value) {
+      var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
+      adminPhones = cfg.admin_phones || cfg.recipients_corte || [];
+    }
+    var msg = '🛡️ *Visión Segura — link enviado por Clari*\n\n'
+      + '👤 ' + vsRes.nombre + '\n'
+      + '📱 Tel: ' + phone + '\n'
+      + '📦 Plan: ' + vsRes.label + ' ($' + vsRes.monto + ')\n'
+      + '👓 Armazón: ' + vsRes.armazon + '\n\n'
+      + 'Al pagar, la protección se registra sola y se liga a ese armazón. Verifica que sea el correcto.';
+    for (var i = 0; i < adminPhones.length; i++) { try { await sendWhatsAppReply(adminPhones[i], msg); } catch(e){} }
+  } catch (e) { console.warn('[VS] notifyAdmin error:', e.message); }
+}
+
 // ── 🎂 CORRECCIÓN DE FECHA DE CUMPLEAÑOS (Clari, solo día+mes, conserva el año) ──
 // Solo aplica a clientes que recibieron el cupón de cumpleaños este año ([Cumple-AAAA] en su historial).
 var _CUMPLE_MESES = { enero:1,ene:1,febrero:2,feb:2,marzo:3,mar:3,abril:4,abr:4,mayo:5,may:5,junio:6,jun:6,julio:7,jul:7,agosto:8,ago:8,septiembre:9,setiembre:9,sep:9,sept:9,octubre:10,oct:10,noviembre:11,nov:11,diciembre:12,dic:12 };
@@ -3184,6 +3282,30 @@ exports.handler = async function(event) {
           }
         }
         
+        // Check for CREAR_VS command (Visión Segura por WhatsApp + link de pago Clip)
+        var vsMatch = reply.match(/CREAR_VS\|(BASICO|PLUS|PREMIUM)/i);
+        if (vsMatch) {
+          reply = reply.replace(/CREAR_VS\|[A-Za-z]+/gi, '').trim();
+          var vsPlan = vsMatch[1].toUpperCase();
+          try {
+            var vsRes = await crearLinkVisionSegura(from, vsPlan);
+            if (vsRes.ok) {
+              reply += (reply ? '\n\n' : '') + '💙 Tu link de pago para Visión Segura ' + vsRes.label + ' ($' + vsRes.monto + '):\n' + vsRes.url + '\n\nEn cuanto se confirme tu pago queda activada tu protección. ✅';
+              await notifyAdminVS(from, vsRes);
+              console.log('[VS] Link enviado: ' + vsRes.nombre + ' · ' + vsRes.label + ' · ' + vsRes.armazon);
+            } else if (vsRes.reason === 'no_compra' || vsRes.reason === 'no_paciente') {
+              reply += (reply ? '\n\n' : '') + 'Para activar Visión Segura necesito ligarla a tus lentes, pero no encuentro tu compra registrada por aquí. Pásala a contratar en sucursal y con gusto te la activan. 💙';
+            } else if (vsRes.reason === 'todos_protegidos') {
+              reply += (reply ? '\n\n' : '') + 'Tus lentes ya tienen Visión Segura activa. Si compraste más de un armazón y quieres proteger otro, coméntame o pásalo en sucursal. 💙';
+            } else {
+              reply += (reply ? '\n\n' : '') + 'Tuve un detalle generando tu link de pago — pásalo a contratar en sucursal y con gusto te ayudamos. 💙';
+            }
+          } catch (vsErr) {
+            console.error('[VS] error:', vsErr.message);
+            reply += (reply ? '\n\n' : '') + 'Tuve un detalle generando tu link de pago — pásalo en sucursal y te ayudamos. 💙';
+          }
+        }
+
         console.log('[Reply] -> ' + from + ': ' + reply.substring(0, 100) + '...');
         await sendWhatsAppReply(from, reply);
 

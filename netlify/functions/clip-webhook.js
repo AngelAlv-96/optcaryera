@@ -142,6 +142,57 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'skipped', reason: 'no amount' }) };
     }
 
+    // ── 🛡️ VISIÓN SEGURA: ¿este pago es una contratación de Visión Segura por WhatsApp? ──
+    {
+      const vsIds = [prid, eventId].filter(Boolean);
+      let vsPend = null, vsKey = null;
+      for (const vid of vsIds) {
+        const r = await supaREST('GET', `app_config?id=eq.vs_pending_${encodeURIComponent(vid)}&select=value`);
+        if (r.ok && Array.isArray(r.data) && r.data.length) {
+          vsPend = typeof r.data[0].value === 'string' ? JSON.parse(r.data[0].value) : r.data[0].value;
+          vsKey = `vs_pending_${vid}`;
+          break;
+        }
+      }
+      if (vsPend && vsKey) {
+        // Idempotencia: borrar el pendiente de inmediato. Si ya no había fila, otro webhook (Clip dispara 3) lo procesó.
+        const del = await supaREST('DELETE', `app_config?id=eq.${encodeURIComponent(vsKey)}`, null, { 'Prefer': 'return=representation' });
+        if (!del.ok || !Array.isArray(del.data) || !del.data.length) {
+          console.log('VS: pending ya consumido, skip duplicado');
+          return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: 'vs_duplicate' }) };
+        }
+        // Guard: 1 seguro por armazón
+        const existing = await supaREST('GET', `vision_segura?id_armazon=eq.${encodeURIComponent(vsPend.id_armazon)}&estado=eq.VIGENTE&select=id&limit=1`);
+        const inicio = new Date();
+        const fin = new Date(inicio); fin.setMonth(fin.getMonth() + 12);
+        const iso = (d) => d.toISOString().split('T')[0];
+        let registered = false;
+        if (!(existing.ok && Array.isArray(existing.data) && existing.data.length)) {
+          const ins = await supaREST('POST', 'vision_segura', {
+            id_px: vsPend.id_px, id_armazon: vsPend.id_armazon, plan: vsPend.plan,
+            fecha_inicio: iso(inicio), fecha_fin: iso(fin),
+            eventos_lentes_usados: 0, eventos_reposicion_usados: 0, ultima_fecha_lentes: null,
+            estado: 'VIGENTE'
+          }, { 'Prefer': 'return=minimal' });
+          registered = ins.ok;
+          if (!ins.ok) console.error('VS: insert failed', ins.data);
+        }
+        try {
+          const waCfg = await getWhatsAppConfig();
+          const planLabel = { BASICO: 'Básico', PLUS: 'Plus', PREMIUM: 'Premium' }[vsPend.plan] || vsPend.plan;
+          const admMsg = registered
+            ? `🛡️ *Visión Segura PAGADA y activada*\n\n👤 ${vsPend.nombre}\n📱 ${vsPend.phone}\n📦 Plan: ${planLabel} ($${amount.toFixed(2)})\n👓 Armazón: ${vsPend.id_armazon}\n\nProtección registrada (12 meses). Verifica que el armazón sea el correcto en el módulo Visión Segura.`
+            : `⚠️ *Visión Segura — pago recibido, NO se registró*\n\n👤 ${vsPend.nombre}\n📱 ${vsPend.phone}\n📦 ${planLabel} ($${amount.toFixed(2)})\n👓 Armazón: ${vsPend.id_armazon}\n\nEse armazón YA tenía protección vigente (o falló el registro). Revísalo manualmente.`;
+          for (const ap of (waCfg.admin_phones || [])) { try { await sendWA(ap, admMsg); } catch (e) {} }
+          if (registered && vsPend.phone) {
+            await sendWA(vsPend.phone, `💙 ¡Listo! Tu Visión Segura ${planLabel} quedó activada por 12 meses para tus lentes. Gracias — Ópticas Car & Era`);
+          }
+        } catch (e) { console.warn('VS notify error:', e.message); }
+        console.log(`VS: ${registered ? 'registrada' : 'NO registrada (dup armazón/fallo)'} — ${vsPend.nombre} ${vsPend.plan}`);
+        return { statusCode: 200, headers, body: JSON.stringify({ received: true, action: registered ? 'vs_registered' : 'vs_not_registered' }) };
+      }
+    }
+
     // Find the venta — try by folio, then by any ID in clip_prid, then by amount match
     const ventaSelect = 'id,folio,total,pagado,saldo,sucursal,notas,pacientes(nombre,apellidos)';
     let ventaRes;
