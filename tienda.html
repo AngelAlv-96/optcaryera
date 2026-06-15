@@ -828,7 +828,7 @@ footer .fi{font-size:11px;color:var(--t3)}
       <div class="hero-ai-opts" id="hero-ai-opts" style="display:none">
         <p class="hero-q">&iquest;Qu&eacute; edad tienes?</p>
         <div class="hero-ai-age">
-          <input type="number" id="ai-age-input" class="hai-age-input" placeholder="Ej: 28" min="10" max="99" onkeydown="if(event.key==='Enter')aiAgeSubmit()">
+          <input type="number" inputmode="numeric" pattern="[0-9]*" id="ai-age-input" class="hai-age-input" placeholder="Ej: 28" min="10" max="99" onkeydown="if(event.key==='Enter')aiAgeSubmit()">
           <button class="hai-opt" onclick="aiAgeSubmit()">Continuar &rarr;</button>
         </div>
       </div>
