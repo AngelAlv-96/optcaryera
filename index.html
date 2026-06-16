@@ -2129,6 +2129,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <select id="lab-filtro" onchange="loadLab()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todos</option>
             </select>
+            <button class="btn btn-g btn-sm" onclick="abrirRecibirOtraSuc()" title="Recibir un pedido vendido en otra sucursal" style="font-size:12px">&#128229; De otra sucursal</button>
             <button class="btn btn-g btn-sm" onclick="abrirScanOrden()" title="Escanear con cámara" style="font-size:14px">📷</button>
             <button class="btn btn-g btn-sm" onclick="loadLab()" title="Actualizar">&#x21bb; Actualizar</button>
           </div>
@@ -5804,7 +5805,7 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','entrega-search','conteo-input','am-rq-modelo'];
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','recotra-input','entrega-search','conteo-input','am-rq-modelo'];
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -7121,10 +7122,10 @@ async function buscarParaEntrega(query) {
       }
     }
 
-    // NOTA: ya NO se filtran las órdenes de otras sucursales para el rol sucursal.
-    // Si el pedido es de otra sucursal, se muestra con el botón "📍 Recoger en esta sucursal"
-    // (traslado) en vez del checkbox de entrega. El filtrado por-sucursal de la entrega normal
-    // se resuelve por orden en _renderEntregaResultados (solo las propias entran al checkbox).
+    // NOTA: las órdenes de otras sucursales se muestran como aviso (NO se entregan aquí hasta
+    // RECIBIRLAS en Bitácora de Pedidos → "📥 Recibir de otra sucursal"). El módulo Entrega es
+    // solo para entregar lentes; el traslado/recepción vive en Bitácora (abrirRecibirOtraSuc).
+    // El filtrado por-sucursal de la entrega normal se resuelve por orden en _renderEntregaResultados.
 
     if (!ordenes.length) {
       results.innerHTML = '<div style="padding:20px;text-align:center"><div style="font-size:24px;margin-bottom:8px">🔍</div><div style="color:var(--muted);font-size:13px">No se encontraron órdenes para "<strong style="color:var(--white)">' + query.replace(/</g,'&lt;') + '</strong>"</div></div>';
@@ -7239,7 +7240,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     var desc = descParts.join(' · ') || 'Orden #' + (i+1);
     var fechaO = new Date(o.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
 
-    // Pedido de OTRA sucursal (rol sucursal) → no se entrega aquí hasta "traerlo"
+    // Pedido de OTRA sucursal (rol sucursal) → aquí NO se entrega; primero se RECIBE en Bitácora
     var esOtra = _esSucRol && o.sucursal !== _miSuc && !isEntregado;
     if (esOtra) {
       _entHayOtra = true;
@@ -7247,7 +7248,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
       h += '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc + '</div>';
       h += '<div style="font-size:10px;color:#38bdf8;font-weight:600">📍 Pedido de ' + o.sucursal + ' · ' + fechaO + '</div></div>';
       h += '<span style="font-size:10px;font-weight:700;color:' + c + ';background:' + c + '18;padding:3px 8px;border-radius:6px;white-space:nowrap">' + st + '</span></div>';
-      h += '<button onclick="_recogerAqui(\'' + o.id + '\')" style="width:100%;margin-top:8px;padding:9px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">📍 Recoger en mi sucursal (' + _miSuc + ')</button>';
+      h += '<div style="margin-top:8px;font-size:11px;color:#38bdf8;background:rgba(56,189,248,0.08);border-radius:6px;padding:7px 9px">Este pedido es de otra sucursal. Recíbelo primero en <strong>Bitácora de Pedidos → 📥 Recibir de otra sucursal</strong> y luego entrégalo aquí.</div>';
       h += '</div>';
       return;
     }
@@ -7262,7 +7263,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     h += '</label>';
   });
   h += '</div>';
-  if (_entHayOtra) h += _hintHTML('recoger-entrega', 'Este pedido es de OTRA sucursal. Tócalo para traerlo a la tuya: aquí lo entregas, avisas al cliente y cobras el saldo.');
+  if (_entHayOtra) h += _hintHTML('recibir-otra-suc', 'Hay un pedido de OTRA sucursal. Para entregarlo aquí, primero recíbelo en Bitácora de Pedidos → 📥 Recibir de otra sucursal.');
 
   // Asesor que entrega (select con empleados de la sucursal)
   await cargarAsesoresConfig();
@@ -7289,30 +7290,28 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     }
     h += '</div>';
   } else {
-    h += '<div style="text-align:center;font-size:12px;color:#38bdf8;padding:6px">Este pedido es de otra sucursal. Usa "📍 Recoger en mi sucursal" para traerlo y poder entregarlo aquí.</div>';
+    h += '<div style="text-align:center;font-size:12px;color:#38bdf8;padding:6px">Este pedido es de otra sucursal. Recíbelo primero en Bitácora de Pedidos → 📥 Recibir de otra sucursal, y luego entrégalo aquí.</div>';
   }
 
   results.innerHTML = h;
 }
 
-// 📍 Traer ("recoger en esta sucursal") un pedido vendido en OTRA sucursal.
-// Mueve todas las órdenes de ese folio a mi sucursal (así aparece en mis pendientes, hago QC,
-// aviso al cliente y cobro el saldo aquí), marca el origen en notas y pone ventas.sucursal_entrega
-// = mi sucursal (para que el saldo cobrado entre a MI corte). Avisa a admin de la sucursal origen.
-async function _recogerAqui(ordenId) {
+// 🔄 Traslada un pedido vendido en OTRA sucursal a MI sucursal (sin UI ni confirm — eso lo pone
+// el caller). Mueve TODAS las órdenes del folio (incluye hermanas de promo), marca el origen en
+// notas, pone ventas.sucursal_entrega = mi sucursal (para que el saldo cobrado entre a MI corte) y
+// avisa al admin. Lo usa la opción "📥 Recibir de otra sucursal" de Bitácora de Pedidos.
+// Retorna {ok, folioBase, movidas, origen, destino} o {ok:false, error}.
+async function _trasladarPedidoAMiSuc(ordenId) {
   var destino = currentUser?.sucursal;
-  if (!destino || destino === 'Todas') { toast('Inicia sesión en una sucursal específica para traer el pedido', true); return; }
-  if (_actionBusy['recogerAqui']) { toast('Procesando...', true); return; }
+  if (!destino || destino === 'Todas') return { ok: false, error: 'Inicia sesión en una sucursal específica' };
   try {
     var { data: o } = await db.from('ordenes_laboratorio').select('*').eq('id', ordenId).single();
-    if (!o) { toast('Orden no encontrada', true); return; }
+    if (!o) return { ok: false, error: 'Orden no encontrada' };
     var origen = o.sucursal;
-    if (origen === destino) { toast('Este pedido ya es de tu sucursal', true); return; }
+    if (origen === destino) return { ok: false, error: 'Este pedido ya es de tu sucursal' };
     var folio = getFolioFromOrder(o);
     var folioBase = (folio || '').replace(/-\d+$/, '');
-    if (!folioBase) { toast('No se pudo leer el folio del pedido', true); return; }
-    if (!confirm('¿Traer el pedido ' + folioBase + ' de ' + origen + ' a tu sucursal (' + destino + ')?\n\nTu sucursal se encargará de revisarlo, avisar al cliente y cobrar el saldo.')) return;
-    _actionBusy['recogerAqui'] = true;
+    if (!folioBase) return { ok: false, error: 'No se pudo leer el folio del pedido' };
 
     // Mover TODAS las órdenes de ese folio (incluye hermanas de promo: V0001, V0001-2...)
     var { data: hermanas } = await db.from('ordenes_laboratorio').select('id,notas_laboratorio,sucursal,estado_lab').ilike('notas_laboratorio', '%Folio: ' + folioBase + '%');
@@ -7341,14 +7340,125 @@ async function _recogerAqui(ordenId) {
       });
     } catch (e) { console.warn('[Traslado] aviso WA falló:', e.message); }
 
-    toast('📍 Pedido ' + folioBase + ' traído a ' + destino + ' (' + movidas + ' orden' + (movidas !== 1 ? 'es' : '') + '). Aparecerá en tus entregas.');
-    var sv = document.getElementById('entrega-search');
-    buscarParaEntrega((sv && sv.value) ? sv.value : folioBase);
+    return { ok: true, folioBase: folioBase, movidas: movidas, origen: origen, destino: destino };
   } catch (e) {
-    toast('Error al traer el pedido: ' + (e.message || e), true);
-  } finally {
-    _actionBusy['recogerAqui'] = false;
+    return { ok: false, error: (e.message || e) };
   }
+}
+
+// ═══ Bitácora de Pedidos → "📥 Recibir de otra sucursal" ═══
+// Escanea/busca un pedido que llegó de OTRA sucursal y lo trae a la tuya. Después se marca
+// Recibido/Revisado y se avisa al cliente con el flujo normal de Bitácora (ya estás aquí).
+function abrirRecibirOtraSuc() {
+  var mi = currentUser?.sucursal;
+  if (!mi || mi === 'Todas') { toast('Inicia sesión en una sucursal específica para recibir pedidos de otra sucursal', true); return; }
+  var ov = document.getElementById('recotra-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'recotra-overlay';
+    ov.className = 'm-overlay';
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = '<div class="modal" style="max-width:440px;width:100%">' +
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">' +
+      '<h3 style="font-family:\'Cormorant Garamond\',serif;font-size:19px;color:var(--beige);margin:0">📥 Recibir de otra sucursal</h3>' +
+      '<button onclick="document.getElementById(\'recotra-overlay\').classList.remove(\'open\')" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">Escanea o busca un pedido que llegó de OTRA sucursal para traerlo a la tuya (' + mi + '). Luego márcalo Recibido y Revisado aquí en la Bitácora como siempre.</p>' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+      '<input id="recotra-input" type="text" placeholder="🔒 Escanear código o folio/nombre..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();_recOtraBuscar(this.value);}" style="flex:1;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:\'Outfit\',sans-serif;font-size:13px;outline:none">' +
+      '<button onclick="_recOtraBuscar(document.getElementById(\'recotra-input\').value)" class="btn btn-p" style="padding:10px 16px;font-size:13px">Buscar</button>' +
+    '</div>' +
+    '<div id="recotra-msg" style="font-size:12px;color:#72c47e;text-align:center;min-height:16px;margin-bottom:8px"></div>' +
+    '<div id="recotra-results"></div>' +
+  '</div>';
+  ov.classList.add('open');
+  setTimeout(function(){ var i = document.getElementById('recotra-input'); if (i) i.focus(); }, 150);
+}
+
+async function _recOtraBuscar(query) {
+  query = (query || '').trim();
+  var results = document.getElementById('recotra-results');
+  var msg = document.getElementById('recotra-msg');
+  if (!query) return;
+  if (msg) msg.textContent = '';
+  if (results) results.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:12px;padding:10px">Buscando...</div>';
+  var mi = currentUser?.sucursal;
+  var sel = 'id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
+  try {
+    var ordenes = [];
+    // 1. Token QR de portal
+    var tokenMatch = query.match(/[?&]t=([a-z0-9]+)/i);
+    if (tokenMatch) {
+      var { data: venta } = await db.from('ventas').select('folio').eq('token_portal', tokenMatch[1]).single();
+      if (venta) { var { data: o1 } = await db.from('ordenes_laboratorio').select(sel).ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%'); ordenes = o1 || []; }
+    }
+    // 2. Folio (numérico o prefijado V0001)
+    var _esFolio = !tokenMatch && /^[A-Za-z]{0,4}\d{2,}(?:-\d+)?$/.test(query);
+    if (!ordenes.length && _esFolio) {
+      var fb = query.toUpperCase().replace(/-\d+$/, '');
+      var { data: o2 } = await db.from('ordenes_laboratorio').select(sel).ilike('notas_laboratorio', '%Folio: ' + fb + '%');
+      ordenes = o2 || [];
+    }
+    // 3. Nombre
+    if (!ordenes.length && !_esFolio && !tokenMatch) {
+      var words = query.toLowerCase().split(/\s+/);
+      var { data: pacs } = await db.from('pacientes').select('id').or(words.map(function(w){ return 'nombre.ilike.%' + w + '%,apellidos.ilike.%' + w + '%'; }).join(',')).limit(10);
+      if (pacs && pacs.length) {
+        var { data: o3 } = await db.from('ordenes_laboratorio').select(sel).in('paciente_id', pacs.map(function(p){ return p.id; })).neq('estado_lab', 'Entregado').neq('estado_lab', 'Cancelado').order('created_at', { ascending: false }).limit(30);
+        ordenes = o3 || [];
+      }
+    }
+    // Solo de OTRA sucursal y no entregadas/canceladas
+    ordenes = (ordenes || []).filter(function(o){ return o.sucursal !== mi && o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
+    // Dedup por folio base (una tarjeta por pedido)
+    var seen = {}; var unicas = [];
+    ordenes.forEach(function(o){ var fb = (getFolioFromOrder(o) || '').replace(/-\d+$/, ''); if (fb && !seen[fb]) { seen[fb] = true; unicas.push(o); } });
+    _recOtraRender(unicas, query);
+  } catch (e) {
+    if (results) results.innerHTML = '<div style="color:#e08080;font-size:12px">Error: ' + (e.message || e) + '</div>';
+  }
+}
+
+function _recOtraRender(ordenes, query) {
+  var results = document.getElementById('recotra-results');
+  if (!results) return;
+  if (!ordenes.length) {
+    results.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">No se encontró ningún pedido de otra sucursal para "<strong style="color:var(--white)">' + (query || '').replace(/</g, '&lt;') + '</strong>".<br>Si el pedido ya es de tu sucursal, búscalo en la Bitácora normal.</div>';
+    return;
+  }
+  var h = '';
+  ordenes.forEach(function(o){
+    var pac = o.pacientes; var nom = pac ? ((pac.nombre || '') + ' ' + (pac.apellidos || '')).trim() : 'Paciente';
+    var fb = (getFolioFromOrder(o) || '').replace(/-\d+$/, '') || '—';
+    var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+    h += '<div style="padding:10px 12px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);border-radius:8px;margin-bottom:8px">';
+    h += '<div style="font-size:13px;color:var(--white);font-weight:600">' + nom + '</div>';
+    h += '<div style="font-size:11px;color:#38bdf8">📍 Folio ' + fb + ' · de ' + o.sucursal + ' · ' + fecha + '</div>';
+    h += '<button onclick="_recOtraRecibir(\'' + o.id + '\')" style="width:100%;margin-top:8px;padding:9px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">📥 Recibir en mi sucursal</button>';
+    h += '</div>';
+  });
+  results.innerHTML = h;
+}
+
+async function _recOtraRecibir(ordenId) {
+  if (_actionBusy['recOtra']) { toast('Procesando...', true); return; }
+  var { data: o } = await db.from('ordenes_laboratorio').select('sucursal,notas_laboratorio').eq('id', ordenId).single();
+  var origen = o ? o.sucursal : '';
+  var folioPrev = o ? (getFolioFromOrder(o) || '').replace(/-\d+$/, '') : '';
+  var destino = currentUser?.sucursal;
+  if (!confirm('¿Recibir el pedido ' + folioPrev + ' (vendido en ' + origen + ') en tu sucursal (' + destino + ')?\n\nPasará a tus pendientes de Bitácora para que lo marques Recibido y Revisado, avises al cliente y cobres el saldo aquí.')) return;
+  _actionBusy['recOtra'] = true;
+  try {
+    var res = await _trasladarPedidoAMiSuc(ordenId);
+    if (!res.ok) { toast('No se pudo recibir: ' + (res.error || ''), true); return; }
+    var msg = document.getElementById('recotra-msg');
+    if (msg) msg.textContent = '✅ Pedido ' + res.folioBase + ' recibido (' + res.movidas + ' orden' + (res.movidas !== 1 ? 'es' : '') + '). Ya está en tu Bitácora.';
+    toast('📥 Pedido ' + res.folioBase + ' recibido en ' + res.destino);
+    var inp = document.getElementById('recotra-input'); if (inp) { inp.value = ''; inp.focus(); }
+    var results = document.getElementById('recotra-results'); if (results) results.innerHTML = '';
+    if (typeof loadLab === 'function') loadLab();
+  } finally { _actionBusy['recOtra'] = false; }
 }
 
 // Confirma físicamente los pares de una promo NxM antes de entregar (el sistema no ve lo físico)
