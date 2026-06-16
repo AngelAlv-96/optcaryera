@@ -3627,6 +3627,14 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <button onclick="abrirSeguroVta()" style="width:100%;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🛡️ Agregar Visión Segura</button>
                 </div>
 
+                <!-- Recoger en otra sucursal (venta de mostrador) -->
+                <div id="vta-recoger-otra-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#38bdf8;font-weight:600;cursor:pointer"><input type="checkbox" id="vta-recoger-otra" onchange="_toggleRecogerOtra()" style="accent-color:#38bdf8;width:14px;height:14px"> 📍 Recoger en otra sucursal</label>
+                  <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
+                    <option value="">— Sucursal de recogida —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+                  </select>
+                </div>
+
                 <!-- Folio Assignment Panel (NxM promos) -->
                 <div id="vta-folio-assign" style="display:none;padding:10px 14px;background:rgba(212,184,74,0.04);border-top:1px solid rgba(212,184,74,0.12)">
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -10081,6 +10089,13 @@ function _agregarSeguroVta(plan) {
   toast('🛡️ Visión Segura '+p.nombre+' agregada ($'+p.precio.toLocaleString()+')');
 }
 
+// 📍 Casilla "recoger en otra sucursal" (POS): muestra/oculta el selector de sucursal de recogida
+function _toggleRecogerOtra() {
+  var on = document.getElementById('vta-recoger-otra')?.checked;
+  var sel = document.getElementById('vta-recoger-suc');
+  if (sel) { sel.style.display = on ? '' : 'none'; if (!on) sel.value = ''; }
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 🏢 CONVENIOS EMPRESARIALES — beneficios para empleados de empresas afiliadas
 // Patrón = cupón de cumpleaños (v338): contexto en memoria, descuento pre-autorizado
@@ -13640,6 +13655,22 @@ async function guardarEImprimir() {
     }
   }
 
+  // Si la venta de este folio se marcó "recoger en otra sucursal" (sucursal_entrega ≠ sucursal),
+  // la orden de lab se rutea a esa sucursal de recogida (+ nota TRASLADO para que la reciba bien).
+  var _ordSuc = currentUser?.sucursal || '';
+  var _ordTraslado = '';
+  if (folioFinal) {
+    try {
+      var _fb = String(folioFinal).replace(/-\d+$/, '');
+      var { data: _vEnt } = await db.from('ventas').select('sucursal,sucursal_entrega').eq('folio', _fb).limit(1);
+      var _ve = _vEnt && _vEnt[0];
+      if (_ve && _ve.sucursal_entrega && _ve.sucursal_entrega !== _ve.sucursal) {
+        _ordSuc = _ve.sucursal_entrega;
+        _ordTraslado = ' | TRASLADO desde ' + (_ve.sucursal || _ordSuc);
+      }
+    } catch(e) {}
+  }
+
   let orderPayload;
   if (isLC) {
     const misma = document.getElementById('lc-misma-rx')?.checked;
@@ -13657,7 +13688,7 @@ async function guardarEImprimir() {
     orderPayload = {
       paciente_id:  pid,
       estado_lab:   'Enviado al lab',
-      sucursal:     currentUser?.sucursal || '',
+      sucursal:     _ordSuc,
       armazon:      '',
       tipo_lente:   'Lente de Contacto',
       material:     v('lc-od-marca') + (v('lc-od-modelo') ? ' ' + v('lc-od-modelo') : ''),
@@ -13676,13 +13707,13 @@ async function guardarEImprimir() {
       notas_laboratorio: lcNotas.join(' | ') +
         (folioFinal ? ` | Folio: ${folioFinal}` : '') +
         ' | Urgencia: Normal' +
-        (v('o-not') ? ' | ' + v('o-not') : '')
+        (v('o-not') ? ' | ' + v('o-not') : '') + _ordTraslado
     };
   } else {
     orderPayload = {
     paciente_id:  pid,
     estado_lab:   'Enviado al lab',
-    sucursal:     currentUser?.sucursal || '',
+    sucursal:     _ordSuc,
     armazon:      document.getElementById('o-armazon').value,
     tipo_lente:   document.getElementById('o-tip')?.value || '',
     material:     document.getElementById('o-mat').value,
@@ -13702,7 +13733,7 @@ async function guardarEImprimir() {
       (folioFinal ? ` | Folio: ${folioFinal}` : '') +
       ` | Urgencia: ${document.getElementById('o-urg').value}` +
       (document.getElementById('o-dip').value ? ` | DIP: ${document.getElementById('o-dip').value}` : '') +
-      (document.getElementById('o-alt').value ? ` | ALT: ${document.getElementById('o-alt').value}` : '')
+      (document.getElementById('o-alt').value ? ` | ALT: ${document.getElementById('o-alt').value}` : '') + _ordTraslado
   };
   } // end else (armazon)
 
@@ -20360,6 +20391,8 @@ function initVenta() {
   const ap=document.getElementById('vta-es-apartado'); if(ap) ap.value='';
   const ai=document.getElementById('vta-apartado-indicator'); if(ai) ai.style.display='none';
   const um=document.getElementById('vta-usar-monedero'); if(um) um.checked=false;
+  var _ro=document.getElementById('vta-recoger-otra'); if(_ro) _ro.checked=false;
+  var _rs=document.getElementById('vta-recoger-suc'); if(_rs){ _rs.value=''; _rs.style.display='none'; }
   renderPayBtns('vta-metodos','selMetodoPago',PAY_METHODS,'');
   renderMSIBtns('vta-msi-btns','selMSI',3);
   const fe=document.getElementById('vta-fecha-entrega'); if(fe) { var _d3v=new Date(); _d3v.setDate(_d3v.getDate()+3); fe.value=_d3v.toISOString().slice(0,10); }
@@ -21092,10 +21125,15 @@ async function _procesarVentaInner() {
   try {
     const isOnline = document.getElementById('vta-es-online')?.checked || false;
     const canalVenta = isOnline ? (document.getElementById('vta-canal-venta')?.value || null) : null;
-    const sucursalEntrega = isOnline ? (document.getElementById('vta-sucursal-entrega')?.value || null) : null;
+    // Recoger en otra sucursal (venta de mostrador): la sucursal de recogida se guarda en sucursal_entrega
+    const _recogerOtra = !isOnline && (document.getElementById('vta-recoger-otra')?.checked || false);
+    const _recogerSuc = _recogerOtra ? (document.getElementById('vta-recoger-suc')?.value || '') : '';
+    const sucursalEntrega = isOnline ? (document.getElementById('vta-sucursal-entrega')?.value || null)
+      : ((_recogerSuc && _recogerSuc !== (currentUser?.sucursal || '')) ? _recogerSuc : null);
     const notasOnline = isOnline ? (document.getElementById('vta-online-notas')?.value?.trim() || null) : null;
     if (isOnline && !canalVenta) { toast('Selecciona el canal de venta',true); btn.disabled=false; btn.textContent='💰 Cobrar'; return; }
     if (isOnline && !sucursalEntrega) { toast('Selecciona la sucursal de entrega',true); btn.disabled=false; btn.textContent='💰 Cobrar'; return; }
+    if (_recogerOtra && !_recogerSuc) { toast('Selecciona la sucursal donde se recogerá',true); btn.disabled=false; btn.textContent='💰 Cobrar'; return; }
     const folio=await generarFolioVenta(isOnline);
     const ventaSucursal = isOnline ? 'Online' : (currentUser?.sucursal||'');
     const pagadoTotal=pagadoEfectivo+monAplicar;
