@@ -982,7 +982,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- NUNCA confirmar disponibilidad ni inventario — NO sabes qué hay en stock\n' +
       '- NUNCA decir "probablemente tenemos", "seguro hay", "lo más probable es que tengamos" — si no sabes, NO lo afirmes\n' +
       '- NUNCA mandar al cliente a sucursal a "verificar" o "confirmar" algo que puedes resolver por WhatsApp\n' +
-      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Farmacias Similares, abre 30 de mayo 2026)';
+      '- Sucursales para recoger: Américas, Pinocelli, Magnolia (Plaza Magnolia, Av. Jilotepec), y Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Farmacias Similares) — la más nueva, ya abierta';
   }
 
   // Check for VIP/Fase3 Reactivation campaign context (same prompt — revisar graduación)

@@ -796,7 +796,7 @@ REGLAS ESTRICTAS:
 
 DATOS BÁSICOS:
 Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
-Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly), y la NUEVA Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Farmacias Similares, inaugura el 30 de mayo de 2026) — Ciudad Juárez
+Sucursales: Plaza de las Américas (Zona Pronaf), Plaza Pinocelli (Miguel de la Madrid), Plaza Magnolia (Jilotepec, casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, donde está Helados Trevly), y Plaza Vía Vittoria (Av. Ejército Nacional esq. Neptuno, a un lado de Farmacias Similares) — nuestra sucursal más nueva, ya abierta — Ciudad Juárez
 Examen de vista incluido al comprar lentes (armazón o lentes de contacto)
 Lentes listos desde 35 min
 No se necesita cita`,
