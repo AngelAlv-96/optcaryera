@@ -7483,6 +7483,14 @@ function _confirmPromoCompleto() {
   return confirm(msg);
 }
 
+// Sucursal donde se COBRA un pago (para atribuir caja correctamente, incl. traslados):
+// la sucursal del cajero logueado; si es admin/Todas, cae a la de entrega o la de la venta.
+function _pagoSucursal(v) {
+  var s = currentUser?.sucursal;
+  if (s && s !== 'Todas') return s;
+  return (v && (v.sucursal_entrega || v.sucursal)) || null;
+}
+
 async function _soloEntregar() {
   if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
   // Block if sale has pending balance
@@ -7544,7 +7552,7 @@ async function _cobrarYEntregar() {
     var montoReal = Math.min(monto, saldoActual);
 
     // 1. Registrar abono
-    var abData = { venta_id: v.id, monto: montoReal, metodo_pago: metodo, referencia: ref || null, recibido_por: asesor };
+    var abData = { venta_id: v.id, monto: montoReal, metodo_pago: metodo, referencia: ref || null, recibido_por: asesor, sucursal: _pagoSucursal(v) };
     if (metodo === 'Dólar' && typeof _tipoCambio !== 'undefined' && _tipoCambio > 0) {
       abData.tipo_cambio = _tipoCambio;
       abData.monto_usd = Math.round(montoReal / _tipoCambio * 100) / 100;
@@ -21351,13 +21359,13 @@ async function _procesarVentaInner() {
         if (pm.monto <= 0) continue;
         var _pagoMonto = pm.metodo === 'Dólar' ? (pm.monto * (_tipoCambio||17)) : pm.monto;
         _pagoMonto = Math.min(_pagoMonto, totalDespuesMon); // cap to remaining
-        var _pagoData = {venta_id:venta.id, monto:Math.round(_pagoMonto*100)/100, metodo_pago:pm.metodo, referencia:pm.referencia||null, msi_meses:pm.metodo==='MSI'?pm.msi_meses:null, recibido_por:currentUser?.nombre||''};
+        var _pagoData = {venta_id:venta.id, monto:Math.round(_pagoMonto*100)/100, metodo_pago:pm.metodo, referencia:pm.referencia||null, msi_meses:pm.metodo==='MSI'?pm.msi_meses:null, recibido_por:currentUser?.nombre||'', sucursal: isOnline ? null : (currentUser?.sucursal||null)};
         if (pm.metodo==='Dólar') { _pagoData.tipo_cambio=_tipoCambio; _pagoData.monto_usd=pm.monto; }
         await db.from('venta_pagos').insert(_pagoData);
       }
     }
     if (monAplicar>0&&vtaPaciente) {
-      await db.from('venta_pagos').insert({venta_id:venta.id,monto:monAplicar,metodo_pago:'Monedero',recibido_por:currentUser?.nombre||''});
+      await db.from('venta_pagos').insert({venta_id:venta.id,monto:monAplicar,metodo_pago:'Monedero',recibido_por:currentUser?.nombre||'', sucursal: isOnline ? null : (currentUser?.sucursal||null)});
       await db.from('monedero').insert({paciente_id:vtaPaciente.id,tipo:'usado',monto:monAplicar,venta_id:venta.id,descripcion:`Usado en ${folio}`});
     }
     if (vtaPaciente&&estado==='Liquidada') {
@@ -22673,7 +22681,7 @@ async function _procesarCompletarPar() {
   if (totalDiferencia > 0 && ventaId) {
     await db.from('venta_pagos').insert({
       venta_id: ventaId, monto: totalDiferencia, metodo_pago: 'Efectivo',
-      recibido_por: currentUser?.nombre || '', referencia: 'Diferencia promo completada'
+      recibido_por: currentUser?.nombre || '', referencia: 'Diferencia promo completada', sucursal: _pagoSucursal(v)
     });
     // Update venta totals
     var newPagado = Number(v.pagado) + totalDiferencia;
@@ -22797,7 +22805,7 @@ async function registrarAbono() {
       if (bal<montoReal) { toast(`Saldo de monedero insuficiente ($${bal.toFixed(2)})`,true); return; }
       await db.from('monedero').insert({paciente_id:v.paciente_id,tipo:'usado',monto:montoReal,venta_id:v.id,descripcion:`Abono monedero en ${v.folio}`});
     }
-    var _abData = {venta_id:v.id,monto:montoReal,metodo_pago:abonoMetodo,referencia:document.getElementById('mvta-abono-ref')?.value?.trim()||null,msi_meses:abonoMetodo==='MSI'?abonoMSI:null,recibido_por:currentUser?.nombre||''};
+    var _abData = {venta_id:v.id,monto:montoReal,metodo_pago:abonoMetodo,referencia:document.getElementById('mvta-abono-ref')?.value?.trim()||null,msi_meses:abonoMetodo==='MSI'?abonoMSI:null,recibido_por:currentUser?.nombre||'', sucursal: _pagoSucursal(v)};
     if (abonoMetodo==='Dólar') { _abData.tipo_cambio=_tipoCambio; _abData.monto_usd=Math.round(montoReal/_tipoCambio*100)/100; }
     const {error:ep}=await db.from('venta_pagos').insert(_abData);
     if (ep) throw ep;
@@ -23261,8 +23269,11 @@ async function cargarDatosCaja() {
   const pagosFiltered = (suc === 'Todas') ? (pagos || []) : (pagos || []).filter(p => {
     const vs = p.ventas?.sucursal;
     const ent = p.ventas?.sucursal_entrega;
-    // Si la venta tiene sucursal de ENTREGA (Online o traslado "recoger en otra sucursal"),
-    // el cobro pertenece EXCLUSIVAMENTE a esa sucursal (su corte), no a la que vendió.
+    // v420: si el pago trae su sucursal de COBRO estampada (venta física), el cobro pertenece a
+    // ESA caja (donde realmente se cobró) — así el anticipo se queda en la que vendió y el saldo
+    // cobrado al entregar va a la que entrega. (Online nunca se estampa → cae a la regla de entrega.)
+    if (p.sucursal && vs !== 'Online') return p.sucursal === suc;
+    // Online o pagos legacy sin estampar: la sucursal de entrega manda (exclusiva); si no, la que vendió.
     if (ent) return ent === suc;
     if (!vs || vs === suc) return true;
     return false;
