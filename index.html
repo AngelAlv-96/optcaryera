@@ -3618,23 +3618,18 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <button onclick="abrirSelectorPromo()" style="width:100%;padding:10px;background:rgba(212,184,74,0.1);border:1px solid rgba(212,184,74,0.25);border-radius:8px;color:var(--beige);font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🏷 Aplicar promoción</button>
                 </div>
 
-                <!-- Convenio empresarial (siempre visible: el empleado presenta su código) -->
-                <div id="vta-convenio-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
-                  <button onclick="abrirConvenioVta()" style="width:100%;padding:8px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🏢 Convenio empresarial</button>
-                </div>
-
-                <!-- Visión Segura (seguro de lentes — el empleado lo ofrece y lo agrega a la venta) -->
-                <div id="vta-seguro-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
-                  <button onclick="abrirSeguroVta()" style="width:100%;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🛡️ Agregar Visión Segura</button>
-                  <div id="hint-vs-pos-wrap"></div>
-                </div>
-
-                <!-- Recoger en otra sucursal (venta de mostrador) -->
-                <div id="vta-recoger-otra-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#38bdf8;font-weight:600;cursor:pointer"><input type="checkbox" id="vta-recoger-otra" onchange="_toggleRecogerOtra()" style="accent-color:#38bdf8;width:14px;height:14px"> 📍 Recoger en otra sucursal</label>
+                <!-- Extras de la venta (compactos en una fila: Visión Segura destacado; Convenio y Otra sucursal en pastillas chicas) -->
+                <div id="vta-extras-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button onclick="abrirSeguroVta()" style="flex:1;min-width:140px;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🛡️ Visión Segura</button>
+                    <button id="vta-recoger-otra-btn" onclick="_toggleRecogerOtra()" title="El cliente recoge su pedido en otra sucursal" style="padding:8px 10px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.22);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">📍 Otra sucursal</button>
+                    <button onclick="abrirConvenioVta()" title="Convenio empresarial (el empleado presenta su código)" style="padding:8px 10px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🏢 Convenio</button>
+                  </div>
+                  <input type="checkbox" id="vta-recoger-otra" style="display:none">
                   <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
                     <option value="">— Sucursal de recogida —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
                   </select>
+                  <div id="hint-vs-pos-wrap"></div>
                   <div id="hint-recoger-pos-wrap"></div>
                 </div>
 
@@ -6556,6 +6551,10 @@ function renderLabCard(o, esOptica) {
   const revisadoTag = revisadoPor ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(114,196,126,0.12);border-radius:10px;font-size:10px;color:#72c47e">\ud83d\udc41 ${revisadoPor}</span>` : '';
   const sucTag = o.sucursal && currentUser?.rol !== 'sucursal'
     ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(226,198,166,0.12);border-radius:10px;font-size:10px;color:var(--beige)">${o.sucursal}</span>` : '';
+  // Pedido tra\u00eddo de OTRA sucursal (traslado) \u2192 distintivo visible para todos (incl. rol sucursal)
+  const trasMatch = notas.match(/TRASLADO desde\s*([^|]+)/i);
+  const trasladoTag = trasMatch
+    ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(56,189,248,0.16);border:1px solid rgba(56,189,248,0.3);border-radius:10px;font-size:10px;color:#38bdf8;font-weight:700">\ud83d\udccd Viene de ${trasMatch[1].trim()}</span>` : '';
   const urgTag = esUrgente
     ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(224,128,128,0.15);border-radius:10px;font-size:10px;color:#e08080;font-weight:600">\u26a1 ${urgMatch[1].trim()}</span>` : '';
   const devTag = motivoDev
@@ -6563,7 +6562,7 @@ function renderLabCard(o, esOptica) {
 
   return `<div class="lab-card" id="labcard-${o.id}">
     <div class="lab-card-left">
-      <div class="lab-card-name">${nombre}${sucTag}${urgTag}${devTag}${fueNotificado ? '<span style="margin-left:6px;padding:2px 7px;background:rgba(37,211,102,0.12);border-radius:10px;font-size:10px;color:#25d366;cursor:pointer" onclick="event.stopPropagation();alert(\'Notificado por WhatsApp:\\n\'+decodeURIComponent(\''+encodeURIComponent(fueNotificado)+'\'  ))">\ud83d\udcf1 Notificado</span>' : ''}${revisadoTag}</div>
+      <div class="lab-card-name">${nombre}${trasladoTag}${sucTag}${urgTag}${devTag}${fueNotificado ? '<span style="margin-left:6px;padding:2px 7px;background:rgba(37,211,102,0.12);border-radius:10px;font-size:10px;color:#25d366;cursor:pointer" onclick="event.stopPropagation();alert(\'Notificado por WhatsApp:\\n\'+decodeURIComponent(\''+encodeURIComponent(fueNotificado)+'\'  ))">\ud83d\udcf1 Notificado</span>' : ''}${revisadoTag}</div>
       ${folio ? `<div class="lab-card-folio">Folio ${folio}</div>` : ''}
       <div class="lab-card-spec">${spec}</div>
       <div class="lab-card-fecha">Creada: ${fecha}</div>
@@ -10245,9 +10244,20 @@ function _agregarSeguroVta(plan) {
 
 // 📍 Casilla "recoger en otra sucursal" (POS): muestra/oculta el selector de sucursal de recogida
 function _toggleRecogerOtra() {
-  var on = document.getElementById('vta-recoger-otra')?.checked;
+  var cb = document.getElementById('vta-recoger-otra');
+  _syncRecogerOtra(cb ? !cb.checked : true);
+}
+// Sincroniza el estado de "Recoger en otra sucursal": checkbox oculto (lo lee el checkout),
+// el select de sucursal y el resaltado del botón pastilla.
+function _syncRecogerOtra(on) {
+  var cb = document.getElementById('vta-recoger-otra'); if (cb) cb.checked = !!on;
   var sel = document.getElementById('vta-recoger-suc');
   if (sel) { sel.style.display = on ? '' : 'none'; if (!on) sel.value = ''; }
+  var btn = document.getElementById('vta-recoger-otra-btn');
+  if (btn) {
+    btn.style.background = on ? 'rgba(56,189,248,0.2)' : 'rgba(56,189,248,0.06)';
+    btn.style.borderColor = on ? '#38bdf8' : 'rgba(56,189,248,0.22)';
+  }
 }
 
 // 💡 HINTS de uso para botones nuevos — se muestran solo las primeras 3 veces y luego se ocultan
@@ -20562,8 +20572,7 @@ function initVenta() {
   const ap=document.getElementById('vta-es-apartado'); if(ap) ap.value='';
   const ai=document.getElementById('vta-apartado-indicator'); if(ai) ai.style.display='none';
   const um=document.getElementById('vta-usar-monedero'); if(um) um.checked=false;
-  var _ro=document.getElementById('vta-recoger-otra'); if(_ro) _ro.checked=false;
-  var _rs=document.getElementById('vta-recoger-suc'); if(_rs){ _rs.value=''; _rs.style.display='none'; }
+  if (typeof _syncRecogerOtra === 'function') _syncRecogerOtra(false);
   try { _renderPosHints(); } catch(e){}
   renderPayBtns('vta-metodos','selMetodoPago',PAY_METHODS,'');
   renderMSIBtns('vta-msi-btns','selMSI',3);
