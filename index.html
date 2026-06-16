@@ -25638,6 +25638,9 @@ function _comIngresoElegible(pagos, credAb, badSet, fInicioMs) {
 }
 
 // Calcula comisión de UN asesor para un período (refactor de calcularComisiones)
+// Redondea la comisión a múltiplos de $5 (se paga en efectivo, números cerrados — pedido de Angel v412)
+function _comRedondear5(x) { return Math.round((Number(x) || 0) / 5) * 5; }
+
 async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
   var parts = periodoStr.split('-');
   var y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), q = parts[2];
@@ -25672,7 +25675,7 @@ async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
   var ingresoElegible = _comIngresoElegible(pagos, credAb, bad, fInicioMs);
   var asesoraBase = numAsesores > 0 ? ingresoElegible / numAsesores : 0;
   var prorateado = (fInicioMs && fInicioMs > periodoStartMs) ? fInicio : null;
-  return { base: asesoraBase, pct: pct, comision: Math.round(asesoraBase * (pct/100) * 100) / 100, prorateado: prorateado };
+  return { base: asesoraBase, pct: pct, comision: _comRedondear5(asesoraBase * (pct/100)), prorateado: prorateado };
 }
 
 // Estado del flujo
@@ -26493,7 +26496,7 @@ async function calcularComisiones() {
     var ingresoElegible = _comIngresoElegible(pagos, credAb, bad, fInicioMs);
     var asesoraBase = numAsesores > 0 ? ingresoElegible / numAsesores : 0;
     var prorateado = (fInicioMs && fInicioMs > periodoStartMs) ? fInicio : null;
-    var comision = asesoraBase * (pct / 100);
+    var comision = _comRedondear5(asesoraBase * (pct / 100));
     totalComisiones += comision;
     return { nombre: nombre, pct: pct, base: asesoraBase, comision: comision, prorateado: prorateado, badDays: nBad };
   });
