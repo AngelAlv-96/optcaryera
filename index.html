@@ -7049,6 +7049,7 @@ function _cerrarEntregaScan() {
   if (ov) ov.remove();
 }
 
+var _entregaPromoInfo = null; // {pares, presentes, faltan[]} del pedido de promo en curso (Entrega)
 async function buscarParaEntrega(query) {
   if (!query || !query.trim()) return;
   query = query.trim();
@@ -7131,6 +7132,22 @@ async function buscarParaEntrega(query) {
     }
 
     _entregaVentaData = ventaData;
+    // Promo NxM: ¿cuántos pares debería tener este pedido? (para avisar si falta alguno)
+    _entregaPromoInfo = null;
+    try {
+      if (ventaData && ventaData.id) {
+        var { data: _vps } = await db.from('venta_promociones').select('folios_detalle').eq('venta_id', ventaData.id);
+        var _det = [];
+        (_vps || []).forEach(function(vp){ var fd = vp.folios_detalle; if (typeof fd === 'string') { try { fd = JSON.parse(fd); } catch(e){} } if (Array.isArray(fd)) _det = _det.concat(fd); });
+        var _expF = _det.map(function(d){ return d.folio; }).filter(Boolean);
+        var _expU = _expF.filter(function(f,i){ return _expF.indexOf(f) === i; }); // únicos
+        if (_expU.length > 1) {
+          var _presF = ordenes.map(function(o){ return getFolioFromOrder(o); }).filter(Boolean);
+          var _faltan = _expU.filter(function(f){ return _presF.indexOf(f) === -1; });
+          _entregaPromoInfo = { pares: _expU.length, presentes: _expU.length - _faltan.length, faltan: _faltan };
+        }
+      }
+    } catch(e) { console.warn('[Entrega] promo info:', e.message); }
     await _renderEntregaResultados(ordenes, ventaData);
   } catch(e) {
     results.innerHTML = '<div style="color:#e08080;font-size:13px">Error: ' + (e.message||e) + '</div>';
@@ -7192,6 +7209,16 @@ async function _renderEntregaResultados(ordenes, ventaData) {
 
   // Lista de órdenes con checkboxes
   var estadoColors = {'Enviado al lab':'#8ab0e8','Recibido en lab':'#6ecfcf','Surtido':'#72c47e','Faltante':'#e08080','En proceso Máquina 1':'#d4b84a','En proceso Máquina 2':'#d4b84a','Biselado completado':'#72b8c4','En camino a sucursal':'#72b8c4','Recibido en óptica':'#b48ad4','Listo para entrega':'#72c47e','Devuelto al lab':'#e08080','Demorado':'#e08080','Entregado':'#888'};
+  // Aviso de promo NxM: cuántos pares debería tener + si falta alguno en el sistema
+  if (_entregaPromoInfo && _entregaPromoInfo.pares > 1) {
+    var _pi = _entregaPromoInfo;
+    var _falta = _pi.faltan && _pi.faltan.length;
+    h += '<div style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:' + (_falta ? 'rgba(224,128,128,0.1)' : 'rgba(212,184,74,0.08)') + ';border:1px solid ' + (_falta ? 'rgba(224,128,128,0.3)' : 'rgba(212,184,74,0.25)') + '">';
+    h += '<div style="font-size:13px;font-weight:700;color:' + (_falta ? '#e08080' : '#d4b84a') + '">🔎 Pedido de promoción · ' + _pi.pares + ' pares</div>';
+    if (_falta) h += '<div style="font-size:11px;color:#e08080;margin-top:3px">⚠️ En el sistema solo aparecen ' + _pi.presentes + ' de ' + _pi.pares + ' pares. Falta(n): ' + _pi.faltan.join(', ') + '. Confirma con la sucursal que los envió.</div>';
+    else h += '<div style="font-size:11px;color:var(--muted);margin-top:3px">Verifica que tengas los ' + _pi.pares + ' pares físicamente antes de entregar.</div>';
+    h += '</div>';
+  }
   h += '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">ÓRDENES (' + ordenes.length + ')</div>';
   var _entHayPropias = false; // ¿hay al menos una orden de ESTA sucursal lista para entregar aquí?
   var _entHayOtra = false;    // ¿hay alguna orden de OTRA sucursal (para mostrar el hint del botón)?
@@ -7324,6 +7351,16 @@ async function _recogerAqui(ordenId) {
   }
 }
 
+// Confirma físicamente los pares de una promo NxM antes de entregar (el sistema no ve lo físico)
+function _confirmPromoCompleto() {
+  var pi = _entregaPromoInfo;
+  if (!pi || pi.pares <= 1) return true;
+  var msg = 'Este pedido es de promoción: ' + pi.pares + ' pares.';
+  if (pi.faltan && pi.faltan.length) msg += '\n\n⚠️ En el sistema solo aparecen ' + pi.presentes + ' de ' + pi.pares + ' (falta: ' + pi.faltan.join(', ') + '). Tal vez la otra sucursal no los envió.';
+  msg += '\n\n¿Confirmas que tienes FÍSICAMENTE los ' + pi.pares + ' pares para entregar?';
+  return confirm(msg);
+}
+
 async function _soloEntregar() {
   if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
   // Block if sale has pending balance
@@ -7335,6 +7372,7 @@ async function _soloEntregar() {
 
   var asesor = (document.getElementById('entrega-asesor')?.value || '').trim();
   if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
+  if (!_confirmPromoCompleto()) return;
 
   var ids = [];
   checks.forEach(function(c) { ids.push(c.value); });
@@ -7358,6 +7396,7 @@ async function _cobrarYEntregar() {
 
   var asesor = (document.getElementById('entrega-asesor')?.value || '').trim();
   if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
+  if (!_confirmPromoCompleto()) return;
 
   var monto = parseFloat(document.getElementById('entrega-monto')?.value);
   if (!monto || monto <= 0) { toast('Ingresa un monto válido', true); return; }
