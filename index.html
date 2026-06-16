@@ -7062,7 +7062,7 @@ async function buscarParaEntrega(query) {
     var ventaData = null;
 
     // Helper: buscar órdenes por paciente_id como fallback
-    var _entregaSelectOrd = 'id,estado_lab,tipo_lente,notas_laboratorio,sucursal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
+    var _entregaSelectOrd = 'id,estado_lab,tipo_lente,armazon,material,tratamiento,notas_laboratorio,sucursal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
     async function _fallbackByPaciente(pacId) {
       var { data: ords2 } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).eq('paciente_id', pacId).order('created_at',{ascending:false}).limit(30);
       return (ords2 || []).filter(function(o){ return o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
@@ -7144,7 +7144,7 @@ async function buscarParaEntrega(query) {
         if (_expU.length > 1) {
           var _presF = ordenes.map(function(o){ return getFolioFromOrder(o); }).filter(Boolean);
           var _faltan = _expU.filter(function(f){ return _presF.indexOf(f) === -1; });
-          _entregaPromoInfo = { pares: _expU.length, presentes: _expU.length - _faltan.length, faltan: _faltan };
+          _entregaPromoInfo = { pares: _expU.length, presentes: _expU.length - _faltan.length, faltan: _faltan, folios: _expU };
         }
       }
     } catch(e) { console.warn('[Entrega] promo info:', e.message); }
@@ -7215,7 +7215,8 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     var _falta = _pi.faltan && _pi.faltan.length;
     h += '<div style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:' + (_falta ? 'rgba(224,128,128,0.1)' : 'rgba(212,184,74,0.08)') + ';border:1px solid ' + (_falta ? 'rgba(224,128,128,0.3)' : 'rgba(212,184,74,0.25)') + '">';
     h += '<div style="font-size:13px;font-weight:700;color:' + (_falta ? '#e08080' : '#d4b84a') + '">🔎 Pedido de promoción · ' + _pi.pares + ' pares</div>';
-    if (_falta) h += '<div style="font-size:11px;color:#e08080;margin-top:3px">⚠️ En el sistema solo aparecen ' + _pi.presentes + ' de ' + _pi.pares + ' pares. Falta(n): ' + _pi.faltan.join(', ') + '. Confirma con la sucursal que los envió.</div>';
+    if (_pi.folios && _pi.folios.length) h += '<div style="font-size:11px;color:var(--white);margin-top:3px">Folios: ' + _pi.folios.map(function(f){ return (_pi.faltan && _pi.faltan.indexOf(f) !== -1) ? '<span style="color:#e08080">' + f + ' ⚠️</span>' : '<strong>' + f + '</strong>'; }).join(' · ') + '</div>';
+    if (_falta) h += '<div style="font-size:11px;color:#e08080;margin-top:3px">⚠️ En el sistema solo aparecen ' + _pi.presentes + ' de ' + _pi.pares + ' pares (los marcados ⚠️ faltan). Confirma con la sucursal que los envió.</div>';
     else h += '<div style="font-size:11px;color:var(--muted);margin-top:3px">Verifica que tengas los ' + _pi.pares + ' pares físicamente antes de entregar.</div>';
     h += '</div>';
   }
@@ -7230,13 +7231,10 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     var isListo = (st === 'Listo para entrega' || st === 'Recibido en óptica');
     var isEntregado = (st === 'Entregado');
     var notas = o.notas_laboratorio || '';
-    // Extraer descripción del lente
-    var tipoLente = o.tipo_lente || '';
-    var descParts = [];
-    if (tipoLente) descParts.push(tipoLente);
-    var matMatch = notas.match(/(?:^|\|)\s*([^|]*(?:CR-39|Policarbonato|Hi Index|Ultra-thin|Super Ultra|Blue Light|Foto|AR|Progresivo|Bifocal|Vision Sencilla)[^|]*)/i);
-    if (matMatch) descParts.push(matMatch[1].trim().substring(0,40));
-    var desc = descParts.join(' · ') || 'Orden #' + (i+1);
+    // Datos reales del lente/armazón (campos de la orden, no del texto de notas)
+    var arm = (o.armazon || '').trim();                                   // ej. "ROWAN R2023015 · ROWAN"
+    var espec = [o.tipo_lente, o.material, o.tratamiento].filter(Boolean).join(' · '); // ej. "VS · Hi Index · Foto Colors"
+    var desc = (arm ? arm + (espec ? ' · ' + espec : '') : espec) || 'Orden #' + (i+1);
     var fechaO = new Date(o.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
 
     // Pedido de OTRA sucursal (rol sucursal) → aquí NO se entrega; primero se RECIBE en Bitácora
@@ -7253,11 +7251,26 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     }
     if (!isEntregado) _entHayPropias = true;
 
+    // Folio de ESTA orden (V0027, V0027-2, V0027-3...) → distingue cada par de la promo
+    var folioO = (getFolioFromOrder(o) || '');
+    var trasEnt = notas.match(/TRASLADO desde\s*([^|]+)/i);
+    // Paciente de ESTA orden — en 2x1/3x1 los pares pueden ser de OTRA persona distinta al titular
+    var oPac = o.pacientes ? ((o.pacientes.nombre || '') + ' ' + (o.pacientes.apellidos || '')).trim() : '';
+    var esOtroPac = oPac && nombre && oPac.toLowerCase() !== nombre.toLowerCase();
+    // Línea principal = ARMAZÓN (lo que identifica el par físico); si no hay (LC), la especificación
+    var principal = arm || espec || ('Orden #' + (i + 1));
+    var secundaria = arm ? espec : '';
     h += '<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:' + c + '08;border:1px solid ' + c + '22;border-radius:8px;margin-bottom:6px;cursor:' + (isEntregado ? 'default' : 'pointer') + '">';
     h += '<input type="checkbox" class="entrega-check" value="' + o.id + '" ' + (isListo ? 'checked' : '') + ' ' + (isEntregado ? 'disabled' : '') + ' style="width:18px;height:18px;accent-color:var(--beige);flex-shrink:0">';
-    h += '<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc + '</div>';
-    h += '<div style="font-size:10px;color:var(--muted)">' + o.sucursal + ' · ' + fechaO + (/TRASLADO desde/.test(notas) ? ' · 🔄 traído' : '') + '</div></div>';
-    h += '<span style="font-size:10px;font-weight:700;color:' + c + ';background:' + c + '18;padding:3px 8px;border-radius:6px;white-space:nowrap">' + st + '</span>';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">';
+    if (folioO) h += '<span style="font-size:11px;font-weight:800;color:var(--beige);background:rgba(226,198,166,0.14);padding:1px 7px;border-radius:6px;white-space:nowrap">' + folioO + '</span>';
+    h += '<span style="font-size:13px;color:var(--white);font-weight:600">' + principal + '</span>';
+    h += '</div>';
+    if (esOtroPac) h += '<div style="font-size:11px;color:#d4b84a;font-weight:600;margin-top:2px">👤 Para: ' + oPac + '</div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + (secundaria ? secundaria + ' · ' : '') + fechaO + (trasEnt ? ' · <span style="color:#38bdf8">🔄 Traído de ' + trasEnt[1].trim() + '</span>' : '') + '</div>';
+    h += '</div>';
+    h += '<span style="font-size:10px;font-weight:700;color:' + c + ';background:' + c + '18;padding:3px 8px;border-radius:6px;white-space:nowrap;flex-shrink:0">' + st + '</span>';
     if (isEntregado) h += '<span style="font-size:12px">🏁</span>';
     h += '</label>';
   });
