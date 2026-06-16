@@ -3625,6 +3625,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <!-- Visión Segura (seguro de lentes — el empleado lo ofrece y lo agrega a la venta) -->
                 <div id="vta-seguro-btn-wrap" style="padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04)">
                   <button onclick="abrirSeguroVta()" style="width:100%;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s">🛡️ Agregar Visión Segura</button>
+                  <div id="hint-vs-pos-wrap"></div>
                 </div>
 
                 <!-- Recoger en otra sucursal (venta de mostrador) -->
@@ -3633,6 +3634,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
                     <option value="">— Sucursal de recogida —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
                   </select>
+                  <div id="hint-recoger-pos-wrap"></div>
                 </div>
 
                 <!-- Folio Assignment Panel (NxM promos) -->
@@ -7192,6 +7194,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
   var estadoColors = {'Enviado al lab':'#8ab0e8','Recibido en lab':'#6ecfcf','Surtido':'#72c47e','Faltante':'#e08080','En proceso Máquina 1':'#d4b84a','En proceso Máquina 2':'#d4b84a','Biselado completado':'#72b8c4','En camino a sucursal':'#72b8c4','Recibido en óptica':'#b48ad4','Listo para entrega':'#72c47e','Devuelto al lab':'#e08080','Demorado':'#e08080','Entregado':'#888'};
   h += '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">ÓRDENES (' + ordenes.length + ')</div>';
   var _entHayPropias = false; // ¿hay al menos una orden de ESTA sucursal lista para entregar aquí?
+  var _entHayOtra = false;    // ¿hay alguna orden de OTRA sucursal (para mostrar el hint del botón)?
   var _miSuc = currentUser?.sucursal;
   var _esSucRol = currentUser?.rol === 'sucursal' && _miSuc && _miSuc !== 'Todas';
   ordenes.forEach(function(o, i) {
@@ -7212,6 +7215,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     // Pedido de OTRA sucursal (rol sucursal) → no se entrega aquí hasta "traerlo"
     var esOtra = _esSucRol && o.sucursal !== _miSuc && !isEntregado;
     if (esOtra) {
+      _entHayOtra = true;
       h += '<div style="padding:10px 12px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);border-radius:8px;margin-bottom:6px">';
       h += '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc + '</div>';
       h += '<div style="font-size:10px;color:#38bdf8;font-weight:600">📍 Pedido de ' + o.sucursal + ' · ' + fechaO + '</div></div>';
@@ -7231,6 +7235,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     h += '</label>';
   });
   h += '</div>';
+  if (_entHayOtra) h += _hintHTML('recoger-entrega', 'Este pedido es de OTRA sucursal. Tócalo para traerlo a la tuya: aquí lo entregas, avisas al cliente y cobras el saldo.');
 
   // Asesor que entrega (select con empleados de la sucursal)
   await cargarAsesoresConfig();
@@ -10094,6 +10099,23 @@ function _toggleRecogerOtra() {
   var on = document.getElementById('vta-recoger-otra')?.checked;
   var sel = document.getElementById('vta-recoger-suc');
   if (sel) { sel.style.display = on ? '' : 'none'; if (!on) sel.value = ''; }
+}
+
+// 💡 HINTS de uso para botones nuevos — se muestran solo las primeras 3 veces y luego se ocultan
+// (no persistentes, con ✕ para descartar). El conteo vive en localStorage por dispositivo.
+function _hintShow(key){ try { return parseInt(localStorage.getItem('_hint_'+key)||'0',10) < 3; } catch(e){ return false; } }
+function _hintSeen(key){ try { var n=parseInt(localStorage.getItem('_hint_'+key)||'0',10); localStorage.setItem('_hint_'+key, String(n+1)); } catch(e){} }
+function _hintDismiss(key){ try { localStorage.setItem('_hint_'+key,'99'); } catch(e){} var el=document.getElementById('hint-'+key); if(el) el.style.display='none'; }
+function _hintHTML(key, texto){
+  var show = _hintShow(key);
+  if (show) _hintSeen(key);
+  return '<div id="hint-'+key+'" style="'+(show?'':'display:none;')+'margin-top:6px;font-size:10.5px;color:#8fb8d6;background:rgba(56,189,248,0.07);border:1px solid rgba(56,189,248,0.18);border-radius:6px;padding:6px 8px;line-height:1.35">'
+    + '<div style="display:flex;gap:6px;align-items:flex-start"><span style="flex:1">💡 '+texto+'</span>'
+    + '<span onclick="_hintDismiss(\''+key+'\')" style="cursor:pointer;color:var(--muted);font-size:13px;flex:0 0 auto" title="No mostrar más">✕</span></div></div>';
+}
+function _renderPosHints(){
+  var a = document.getElementById('hint-vs-pos-wrap'); if (a) a.innerHTML = _hintHTML('vs-pos', 'Ofrécela al cliente: protege sus lentes 12 meses. Eliges el plan y se suma a la venta.');
+  var b = document.getElementById('hint-recoger-pos-wrap'); if (b) b.innerHTML = _hintHTML('recoger-pos', 'Márcalo si el cliente va a recoger su pedido en OTRA sucursal (se entrega y cobra allá).');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -20393,6 +20415,7 @@ function initVenta() {
   const um=document.getElementById('vta-usar-monedero'); if(um) um.checked=false;
   var _ro=document.getElementById('vta-recoger-otra'); if(_ro) _ro.checked=false;
   var _rs=document.getElementById('vta-recoger-suc'); if(_rs){ _rs.value=''; _rs.style.display='none'; }
+  try { _renderPosHints(); } catch(e){}
   renderPayBtns('vta-metodos','selMetodoPago',PAY_METHODS,'');
   renderMSIBtns('vta-msi-btns','selMSI',3);
   const fe=document.getElementById('vta-fecha-entrega'); if(fe) { var _d3v=new Date(); _d3v.setDate(_d3v.getDate()+3); fe.value=_d3v.toISOString().slice(0,10); }
