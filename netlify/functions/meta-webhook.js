@@ -770,7 +770,7 @@ async function getSenderProfile(senderId, channel) {
 // Public reply: smart but brief. DM: full detailed response.
 
 async function generatePublicReply(commentText) {
-  if (!ANTHROPIC_API_KEY) return '¡Hola! 👓 Te mandamos un mensaje directo con más info ✨';
+  if (!ANTHROPIC_API_KEY) return '¡Hola! 👓 Escríbenos por mensaje directo y con gusto te ayudamos ✨';
   try {
     var res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -784,12 +784,15 @@ async function generatePublicReply(commentText) {
         max_tokens: 150,
         system: `Eres Clari, asistente de Ópticas Car & Era en Ciudad Juárez. Genera una respuesta PÚBLICA para un comentario en redes sociales.
 
+PRIMERO CLASIFICA EL COMENTARIO:
+- ELOGIO / AGRADECIMIENTO / EMOJI (ej: "la mejor óptica", "excelente", "los amo", "gracias", "👏❤️"): responde SOLO agradeciendo de forma cálida y breve (1-2 líneas), con cariño. NO invites al DM, NO digas "te mandamos un mensaje", NO ofrezcas info que no pidieron. Ejemplo: "¡Mil gracias por tu confianza! 💛 Nos encanta atenderte."
+- PREGUNTA REAL (horario, ubicación, qué venden, etc.): responde lo básico y al final invita a escribirnos por mensaje directo para más detalles.
+
 REGLAS ESTRICTAS:
 - Máximo 3-4 líneas, breve pero informativo
-- Responde lo básico del comentario (horario, ubicación, etc.)
 - Si preguntan ubicación, SIEMPRE menciona TODAS las sucursales con su zona
-- Siempre termina invitando a revisar su DM para más detalles
-- Usa 1-2 emojis máximo (👓 ✨ 👋)
+- NUNCA digas "te mandamos un mensaje directo" (no enviamos DM automático); si hace falta, di "escríbenos por mensaje directo" — invitándolo a él
+- Usa 1-2 emojis máximo (👓 ✨ 👋 💛)
 - NO uses markdown, NO uses listas con guiones
 - Tono amigable y profesional
 - NO des precios ni promos en público (eso va en el DM)
@@ -808,7 +811,7 @@ No se necesita cita`,
       return data.content[0].text;
     }
   } catch(e) { console.error('[Meta PublicReply AI]', e.message); }
-  return '¡Hola! 👓 Te mandamos un mensaje directo con más info ✨';
+  return '¡Hola! 👓 Escríbenos por mensaje directo y con gusto te ayudamos ✨';
 }
 
 async function replyToComment(commentId, text, channel) {
