@@ -451,6 +451,33 @@ function contUpdateSubcats() {
   }
 }
 
+// Comprime una imagen (redimensiona a máx 1600px, JPEG q85) para no pasar el
+// límite de 6MB de las funciones de Netlify. Devuelve {base64, mediaType}.
+function _contCompressImage(file) {
+  return new Promise(function(resolve, reject) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var maxDim = 1600;
+      var w = img.width, h = img.height;
+      if (w > maxDim || h > maxDim) {
+        if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h); // fondo blanco (por si hay transparencia)
+      ctx.drawImage(img, 0, 0, w, h);
+      var dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+    };
+    img.onerror = function() { URL.revokeObjectURL(url); reject(new Error('Error leyendo imagen')); };
+    img.src = url;
+  });
+}
+
 async function contProcesarFoto(input) {
   var file = input.files && input.files[0];
   if (!file) return;
@@ -478,19 +505,34 @@ async function contProcesarFoto(input) {
     document.getElementById('cont-preview').style.display = 'none';
   }
 
-  var base64 = await new Promise(function(res, rej) {
-    var r = new FileReader();
-    r.onload = function() { res(r.result.split(',')[1]); };
-    r.onerror = function() { rej(new Error('Error leyendo archivo')); };
-    r.readAsDataURL(file);
-  });
+  function _readRaw() {
+    return new Promise(function(res, rej) {
+      var r = new FileReader();
+      r.onload = function() { res(r.result.split(',')[1]); };
+      r.onerror = function() { rej(new Error('Error leyendo archivo')); };
+      r.readAsDataURL(file);
+    });
+  }
+
+  var base64, ocrMediaType = mediaType;
+  if (isImage) {
+    try {
+      var comp = await _contCompressImage(file);
+      base64 = comp.base64;
+      ocrMediaType = comp.mediaType; // siempre image/jpeg tras comprimir
+    } catch(ce) {
+      base64 = await _readRaw(); // fallback: archivo crudo si la compresión falla
+    }
+  } else {
+    base64 = await _readRaw();
+  }
 
   // Construir content block según tipo de archivo
   var fileBlock;
   if (isPDF) {
     fileBlock = { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } };
   } else {
-    fileBlock = { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } };
+    fileBlock = { type: 'image', source: { type: 'base64', media_type: ocrMediaType, data: base64 } };
   }
 
   try {
@@ -515,9 +557,21 @@ async function contProcesarFoto(input) {
         auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
       })
     });
-    var data = await resp.json();
+    var raw = await resp.text();
+    if (!raw || !resp.ok) {
+      // Cuerpo vacío = archivo demasiado grande (límite 6MB de Netlify) o timeout (10s)
+      var big = file.size > 4 * 1024 * 1024;
+      throw new Error(big
+        ? 'El documento es muy grande. Toma la foto más ligera o sube un PDF de una sola página.'
+        : 'El servidor no respondió (puede haber tardado demasiado). Intenta de nuevo o sube un archivo más ligero.');
+    }
+    var data;
+    try { data = JSON.parse(raw); }
+    catch(pe) { throw new Error('Respuesta inválida del servidor. Intenta de nuevo con un archivo más ligero.'); }
+    if (data.error) throw new Error(data.error);
     var text = (data.content && data.content[0] && data.content[0].text) || data.text || '';
     text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    if (!text) throw new Error('No se pudo leer el comprobante. Intenta con una foto más clara.');
     var parsed = JSON.parse(text);
 
     // Detectar compra de materiales ópticos → redirigir a Compras Lab
@@ -559,7 +613,7 @@ async function contProcesarFoto(input) {
             bucket: 'chat-media',
             path: 'gastos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9.]/g, '_'),
             base64: base64,
-            contentType: mediaType,
+            contentType: ocrMediaType,
             auth: { id: currentUser?.uid || currentUser?.id, pass: currentUser?.pass }
           })
         });
