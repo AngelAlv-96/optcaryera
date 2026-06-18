@@ -182,7 +182,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 @media(max-width:560px){.tipo-btn{flex:1 1 100%;max-width:none}}
 
 /* search */
-.searchbox{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:420px;margin:0 auto 28px}
+.searchbox{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;min-height:50px;max-width:420px;margin:0 auto 28px}
 .searchbox svg{width:17px;height:17px;stroke:var(--ink3);fill:none;stroke-width:2}
 .searchbox input{border:none;outline:none;font-family:inherit;font-size:14.5px;color:var(--ink);background:none;flex:1}
 .searchbox input::placeholder{color:var(--ink3)}
@@ -242,7 +242,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 .advisor{padding:6px 0 30px;scroll-margin-top:70px}
 .adv-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:26px 22px 22px;box-shadow:0 18px 50px rgba(28,26,22,.07);max-width:900px;margin:0 auto}
 .adv-steps{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:22px;flex-wrap:wrap}
-.adv-dot{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink3);background:none;border:none;font-family:inherit;cursor:default;padding:0}
+.adv-dot{display:flex;align-items:center;gap:6px;min-height:44px;font-size:12.5px;font-weight:600;color:var(--ink3);background:none;border:none;font-family:inherit;cursor:default;padding:0 6px}
 .adv-dot.clickable{cursor:pointer}
 .adv-dot .n{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--beige-tint);color:var(--beige-deep);font-size:13px}
 .adv-dot.on .n{background:var(--beige);color:#fff}
@@ -346,7 +346,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   <div class="blob b1"></div><div class="blob b2"></div>
   <div class="hero-in reveal">
     <div class="eyebrow"><span class="ln"></span> Catálogo interno · 2026 <span class="ln"></span></div>
-    <h1 class="serif" style="font-size:clamp(34px,6.5vw,58px)">Cotiza en <span style="font-style:italic;color:var(--beige-deep)">3 pasos</span></h1>
+    <h1 class="serif" style="font-size:clamp(30px,6vw,52px)">Cotiza respondiendo <span style="font-style:italic;color:var(--beige-deep)">3 preguntas</span></h1>
     <p style="margin-top:12px">Responde qué necesita el paciente y te damos la opción económica, recomendada y premium con su precio.</p>
   </div>
 </section>
@@ -843,11 +843,11 @@ const CATALOG = {
     {n:'Básico CR-39',                 mat:'CR-39',        tr:'Sin tratamiento',                p1:899,  p2:999,  ent:'35 min',    usos:['general']},
     {n:'Resistencia Policarbonato',    mat:'Policarbonato',tr:'Resistente a impactos',          p1:1699, p2:1999, ent:'Mismo día', usos:['deporte','general']},
     {n:'Hi-Index Antirreflejante',     mat:'Hi-Index',     tr:'Antirreflejante',                p1:1499, p2:1799, ent:'35 min',    usos:['general','manejo']},
-    {n:'Policarbonato Antirreflejante',mat:'Policarbonato',tr:'AR + resistencia',               p1:1999, p2:2699, ent:'Mismo día', usos:['deporte','manejo']},
+    {n:'Policarbonato Antirreflejante',mat:'Policarbonato',tr:'AR + resistencia',               p1:1999, p2:2699, ent:'15 días', usos:['deporte','manejo']},
     {n:'Anti-Blue AR',                 mat:'Hi-Index',     tr:'Filtro luz azul + AR',           p1:2499, p2:2999, ent:'35 min',    usos:['computadora','general']},
     {n:'Blue Light',                   mat:'Hi-Index',     tr:'Filtro azul reforzado',          p1:2799, p2:3299, ent:'35 min',    usos:['computadora']},
-    {n:'Policarbonato Anti-Blue AR',   mat:'Policarbonato',tr:'Filtro azul + resistencia',      p1:3299, p2:3799, ent:'Mismo día', usos:['computadora','deporte']},
-    {n:'Fotocromático Policarbonato',  mat:'Policarbonato',tr:'Fotocromático + AR',             p1:2699, p2:3099, ent:'Mismo día', usos:['exterior','deporte']},
+    {n:'Policarbonato Anti-Blue AR',   mat:'Policarbonato',tr:'Filtro azul + resistencia',      p1:3299, p2:3799, ent:'15 días', usos:['computadora','deporte']},
+    {n:'Fotocromático Policarbonato',  mat:'Policarbonato',tr:'Fotocromático + AR',             p1:2699, p2:3099, ent:'15 días', usos:['exterior','deporte']},
     {n:'Fotocromático Blue Light',     mat:'Hi-Index',     tr:'Fotocromático + filtro azul',    p1:3199, p2:3699, ent:'35 min',    usos:['exterior','computadora']},
     {n:'Fotocromático Gen 9',          mat:'Hi-Index',     tr:'Última generación, ultra rápido',p1:3599, p2:4099, ent:'35 min',    usos:['exterior']},
     {n:'Polarizado 1.56',              mat:'1.56',         tr:'Polarizado',                     p1:2699, p2:2699, ent:'Mismo día', usos:['manejo','exterior']},
@@ -972,8 +972,8 @@ function advRenderReco(body){
         '<ul>'+ r.p.ben.map(b=>'<li>'+b+'</li>').join('') +'</ul>'+
         '<div class="rent">Listos en <b>'+r.p.ent+'</b> · examen incluido</div>'+
       '</div>').join('') +'</div>'+
-    '<p style="text-align:center;font-size:13px;color:var(--ink3);margin-top:16px">Precios en graduación '+(advState.grad===2?'alta':'estándar')+'. '+
-      '<button type="button" onclick="setTipo(\''+tipo+'\');document.getElementById(\'precios\').scrollIntoView({behavior:\'smooth\'})" style="background:none;border:none;color:var(--beige-deep);font-weight:600;font-family:inherit;font-size:13px;cursor:pointer;text-decoration:underline">Ver toda la lista de '+tipoLbl.toLowerCase()+' →</button></p>';
+    '<p style="text-align:center;font-size:13px;color:var(--ink3);margin-top:14px">Precios en graduación '+(advState.grad===2?'alta':'estándar')+'.</p>'+
+    '<div style="text-align:center;margin-top:4px"><button type="button" onclick="setTipo(\''+tipo+'\');document.getElementById(\'precios\').scrollIntoView({behavior:\'smooth\'})" style="display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border:1.5px solid var(--line);border-radius:100px;background:none;color:var(--beige-deep);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer">Ver toda la lista de '+tipoLbl.toLowerCase()+' →</button></div>';
   // barra fija
   const best = recos.find(r=>r.best).p;
   document.getElementById('qb-build').textContent = tipoLbl+' · '+best.mat+' · '+best.tr;
@@ -984,7 +984,12 @@ function advRenderReco(body){
 function advPick(field, val){
   advState[field]=val;
   advRender();
-  document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'});
+  if(advStep()===4){
+    const reco=document.getElementById('adv-reco');
+    (reco||document.getElementById('asesor')).scrollIntoView({behavior:'smooth',block:'center'});
+  } else {
+    document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'});
+  }
 }
 function advBack(){
   const step=advStep();
