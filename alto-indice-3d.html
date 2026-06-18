@@ -6,49 +6,50 @@
 <meta name="robots" content="noindex,nofollow">
 <title>Alto índice 3D · Car & Era</title>
 <style>
-  :root{ --beige:#b3895a; --beige-deep:#9a7245; --ink:#1c1a16; }
+  :root{ --beige:#c79a66; --ink:#15110c; }
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;overflow:hidden;background:#0e1116;font-family:'Outfit',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
+  html,body{height:100%;overflow:hidden;background:#15110c;font-family:'Outfit',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
   #wrap{position:relative;width:100%;height:100%}
   canvas{display:block;width:100%;height:100%;touch-action:none}
+  /* viñeta de estudio (sensación macro / fotografía de producto) */
+  .vignette{position:absolute;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse 75% 70% at 50% 46%,transparent 55%,rgba(0,0,0,.55) 100%)}
   .ui{position:absolute;inset:0;pointer-events:none;z-index:5}
 
-  .chips{position:absolute;top:10px;left:0;right:0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:0 10px;pointer-events:auto}
-  .chip{min-height:40px;padding:0 13px;border:1.5px solid rgba(255,255,255,.22);background:rgba(20,22,28,.55);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer;backdrop-filter:blur(6px);transition:all .18s}
-  .chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
+  .chips{position:absolute;top:12px;left:0;right:0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:0 10px;pointer-events:auto}
+  .chip{min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,.16);background:rgba(28,24,18,.6);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer;backdrop-filter:blur(8px);transition:all .25s}
+  .chip.on{background:var(--beige);border-color:var(--beige);color:#1a140c}
 
-  .mm{position:absolute;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:20px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7);transform:translate(-50%,-50%);white-space:nowrap;z-index:6}
-  .mm small{font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;color:#cdbfa8;display:block;text-align:center}
+  .ruler{position:absolute;display:flex;align-items:center;gap:7px;transform:translate(-50%,-50%);z-index:6;opacity:0;transition:opacity .4s}
+  .ruler .bar{width:2px;background:#e7d8bf;box-shadow:0 0 6px rgba(0,0,0,.6)}
+  .ruler .val{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:20px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8);white-space:nowrap}
+  .ruler .val small{display:block;font-family:'Outfit',sans-serif;font-size:10px;font-weight:600;color:#cdbfa8}
 
-  .verdict{position:absolute;top:54px;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:600;color:#fff;background:rgba(12,14,18,.5);padding:4px 12px;border-radius:9px;white-space:nowrap}
+  .verdict{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:600;color:#efe7d8;background:rgba(16,12,8,.55);padding:5px 13px;border-radius:9px;backdrop-filter:blur(6px);white-space:nowrap}
 
-  .ctrl{position:absolute;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(10,12,16,.85) 40%);pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .ctrl .tip{font-size:11px;color:#cbbfae}
-  .toggles{display:flex;gap:7px}
-  .tg{min-height:40px;padding:0 12px;border:1.5px solid rgba(255,255,255,.22);background:rgba(20,22,28,.5);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:11.5px;cursor:pointer}
+  .ctrl{position:absolute;left:0;right:0;bottom:0;padding:11px 14px calc(11px + env(safe-area-inset-bottom));pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .tip{font-size:11px;color:#a99f8c}
+  .tg{min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,.18);background:rgba(28,24,18,.5);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:11.5px;cursor:pointer}
   .tg.on{background:#fff;border-color:#fff;color:var(--ink)}
 
-  .ghost-tag{position:absolute;font-size:10.5px;font-weight:700;color:#fff;background:rgba(120,120,130,.7);padding:3px 8px;border-radius:7px;transform:translate(-50%,-50%);z-index:6;opacity:0;transition:opacity .2s}
+  .load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8c8270;font-size:13px;z-index:4}
   .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#cbbfae;font-size:13px;text-align:center;padding:24px}
 </style>
 </head>
 <body>
 <div id="wrap">
   <canvas id="cv"></canvas>
+  <div class="vignette"></div>
+  <div class="load" id="load">Cargando armazón…</div>
   <div class="ui">
     <div class="chips" id="chips"></div>
-    <div class="verdict" id="verdict">Borde más grueso (referencia)</div>
-    <div class="mm" id="mm" style="opacity:0">9.0<small>mm borde</small></div>
-    <div class="ghost-tag" id="ghostTag">CR-39</div>
+    <div class="ruler" id="ruler"><div class="bar" id="rbar"></div><div class="val" id="rval">9.0<small>mm borde</small></div></div>
+    <div class="verdict" id="verdict">Borde más grueso · referencia</div>
   </div>
   <div class="ctrl">
     <span class="tip">Gira con el dedo</span>
-    <div class="toggles">
-      <button class="tg" id="tgGhost">Comparar CR-39</button>
-      <button class="tg" id="tgProfile">Ver de canto</button>
-    </div>
+    <button class="tg" id="tgGhost">Comparar con CR-39</button>
   </div>
-  <div class="fallback" id="fallback">Tu dispositivo no pudo cargar la vista 3D.<br>A mayor índice, el borde del lente es más delgado con la misma graduación.</div>
+  <div class="fallback" id="fallback">No se pudo cargar la vista 3D.<br>A mayor índice, el borde del lente es más delgado con la misma graduación.</div>
 </div>
 
 <script type="importmap">
@@ -61,130 +62,179 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 
-let renderer, scene, camera, controls, group, lens, lensMat, ghost, ghostMat, rim;
+let renderer,scene,camera,controls,frame,lensA,lensB,lensMat,ghostA,ghostB,ghostMat;
+let openings=null, framed=false;
 const cv=document.getElementById('cv');
-let running=true, raf=0;
-let showGhost=false, profileView=false;
-let etCur=0.5, etTarget=0.5, lastBuilt=-1;
+let running=true, etCur=0.5, etTarget=0.5, lastBuilt=-1, showGhost=false, camR=6;
+const lerp=(a,b,k)=>a+(b-a)*k, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const easeIO=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
 
-const lerp=(a,b,k)=>a+(b-a)*k;
-const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+// vista ¾ y vista de canto (ángulos esféricos: azimut, polar)
+const VIEW_34={az:-0.62,po:1.18}, VIEW_EDGE={az:-1.46,po:1.5};
+let camAz=VIEW_34.az, camPo=VIEW_34.po;
+let camTw=null;  // {fromAz,fromPo,toAz,toPo,t0,dur,then}
 
 const MATS=[
-  {l:'CR-39 · 1.49', mm:9.0, et:0.50, vd:'Borde más grueso (referencia)'},
+  {l:'CR-39 · 1.49', mm:9.0, et:0.50, vd:'Borde más grueso · referencia'},
   {l:'1.60',         mm:6.3, et:0.35, vd:'Borde 30% más delgado'},
   {l:'1.67',         mm:4.9, et:0.27, vd:'Borde 45% más delgado'},
   {l:'1.74',         mm:3.6, et:0.20, vd:'Borde 60% más delgado · el más delgado'},
 ];
-let cur=0;
-const ET_REF=MATS[0].et;
+let cur=0; const ET_REF=MATS[0].et;
 
 function lensProfile(et){
   const R=1.0, ct=0.07, N=26, pts=[];
-  for(let i=0;i<=N;i++){ const r=R*i/N; pts.push(new THREE.Vector2(r, ct/2 + (et-ct)/2*Math.pow(r/R,2))); }
-  for(let i=N;i>=0;i--){ const r=R*i/N; pts.push(new THREE.Vector2(r, -(ct/2 + (et-ct)/2*Math.pow(r/R,2)))); }
+  for(let i=0;i<=N;i++){ const r=R*i/N; pts.push(new THREE.Vector2(r, ct/2+(et-ct)/2*Math.pow(r/R,2))); }
+  for(let i=N;i>=0;i--){ const r=R*i/N; pts.push(new THREE.Vector2(r, -(ct/2+(et-ct)/2*Math.pow(r/R,2)))); }
   return pts;
 }
-function buildLensGeo(et){ const g=new THREE.LatheGeometry(lensProfile(et),80); g.rotateX(Math.PI/2); g.computeVertexNormals(); return g; }
+function buildLensGeo(et){ const g=new THREE.LatheGeometry(lensProfile(et),84); g.rotateX(Math.PI/2); g.computeVertexNormals(); return g; }
+
+function measureOpenings(meshes){
+  const v=new THREE.Vector3(), mk0=()=>({mnx:1e9,mxx:-1e9,mny:1e9,mxy:-1e9,mnz:1e9,mxz:-1e9});
+  const L=mk0(),R=mk0(); let any=false;
+  meshes.forEach(m=>{ if(!m.geometry?.attributes?.position)return; m.updateWorldMatrix(true,true); const p=m.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld); any=true; const b=v.x<0?L:R;
+      b.mnx=Math.min(b.mnx,v.x);b.mxx=Math.max(b.mxx,v.x);b.mny=Math.min(b.mny,v.y);b.mxy=Math.max(b.mxy,v.y);b.mnz=Math.min(b.mnz,v.z);b.mxz=Math.max(b.mxz,v.z); } });
+  if(!any) return null;
+  const mk=b=>({cx:(b.mnx+b.mxx)/2,cy:(b.mny+b.mxy)/2,cz:(b.mnz+b.mxz)/2,rx:(b.mxx-b.mnx)/2,ry:(b.mxy-b.mny)/2});
+  return {L:mk(L),R:mk(R)};
+}
 
 function init(){
   renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.0;
   renderer.outputColorSpace=THREE.SRGBColorSpace;
-  scene=new THREE.Scene(); scene.background=new THREE.Color('#10141b');
+  scene=new THREE.Scene(); scene.background=new THREE.Color('#17120c');
   const pmrem=new THREE.PMREMGenerator(renderer);
-  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.035).texture;
 
-  camera=new THREE.PerspectiveCamera(38,1,0.1,100); camera.position.set(0,0.1,6.5);
+  camera=new THREE.PerspectiveCamera(34,1,0.1,100);
   controls=new OrbitControls(camera,cv);
-  controls.enableDamping=true; controls.dampingFactor=.09; controls.enablePan=false; controls.enableZoom=false;
-  controls.minPolarAngle=Math.PI*0.22; controls.maxPolarAngle=Math.PI*0.78;
-  controls.autoRotate=true; controls.autoRotateSpeed=0.9;
-  controls.addEventListener('start',()=>controls.autoRotate=false);
+  controls.enableDamping=true; controls.dampingFactor=.1; controls.enablePan=false; controls.enableZoom=false;
+  controls.minPolarAngle=Math.PI*0.18; controls.maxPolarAngle=Math.PI*0.86;
+  controls.addEventListener('start',()=>{ camTw=null; });
+  controls.addEventListener('change',()=>{ if(!camTw){ const s=new THREE.Spherical().setFromVector3(camera.position); camAz=s.theta; camPo=s.phi; } });
 
-  scene.add(new THREE.HemisphereLight('#dfe8ff','#2a2620',0.7));
-  const dir=new THREE.DirectionalLight('#ffffff',1.4); dir.position.set(3,4,4); scene.add(dir);
+  // iluminación de estudio cálido
+  RectAreaLightUniformsLib.init();
+  scene.add(new THREE.HemisphereLight('#3a3324','#0a0806',0.5));
+  const key=new THREE.DirectionalLight('#ffe7c4',2.3); key.position.set(2.4,3.2,3); scene.add(key);
+  const rim=new THREE.DirectionalLight('#9fc4ff',1.1); rim.position.set(-3,1.5,-2.5); scene.add(rim);
+  const fill=new THREE.DirectionalLight('#fff',0.35); fill.position.set(-1.5,-1,2.5); scene.add(fill);
+  // softbox: reflejo suave de fotografía de producto sobre el vidrio
+  const soft1=new THREE.RectAreaLight('#fff4e0', 14, 3.2, 1.8); soft1.position.set(0.6,2.1,3); soft1.lookAt(0,0,0); scene.add(soft1);
+  const soft2=new THREE.RectAreaLight('#cfe0ff', 6, 2.4, 2.4); soft2.position.set(-2.6,0.4,1.6); soft2.lookAt(0,0,0); scene.add(soft2);
 
-  group=new THREE.Group(); scene.add(group);
+  lensMat=new THREE.MeshPhysicalMaterial({ color:'#e6edf2', metalness:0, roughness:0.05,
+    transmission:0.86, thickness:1.1, ior:1.6, clearcoat:1, clearcoatRoughness:0.04,
+    attenuationColor:new THREE.Color('#bcd6e6'), attenuationDistance:1.6, iridescence:0.6, iridescenceIOR:1.3, envMapIntensity:1.3, transparent:true });
+  ghostMat=new THREE.MeshStandardMaterial({ color:'#c2ccd6', roughness:.55, transparent:true, opacity:.22, depthWrite:false });
 
-  lensMat=new THREE.MeshPhysicalMaterial({ color:'#eef3f6', metalness:0, roughness:0.04,
-    transmission:0.96, thickness:1.2, ior:1.62, clearcoat:1, clearcoatRoughness:0.04,
-    attenuationColor:new THREE.Color('#cfe2ea'), attenuationDistance:3.5, transparent:true });
-  lens=new THREE.Mesh(buildLensGeo(etCur), lensMat); lastBuilt=etCur; group.add(lens);
+  new GLTFLoader().load('models/glasses.glb', onFrame, undefined, (e)=>{ console.warn('GLB',e); document.getElementById('load').style.display='none'; buildProcedural(); });
 
-  ghostMat=new THREE.MeshStandardMaterial({ color:'#c2ccd6', metalness:0, roughness:.55,
-    transparent:true, opacity:.28, depthWrite:false });
-  ghost=new THREE.Mesh(buildLensGeo(ET_REF), ghostMat); ghost.visible=false; group.add(ghost);
-  const ghostEdges=new THREE.Mesh(buildLensGeo(ET_REF), new THREE.MeshBasicMaterial({color:'#dfe7ef',wireframe:true,transparent:true,opacity:.12,depthWrite:false}));
-  ghost.add(ghostEdges);
-
-  // aro del armazón (mismo tamaño siempre)
-  const rimGeo=new THREE.TorusGeometry(1.03,0.05,20,90);
-  rim=new THREE.Mesh(rimGeo,new THREE.MeshStandardMaterial({color:'#2b2b30',metalness:.9,roughness:.32}));
-  group.add(rim);
-
-  document.getElementById('tgGhost').onclick=()=>{ showGhost=!showGhost; document.getElementById('tgGhost').classList.toggle('on',showGhost); ghost.visible=showGhost&&cur!==0; document.getElementById('ghostTag').style.opacity=(showGhost&&cur!==0)?1:0; };
-  document.getElementById('tgProfile').onclick=()=>{ profileView=!profileView; document.getElementById('tgProfile').classList.toggle('on',profileView); controls.autoRotate=false; };
-
-  buildChips(); setMat(0);
   resize(); window.addEventListener('resize',resize);
+  document.getElementById('tgGhost').onclick=()=>{ showGhost=!showGhost; document.getElementById('tgGhost').classList.toggle('on',showGhost); applyGhost(); };
   document.addEventListener('visibilitychange',()=>{ running=!document.hidden; if(running) loop(); });
+  buildChips(); setMat(0,true);
   loop();
+}
+
+function onFrame(gltf){
+  const root=gltf.scene;
+  let box=new THREE.Box3().setFromObject(root), size=box.getSize(new THREE.Vector3());
+  root.scale.setScalar(2.9/Math.max(size.x,1e-6));
+  box=new THREE.Box3().setFromObject(root); root.position.sub(box.getCenter(new THREE.Vector3()));
+  const lensMeshes=[],allMeshes=[]; root.traverse(o=>{ if(o.isMesh){ allMeshes.push(o); if(/lens|lente/i.test(o.name)) lensMeshes.push(o);
+    if(o.material){ o.material=o.material.clone(); o.material.metalness=1.0; o.material.roughness=0.34; if(o.material.color) o.material.color.setHex(0x4a4540); } } });
+  openings = lensMeshes.length ? measureOpenings(lensMeshes) : (()=>{ const o=measureOpenings(allMeshes); if(o){ ['L','R'].forEach(k=>{o[k].rx*=0.8;o[k].ry*=0.8;}); } return o; })();
+  lensMeshes.forEach(m=>m.visible=false);
+  frame=root; scene.add(root);
+  document.getElementById('load').style.display='none';
+  if(openings){ mountLenses(); framed=true; }
+  else buildProcedural();
+  fitCamera();
+}
+
+function buildProcedural(){
+  // respaldo: si el GLB falla, mostramos el lente con un aro fino (no ideal, pero funcional)
+  const grp=new THREE.Group(); scene.add(grp); frame=grp;
+  openings={ L:{cx:-0.95,cy:0,cz:0,rx:0.62,ry:0.72}, R:{cx:0.95,cy:0,cz:0,rx:0.62,ry:0.72} };
+  ['L','R'].forEach(k=>{ const o=openings[k]; const t=new THREE.Mesh(new THREE.TorusGeometry(1,0.05,16,72),new THREE.MeshStandardMaterial({color:'#4a4540',metalness:.95,roughness:.32})); t.scale.set(o.rx,o.ry,1); t.position.set(o.cx,o.cy,o.cz); grp.add(t); });
+  mountLenses(); framed=true; fitCamera();
+}
+
+function mountLenses(){
+  const mk=(o)=>{ const m=new THREE.Mesh(buildLensGeo(etCur),lensMat); m.scale.set(o.rx,o.ry,1); m.position.set(o.cx,o.cy,o.cz); frame.add(m); return m; };
+  lensA=mk(openings.L); lensB=mk(openings.R); lastBuilt=etCur;
+  const mkg=(o)=>{ const m=new THREE.Mesh(buildLensGeo(ET_REF),ghostMat); m.scale.set(o.rx*1.0,o.ry*1.0,1); m.position.set(o.cx,o.cy,o.cz); m.visible=false; frame.add(m); return m; };
+  ghostA=mkg(openings.L); ghostB=mkg(openings.R);
+  applyGhost();
 }
 
 function buildChips(){
   document.getElementById('chips').innerHTML=MATS.map((m,i)=>'<button class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+m.l+'</button>').join('');
   document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setMat(+c.dataset.i));
 }
-
-function setMat(i){
+function setMat(i,silent){
   cur=i; const m=MATS[i];
   document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('on',j===i));
   etTarget=m.et;
-  document.getElementById('verdict').textContent=m.vd;
-  document.getElementById('mm').innerHTML=m.mm.toFixed(1)+'<small>mm borde</small>';
-  ghost.visible=showGhost&&i!==0;
-  document.getElementById('ghostTag').style.opacity=(showGhost&&i!==0)?1:0;
+  document.getElementById('verdict').innerHTML='<b>'+m.mm.toFixed(1)+' mm</b> · '+m.vd;
+  document.getElementById('rval').innerHTML=m.mm.toFixed(1)+'<small>mm borde</small>';
+  applyGhost();
+  if(!silent && framed){ // la cámara gira hacia el canto para mostrar el grosor, luego regresa
+    tweenCam(VIEW_EDGE,820,()=>{ setTimeout(()=>tweenCam(VIEW_34,820,null),520); });
+  }
+}
+function applyGhost(){ const on=showGhost && cur!==0; if(ghostA){ghostA.visible=on;ghostB.visible=on;} }
+
+function tweenCam(to,dur,then){ camTw={fromAz:camAz,fromPo:camPo,toAz:to.az,toPo:to.po,t0:performance.now(),dur,then}; controls.enabled=false; }
+function applyCam(){
+  const s=new THREE.Spherical(camR, clamp(camPo,0.2,2.9), camAz);
+  camera.position.setFromSpherical(s); camera.lookAt(0,0,0);
 }
 
-function project(v3){
-  const v=v3.clone().project(camera);
-  return { x:(v.x*0.5+0.5)*cv.clientWidth, y:(-v.y*0.5+0.5)*cv.clientHeight, vis:v.z<1 };
+function fitCamera(){
+  const halfW=1.6,halfH=1.25,vFov=camera.fov*Math.PI/180;
+  camR=Math.max(halfH/Math.tan(vFov/2), halfW/(Math.tan(vFov/2)*camera.aspect))*1.18;
+  applyCam(); controls.update();
 }
-function placeLabels(){
-  // medición flotante en el borde superior del lente
-  const edge=new THREE.Vector3(0,1.02,etCur*0.5).applyMatrix4(group.matrixWorld);
-  const p=project(edge); const mm=document.getElementById('mm');
-  mm.style.left=p.x+'px'; mm.style.top=(p.y-4)+'px'; mm.style.opacity=p.vis?1:0;
-  if(ghost.visible){ const ge=new THREE.Vector3(-1.02,0.7,ET_REF*0.5).applyMatrix4(group.matrixWorld); const gp=project(ge); const gt=document.getElementById('ghostTag'); gt.style.left=gp.x+'px'; gt.style.top=gp.y+'px'; }
-}
+function resize(){ const w=cv.clientWidth||innerWidth,h=cv.clientHeight||innerHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); fitCamera(); }
 
-function resize(){
-  const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
-  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
-  const halfW=1.5, halfH=1.5, vFov=camera.fov*Math.PI/180;
-  const d=Math.max(halfH/Math.tan(vFov/2), halfW/(Math.tan(vFov/2)*camera.aspect))*1.25;
-  const dirv=camera.position.clone().sub(controls.target); if(dirv.lengthSq()<1e-4)dirv.set(0,0,1); dirv.normalize();
-  camera.position.copy(controls.target).addScaledVector(dirv,d); controls.update();
+function placeRuler(){
+  const r=document.getElementById('ruler');
+  if(!framed){ r.style.opacity=0; return; }
+  frame.updateWorldMatrix(true,false);
+  // regla flotante en el borde superior del lente derecho (siempre visible)
+  const o=openings.R, top=new THREE.Vector3(o.cx+o.rx*0.6, o.cy+o.ry+0.06, etCur*0.5).applyMatrix4(frame.matrixWorld);
+  const v=top.clone().project(camera);
+  if(v.z>=1){ r.style.opacity=0; return; }
+  const x=(v.x*0.5+0.5)*cv.clientWidth, y=(-v.y*0.5+0.5)*cv.clientHeight;
+  r.style.left=x+'px'; r.style.top=y+'px'; r.style.opacity=1;
+  document.getElementById('rbar').style.height=(9+etCur*42).toFixed(0)+'px';
 }
 
 function loop(){
-  if(!running) return; raf=requestAnimationFrame(loop);
-  // morph suave de la geometría
-  etCur=lerp(etCur,etTarget,0.16);
-  if(Math.abs(etCur-lastBuilt)>0.004){ const old=lens.geometry; lens.geometry=buildLensGeo(etCur); old.dispose(); lastBuilt=etCur; }
-  // vista de canto / frontal
-  const targetRotX = profileView ? -Math.PI*0.32 : 0;
-  group.rotation.x = lerp(group.rotation.x, targetRotX, 0.12);
-  controls.update();
-  placeLabels();
+  if(!running) return; requestAnimationFrame(loop);
+  // morph físico del lente
+  etCur=lerp(etCur,etTarget,0.14);
+  if(Math.abs(etCur-lastBuilt)>0.004 && lensA){ const ga=lensA.geometry,gb=lensB.geometry; lensA.geometry=buildLensGeo(etCur); lensB.geometry=buildLensGeo(etCur); ga.dispose();gb.dispose(); lastBuilt=etCur; }
+  // tween de cámara (¾ ↔ canto)
+  if(camTw){ const k=clamp((performance.now()-camTw.t0)/camTw.dur,0,1), e=easeIO(k);
+    camAz=lerp(camTw.fromAz,camTw.toAz,e); camPo=lerp(camTw.fromPo,camTw.toPo,e); applyCam();
+    if(k>=1){ const then=camTw.then; camTw=null; controls.enabled=true; controls.update(); if(then)then(); }
+  } else { controls.update(); }
+  placeRuler();
   renderer.render(scene,camera);
 }
 
 try{ init(); }
-catch(err){ console.warn('3D no disponible',err); cv.style.display='none'; document.querySelector('.ctrl').style.display='none'; document.querySelector('.chips').style.display='none'; document.getElementById('fallback').style.display='flex'; }
+catch(err){ console.warn('3D no disponible',err); cv.style.display='none'; document.querySelector('.ctrl').style.display='none'; document.querySelector('.chips').style.display='none'; document.getElementById('load').style.display='none'; document.getElementById('fallback').style.display='flex'; }
 </script>
 </body>
 </html>
