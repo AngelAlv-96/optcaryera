@@ -617,16 +617,13 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
         <span style="font-size:12px;color:var(--ink3)">Vista 3D</span></div>
     </div>
 
-    <!-- Antirreflejante (antes/después) -->
-    <div class="demo-card ar-card always reveal">
-      <div class="ba" id="dAR">
-        <div class="ba-l ba-after"><div class="face"><span class="brow l"></span><span class="brow r"></span><span class="lensG l"></span><span class="lensG r"></span><span class="bridge"></span><span class="eye l"></span><span class="eye r"></span></div></div>
-        <div class="ba-l ba-before"><div class="face"><span class="brow l"></span><span class="brow r"></span><span class="lensG l"></span><span class="lensG r"></span><span class="bridge"></span><span class="eye l"></span><span class="eye r"></span><span class="glareB l"></span><span class="glareB r"></span></div></div>
-        <div class="ba-tag ba-tl">Sin AR</div><div class="ba-tag ba-tr">Con AR</div>
-        <div class="ba-div" id="arDiv"></div>
-        <input class="rng ba-range" type="range" min="0" max="100" value="50" id="arRange" oninput="arSet(this.value)" aria-label="Comparar sin AR y con AR">
+    <!-- Antirreflejante 3D (WebGL) -->
+    <div class="demo-card foto3d-card reveal">
+      <div class="demo-stage demo-3d" data-src="antirreflejante-3d.html">
+        <div class="d3-hint">✦ Cargando experiencia 3D…</div>
       </div>
-      <div class="demo-foot"><div class="demo-meta"><b>Antirreflejante (AR)</b><span>Sin reflejos · los ojos se ven · arrastra ↔</span></div></div>
+      <div class="demo-foot"><div class="demo-meta"><b>Antirreflejante 3D</b><span>Arrastra la luz · Sin AR vs Con AR · gira con el dedo</span></div>
+        <span style="font-size:12px;color:var(--ink3)">Vista 3D</span></div>
     </div>
 
     <!-- Polarizado (toca para ver) -->
@@ -1329,7 +1326,7 @@ function load3D(s){
 }
 
 /* init demos */
-arSet(50); init3DEmbeds();
+init3DEmbeds();
 </script>
 
 <!-- Ajuste de altura del simulador embebido -->
