@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Lista de Precios · Ópticas Car & Era</title>
+<meta name="theme-color" content="#f6f1ea">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f1ea; --paper2:#fffdf9; --card:#ffffff;
+  --ink:#1c1a16; --ink2:#615b52; --ink3:#8c857a;
+  --line:#e9e0d2; --line2:#f0e9dd;
+  --beige:#b3895a; --beige-deep:#9a7245; --beige-soft:#efe4d2; --beige-tint:#f7efe2;
+  --star:#e0a93b;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.serif{font-family:'Cormorant Garamond',serif}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--beige);color:#fff}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal[data-d="1"]{transition-delay:.07s}.reveal[data-d="2"]{transition-delay:.14s}.reveal[data-d="3"]{transition-delay:.21s}.reveal[data-d="4"]{transition-delay:.28s}.reveal[data-d="5"]{transition-delay:.35s}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none}}
+
+/* grain */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
+
+/* header */
+.header{position:sticky;top:0;z-index:50;background:rgba(246,241,234,.85);backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
+.header.scrolled{border-bottom-color:var(--line);background:rgba(246,241,234,.94)}
+.header-in{max-width:1100px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.h-logo{display:block;height:34px;width:auto}
+.h-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--ink2)}
+.h-print{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:100px;padding:8px 15px;font-weight:600;font-size:13px;cursor:pointer;background:none;color:var(--ink);font-family:inherit;transition:border-color .2s}
+.h-print:hover{border-color:var(--ink)}
+.hprog{position:absolute;left:0;bottom:-1px;height:2px;background:linear-gradient(90deg,var(--beige),var(--beige-deep));width:0}
+
+/* eyebrow */
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:14px}
+.eyebrow .ln{width:24px;height:1px;background:var(--beige)}
+
+/* HERO */
+.hero{position:relative;text-align:center;padding:60px 24px 40px;overflow:hidden}
+.hero .blob{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0}
+.hero .b1{width:380px;height:380px;left:-6%;top:-10%;background:radial-gradient(circle,rgba(240,205,156,.45),transparent 68%)}
+.hero .b2{width:300px;height:300px;right:-4%;top:20%;background:radial-gradient(circle,rgba(228,190,150,.38),transparent 68%)}
+.hero-in{position:relative;z-index:1;max-width:760px;margin:0 auto}
+.hero h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(42px,8vw,76px);line-height:1;letter-spacing:-.01em}
+.hero h1 .yr{display:block;font-style:italic;color:var(--beige-deep);font-size:.5em;letter-spacing:.05em;margin-top:6px}
+.hero p{font-size:17px;color:var(--ink2);margin-top:18px;max-width:540px;margin-left:auto;margin-right:auto}
+.hero-chips{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.hchip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:8px 15px;font-size:13px;font-weight:500;color:var(--ink2)}
+.hchip svg{width:15px;height:15px;stroke:var(--beige);fill:none;stroke-width:1.9}
+
+/* section shell */
+.sec{padding:46px 0}
+.sec-head{text-align:center;max-width:640px;margin:0 auto 36px}
+.sec-head h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.05;letter-spacing:-.01em}
+.sec-head h2 .it{font-style:italic;color:var(--beige-deep)}
+.sec-head p{font-size:16px;color:var(--ink2);margin-top:12px}
+
+/* EDU material/treatment cards */
+.edu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.edu-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 22px;transition:transform .25s,box-shadow .25s,border-color .25s}
+.edu-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(28,26,22,.09);border-color:var(--beige-soft)}
+.edu-vis{height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.edu-card h3{font-size:18px;font-weight:600;margin-bottom:3px}
+.edu-card .tag{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--beige-deep);text-transform:uppercase}
+.edu-card p{font-size:14px;color:var(--ink2);margin-top:8px}
+.edu-card .who{margin-top:11px;font-size:12.5px;color:var(--ink);background:var(--beige-tint);border-radius:9px;padding:7px 11px;display:inline-block}
+.edu-card .who b{color:var(--beige-deep)}
+@media(max-width:820px){.edu-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.edu-grid{grid-template-columns:1fr}}
+
+/* lens svg visuals */
+.lens-ico{width:74px;height:74px}
+.lens-ring{fill:none;stroke:var(--ink);stroke-width:2.4}
+
+/* thickness comparison */
+.thick-wrap{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;margin-top:8px}
+.thick-row{display:flex;align-items:flex-end;justify-content:center;gap:26px;flex-wrap:wrap;min-height:140px}
+.thick-item{text-align:center;width:96px}
+.lens-cut{height:110px;display:flex;align-items:center;justify-content:center}
+.lens-cut svg{height:110px}
+.lens-edge{fill:url(#glassgrad);stroke:var(--beige-deep);stroke-width:1.4}
+.thick-item .mat{font-weight:600;font-size:14px;margin-top:10px}
+.thick-item .idx{font-size:12px;color:var(--ink3)}
+.thick-item .lvl{font-size:11px;color:var(--beige-deep);font-weight:600;margin-top:2px}
+.thick-note{text-align:center;font-size:13.5px;color:var(--ink2);margin-top:18px}
+.thick-note b{color:var(--ink)}
+
+/* treatment demos */
+.tre-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:820px){.tre-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.tre-grid{grid-template-columns:1fr}}
+.demo-lens{width:78px;height:78px;border-radius:50%;position:relative;overflow:hidden;border:3px solid #d9cdba;background:#eef3f6}
+/* AR */
+.d-ar .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#dfeaf0,#eef4f7)}
+.d-ar .glare{position:absolute;top:-30%;left:-40%;width:60%;height:160%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);transform:rotate(20deg);animation:sweep 3.4s ease-in-out infinite}
+@keyframes sweep{0%,100%{left:-50%}50%{left:90%}}
+.d-ar .sheen{position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 18px rgba(120,190,140,.55)}
+/* blue */
+.d-blue .glass{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#cfe0ef)}
+.d-blue .rays{position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(115deg,rgba(70,120,220,.0) 0 7px,rgba(70,120,220,.22) 7px 9px);animation:bluefade 2.8s ease-in-out infinite}
+@keyframes bluefade{0%,100%{opacity:.25}50%{opacity:.7}}
+/* foto */
+.d-foto .glass{position:absolute;inset:0;border-radius:50%;background:#eef3f6;animation:darken 4s ease-in-out infinite}
+@keyframes darken{0%,100%{background:#eef3f6}50%{background:#3b3a37}}
+/* polar */
+.d-polar .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#8a7d5f,#6f6444)}
+.d-polar .gl{position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(60deg,rgba(255,255,255,.0) 0 6px,rgba(255,255,255,.55) 6px 8px);animation:polclear 3.6s ease-in-out infinite}
+@keyframes polclear{0%{opacity:.85}45%,100%{opacity:0}}
+/* colors */
+.d-colors .glass{position:absolute;inset:0;border-radius:50%;animation:hue 6s linear infinite}
+@keyframes hue{0%{background:#7a7a7a}20%{background:#c96fa8}40%{background:#8a5a2a}60%{background:#3556c0}80%{background:#6a3fa0}100%{background:#7a7a7a}}
+/* tinte */
+.d-tinte .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,#c98a3a,#e9c489)}
+@media(prefers-reduced-motion:reduce){.d-ar .glare,.d-blue .rays,.d-foto .glass,.d-polar .gl,.d-colors .glass{animation:none}}
+
+/* 3D lens viewer */
+.lens3d{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;margin-top:20px;overflow:hidden}
+.l3d-stage{position:relative;border-radius:16px;background:radial-gradient(circle at 50% 40%,#fbf7f0,#efe6d6);aspect-ratio:1/.82;min-height:260px}
+.l3d-stage canvas{position:absolute;inset:0;width:100%!important;height:100%!important;border-radius:16px;display:block;cursor:grab}
+.l3d-stage canvas:active{cursor:grabbing}
+.l3d-hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:11.5px;color:var(--ink3);background:rgba(255,253,249,.7);border-radius:100px;padding:4px 12px;pointer-events:none}
+.l3d-fail{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:13px;color:var(--ink2);padding:24px}
+.l3d-side h4{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;line-height:1.1}
+.l3d-side .l3d-lead{font-size:14px;color:var(--ink2);margin:6px 0 16px}
+.l3d-group{margin-bottom:14px}
+.l3d-group .lbl{font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:7px;display:block}
+.l3d-btns{display:flex;flex-wrap:wrap;gap:7px}
+.l3d-btns button{border:1px solid var(--line);background:var(--paper2);border-radius:100px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .18s}
+.l3d-btns button:hover{border-color:var(--beige)}
+.l3d-btns button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.l3d-cap{margin-top:6px;font-size:13px;color:var(--ink);background:var(--beige-tint);border-radius:11px;padding:11px 14px;min-height:62px}
+.l3d-cap b{color:var(--beige-deep)}
+@media(max-width:780px){.lens3d{grid-template-columns:1fr}.l3d-stage{aspect-ratio:1/.7}}
+
+/* premium / special cards */
+.prem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:680px){.prem-grid{grid-template-columns:1fr}}
+.prem-card{display:flex;gap:15px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;transition:transform .22s,box-shadow .22s}
+.prem-card:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(28,26,22,.08)}
+.prem-card .pico{flex:0 0 auto;width:42px;height:42px;border-radius:12px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center}
+.prem-card .pico svg{width:22px;height:22px;stroke:var(--beige-deep);fill:none;stroke-width:1.8}
+.prem-card h3{font-size:16px;font-weight:600;display:flex;align-items:center;gap:7px}
+.prem-card .badge{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--beige);border-radius:6px;padding:2px 7px}
+.prem-card p{font-size:13.5px;color:var(--ink2);margin-top:5px}
+
+/* PRICES */
+.price-shell{background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:46px 0 56px}
+.serie-toggle{display:flex;justify-content:center;gap:8px;margin:0 auto 8px;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:5px;width:max-content}
+.serie-toggle button{border:none;background:none;font-family:inherit;font-weight:600;font-size:14px;color:var(--ink2);padding:10px 22px;border-radius:100px;cursor:pointer;transition:all .2s}
+.serie-toggle button.on{background:var(--ink);color:#fff}
+.serie-sub{text-align:center;font-size:13.5px;color:var(--ink2);margin-bottom:18px}
+.serie-sub b{color:var(--beige-deep)}
+.range-pill{display:inline-block;font-family:'Outfit',monospace;font-size:12px;letter-spacing:.02em;background:var(--beige-tint);color:var(--beige-deep);border-radius:8px;padding:4px 12px;margin-top:7px}
+
+/* category chips nav */
+.cat-nav{position:sticky;top:60px;z-index:30;display:flex;gap:8px;overflow-x:auto;padding:12px 0;margin-bottom:6px;background:linear-gradient(var(--paper2),var(--paper2) 70%,transparent);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cat-nav::-webkit-scrollbar{display:none}
+.cat-chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .18s;white-space:nowrap}
+.cat-chip:hover{border-color:var(--beige)}
+.cat-chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
+
+/* search */
+.searchbox{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:420px;margin:0 auto 28px}
+.searchbox svg{width:17px;height:17px;stroke:var(--ink3);fill:none;stroke-width:2}
+.searchbox input{border:none;outline:none;font-family:inherit;font-size:14.5px;color:var(--ink);background:none;flex:1}
+.searchbox input::placeholder{color:var(--ink3)}
+
+/* category block */
+.cat{margin-bottom:34px;scroll-margin-top:120px}
+.cat-title{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.cat-title .ico{width:38px;height:38px;flex:0 0 auto;border-radius:11px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center}
+.cat-title .ico svg{width:21px;height:21px;stroke:var(--beige-deep);fill:none;stroke-width:1.9}
+.cat-title h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:28px;line-height:1.1}
+.cat-desc{font-size:14px;color:var(--ink2);margin:0 0 14px 50px}
+
+/* price table */
+.ptable{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.prow{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line2);transition:background .15s}
+.prow:last-child{border-bottom:none}
+.prow:hover{background:var(--beige-tint)}
+.prow .mat{font-weight:600;font-size:15px;display:flex;align-items:center;gap:7px}
+.prow .star{color:var(--star);font-size:14px}
+.prow .ben{font-size:12.5px;color:var(--ink2);font-weight:400;margin-top:2px}
+.prow .price{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:24px;white-space:nowrap;color:var(--ink)}
+.prow .price small{font-size:14px;color:var(--ink3);font-weight:500}
+.cat-note{font-size:12.5px;color:var(--ink2);margin-top:9px;display:flex;align-items:center;gap:6px}
+.cat-note .b{background:var(--beige-tint);color:var(--beige-deep);font-weight:600;border-radius:7px;padding:2px 9px;font-size:12px}
+
+/* combo blocks (bifocal/progresivo/ultra) */
+.combo{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:680px){.combo{grid-template-columns:1fr}}
+.cblock{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.cblock h4{font-size:14px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--beige-deep)}
+.cblock .cs{font-size:12.5px;color:var(--ink2);margin:3px 0 11px}
+.cline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:1px dashed var(--line)}
+.cline:first-of-type{border-top:none}
+.cline .l{font-size:13.5px;color:var(--ink)}
+.cline .p{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:20px;white-space:nowrap}
+.cline.star .l::before{content:'★ ';color:var(--star)}
+
+.foot-note{text-align:center;font-size:12.5px;color:var(--ink3);margin-top:8px}
+.no-results{text-align:center;color:var(--ink3);padding:30px;font-size:14px;display:none}
+
+/* footer */
+.footer{padding:40px 24px;text-align:center;color:var(--ink3);font-size:13px}
+.footer .disc{max-width:620px;margin:0 auto 10px;color:var(--ink2)}
+
+@media print{
+  .header,.cat-nav,.searchbox,.serie-toggle,.hero-chips,.edu-card:hover{box-shadow:none!important}
+  .cat-nav,.searchbox,.serie-toggle{display:none!important}
+  body{background:#fff}
+  .price-shell,.sec{padding:14px 0}
+  [data-serie]{display:block!important}
+  .reveal{opacity:1!important;transform:none!important}
+}
+</style>
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="header-in">
+    <img src="logo-caryera-dark.svg" alt="Car & Era" class="h-logo">
+    <div class="h-right">
+      <button class="h-print" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
+    </div>
+  </div>
+  <div class="hprog" id="hprog"></div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="hero-in reveal">
+    <div class="eyebrow"><span class="ln"></span> Catálogo interno <span class="ln"></span></div>
+    <h1 class="serif">Lista de Precios<span class="yr">2025</span></h1>
+    <p>Conoce los materiales, entiende qué le conviene a cada paciente y consulta el precio al instante. Una guía para asesorar con confianza.</p>
+    <div class="hero-chips">
+      <span class="hchip"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Examen incluido</span>
+      <span class="hchip"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Laboratorio propio</span>
+      <span class="hchip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Listos desde 35 min</span>
+    </div>
+  </div>
+</section>
+
+<!-- EDU: tipo de lente -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 1 <span class="ln"></span></div>
+    <h2 class="serif">¿Qué <span class="it">tipo de lente</span> necesita?</h2>
+    <p>Según lo que el paciente quiera ver. Define el tipo antes de elegir material y tratamiento.</p>
+  </div>
+  <div class="edu-grid">
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/></svg></div>
+      <span class="tag">Visión sencilla</span>
+      <h3>Monofocal</h3>
+      <p>Una sola graduación en todo el lente. Para ver <b>de lejos</b> o <b>de cerca</b>.</p>
+      <span class="who"><b>Para:</b> miopía, astigmatismo o solo lectura</span>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M22 52 a18 11 0 0 1 36 0" stroke-width="2.4"/></svg></div>
+      <span class="tag">Lejos + cerca</span>
+      <h3>Bifocal</h3>
+      <p>Dos zonas: lejos arriba, cerca abajo. Con línea visible (F/T) o semi-invisible.</p>
+      <span class="who"><b>Para:</b> presbicia, quien ya combinaba dos pares</span>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M40 14 L31 66 M40 14 L49 66" stroke-width="1.8" opacity=".55"/></svg></div>
+      <span class="tag">Todo en uno</span>
+      <h3>Progresivo</h3>
+      <p>Lejos, intermedio y cerca en un solo lente, <b>sin líneas</b>. Transición natural.</p>
+      <span class="who"><b>Para:</b> presbicia que quiere un lente discreto y cómodo</span>
+    </div>
+  </div>
+</section>
+
+<!-- EDU: material / grosor -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 2 <span class="ln"></span></div>
+    <h2 class="serif">El <span class="it">material</span> define grosor y resistencia</h2>
+    <p>Mientras más alta la graduación, más conviene un índice alto: el lente queda más delgado y ligero.</p>
+  </div>
+  <div class="thick-wrap reveal">
+    <svg width="0" height="0"><defs><linearGradient id="glassgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef4f7"/><stop offset="1" stop-color="#d7e6ee"/></linearGradient></defs></svg>
+    <div class="thick-row">
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 5 C40 30 40 80 22 105 C18 80 18 30 22 5 Z"/></svg></div><div class="mat">CR-39</div><div class="idx">índice 1.49</div><div class="lvl">El más grueso</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 8 C36 31 36 79 22 102 C19 79 19 31 22 8 Z"/></svg></div><div class="mat">Policarbonato</div><div class="idx">índice 1.59</div><div class="lvl">Irrompible</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 12 C33 33 33 77 22 98 C20 77 20 33 22 12 Z"/></svg></div><div class="mat">Hi-Index 1.60</div><div class="idx">índice 1.60</div><div class="lvl">Delgado</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 18 C30 35 30 75 22 92 C21 75 21 35 22 18 Z"/></svg></div><div class="mat">Ultra 1.67</div><div class="idx">índice 1.67</div><div class="lvl">Muy delgado</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 24 C28 38 28 72 22 86 C21 72 21 38 22 24 Z"/></svg></div><div class="mat">Súper 1.74</div><div class="idx">índice 1.74</div><div class="lvl">El más delgado</div></div>
+    </div>
+    <p class="thick-note">Corte del borde de la mica a la misma graduación. <b>CR-39</b> es lo más económico; el <b>policarbonato</b> es ideal para niños y deporte; los <b>alto índice (1.60–1.74)</b> evitan el efecto "fondo de botella" en graduaciones altas.</p>
+  </div>
+
+  <!-- 3D interactivo -->
+  <div class="lens3d reveal">
+    <div class="l3d-stage">
+      <canvas id="lens3d"></canvas>
+      <div class="l3d-hint">Arrastra para girar 🔄</div>
+      <div class="l3d-fail" id="l3dfail">Tu navegador no pudo cargar el visor 3D. La comparación de arriba muestra lo mismo.</div>
+    </div>
+    <div class="l3d-side">
+      <h4 class="serif">Pruébalo en 3D</h4>
+      <p class="l3d-lead">Gira el lente con el dedo (o el mouse) y compara cómo cambia el grosor y el acabado de cada tratamiento.</p>
+      <div class="l3d-group">
+        <span class="lbl">Material · grosor</span>
+        <div class="l3d-btns" id="l3d-mat">
+          <button data-mat="0" class="on">CR-39</button>
+          <button data-mat="1">Policarbonato</button>
+          <button data-mat="2">Hi-Index 1.60</button>
+          <button data-mat="3">Ultra 1.67</button>
+          <button data-mat="4">Súper 1.74</button>
+        </div>
+      </div>
+      <div class="l3d-group">
+        <span class="lbl">Acabado · tratamiento</span>
+        <div class="l3d-btns" id="l3d-tre">
+          <button data-tre="claro" class="on">Claro</button>
+          <button data-tre="ar">Antirreflejante</button>
+          <button data-tre="foto">Fotocromático</button>
+          <button data-tre="polar">Polarizado</button>
+          <button data-tre="tinte">Tinte solar</button>
+          <button data-tre="colors">Foto Colors</button>
+        </div>
+      </div>
+      <div class="l3d-cap" id="l3dcap"></div>
+    </div>
+  </div>
+</section>
+
+<!-- EDU: tratamientos -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 3 <span class="ln"></span></div>
+    <h2 class="serif">Los <span class="it">tratamientos</span> que suman valor</h2>
+    <p>Cada uno resuelve algo distinto. Combínalos según el estilo de vida del paciente.</p>
+  </div>
+  <div class="tre-grid">
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><div class="demo-lens d-ar"><div class="glass"></div><div class="sheen"></div><div class="glare"></div></div></div>
+      <span class="tag">AR</span><h3>Antirreflejante</h3>
+      <p>Quita los reflejos del lente. Te ven los ojos, menos brillos en fotos y mejor visión nocturna al manejar.</p>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><div class="demo-lens d-blue"><div class="glass"></div><div class="rays"></div></div></div>
+      <span class="tag">Anti-Blue / Blue Light</span><h3>Filtro de luz azul</h3>
+      <p>Filtra la luz azul de celular, compu y TV. Menos fatiga visual en jornadas largas frente a pantallas.</p>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><div class="demo-lens d-foto"><div class="glass"></div></div></div>
+      <span class="tag">Transitions</span><h3>Fotocromático</h3>
+      <p>Se oscurece solo bajo el sol y se aclara en interior. Es lente y lente de sol en uno.</p>
+    </div>
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><div class="demo-lens d-colors"><div class="glass"></div></div></div>
+      <span class="tag">Foto Colors</span><h3>Fotocromático de color</h3>
+      <p>Igual que el fotocromático, pero se oscurece en un color (gris, rosa, café, azul, morado, verde). Más estética.</p>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><div class="demo-lens d-polar"><div class="glass"></div><div class="gl"></div></div></div>
+      <span class="tag">Polarizado</span><h3>Anti-deslumbramiento</h3>
+      <p>Elimina el reflejo del sol en carretera, agua y nieve. El mejor para manejar y actividades al aire libre.</p>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><div class="demo-lens d-tinte"><div class="glass"></div></div></div>
+      <span class="tag">Estilo Solar</span><h3>Tinte solar</h3>
+      <p>Agrega color o tinte fijo a un lente claro para protegerte de la luz intensa. <b>+$150</b> sobre el lente claro.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PREMIUM / ESPECIALES -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Para asesorar mejor <span class="ln"></span></div>
+    <h2 class="serif">Opciones <span class="it">premium</span> y especiales</h2>
+    <p>Las que aparecen en la lista y conviene saber explicar.</p>
+  </div>
+  <div class="prem-grid">
+    <div class="prem-card reveal" data-d="1">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6 15 a6 4 0 0 1 12 0"/></svg></span>
+      <div><h3>Bifocal F/T vs Semi-invisible</h3>
+      <p><b>F/T</b> (Flat Top) tiene una línea visible que separa lejos y cerca. El <b>Semi-invisible</b> hace esa transición de forma discreta, casi sin notarse — más estético por un poco más.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="2">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 21 M12 3 L15 21" opacity=".6"/><path d="M4 9 H20"/></svg></span>
+      <div><h3>Progresivo Panoramic 360 <span class="badge">Premium</span></h3>
+      <p>Progresivo de campo amplio: zonas de lejos, intermedio y cerca <b>más grandes</b> y con menos distorsión a los lados. Visión más natural y adaptación más rápida que un progresivo estándar.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="1">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span>
+      <div><h3>Fotocromático Generación 9 <span class="badge">Última gen</span></h3>
+      <p>La versión más nueva del fotocromático: se <b>oscurece y aclara más rápido</b>, llega más oscuro al sol y dura más con el tiempo. Para quien lo usa todo el día, dentro y fuera.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="2">
+      <span class="pico"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg></span>
+      <div><h3>Polarizado Xperio 1.59 (Essilor) <span class="badge">Essilor</span></h3>
+      <p>Polarizado de marca premium: <b>máxima nitidez</b>, contraste superior y colores más definidos. El tope de gama para manejar y exteriores, en material resistente 1.59.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICES -->
+<div class="price-shell">
+  <div class="wrap">
+    <div class="sec-head reveal" style="margin-bottom:20px">
+      <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Precios <span class="ln"></span></div>
+      <h2 class="serif">Cotiza al <span class="it">instante</span></h2>
+    </div>
+
+    <div class="serie-toggle reveal">
+      <button id="btn-s1" class="on" onclick="setSerie(1)">Serie 1</button>
+      <button id="btn-s2" onclick="setSerie(2)">Serie 2</button>
+    </div>
+    <div class="serie-sub reveal" id="serie-sub"></div>
+
+    <div class="cat-nav" id="catnav"></div>
+
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Buscar material, tratamiento o precio…" oninput="doSearch(this.value)">
+    </div>
+
+    <div id="price-body"></div>
+    <div class="no-results" id="noresults">Sin coincidencias para tu búsqueda.</div>
+  </div>
+</div>
+
+<footer class="footer">
+  <p class="disc">Los precios aplican en graduaciones estándar. Consulta disponibilidad según receta. <b>Serie 2</b> aplica para graduaciones altas o especiales. Policarbonato con AR entrega en 15 días hábiles.</p>
+  <p>Ópticas Car &amp; Era · Uso interno</p>
+</footer>
+
+<script>
+/* ============ DATOS DE PRECIOS ============ */
+const ICONS = {
+  claros:'<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  digital:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>',
+  foto:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4" y1="12" x2="1" y2="12"/><line x1="23" y1="12" x2="20" y2="12"/></svg>',
+  polar:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+  bifocal:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6 15 a6 4 0 0 1 12 0"/></svg>',
+  progresivo:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 21 M12 3 L15 21" opacity=".6"/></svg>',
+  ultra:'<svg viewBox="0 0 24 24"><path d="M3 12 C7 5 17 5 21 12 C17 19 7 19 3 12 Z"/></svg>'
+};
+const SOLAR='Tinte solar +$150';
+
+const DATA = {
+  1:{ sub:'<b>Serie 1</b> — graduaciones estándar', range:'SPH +4.00 / −6.00 · CIL hasta −2.00', cats:[
+    {id:'s1-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+      {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:899},
+      {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1699},
+    ], note:'Estilo solar (tinte) +$150'},
+    {id:'s1-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+      {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1499},
+      {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:1999},
+      {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2499},
+      {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:2799},
+      {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3299},
+    ]},
+    {id:'s1-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+      {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:2699},
+      {mat:'Anti-blue AR', ben:'Fotocromático con filtro de luz azul', p:2799},
+      {mat:'Blue Light', ben:'Fotocromático con mayor claridad y control de luz azul', p:3199},
+      {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:3599, star:true},
+      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2199},
+    ], note:'Foto Colors +$700 en policarbonato'},
+    {id:'s1-polar', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
+      {mat:'Polarizado 1.56', ben:'Reduce reflejos del sol y deslumbramientos', p:2699},
+      {mat:'Polarizado Xperio 1.59 (Essilor)', ben:'Máxima nitidez, contraste superior y colores definidos', p:5499, star:true},
+    ]},
+    {id:'s1-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (SPH +3.00 a −2.00 · ADD hasta +3.00)', combo:[
+      {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1099],['Policarbonato Bco.',1999],['Fotocromático sin AR',3099]]},
+      {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2199],['Policarbonato',3299]]},
+      {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2399],['Fotocromático',3999]]},
+      {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',3699],['Policarbonato AR',4599]]},
+    ], note:'Tinte solar +$150'},
+    {id:'s1-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición más suave y discreta.', combo:[
+      {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1799]]},
+      {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2899],['Policarbonato',3699]]},
+      {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',2999],['Fotocromático',3699]]},
+      {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',3599],['Policarbonato',4199]]},
+    ], note:'Tinte solar +$150'},
+    {id:'s1-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas.', combo:[
+      {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',1799],['Policarbonato Bco.',3099],['Fotocromático sin AR (Poli)',4299]]},
+      {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',2599],['Policarbonato',3399]]},
+      {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3549],['Fotocromático',4599]]},
+      {h:'Fotocromáticos', s:'Se oscurecen al sol automáticamente', lines:[['Hi-Index',3799],['Policarbonato',4799]]},
+      {h:'★ Panoramic 360 · Hi-Index', s:'Visión más amplia y natural', lines:[['Filtro Azul',3549],['Fotocromático',4599],['Fotocromático de colores',5699]]},
+    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul, morado, verde'},
+  ]},
+
+  2:{ sub:'<b>Serie 2</b> — graduaciones altas o especiales · consulta disponibilidad', range:'A partir de ESF ±5.75 · CIL −2.25', cats:[
+    {id:'s2-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+      {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:999},
+      {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1999},
+    ], note:'Estilo solar (tinte) +$150'},
+    {id:'s2-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+      {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1799},
+      {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:2699},
+      {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2999},
+      {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:3299},
+      {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3799},
+    ]},
+    {id:'s2-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+      {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:3099},
+      {mat:'Anti-blue AR · Hi-Index', ben:'Fotocromático con filtro de luz azul', p:3099},
+      {mat:'Blue Light · Hi-Index', ben:'Fotocromático con mayor claridad y control de luz azul', p:3699},
+      {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:4099, star:true},
+      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2499},
+    ], note:'Foto Colors +$700 en policarbonato'},
+    {id:'s2-ultra', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
+      {h:'Ultra-thin 1.67', s:'', lines:[
+        ['ESF −4.00 a −12.00 · CIL hasta −2.00',4099],
+        ['ESF −4.00 a −10.00 · CIL hasta −4.00',4699],
+        ['ESF −2.25 a −6.00 · CIL hasta −6.00',4999],
+        ['ESF −12.00 a −15.00 (sin CIL)',4699],
+        ['Positivos y cilindro, o fuera de rango',5999]]},
+      {h:'Super Ultra-thin 1.74', s:'', lines:[
+        ['ESF −6.00 a −13.00 · CIL hasta −2.00',4699],
+        ['ESF −13.50 a −20.00 · CIL hasta −2.00',6399],
+        ['ESF −4.00 a −12.00 · CIL hasta −4.00',5499],
+        ['ESF +6.00 a +12.00 (sin CIL)',6399],
+        ['Positivos y cilindro, o fuera de rango',8999]]},
+      {h:'Ultra-thin 1.67 + Fotocromático', s:'', lines:[['Esféricos ± y combinados (CIL)',6499]]},
+    ]},
+    {id:'s2-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
+      {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1399],['Policarbonato Bco.',2999],['Fotocromático sin AR',3699]]},
+      {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2599],['Policarbonato',3699]]},
+      {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2699],['Fotocromático',4599]]},
+      {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',4299],['Policarbonato AR',6199]]},
+    ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
+    {id:'s2-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición suave. (Esfera/Cilindro)', combo:[
+      {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1999]]},
+      {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',3299],['Policarbonato',3999]]},
+      {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3399],['Fotocromático',3999]]},
+      {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',4099],['Policarbonato',4599]]},
+    ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
+    {id:'s2-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas. (Esfera/Cilindro)', combo:[
+      {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',2099],['Policarbonato Bco.',3599],['Fotocromático sin AR (Poli)',4899]]},
+      {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',3199],['Policarbonato',3699]]},
+      {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3949],['Fotocromático',5699]]},
+      {h:'Fotocromáticos', s:'Se oscurecen al sol automáticamente', lines:[['Hi-Index',4299],['Policarbonato',5499]]},
+      {h:'★ Panoramic 360 · Hi-Index', s:'Visión más amplia y natural', lines:[['Filtro Azul',3949],['Fotocromático',5699],['Fotocromático de colores',5699]]},
+    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul, morado, verde · Poli con AR: 15 días hábiles'},
+  ]}
+};
+
+const money = n => '$' + n.toLocaleString('es-MX');
+let curSerie = 1;
+
+function renderSerie(s){
+  const d = DATA[s];
+  document.getElementById('serie-sub').innerHTML = d.sub + '<br><span class="range-pill">' + d.range + '</span>';
+  // chips
+  const nav = document.getElementById('catnav');
+  nav.innerHTML = d.cats.map((c,i)=>'<button class="cat-chip'+(i===0?' on':'')+'" data-target="'+c.id+'" onclick="goCat(\''+c.id+'\')">'+c.title.replace(/ ·.*/,'')+'</button>').join('');
+  // body
+  const body = document.getElementById('price-body');
+  body.innerHTML = d.cats.map(c=>{
+    let inner;
+    if(c.rows){
+      inner = '<div class="ptable">' + c.rows.map(r=>{
+        const star = r.star ? '<span class="star">★</span>' : '';
+        return '<div class="prow" data-txt="'+(r.mat+' '+r.ben+' '+r.p).toLowerCase()+'">'+
+          '<div><div class="mat">'+r.mat+star+'</div><div class="ben">'+r.ben+'</div></div>'+
+          '<div class="price">'+money(r.p)+'</div></div>';
+      }).join('') + '</div>';
+    } else {
+      inner = '<div class="combo">' + c.combo.map(b=>{
+        const star = b.h.startsWith('★');
+        return '<div class="cblock" data-txt="'+(b.h+' '+b.s+' '+b.lines.map(l=>l.join(' ')).join(' ')).toLowerCase()+'">'+
+          '<h4>'+b.h+'</h4>'+(b.s?'<div class="cs">'+b.s+'</div>':'<div class="cs">&nbsp;</div>')+
+          b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+
+          '</div>';
+      }).join('') + '</div>';
+    }
+    const note = c.note ? '<div class="cat-note"><span class="b">Nota</span> '+c.note+'</div>' : '';
+    return '<div class="cat" id="'+c.id+'" data-cat>'+
+      '<div class="cat-title"><span class="ico">'+ICONS[c.icon]+'</span><h3>'+c.title+'</h3></div>'+
+      '<div class="cat-desc">'+c.desc+'</div>'+ inner + note +'</div>';
+  }).join('');
+  observeReveal();
+  document.getElementById('search').value='';
+  document.getElementById('noresults').style.display='none';
+}
+
+function setSerie(s){
+  curSerie = s;
+  document.getElementById('btn-s1').classList.toggle('on', s===1);
+  document.getElementById('btn-s2').classList.toggle('on', s===2);
+  renderSerie(s);
+  window.scrollTo({top:document.querySelector('.price-shell').offsetTop-50, behavior:'smooth'});
+}
+
+function goCat(id){
+  document.querySelectorAll('.cat-chip').forEach(c=>c.classList.toggle('on', c.dataset.target===id));
+  const el = document.getElementById(id);
+  if(el) window.scrollTo({top:el.offsetTop-110, behavior:'smooth'});
+}
+
+function doSearch(q){
+  q = q.trim().toLowerCase();
+  let anyVisible = false;
+  document.querySelectorAll('[data-cat]').forEach(cat=>{
+    const items = cat.querySelectorAll('[data-txt]');
+    let catVisible = false;
+    items.forEach(it=>{
+      const hit = !q || it.dataset.txt.includes(q);
+      it.style.display = hit ? '' : 'none';
+      if(hit) catVisible = true;
+    });
+    cat.style.display = catVisible ? '' : 'none';
+    if(catVisible) anyVisible = true;
+  });
+  document.getElementById('noresults').style.display = anyVisible ? 'none' : 'block';
+  document.getElementById('catnav').style.opacity = q ? '.4' : '1';
+}
+
+/* reveal observer */
+let io;
+function observeReveal(){
+  if(!io){
+    io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }), {threshold:.12});
+  }
+  document.querySelectorAll('.reveal:not(.in)').forEach(el=>io.observe(el));
+}
+
+/* header scroll + progress */
+const header = document.getElementById('header'), hprog = document.getElementById('hprog');
+addEventListener('scroll', ()=>{
+  header.classList.toggle('scrolled', scrollY>10);
+  const h = document.documentElement;
+  const pct = h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+  hprog.style.width = pct+'%';
+}, {passive:true});
+
+/* init */
+renderSerie(1);
+observeReveal();
+</script>
+
+<!-- Visor 3D del lente -->
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+let THREE, OrbitControls, RoomEnvironment;
+const MATS=[
+  {n:'CR-39', edge:0.46},
+  {n:'Policarbonato', edge:0.36},
+  {n:'Hi-Index 1.60', edge:0.30},
+  {n:'Ultra 1.67', edge:0.22},
+  {n:'Súper 1.74', edge:0.15},
+];
+const TRE={
+  claro:'<b>Claro.</b> Lente transparente sin tratamiento. La base sobre la que se agregan AR, filtros o tintes.',
+  ar:'<b>Antirreflejante (AR).</b> Capa que elimina los reflejos del lente: te ven los ojos, menos brillos al manejar de noche y en fotos.',
+  foto:'<b>Fotocromático.</b> Se oscurece solo bajo el sol y se aclara en interior. Es lente y lente de sol en uno.',
+  polar:'<b>Polarizado.</b> Bloquea el reflejo del sol en carretera, agua y nieve. El mejor para manejar y exteriores.',
+  tinte:'<b>Tinte solar.</b> Color fijo sobre un lente claro para protegerte de la luz intensa. +$150 sobre el lente claro.',
+  colors:'<b>Foto Colors.</b> Fotocromático que se oscurece en un color (gris, rosa, café, azul, morado, verde). Más estética.'
+};
+const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+let renderer,scene,camera,controls,lens,mat,raf,curMat=0,curTre='claro',tA=0,inited=false,failed=false;
+const cv=document.getElementById('lens3d'), capEl=document.getElementById('l3dcap'), failEl=document.getElementById('l3dfail');
+
+function setCap(){ capEl.innerHTML = TRE[curTre]; }
+setCap();
+
+function lensGeo(edge){
+  const R=1, ct=0.05, N=46, pts=[];
+  for(let i=0;i<=N;i++){const r=R*i/N, y=ct/2+(edge/2-ct/2)*(r/R)*(r/R); pts.push(new THREE.Vector2(r,y));}
+  for(let i=N;i>=0;i--){const r=R*i/N, y=ct/2+(edge/2-ct/2)*(r/R)*(r/R); pts.push(new THREE.Vector2(r,-y));}
+  const g=new THREE.LatheGeometry(pts,100); g.rotateX(Math.PI/2); return g;
+}
+function makeMat(t){
+  const base={metalness:0,roughness:0.04,transmission:1,ior:1.5,thickness:0.7,transparent:true,clearcoat:0.4,clearcoatRoughness:0.08,attenuationDistance:4,attenuationColor:new THREE.Color(0xeef7ff),color:new THREE.Color(0xffffff)};
+  const m=new THREE.MeshPhysicalMaterial(base);
+  if(t==='ar'){ m.iridescence=0.85; m.iridescenceIOR=1.3; m.iridescenceThicknessRange=[120,420]; m.clearcoat=1; m.attenuationColor=new THREE.Color(0xe7fff0); }
+  else if(t==='polar'){ m.transmission=0.18; m.color=new THREE.Color(0x2c2820); m.attenuationColor=new THREE.Color(0x352f24); m.roughness=0.06; m.clearcoat=0.3; }
+  else if(t==='tinte'){ m.transmission=0.5; m.color=new THREE.Color(0xca8a36); m.attenuationColor=new THREE.Color(0xffb14d); m.attenuationDistance=1.4; }
+  else if(t==='foto'||t==='colors'){ m.transmission=0.85; }
+  return m;
+}
+function applyLens(){
+  const g=lensGeo(MATS[curMat].edge);
+  if(!lens){ lens=new THREE.Mesh(g,makeMat(curTre)); mat=lens.material; lens.rotation.x=-0.32; scene.add(lens); }
+  else{ lens.geometry.dispose(); lens.geometry=g; }
+}
+function applyMat(){ if(mat) mat.dispose(); lens.material=makeMat(curTre); mat=lens.material; }
+
+function resize(){
+  if(!renderer) return;
+  const w=cv.clientWidth||420, h=cv.clientHeight||340;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+function loop(){
+  raf=requestAnimationFrame(loop);
+  if(controls) controls.update();
+  if(!reduce && mat){
+    if(curTre==='foto'){ tA+=0.012; const k=Math.sin(tA)*0.5+0.5; mat.color.setRGB(1-0.82*k,1-0.82*k,1-0.80*k); mat.transmission=0.92-0.6*k; }
+    else if(curTre==='colors'){ tA+=0.006; mat.color.setHSL(tA%1,0.55,0.46); }
+  }
+  renderer.render(scene,camera);
+}
+function init(){
+  if(inited||failed) return; inited=true;
+  try{
+    renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.08;
+    scene=new THREE.Scene();
+    const pmrem=new THREE.PMREMGenerator(renderer);
+    scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+    const w=cv.clientWidth||420,h=cv.clientHeight||340;
+    camera=new THREE.PerspectiveCamera(38,w/h,0.1,100); camera.position.set(0,0.45,3.5);
+    const d1=new THREE.DirectionalLight(0xffffff,1.7); d1.position.set(3,4,5); scene.add(d1);
+    const d2=new THREE.DirectionalLight(0xffe9c9,0.7); d2.position.set(-4,-2,3); scene.add(d2);
+    scene.add(new THREE.AmbientLight(0xffffff,0.45));
+    controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=0.08; controls.enablePan=false; controls.minDistance=2.6; controls.maxDistance=5.5;
+    controls.autoRotate=!reduce; controls.autoRotateSpeed=1.7;
+    applyLens(); resize();
+    addEventListener('resize',resize);
+    loop();
+  }catch(e){ fail(e); }
+}
+function fail(e){ failed=true; console.warn('3D lens:',e&&e.message); if(failEl) failEl.style.display='flex'; cv.style.display='none'; }
+
+/* botones */
+document.querySelectorAll('#l3d-mat button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#l3d-mat button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  curMat=+b.dataset.mat; if(lens) applyLens();
+}));
+document.querySelectorAll('#l3d-tre button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#l3d-tre button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  curTre=b.dataset.tre; tA=0; if(lens) applyMat(); setCap();
+}));
+
+/* carga de Three.js */
+async function load3D(){
+  if(inited||failed) return;
+  try{
+    THREE=await import('three');
+    ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
+    ({RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js'));
+    init();
+  }catch(e){ fail(e); }
+}
+/* arranca cuando el visor se acerca a la vista (con fallback si el observer no dispara) */
+const stage=document.querySelector('.l3d-stage');
+let started=false;
+const kick=()=>{ if(started) return; started=true; load3D(); };
+try{
+  const io3d=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io3d.disconnect(); kick(); } },{rootMargin:'200px'});
+  io3d.observe(stage);
+}catch(e){}
+/* fallback: si en 1.2s no arrancó, cargar de todos modos */
+setTimeout(kick,1200);
+/* pausa fuera de pestaña */
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(raf)cancelAnimationFrame(raf); } else if(inited&&!failed){ loop(); } });
+</script>
+</body>
+</html>
