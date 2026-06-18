@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<title>Alto índice 3D · Car & Era</title>
+<style>
+  :root{ --beige:#b3895a; --beige-deep:#9a7245; --ink:#1c1a16; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#0e1116;font-family:'Outfit',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
+  #wrap{position:relative;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .ui{position:absolute;inset:0;pointer-events:none;z-index:5}
+
+  .chips{position:absolute;top:10px;left:0;right:0;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:0 10px;pointer-events:auto}
+  .chip{min-height:40px;padding:0 13px;border:1.5px solid rgba(255,255,255,.22);background:rgba(20,22,28,.55);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:12.5px;cursor:pointer;backdrop-filter:blur(6px);transition:all .18s}
+  .chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
+
+  .mm{position:absolute;font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:20px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.7);transform:translate(-50%,-50%);white-space:nowrap;z-index:6}
+  .mm small{font-size:11px;font-weight:600;font-family:'Outfit',sans-serif;color:#cdbfa8;display:block;text-align:center}
+
+  .verdict{position:absolute;top:54px;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:600;color:#fff;background:rgba(12,14,18,.5);padding:4px 12px;border-radius:9px;white-space:nowrap}
+
+  .ctrl{position:absolute;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(10,12,16,.85) 40%);pointer-events:auto;z-index:6;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .ctrl .tip{font-size:11px;color:#cbbfae}
+  .toggles{display:flex;gap:7px}
+  .tg{min-height:40px;padding:0 12px;border:1.5px solid rgba(255,255,255,.22);background:rgba(20,22,28,.5);border-radius:100px;color:#e7ddcd;font-family:inherit;font-weight:600;font-size:11.5px;cursor:pointer}
+  .tg.on{background:#fff;border-color:#fff;color:var(--ink)}
+
+  .ghost-tag{position:absolute;font-size:10.5px;font-weight:700;color:#fff;background:rgba(120,120,130,.7);padding:3px 8px;border-radius:7px;transform:translate(-50%,-50%);z-index:6;opacity:0;transition:opacity .2s}
+  .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#cbbfae;font-size:13px;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="ui">
+    <div class="chips" id="chips"></div>
+    <div class="verdict" id="verdict">Borde más grueso (referencia)</div>
+    <div class="mm" id="mm" style="opacity:0">9.0<small>mm borde</small></div>
+    <div class="ghost-tag" id="ghostTag">CR-39</div>
+  </div>
+  <div class="ctrl">
+    <span class="tip">Gira con el dedo</span>
+    <div class="toggles">
+      <button class="tg" id="tgGhost">Comparar CR-39</button>
+      <button class="tg" id="tgProfile">Ver de canto</button>
+    </div>
+  </div>
+  <div class="fallback" id="fallback">Tu dispositivo no pudo cargar la vista 3D.<br>A mayor índice, el borde del lente es más delgado con la misma graduación.</div>
+</div>
+
+<script type="importmap">
+{ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+let renderer, scene, camera, controls, group, lens, lensMat, ghost, ghostMat, rim;
+const cv=document.getElementById('cv');
+let running=true, raf=0;
+let showGhost=false, profileView=false;
+let etCur=0.5, etTarget=0.5, lastBuilt=-1;
+
+const lerp=(a,b,k)=>a+(b-a)*k;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+const MATS=[
+  {l:'CR-39 · 1.49', mm:9.0, et:0.50, vd:'Borde más grueso (referencia)'},
+  {l:'1.60',         mm:6.3, et:0.35, vd:'Borde 30% más delgado'},
+  {l:'1.67',         mm:4.9, et:0.27, vd:'Borde 45% más delgado'},
+  {l:'1.74',         mm:3.6, et:0.20, vd:'Borde 60% más delgado · el más delgado'},
+];
+let cur=0;
+const ET_REF=MATS[0].et;
+
+function lensProfile(et){
+  const R=1.0, ct=0.07, N=26, pts=[];
+  for(let i=0;i<=N;i++){ const r=R*i/N; pts.push(new THREE.Vector2(r, ct/2 + (et-ct)/2*Math.pow(r/R,2))); }
+  for(let i=N;i>=0;i--){ const r=R*i/N; pts.push(new THREE.Vector2(r, -(ct/2 + (et-ct)/2*Math.pow(r/R,2)))); }
+  return pts;
+}
+function buildLensGeo(et){ const g=new THREE.LatheGeometry(lensProfile(et),80); g.rotateX(Math.PI/2); g.computeVertexNormals(); return g; }
+
+function init(){
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.1;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  scene=new THREE.Scene(); scene.background=new THREE.Color('#10141b');
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+
+  camera=new THREE.PerspectiveCamera(38,1,0.1,100); camera.position.set(0,0.1,6.5);
+  controls=new OrbitControls(camera,cv);
+  controls.enableDamping=true; controls.dampingFactor=.09; controls.enablePan=false; controls.enableZoom=false;
+  controls.minPolarAngle=Math.PI*0.22; controls.maxPolarAngle=Math.PI*0.78;
+  controls.autoRotate=true; controls.autoRotateSpeed=0.9;
+  controls.addEventListener('start',()=>controls.autoRotate=false);
+
+  scene.add(new THREE.HemisphereLight('#dfe8ff','#2a2620',0.7));
+  const dir=new THREE.DirectionalLight('#ffffff',1.4); dir.position.set(3,4,4); scene.add(dir);
+
+  group=new THREE.Group(); scene.add(group);
+
+  lensMat=new THREE.MeshPhysicalMaterial({ color:'#eef3f6', metalness:0, roughness:0.04,
+    transmission:0.96, thickness:1.2, ior:1.62, clearcoat:1, clearcoatRoughness:0.04,
+    attenuationColor:new THREE.Color('#cfe2ea'), attenuationDistance:3.5, transparent:true });
+  lens=new THREE.Mesh(buildLensGeo(etCur), lensMat); lastBuilt=etCur; group.add(lens);
+
+  ghostMat=new THREE.MeshStandardMaterial({ color:'#c2ccd6', metalness:0, roughness:.55,
+    transparent:true, opacity:.28, depthWrite:false });
+  ghost=new THREE.Mesh(buildLensGeo(ET_REF), ghostMat); ghost.visible=false; group.add(ghost);
+  const ghostEdges=new THREE.Mesh(buildLensGeo(ET_REF), new THREE.MeshBasicMaterial({color:'#dfe7ef',wireframe:true,transparent:true,opacity:.12,depthWrite:false}));
+  ghost.add(ghostEdges);
+
+  // aro del armazón (mismo tamaño siempre)
+  const rimGeo=new THREE.TorusGeometry(1.03,0.05,20,90);
+  rim=new THREE.Mesh(rimGeo,new THREE.MeshStandardMaterial({color:'#2b2b30',metalness:.9,roughness:.32}));
+  group.add(rim);
+
+  document.getElementById('tgGhost').onclick=()=>{ showGhost=!showGhost; document.getElementById('tgGhost').classList.toggle('on',showGhost); ghost.visible=showGhost&&cur!==0; document.getElementById('ghostTag').style.opacity=(showGhost&&cur!==0)?1:0; };
+  document.getElementById('tgProfile').onclick=()=>{ profileView=!profileView; document.getElementById('tgProfile').classList.toggle('on',profileView); controls.autoRotate=false; };
+
+  buildChips(); setMat(0);
+  resize(); window.addEventListener('resize',resize);
+  document.addEventListener('visibilitychange',()=>{ running=!document.hidden; if(running) loop(); });
+  loop();
+}
+
+function buildChips(){
+  document.getElementById('chips').innerHTML=MATS.map((m,i)=>'<button class="chip'+(i===0?' on':'')+'" data-i="'+i+'">'+m.l+'</button>').join('');
+  document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>setMat(+c.dataset.i));
+}
+
+function setMat(i){
+  cur=i; const m=MATS[i];
+  document.querySelectorAll('.chip').forEach((c,j)=>c.classList.toggle('on',j===i));
+  etTarget=m.et;
+  document.getElementById('verdict').textContent=m.vd;
+  document.getElementById('mm').innerHTML=m.mm.toFixed(1)+'<small>mm borde</small>';
+  ghost.visible=showGhost&&i!==0;
+  document.getElementById('ghostTag').style.opacity=(showGhost&&i!==0)?1:0;
+}
+
+function project(v3){
+  const v=v3.clone().project(camera);
+  return { x:(v.x*0.5+0.5)*cv.clientWidth, y:(-v.y*0.5+0.5)*cv.clientHeight, vis:v.z<1 };
+}
+function placeLabels(){
+  // medición flotante en el borde superior del lente
+  const edge=new THREE.Vector3(0,1.02,etCur*0.5).applyMatrix4(group.matrixWorld);
+  const p=project(edge); const mm=document.getElementById('mm');
+  mm.style.left=p.x+'px'; mm.style.top=(p.y-4)+'px'; mm.style.opacity=p.vis?1:0;
+  if(ghost.visible){ const ge=new THREE.Vector3(-1.02,0.7,ET_REF*0.5).applyMatrix4(group.matrixWorld); const gp=project(ge); const gt=document.getElementById('ghostTag'); gt.style.left=gp.x+'px'; gt.style.top=gp.y+'px'; }
+}
+
+function resize(){
+  const w=cv.clientWidth||innerWidth, h=cv.clientHeight||innerHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+  const halfW=1.5, halfH=1.5, vFov=camera.fov*Math.PI/180;
+  const d=Math.max(halfH/Math.tan(vFov/2), halfW/(Math.tan(vFov/2)*camera.aspect))*1.25;
+  const dirv=camera.position.clone().sub(controls.target); if(dirv.lengthSq()<1e-4)dirv.set(0,0,1); dirv.normalize();
+  camera.position.copy(controls.target).addScaledVector(dirv,d); controls.update();
+}
+
+function loop(){
+  if(!running) return; raf=requestAnimationFrame(loop);
+  // morph suave de la geometría
+  etCur=lerp(etCur,etTarget,0.16);
+  if(Math.abs(etCur-lastBuilt)>0.004){ const old=lens.geometry; lens.geometry=buildLensGeo(etCur); old.dispose(); lastBuilt=etCur; }
+  // vista de canto / frontal
+  const targetRotX = profileView ? -Math.PI*0.32 : 0;
+  group.rotation.x = lerp(group.rotation.x, targetRotX, 0.12);
+  controls.update();
+  placeLabels();
+  renderer.render(scene,camera);
+}
+
+try{ init(); }
+catch(err){ console.warn('3D no disponible',err); cv.style.display='none'; document.querySelector('.ctrl').style.display='none'; document.querySelector('.chips').style.display='none'; document.getElementById('fallback').style.display='flex'; }
+</script>
+</body>
+</html>

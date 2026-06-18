@@ -557,14 +557,12 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <h2 class="serif">El <span class="it">material</span> define grosor y resistencia</h2>
     <p>Mientras más alta la graduación, más conviene un índice alto: el lente queda más delgado y ligero.</p>
   </div>
-  <div class="thick-int reveal">
-    <div class="ti-chips" id="tiChips"></div>
-    <div class="ti-stage">
-      <div class="ti-caliper"><span class="ti-mm" id="tiMM">9.0 mm</span></div>
-      <div class="ti-cal-lbl">Grosor del borde</div>
-      <div class="ti-view"><div class="ti-frame"></div><div class="ti-lens"></div></div>
+  <div class="demo-card foto3d-card reveal">
+    <div class="demo-stage demo-3d" data-src="alto-indice-3d.html">
+      <div class="d3-hint">✦ Cargando experiencia 3D…</div>
     </div>
-    <p class="ti-note">Mismo armazón · misma graduación · <b id="tiVerdict">el borde más grueso (referencia)</b></p>
+    <div class="demo-foot"><div class="demo-meta"><b>Alto índice 3D</b><span>Toca un índice · gira con el dedo · compara con CR-39 · ve de canto</span></div>
+      <span style="font-size:12px;color:var(--ink3)">Vista 3D</span></div>
   </div>
 
   <!-- Policarbonato: resistencia al impacto -->
@@ -587,12 +585,12 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   <div class="adv-sim reveal">
     <button class="sim-toggle" type="button" id="simToggle" aria-expanded="false" aria-controls="simPanel" onclick="toggleSim()">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-      Comparación avanzada de grosor (simulador 3D)
+      Simular con la graduación real del paciente
       <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <div class="sim-panel" id="simPanel">
       <div class="sim-head" style="margin-top:18px">
-        <p style="font-size:15px;color:var(--ink2)">Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde. Gíralo con el dedo.</p>
+        <p style="font-size:15px;color:var(--ink2)">Captura la graduación exacta del paciente y muéstrale con sus números reales cómo el alto índice y el armazón adelgazan el borde. Gíralo con el dedo.</p>
       </div>
       <div class="sim3d" style="margin-top:8px">
         <iframe id="simframe" data-src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
@@ -1331,7 +1329,7 @@ function load3D(s){
 }
 
 /* init demos */
-arSet(50); tiRender(); init3DEmbeds();
+arSet(50); init3DEmbeds();
 </script>
 
 <!-- Ajuste de altura del simulador embebido -->
