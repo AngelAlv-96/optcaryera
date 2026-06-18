@@ -79,6 +79,9 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .edu-card p{font-size:14px;color:var(--ink2);margin-top:8px}
 .edu-card .who{margin-top:11px;font-size:12.5px;color:var(--ink);background:var(--beige-tint);border-radius:9px;padding:7px 11px;display:inline-block}
 .edu-card .who b{color:var(--beige-deep)}
+.edu-card.clickable{cursor:pointer}
+.edu-card .see{display:block;margin-top:13px;font-size:12.5px;font-weight:600;color:var(--beige-deep);opacity:.85;transition:opacity .2s,transform .2s}
+.edu-card.clickable:hover .see{opacity:1;transform:translateX(3px)}
 @media(max-width:820px){.edu-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.edu-grid{grid-template-columns:1fr}}
 
@@ -163,6 +166,19 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .cat-chip:hover{border-color:var(--beige)}
 .cat-chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
 
+/* tipo de lente (filtro principal) */
+.tipo-filter{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:0 auto 18px;max-width:760px}
+.tipo-btn{display:flex;align-items:center;gap:11px;flex:1 1 210px;max-width:250px;border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:13px 15px;cursor:pointer;text-align:left;font-family:inherit;transition:border-color .18s,background .18s,box-shadow .18s}
+.tipo-btn:hover{border-color:var(--beige)}
+.tipo-btn.on{border-color:var(--beige);background:var(--beige-tint);box-shadow:0 10px 26px rgba(179,137,90,.16)}
+.tipo-btn .tb-ico{flex:0 0 auto;width:34px;height:34px;border-radius:10px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center}
+.tipo-btn.on .tb-ico{background:#fff}
+.tipo-btn .tb-ico svg{width:20px;height:20px;stroke:var(--beige-deep);fill:none;stroke-width:1.9}
+.tipo-btn .tb-tx{display:flex;flex-direction:column;line-height:1.25}
+.tipo-btn .tb-l{font-weight:600;font-size:14.5px;color:var(--ink)}
+.tipo-btn .tb-s{font-size:11.5px;color:var(--ink2);margin-top:1px}
+@media(max-width:560px){.tipo-btn{flex:1 1 100%;max-width:none}}
+
 /* search */
 .searchbox{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:420px;margin:0 auto 28px}
 .searchbox svg{width:17px;height:17px;stroke:var(--ink3);fill:none;stroke-width:2}
@@ -211,7 +227,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 
 @media print{
   .header,.cat-nav,.searchbox,.serie-toggle,.hero-chips,.edu-card:hover{box-shadow:none!important}
-  .cat-nav,.searchbox,.serie-toggle{display:none!important}
+  .cat-nav,.searchbox,.serie-toggle,.tipo-filter{display:none!important}
+  .edu-card .see{display:none!important}
   body{background:#fff}
   .price-shell,.sec{padding:14px 0}
   [data-serie]{display:block!important}
@@ -257,26 +274,29 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     <p>Según lo que el paciente quiera ver. Define el tipo antes de elegir material y tratamiento.</p>
   </div>
   <div class="edu-grid">
-    <div class="edu-card reveal" data-d="1">
+    <div class="edu-card clickable reveal" data-d="1" onclick="setTipo('sencilla')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/></svg></div>
       <span class="tag">Visión sencilla</span>
       <h3>Monofocal</h3>
       <p>Una sola graduación en todo el lente. Para ver <b>de lejos</b> o <b>de cerca</b>.</p>
       <span class="who"><b>Para:</b> miopía, astigmatismo o solo lectura</span>
+      <span class="see">Ver precios de visión sencilla →</span>
     </div>
-    <div class="edu-card reveal" data-d="2">
+    <div class="edu-card clickable reveal" data-d="2" onclick="setTipo('bifocal')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M22 52 a18 11 0 0 1 36 0" stroke-width="2.4"/></svg></div>
       <span class="tag">Lejos + cerca</span>
       <h3>Bifocal</h3>
       <p>Dos zonas: lejos arriba, cerca abajo. Con línea visible (F/T) o semi-invisible.</p>
       <span class="who"><b>Para:</b> presbicia, quien ya combinaba dos pares</span>
+      <span class="see">Ver precios de bifocales →</span>
     </div>
-    <div class="edu-card reveal" data-d="3">
+    <div class="edu-card clickable reveal" data-d="3" onclick="setTipo('progresivo')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M40 14 L31 66 M40 14 L49 66" stroke-width="1.8" opacity=".55"/></svg></div>
       <span class="tag">Todo en uno</span>
       <h3>Progresivo</h3>
       <p>Lejos, intermedio y cerca en un solo lente, <b>sin líneas</b>. Transición natural.</p>
       <span class="who"><b>Para:</b> presbicia que quiere un lente discreto y cómodo</span>
+      <span class="see">Ver precios de progresivos →</span>
     </div>
   </div>
 </section>
@@ -396,6 +416,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     </div>
     <div class="serie-sub reveal" id="serie-sub"></div>
 
+    <div class="tipo-filter reveal" id="tipofilter"></div>
+
     <div class="cat-nav" id="catnav"></div>
 
     <div class="searchbox">
@@ -428,41 +450,41 @@ const SOLAR='Tinte solar +$150';
 
 const DATA = {
   1:{ sub:'<b>Serie 1</b> — graduaciones estándar', range:'SPH +4.00 / −6.00 · CIL hasta −2.00', cats:[
-    {id:'s1-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+    {id:'s1-claros', tipo:'sencilla', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
       {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:899},
       {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1699},
     ], note:'Estilo solar (tinte) +$150'},
-    {id:'s1-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+    {id:'s1-digital', tipo:'sencilla', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
       {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1499},
       {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:1999},
       {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2499},
       {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:2799},
       {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3299},
     ]},
-    {id:'s1-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+    {id:'s1-foto', tipo:'sencilla', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
       {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:2699},
       {mat:'Anti-blue AR', ben:'Fotocromático con filtro de luz azul', p:2799},
       {mat:'Blue Light', ben:'Fotocromático con mayor claridad y control de luz azul', p:3199},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:3599, star:true},
       {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2199},
     ], note:'Foto Colors +$700 en policarbonato'},
-    {id:'s1-polar', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
+    {id:'s1-polar', tipo:'sencilla', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
       {mat:'Polarizado 1.56', ben:'Reduce reflejos del sol y deslumbramientos', p:2699},
       {mat:'Polarizado Xperio 1.59 (Essilor)', ben:'Máxima nitidez, contraste superior y colores definidos', p:5499, star:true},
     ]},
-    {id:'s1-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (SPH +3.00 a −2.00 · ADD hasta +3.00)', combo:[
+    {id:'s1-bifFT', tipo:'bifocal', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (SPH +3.00 a −2.00 · ADD hasta +3.00)', combo:[
       {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1099],['Policarbonato Bco.',1999],['Fotocromático sin AR',3099]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2199],['Policarbonato',3299]]},
       {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2399],['Fotocromático',3999]]},
       {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',3699],['Policarbonato AR',4599]]},
     ], note:'Tinte solar +$150'},
-    {id:'s1-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición más suave y discreta.', combo:[
+    {id:'s1-bifSI', tipo:'bifocal', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición más suave y discreta.', combo:[
       {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1799]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2899],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',2999],['Fotocromático',3699]]},
       {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',3599],['Policarbonato',4199]]},
     ], note:'Tinte solar +$150'},
-    {id:'s1-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas.', combo:[
+    {id:'s1-prog', tipo:'progresivo', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas.', combo:[
       {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',1799],['Policarbonato Bco.',3099],['Fotocromático sin AR (Poli)',4299]]},
       {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',2599],['Policarbonato',3399]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3549],['Fotocromático',4599]]},
@@ -472,25 +494,25 @@ const DATA = {
   ]},
 
   2:{ sub:'<b>Serie 2</b> — graduaciones altas o especiales · consulta disponibilidad', range:'A partir de ESF ±5.75 · CIL −2.25', cats:[
-    {id:'s2-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+    {id:'s2-claros', tipo:'sencilla', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
       {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:999},
       {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1999},
     ], note:'Estilo solar (tinte) +$150'},
-    {id:'s2-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+    {id:'s2-digital', tipo:'sencilla', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
       {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1799},
       {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:2699},
       {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2999},
       {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:3299},
       {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3799},
     ]},
-    {id:'s2-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+    {id:'s2-foto', tipo:'sencilla', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
       {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:3099},
       {mat:'Anti-blue AR · Hi-Index', ben:'Fotocromático con filtro de luz azul', p:3099},
       {mat:'Blue Light · Hi-Index', ben:'Fotocromático con mayor claridad y control de luz azul', p:3699},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:4099, star:true},
       {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2499},
     ], note:'Foto Colors +$700 en policarbonato'},
-    {id:'s2-ultra', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
+    {id:'s2-ultra', tipo:'sencilla', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
       {h:'Ultra-thin 1.67', s:'', lines:[
         ['ESF −4.00 a −12.00 · CIL hasta −2.00',4099],
         ['ESF −4.00 a −10.00 · CIL hasta −4.00',4699],
@@ -505,19 +527,19 @@ const DATA = {
         ['Positivos y cilindro, o fuera de rango',8999]]},
       {h:'Ultra-thin 1.67 + Fotocromático', s:'', lines:[['Esféricos ± y combinados (CIL)',6499]]},
     ]},
-    {id:'s2-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
+    {id:'s2-bifFT', tipo:'bifocal', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1399],['Policarbonato Bco.',2999],['Fotocromático sin AR',3699]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2599],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2699],['Fotocromático',4599]]},
       {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',4299],['Policarbonato AR',6199]]},
     ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
-    {id:'s2-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición suave. (Esfera/Cilindro)', combo:[
+    {id:'s2-bifSI', tipo:'bifocal', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición suave. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1999]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',3299],['Policarbonato',3999]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3399],['Fotocromático',3999]]},
       {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',4099],['Policarbonato',4599]]},
     ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
-    {id:'s2-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas. (Esfera/Cilindro)', combo:[
+    {id:'s2-prog', tipo:'progresivo', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',2099],['Policarbonato Bco.',3599],['Fotocromático sin AR (Poli)',4899]]},
       {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',3199],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3949],['Fotocromático',5699]]},
@@ -529,59 +551,104 @@ const DATA = {
 
 const money = n => '$' + n.toLocaleString('es-MX');
 let curSerie = 1;
+let curTipo  = 'sencilla';
+let bodyMode = 'tipo';   // 'tipo' = filtrado por tipo de lente · 'all' = todo (durante búsqueda)
 
-function renderSerie(s){
-  const d = DATA[s];
+const TIPOS = [
+  {id:'sencilla', label:'Visión sencilla', sub:'Lejos o cerca · una graduación',
+   ico:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/></svg>'},
+  {id:'bifocal', label:'Bifocal', sub:'Lejos y cerca, dividido',
+   ico:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M5 15 a7 4.5 0 0 1 14 0"/></svg>'},
+  {id:'progresivo', label:'Progresivo', sub:'Lejos, intermedio y cerca',
+   ico:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 4 L9 20 M12 4 L15 20" opacity=".55"/></svg>'},
+];
+
+function catsFor(serie, tipo){
+  return DATA[serie].cats.filter(c => tipo==='all' || c.tipo===tipo);
+}
+
+function catHTML(c){
+  let inner;
+  if(c.rows){
+    inner = '<div class="ptable">' + c.rows.map(r=>{
+      const star = r.star ? '<span class="star">★</span>' : '';
+      return '<div class="prow" data-txt="'+(r.mat+' '+r.ben+' '+r.p).toLowerCase()+'">'+
+        '<div><div class="mat">'+r.mat+star+'</div><div class="ben">'+r.ben+'</div></div>'+
+        '<div class="price">'+money(r.p)+'</div></div>';
+    }).join('') + '</div>';
+  } else {
+    inner = '<div class="combo">' + c.combo.map(b=>{
+      return '<div class="cblock" data-txt="'+(b.h+' '+b.s+' '+b.lines.map(l=>l.join(' ')).join(' ')).toLowerCase()+'">'+
+        '<h4>'+b.h+'</h4>'+(b.s?'<div class="cs">'+b.s+'</div>':'<div class="cs">&nbsp;</div>')+
+        b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+
+        '</div>';
+    }).join('') + '</div>';
+  }
+  const note = c.note ? '<div class="cat-note"><span class="b">Nota</span> '+c.note+'</div>' : '';
+  return '<div class="cat" id="'+c.id+'" data-cat>'+
+    '<div class="cat-title"><span class="ico">'+ICONS[c.icon]+'</span><h3>'+c.title+'</h3></div>'+
+    '<div class="cat-desc">'+c.desc+'</div>'+ inner + note +'</div>';
+}
+
+function renderBody(cats){
+  document.getElementById('catnav').innerHTML = cats.map(c=>
+    '<button class="cat-chip" data-target="'+c.id+'" onclick="goCat(\''+c.id+'\')">'+c.title.replace(/ ·.*/,'')+'</button>').join('');
+  document.getElementById('price-body').innerHTML = cats.map(catHTML).join('');
+}
+
+function renderTipoFilter(){
+  document.getElementById('tipofilter').innerHTML = TIPOS.map(t=>
+    '<button class="tipo-btn'+(t.id===curTipo?' on':'')+'" onclick="setTipo(\''+t.id+'\')">'+
+      '<span class="tb-ico">'+t.ico+'</span>'+
+      '<span class="tb-tx"><span class="tb-l">'+t.label+'</span><span class="tb-s">'+t.sub+'</span></span>'+
+    '</button>').join('');
+}
+
+function renderAll(){
+  const d = DATA[curSerie];
   document.getElementById('serie-sub').innerHTML = d.sub + '<br><span class="range-pill">' + d.range + '</span>';
-  // chips
-  const nav = document.getElementById('catnav');
-  nav.innerHTML = d.cats.map((c,i)=>'<button class="cat-chip'+(i===0?' on':'')+'" data-target="'+c.id+'" onclick="goCat(\''+c.id+'\')">'+c.title.replace(/ ·.*/,'')+'</button>').join('');
-  // body
-  const body = document.getElementById('price-body');
-  body.innerHTML = d.cats.map(c=>{
-    let inner;
-    if(c.rows){
-      inner = '<div class="ptable">' + c.rows.map(r=>{
-        const star = r.star ? '<span class="star">★</span>' : '';
-        return '<div class="prow" data-txt="'+(r.mat+' '+r.ben+' '+r.p).toLowerCase()+'">'+
-          '<div><div class="mat">'+r.mat+star+'</div><div class="ben">'+r.ben+'</div></div>'+
-          '<div class="price">'+money(r.p)+'</div></div>';
-      }).join('') + '</div>';
-    } else {
-      inner = '<div class="combo">' + c.combo.map(b=>{
-        const star = b.h.startsWith('★');
-        return '<div class="cblock" data-txt="'+(b.h+' '+b.s+' '+b.lines.map(l=>l.join(' ')).join(' ')).toLowerCase()+'">'+
-          '<h4>'+b.h+'</h4>'+(b.s?'<div class="cs">'+b.s+'</div>':'<div class="cs">&nbsp;</div>')+
-          b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+
-          '</div>';
-      }).join('') + '</div>';
-    }
-    const note = c.note ? '<div class="cat-note"><span class="b">Nota</span> '+c.note+'</div>' : '';
-    return '<div class="cat" id="'+c.id+'" data-cat>'+
-      '<div class="cat-title"><span class="ico">'+ICONS[c.icon]+'</span><h3>'+c.title+'</h3></div>'+
-      '<div class="cat-desc">'+c.desc+'</div>'+ inner + note +'</div>';
-  }).join('');
-  observeReveal();
+  renderTipoFilter();
+  bodyMode = 'tipo';
+  renderBody(catsFor(curSerie, curTipo));
   document.getElementById('search').value='';
   document.getElementById('noresults').style.display='none';
+  document.getElementById('tipofilter').style.opacity='1';
+  document.getElementById('catnav').style.opacity='1';
+  observeReveal();
 }
 
 function setSerie(s){
   curSerie = s;
   document.getElementById('btn-s1').classList.toggle('on', s===1);
   document.getElementById('btn-s2').classList.toggle('on', s===2);
-  renderSerie(s);
-  window.scrollTo({top:document.querySelector('.price-shell').offsetTop-50, behavior:'smooth'});
+  renderAll();
+  scrollToPrices();
+}
+
+function setTipo(t){
+  curTipo = t;
+  renderAll();
+  scrollToPrices();
+}
+
+function scrollToPrices(){
+  const sh = document.querySelector('.price-shell');
+  if(sh) window.scrollTo({top: sh.offsetTop-50, behavior:'smooth'});
 }
 
 function goCat(id){
-  document.querySelectorAll('.cat-chip').forEach(c=>c.classList.toggle('on', c.dataset.target===id));
   const el = document.getElementById(id);
   if(el) window.scrollTo({top:el.offsetTop-110, behavior:'smooth'});
 }
 
 function doSearch(q){
   q = q.trim().toLowerCase();
+  // mientras se busca, mostrar TODOS los tipos para no esconder coincidencias
+  const wantMode = q ? 'all' : 'tipo';
+  if(wantMode !== bodyMode){
+    bodyMode = wantMode;
+    renderBody(q ? catsFor(curSerie,'all') : catsFor(curSerie,curTipo));
+  }
   let anyVisible = false;
   document.querySelectorAll('[data-cat]').forEach(cat=>{
     const items = cat.querySelectorAll('[data-txt]');
@@ -595,6 +662,7 @@ function doSearch(q){
     if(catVisible) anyVisible = true;
   });
   document.getElementById('noresults').style.display = anyVisible ? 'none' : 'block';
+  document.getElementById('tipofilter').style.opacity = q ? '.45' : '1';
   document.getElementById('catnav').style.opacity = q ? '.4' : '1';
 }
 
@@ -617,7 +685,7 @@ addEventListener('scroll', ()=>{
 }, {passive:true});
 
 /* init */
-renderSerie(1);
+renderAll();
 observeReveal();
 </script>
 
