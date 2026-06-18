@@ -5,391 +5,464 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex,nofollow">
 <title>Lista de Precios · Ópticas Car & Era</title>
-<meta name="theme-color" content="#f5f4f1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#16171a" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f1ea">
 <link rel="icon" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#f4f3f0; --panel:#ffffff; --panel2:#faf9f6;
-  --ink:#1b1a17; --ink2:#6b6660; --ink3:#9a948b;
-  --line:#e6e2da; --line2:#efebe3;
-  --beige:#a9794a; --beige-tint:#f3ece0; --beige-ink:#8a6238;
-  --ok:#2f9e6b; --star:#d99a2b;
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#15161a; --panel:#1d1f24; --panel2:#222429;
-    --ink:#ededeb; --ink2:#a7a39c; --ink3:#74716a;
-    --line:#2c2f36; --line2:#262931;
-    --beige:#c89b62; --beige-tint:#262017; --beige-ink:#d6ab73;
-    --ok:#43b783; --star:#e0b04a;
-  }
+  --paper:#f6f1ea; --paper2:#fffdf9; --card:#ffffff;
+  --ink:#1c1a16; --ink2:#615b52; --ink3:#8c857a;
+  --line:#e9e0d2; --line2:#f0e9dd;
+  --beige:#b3895a; --beige-deep:#9a7245; --beige-soft:#efe4d2; --beige-tint:#f7efe2;
+  --star:#e0a93b;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font-family:'Outfit',system-ui,sans-serif;font-weight:400;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1140px;margin:0 auto;padding:0 20px}
-.serif{font-family:'Cormorant Garamond',Georgia,serif}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+.serif{font-family:'Cormorant Garamond',serif}
 a{color:inherit;text-decoration:none}
-button{font-family:inherit}
 ::selection{background:var(--beige);color:#fff}
 
-/* ===== header ===== */
-.header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--line)}
-.header-in{max-width:1140px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px}
-.h-logo{height:30px;width:auto}
-.h-logo.dark{display:none}
-@media (prefers-color-scheme: dark){.h-logo.light{display:none}.h-logo.dark{display:block}}
-.h-nav{display:flex;gap:2px;margin:0 auto}
-.h-nav a{display:inline-flex;align-items:center;min-height:40px;padding:0 13px;border-radius:8px;font-size:14px;font-weight:600;color:var(--ink2)}
-.h-nav a:hover{color:var(--ink);background:var(--panel2)}
-.h-nav a.active{color:var(--beige-ink);background:var(--beige-tint)}
-.h-print{display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;background:var(--panel);color:var(--ink)}
-.h-print:hover{border-color:var(--beige)}
-@media(max-width:560px){.h-nav a{padding:0 10px;font-size:13px}.h-print span{display:none}.h-logo{height:26px}}
+/* reveal */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal[data-d="1"]{transition-delay:.07s}.reveal[data-d="2"]{transition-delay:.14s}.reveal[data-d="3"]{transition-delay:.21s}.reveal[data-d="4"]{transition-delay:.28s}.reveal[data-d="5"]{transition-delay:.35s}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none}}
 
-/* ===== generic panel / bento ===== */
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}
-.sec{padding:30px 0;scroll-margin-top:62px}
-.sec-h{margin-bottom:16px}
-.sec-h .ey{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--beige-ink)}
-.sec-h h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.1;margin-top:2px}
-.sec-h p{font-size:14.5px;color:var(--ink2);margin-top:4px;max-width:640px}
+/* grain */
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E")}
 
-/* ===== hero ===== */
-.hero{padding:26px 0 6px}
-.hero h1{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.05}
-.hero p{font-size:15px;color:var(--ink2);margin-top:6px;max-width:600px}
+/* header */
+.header{position:sticky;top:0;z-index:50;background:rgba(246,241,234,.85);backdrop-filter:blur(16px);border-bottom:1px solid transparent;transition:border-color .3s,background .3s}
+.header.scrolled{border-bottom-color:var(--line);background:rgba(246,241,234,.94)}
+.header-in{max-width:1100px;margin:0 auto;padding:13px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.h-logo{display:block;height:34px;width:auto}
+.h-right{display:flex;align-items:center;gap:14px;font-size:13px;color:var(--ink2)}
+.h-print{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:100px;padding:8px 15px;font-weight:600;font-size:13px;cursor:pointer;background:none;color:var(--ink);font-family:inherit;transition:border-color .2s}
+.h-print:hover{border-color:var(--ink)}
+.hprog{position:absolute;left:0;bottom:-1px;height:2px;background:linear-gradient(90deg,var(--beige),var(--beige-deep));width:0}
 
-/* ===== cotizador ===== */
-.adv{padding:22px}
-.adv-steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:18px}
-.adv-dot{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 6px;border:none;background:none;font-family:inherit;font-weight:600;font-size:12.5px;color:var(--ink3);cursor:default}
-.adv-dot.clk{cursor:pointer}.adv-dot.clk:hover .n{border-color:var(--beige)}
-.adv-dot .n{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2)}
-.adv-dot.on{color:var(--ink)}.adv-dot.on .n{background:var(--beige);border-color:var(--beige);color:#fff}
-.adv-dot.done .n{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-.adv-dot .lbl{display:none}@media(min-width:640px){.adv-dot .lbl{display:inline}}
-.adv-sep{width:14px;height:1px;background:var(--line)}
-.adv-q{font-weight:600;font-size:19px;margin-bottom:3px}
-.adv-hint{font-size:13.5px;color:var(--ink2);margin-bottom:14px}
-.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.opt{display:flex;flex-direction:column;gap:5px;min-height:84px;justify-content:center;padding:13px;border:1px solid var(--line);background:var(--panel2);border-radius:10px;cursor:pointer;text-align:left}
-.opt:hover{border-color:var(--beige)}
-.opt:focus-visible{outline:2px solid var(--beige);outline-offset:2px}
-.opt.sel{border-color:var(--beige);background:var(--beige-tint)}
-.opt .oi{width:22px;height:22px;stroke:var(--beige-ink);fill:none;stroke-width:1.8}
-.opt .ol{font-weight:600;font-size:14.5px}
-.opt .os{font-size:12px;color:var(--ink2)}
-.adv-foot{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
-.btn{min-height:42px;padding:0 16px;border:1px solid var(--line);background:var(--panel);border-radius:8px;font-family:inherit;font-weight:600;font-size:13.5px;color:var(--ink);cursor:pointer}
-.btn:hover{border-color:var(--beige)}
-.btn.ghost{border:none;background:none;color:var(--beige-ink)}
+/* eyebrow */
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-size:11.5px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:14px}
+.eyebrow .ln{width:24px;height:1px;background:var(--beige)}
 
-/* recomendación */
-.reco-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.reco{border:1px solid var(--line);border-radius:10px;padding:16px;background:var(--panel2);display:flex;flex-direction:column}
-.reco.best{border-color:var(--beige);background:var(--beige-tint)}
-.reco .tier{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3)}
-.reco.best .tier{color:#fff;background:var(--beige);align-self:flex-start;padding:2px 8px;border-radius:5px}
-.reco h4{font-size:16px;font-weight:600;margin-top:7px}
-.reco .rmeta{font-size:12.5px;color:var(--ink2);margin-top:3px}
-.reco .rprice{font-weight:700;font-size:27px;margin-top:9px;letter-spacing:-.01em}
-.reco ul{list-style:none;margin-top:9px;display:flex;flex-direction:column;gap:4px}
-.reco li{font-size:12.5px;padding-left:17px;position:relative}
-.reco li::before{content:'✓';position:absolute;left:0;color:var(--beige-ink);font-weight:700}
-.reco .rent{margin-top:auto;padding-top:10px;font-size:12px;color:var(--ink3)}
-.reco .rent b{color:var(--ink2)}
+/* HERO */
+.hero{position:relative;text-align:center;padding:60px 24px 40px;overflow:hidden}
+.hero .blob{position:absolute;border-radius:50%;filter:blur(70px);pointer-events:none;z-index:0}
+.hero .b1{width:380px;height:380px;left:-6%;top:-10%;background:radial-gradient(circle,rgba(240,205,156,.45),transparent 68%)}
+.hero .b2{width:300px;height:300px;right:-4%;top:20%;background:radial-gradient(circle,rgba(228,190,150,.38),transparent 68%)}
+.hero-in{position:relative;z-index:1;max-width:760px;margin:0 auto}
+.hero h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(42px,8vw,76px);line-height:1;letter-spacing:-.01em}
+.hero h1 .yr{display:block;font-style:italic;color:var(--beige-deep);font-size:.5em;letter-spacing:.05em;margin-top:6px}
+.hero p{font-size:17px;color:var(--ink2);margin-top:18px;max-width:540px;margin-left:auto;margin-right:auto}
+.hero-chips{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:24px}
+.hchip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:8px 15px;font-size:13px;font-weight:500;color:var(--ink2)}
+.hchip svg{width:15px;height:15px;stroke:var(--beige);fill:none;stroke-width:1.9}
 
-/* ===== materiales: grosor ===== */
-.mat-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px}
-@media(max-width:760px){.mat-grid{grid-template-columns:1fr}}
-.thick{padding:20px;display:flex;flex-direction:column}
-.ti-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
-.ti-chip{min-height:40px;padding:0 13px;border:1px solid var(--line);background:var(--panel2);border-radius:7px;font-family:inherit;font-weight:600;font-size:13px;color:var(--ink2);cursor:pointer}
-.ti-chip:hover{border-color:var(--beige)}
-.ti-chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
-.ti-stage{flex:1;display:flex;align-items:center;justify-content:center;gap:18px;min-height:150px}
-.ti-cut svg{height:150px;display:block}
-.ti-edge{fill:var(--beige-tint);stroke:var(--beige);stroke-width:1.5}
-.ti-read{text-align:left}
-.ti-read .mm{font-size:30px;font-weight:700;letter-spacing:-.02em}
-.ti-read .mm small{font-size:13px;font-weight:600;color:var(--ink3)}
-.ti-read .vd{font-size:13px;color:var(--ink2);margin-top:4px;max-width:150px}
-.ti-note{font-size:12.5px;color:var(--ink2);margin-top:14px;border-top:1px solid var(--line2);padding-top:12px}
-.ti-note b{color:var(--ink)}
+/* section shell */
+.sec{padding:46px 0}
+.sec-head{text-align:center;max-width:640px;margin:0 auto 36px}
+.sec-head h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(30px,5vw,46px);line-height:1.05;letter-spacing:-.01em}
+.sec-head h2 .it{font-style:italic;color:var(--beige-deep)}
+.sec-head p{font-size:16px;color:var(--ink2);margin-top:12px}
 
-/* impacto (estático, sin animación) */
-.impact{padding:20px;display:flex;flex-direction:column}
-.imp-row{display:flex;gap:14px;align-items:stretch;flex:1}
-.imp-col{flex:1;border:1px solid var(--line);border-radius:9px;padding:14px;text-align:center;background:var(--panel2)}
-.imp-col .lens{width:54px;height:66px;margin:4px auto 10px;border-radius:50%;border:3px solid var(--line);background:var(--bg)}
-.imp-col.cr .lens{border-color:#c98b6a;background:repeating-linear-gradient(45deg,transparent 0 5px,rgba(201,139,106,.25) 5px 7px)}
-.imp-col.pc .lens{border-color:var(--ok);background:var(--panel)}
-.imp-col h4{font-size:14px;font-weight:600}
-.imp-col p{font-size:12px;color:var(--ink2);margin-top:2px}
-.imp-col .lvl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:8px}
-.imp-col.cr .lvl{color:#c07a4f}.imp-col.pc .lvl{color:var(--ok)}
-.imp-note{font-size:12.5px;color:var(--ink2);margin-top:14px;border-top:1px solid var(--line2);padding-top:12px}
-.imp-note b{color:var(--ink)}
+/* EDU material/treatment cards */
+.edu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.edu-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:24px 22px;transition:transform .25s,box-shadow .25s,border-color .25s}
+.edu-card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(28,26,22,.09);border-color:var(--beige-soft)}
+.edu-vis{height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.edu-card h3{font-size:18px;font-weight:600;margin-bottom:3px}
+.edu-card .tag{font-size:12px;font-weight:600;letter-spacing:.04em;color:var(--beige-deep);text-transform:uppercase}
+.edu-card p{font-size:14px;color:var(--ink2);margin-top:8px}
+.edu-card .who{margin-top:11px;font-size:12.5px;color:var(--ink);background:var(--beige-tint);border-radius:9px;padding:7px 11px;display:inline-block}
+.edu-card .who b{color:var(--beige-deep)}
+@media(max-width:820px){.edu-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.edu-grid{grid-template-columns:1fr}}
 
-/* ===== tratamientos (toggles estáticos) ===== */
-.tre-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
-.tre{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:16px;display:flex;flex-direction:column}
-.tre-top{display:flex;gap:12px;align-items:flex-start}
-.tre .sw{flex:0 0 auto;width:58px;height:58px;border-radius:10px;border:1px solid var(--line);position:relative;overflow:hidden;background:#9aa6ad}
-.tre h4{font-size:15px;font-weight:600}
-.tre .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--beige-ink)}
-.tre p{font-size:12.5px;color:var(--ink2);margin-top:4px}
-.tre-ctrl{margin-top:12px;display:flex;align-items:center;gap:8px}
-.toggle{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-.toggle button{min-height:36px;padding:0 12px;border:none;background:var(--panel2);font-family:inherit;font-weight:600;font-size:12px;color:var(--ink2);cursor:pointer}
-.toggle button.on{background:var(--ink);color:var(--bg)}
-.tre-state{font-size:12px;color:var(--ink2)}
-.tre .slider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;background:var(--line);outline:none}
-.tre .slider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--beige);border:3px solid var(--panel);cursor:pointer}
-.tre .slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--beige);border:3px solid var(--panel);cursor:pointer}
-/* swatch states (planos, sin animación) */
-.sw.ar .gl{position:absolute;inset:0;background:linear-gradient(120deg,transparent 38%,rgba(255,255,255,.92) 50%,transparent 62%)}
-.sw.ar.on .gl{background:linear-gradient(120deg,transparent 42%,rgba(120,200,150,.5) 50%,transparent 58%)}
-.sw.ar{background:#aeb9c0}
-.sw.blue{background:#1d2740}
-.sw.blue .ray{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(90,140,255,.85) 0 3px,transparent 3px 11px)}
-.sw.blue.on .ray{background:repeating-linear-gradient(90deg,rgba(90,140,255,.32) 0 2px,transparent 2px 13px)}
-.sw.pol{background:linear-gradient(#bcdcff,#8b929b)}
-.sw.pol .gl{position:absolute;left:0;right:0;top:46%;height:30%;background:rgba(255,255,255,.95)}
-.sw.pol.on{filter:saturate(1.4) contrast(1.1)}
-.sw.pol.on .gl{display:none}
-.sw.foto{background:rgba(30,28,34,calc(var(--d,0)*.82))}
-.sw.foto::after{content:'';position:absolute;inset:0;background:linear-gradient(#9ecbff,#dfeeff);opacity:calc(1 - var(--d,0))}
-.sw.colors{background:conic-gradient(#8a8a8a,#c96fa8,#8a5a2a,#3556c0,#6a3fa0,#2e8b57,#8a8a8a)}
-.sw.tinte{background:linear-gradient(#c98a3a,#e9c489)}
+/* lens svg visuals */
+.lens-ico{width:74px;height:74px}
+.lens-ring{fill:none;stroke:var(--ink);stroke-width:2.4}
 
-/* ===== tipo de lente (cards) ===== */
-.lens-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
-.lcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:16px;cursor:pointer;text-align:left;font-family:inherit;color:inherit;width:100%}
-.lcard:hover{border-color:var(--beige)}
-.lcard:focus-visible{outline:2px solid var(--beige);outline-offset:2px}
-.lcard .lic{width:40px;height:40px;stroke:var(--ink2);fill:none;stroke-width:1.8;margin-bottom:8px}
-.lcard .tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--beige-ink)}
-.lcard h4{font-size:16px;font-weight:600}
-.lcard p{font-size:12.5px;color:var(--ink2);margin-top:4px}
-.lcard .who{font-size:12px;color:var(--ink2);margin-top:8px}
-.lcard .who b{color:var(--ink)}
-.lcard .go{display:block;margin-top:10px;font-size:12.5px;font-weight:600;color:var(--beige-ink)}
+/* thickness comparison */
+.thick-wrap{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:30px 26px;margin-top:8px}
+.thick-row{display:flex;align-items:flex-end;justify-content:center;gap:26px;flex-wrap:wrap;min-height:140px}
+.thick-item{text-align:center;width:96px}
+.lens-cut{height:110px;display:flex;align-items:center;justify-content:center}
+.lens-cut svg{height:110px}
+.lens-edge{fill:url(#glassgrad);stroke:var(--beige-deep);stroke-width:1.4}
+.thick-item .mat{font-weight:600;font-size:14px;margin-top:10px}
+.thick-item .idx{font-size:12px;color:var(--ink3)}
+.thick-item .lvl{font-size:11px;color:var(--beige-deep);font-weight:600;margin-top:2px}
+.thick-note{text-align:center;font-size:13.5px;color:var(--ink2);margin-top:18px}
+.thick-note b{color:var(--ink)}
 
-/* ===== precios ===== */
-.price-tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-.seg button{min-height:44px;padding:0 16px;border:none;background:none;font-family:inherit;font-weight:600;font-size:13.5px;color:var(--ink2);cursor:pointer;border-radius:8px}
-.seg button.on{background:var(--ink);color:var(--bg)}
-.search{flex:1;min-width:180px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:0 12px;min-height:44px}
-.search svg{width:16px;height:16px;stroke:var(--ink3);fill:none;stroke-width:2}
-.search input{flex:1;border:none;outline:none;background:none;font-family:inherit;font-size:14px;color:var(--ink)}
-.search input::placeholder{color:var(--ink3)}
-.serie-sub{font-size:12.5px;color:var(--ink2);margin-bottom:12px}
-.serie-sub b{color:var(--beige-ink)}
-.range-pill{display:inline-block;font-size:11.5px;background:var(--beige-tint);color:var(--beige-ink);border-radius:6px;padding:2px 9px;margin-left:6px}
+/* treatment demos */
+.tre-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:820px){.tre-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.tre-grid{grid-template-columns:1fr}}
+.demo-lens{width:78px;height:78px;border-radius:50%;position:relative;overflow:hidden;border:3px solid #d9cdba;background:#eef3f6}
+/* AR */
+.d-ar .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#dfeaf0,#eef4f7)}
+.d-ar .glare{position:absolute;top:-30%;left:-40%;width:60%;height:160%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent);transform:rotate(20deg);animation:sweep 3.4s ease-in-out infinite}
+@keyframes sweep{0%,100%{left:-50%}50%{left:90%}}
+.d-ar .sheen{position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 0 18px rgba(120,190,140,.55)}
+/* blue */
+.d-blue .glass{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#cfe0ef)}
+.d-blue .rays{position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(115deg,rgba(70,120,220,.0) 0 7px,rgba(70,120,220,.22) 7px 9px);animation:bluefade 2.8s ease-in-out infinite}
+@keyframes bluefade{0%,100%{opacity:.25}50%{opacity:.7}}
+/* foto */
+.d-foto .glass{position:absolute;inset:0;border-radius:50%;background:#eef3f6;animation:darken 4s ease-in-out infinite}
+@keyframes darken{0%,100%{background:#eef3f6}50%{background:#3b3a37}}
+/* polar */
+.d-polar .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(135deg,#8a7d5f,#6f6444)}
+.d-polar .gl{position:absolute;inset:0;border-radius:50%;background:repeating-linear-gradient(60deg,rgba(255,255,255,.0) 0 6px,rgba(255,255,255,.55) 6px 8px);animation:polclear 3.6s ease-in-out infinite}
+@keyframes polclear{0%{opacity:.85}45%,100%{opacity:0}}
+/* colors */
+.d-colors .glass{position:absolute;inset:0;border-radius:50%;animation:hue 6s linear infinite}
+@keyframes hue{0%{background:#7a7a7a}20%{background:#c96fa8}40%{background:#8a5a2a}60%{background:#3556c0}80%{background:#6a3fa0}100%{background:#7a7a7a}}
+/* tinte */
+.d-tinte .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,#c98a3a,#e9c489)}
+@media(prefers-reduced-motion:reduce){.d-ar .glare,.d-blue .rays,.d-foto .glass,.d-polar .gl,.d-colors .glass{animation:none}}
 
-.cat{margin-bottom:22px;scroll-margin-top:120px}
-.cat-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.cat-h .ico{width:34px;height:34px;flex:0 0 auto;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--panel)}
-.cat-h .ico svg{width:18px;height:18px;stroke:var(--beige-ink);fill:none;stroke-width:1.8}
-.cat-h h3{font-size:18px;font-weight:600}
-.cat-desc{font-size:13px;color:var(--ink2);margin:0 0 10px 44px}
-.ptable{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
-.prow{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:12px 15px;border-bottom:1px solid var(--line2)}
+/* simulador embebido */
+.sim-head{text-align:center;max-width:680px;margin:0 auto 16px}
+.sim-head h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.1}
+.sim-head h3 .it{font-style:italic;color:var(--beige-deep)}
+.sim-head p{font-size:15px;color:var(--ink2);margin-top:8px}
+.sim3d{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--card);box-shadow:0 14px 40px rgba(28,26,22,.06)}
+.sim3d iframe{width:100%;border:0;display:block;min-height:1180px;background:var(--paper)}
+@media(max-width:860px){.sim3d iframe{min-height:1640px}}
+
+/* premium / special cards */
+.prem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:680px){.prem-grid{grid-template-columns:1fr}}
+.prem-card{display:flex;gap:15px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;transition:transform .22s,box-shadow .22s}
+.prem-card:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(28,26,22,.08)}
+.prem-card .pico{flex:0 0 auto;width:42px;height:42px;border-radius:12px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center}
+.prem-card .pico svg{width:22px;height:22px;stroke:var(--beige-deep);fill:none;stroke-width:1.8}
+.prem-card h3{font-size:16px;font-weight:600;display:flex;align-items:center;gap:7px}
+.prem-card .badge{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:var(--beige);border-radius:6px;padding:2px 7px}
+.prem-card p{font-size:13.5px;color:var(--ink2);margin-top:5px}
+
+/* PRICES */
+.price-shell{background:var(--paper2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:46px 0 56px}
+.serie-toggle{display:flex;justify-content:center;gap:8px;margin:0 auto 8px;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:5px;width:max-content}
+.serie-toggle button{border:none;background:none;font-family:inherit;font-weight:600;font-size:14px;color:var(--ink2);padding:10px 22px;border-radius:100px;cursor:pointer;transition:all .2s}
+.serie-toggle button.on{background:var(--ink);color:#fff}
+.serie-sub{text-align:center;font-size:13.5px;color:var(--ink2);margin-bottom:18px}
+.serie-sub b{color:var(--beige-deep)}
+.range-pill{display:inline-block;font-family:'Outfit',monospace;font-size:12px;letter-spacing:.02em;background:var(--beige-tint);color:var(--beige-deep);border-radius:8px;padding:4px 12px;margin-top:7px}
+
+/* category chips nav */
+.cat-nav{position:sticky;top:60px;z-index:30;display:flex;gap:8px;overflow-x:auto;padding:12px 0;margin-bottom:6px;background:linear-gradient(var(--paper2),var(--paper2) 70%,transparent);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.cat-nav::-webkit-scrollbar{display:none}
+.cat-chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .18s;white-space:nowrap}
+.cat-chip:hover{border-color:var(--beige)}
+.cat-chip.on{background:var(--beige);border-color:var(--beige);color:#fff}
+
+/* search */
+.searchbox{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:420px;margin:0 auto 28px}
+.searchbox svg{width:17px;height:17px;stroke:var(--ink3);fill:none;stroke-width:2}
+.searchbox input{border:none;outline:none;font-family:inherit;font-size:14.5px;color:var(--ink);background:none;flex:1}
+.searchbox input::placeholder{color:var(--ink3)}
+
+/* category block */
+.cat{margin-bottom:34px;scroll-margin-top:120px}
+.cat-title{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.cat-title .ico{width:38px;height:38px;flex:0 0 auto;border-radius:11px;background:var(--beige-tint);display:flex;align-items:center;justify-content:center}
+.cat-title .ico svg{width:21px;height:21px;stroke:var(--beige-deep);fill:none;stroke-width:1.9}
+.cat-title h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:28px;line-height:1.1}
+.cat-desc{font-size:14px;color:var(--ink2);margin:0 0 14px 50px}
+
+/* price table */
+.ptable{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.prow{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line2);transition:background .15s}
 .prow:last-child{border-bottom:none}
-.prow:hover{background:var(--panel2)}
-.prow .mat{font-weight:600;font-size:14.5px}
-.prow .star{color:var(--star)}
-.prow .ben{font-size:12px;color:var(--ink2);margin-top:1px}
-.prow .price{font-weight:700;font-size:19px;white-space:nowrap}
-.cat-note{font-size:12px;color:var(--ink2);margin-top:8px;display:flex;gap:7px;align-items:baseline}
-.cat-note .b{background:var(--beige-tint);color:var(--beige-ink);font-weight:700;border-radius:5px;padding:1px 7px;font-size:11px;flex:0 0 auto}
-.combo{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-.cblock{border:1px solid var(--line);border-radius:9px;background:var(--panel);padding:14px}
-.cblock h5{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--beige-ink)}
-.cblock .cs{font-size:12px;color:var(--ink2);margin:2px 0 8px;min-height:14px}
-.cline{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line2)}
-.cline:first-of-type{border-top:none}
-.cline .l{font-size:13px}
-.cline .p{font-weight:700;font-size:16px;white-space:nowrap}
-.cline.star .l::before{content:'★ ';color:var(--star)}
-.no-results{display:none;text-align:center;color:var(--ink3);font-size:14px;padding:24px}
+.prow:hover{background:var(--beige-tint)}
+.prow .mat{font-weight:600;font-size:15px;display:flex;align-items:center;gap:7px}
+.prow .star{color:var(--star);font-size:14px}
+.prow .ben{font-size:12.5px;color:var(--ink2);font-weight:400;margin-top:2px}
+.prow .price{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:24px;white-space:nowrap;color:var(--ink)}
+.prow .price small{font-size:14px;color:var(--ink3);font-weight:500}
+.cat-note{font-size:12.5px;color:var(--ink2);margin-top:9px;display:flex;align-items:center;gap:6px}
+.cat-note .b{background:var(--beige-tint);color:var(--beige-deep);font-weight:600;border-radius:7px;padding:2px 9px;font-size:12px}
 
-.footer{padding:26px 0 36px;color:var(--ink3);font-size:12.5px;border-top:1px solid var(--line);margin-top:24px}
-.footer .disc{color:var(--ink2);max-width:680px;margin-bottom:6px}
+/* combo blocks (bifocal/progresivo/ultra) */
+.combo{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:680px){.combo{grid-template-columns:1fr}}
+.cblock{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.cblock h4{font-size:14px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--beige-deep)}
+.cblock .cs{font-size:12.5px;color:var(--ink2);margin:3px 0 11px}
+.cline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:1px dashed var(--line)}
+.cline:first-of-type{border-top:none}
+.cline .l{font-size:13.5px;color:var(--ink)}
+.cline .p{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:20px;white-space:nowrap}
+.cline.star .l::before{content:'★ ';color:var(--star)}
+
+.foot-note{text-align:center;font-size:12.5px;color:var(--ink3);margin-top:8px}
+.no-results{text-align:center;color:var(--ink3);padding:30px;font-size:14px;display:none}
+
+/* footer */
+.footer{padding:40px 24px;text-align:center;color:var(--ink3);font-size:13px}
+.footer .disc{max-width:620px;margin:0 auto 10px;color:var(--ink2)}
 
 @media print{
-  .header,.h-nav,.h-print,.price-tools,.tre-grid,.lens-cards,.adv-foot,.adv-steps{display:none!important}
+  .header,.cat-nav,.searchbox,.serie-toggle,.hero-chips,.edu-card:hover{box-shadow:none!important}
+  .cat-nav,.searchbox,.serie-toggle{display:none!important}
   body{background:#fff}
-  .panel,.ptable,.cblock,.reco{border-color:#ccc}
-  .cat{break-inside:avoid}
+  .price-shell,.sec{padding:14px 0}
+  [data-serie]{display:block!important}
+  .reveal{opacity:1!important;transform:none!important}
 }
 </style>
 </head>
 <body>
 
-<header class="header">
+<header class="header" id="header">
   <div class="header-in">
-    <img src="logo-caryera-dark.svg" alt="Car & Era" class="h-logo light">
-    <img src="logo-caryera.svg" alt="Car & Era" class="h-logo dark">
-    <nav class="h-nav" id="hnav">
-      <a href="#cotizador">Cotizador</a>
-      <a href="#materiales">Materiales</a>
-      <a href="#precios">Precios</a>
-    </nav>
-    <button class="h-print" onclick="window.print()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      <span>Imprimir</span>
-    </button>
+    <img src="logo-caryera-dark.svg" alt="Car & Era" class="h-logo">
+    <div class="h-right">
+      <button class="h-print" onclick="window.print()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimir
+      </button>
+    </div>
   </div>
+  <div class="hprog" id="hprog"></div>
 </header>
 
-<div class="wrap">
-
-  <!-- HERO -->
-  <section class="hero">
-    <h1 class="serif">Lista de Precios <span style="color:var(--beige-ink)">2026</span></h1>
-    <p>Cotiza en 3 preguntas, consulta materiales y precios al instante. Herramienta interna de venta.</p>
-  </section>
-
-  <!-- COTIZADOR -->
-  <section class="sec" id="cotizador">
-    <div class="sec-h"><div class="ey">Cotizador</div><h2 class="serif">Cotiza respondiendo 3 preguntas</h2></div>
-    <div class="panel adv">
-      <div class="adv-steps" id="adv-steps"></div>
-      <div id="adv-body"></div>
-      <div class="adv-foot" id="adv-foot" style="display:none">
-        <button class="btn" onclick="advBack()">← Atrás</button>
-        <button class="btn ghost" onclick="advRestart()">Empezar de nuevo</button>
-      </div>
+<!-- HERO -->
+<section class="hero">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="hero-in reveal">
+    <div class="eyebrow"><span class="ln"></span> Catálogo interno <span class="ln"></span></div>
+    <h1 class="serif">Lista de Precios<span class="yr">2025</span></h1>
+    <p>Conoce los materiales, entiende qué le conviene a cada paciente y consulta el precio al instante. Una guía para asesorar con confianza.</p>
+    <div class="hero-chips">
+      <span class="hchip"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Examen incluido</span>
+      <span class="hchip"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Laboratorio propio</span>
+      <span class="hchip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Listos desde 35 min</span>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- MATERIALES -->
-  <section class="sec" id="materiales">
-    <div class="sec-h"><div class="ey">Materiales</div><h2 class="serif">Grosor, resistencia y tratamientos</h2>
-      <p>El material define el grosor y la resistencia. Los tratamientos suman valor según el uso.</p></div>
+<!-- EDU: tipo de lente -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 1 <span class="ln"></span></div>
+    <h2 class="serif">¿Qué <span class="it">tipo de lente</span> necesita?</h2>
+    <p>Según lo que el paciente quiera ver. Define el tipo antes de elegir material y tratamiento.</p>
+  </div>
+  <div class="edu-grid">
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/></svg></div>
+      <span class="tag">Visión sencilla</span>
+      <h3>Monofocal</h3>
+      <p>Una sola graduación en todo el lente. Para ver <b>de lejos</b> o <b>de cerca</b>.</p>
+      <span class="who"><b>Para:</b> miopía, astigmatismo o solo lectura</span>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M22 52 a18 11 0 0 1 36 0" stroke-width="2.4"/></svg></div>
+      <span class="tag">Lejos + cerca</span>
+      <h3>Bifocal</h3>
+      <p>Dos zonas: lejos arriba, cerca abajo. Con línea visible (F/T) o semi-invisible.</p>
+      <span class="who"><b>Para:</b> presbicia, quien ya combinaba dos pares</span>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M40 14 L31 66 M40 14 L49 66" stroke-width="1.8" opacity=".55"/></svg></div>
+      <span class="tag">Todo en uno</span>
+      <h3>Progresivo</h3>
+      <p>Lejos, intermedio y cerca en un solo lente, <b>sin líneas</b>. Transición natural.</p>
+      <span class="who"><b>Para:</b> presbicia que quiere un lente discreto y cómodo</span>
+    </div>
+  </div>
+</section>
 
-    <div class="mat-grid">
-      <!-- grosor por índice -->
-      <div class="panel thick">
-        <div class="ti-chips" id="tiChips"></div>
-        <div class="ti-stage">
-          <div class="ti-cut"><svg viewBox="0 0 60 150" id="tiSvg"><path class="ti-edge" id="tiPath"></path></svg></div>
-          <div class="ti-read"><div class="mm" id="tiMM">9.0<small> mm</small></div><div class="vd" id="tiVd">Borde más grueso (referencia)</div></div>
-        </div>
-        <div class="ti-note">Mismo armazón y graduación. <b>Mayor índice = borde más delgado y ligero</b>. Evita el efecto "fondo de botella" en graduaciones altas.</div>
-      </div>
+<!-- EDU: material / grosor -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 2 <span class="ln"></span></div>
+    <h2 class="serif">El <span class="it">material</span> define grosor y resistencia</h2>
+    <p>Mientras más alta la graduación, más conviene un índice alto: el lente queda más delgado y ligero.</p>
+  </div>
+  <div class="thick-wrap reveal">
+    <svg width="0" height="0"><defs><linearGradient id="glassgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eef4f7"/><stop offset="1" stop-color="#d7e6ee"/></linearGradient></defs></svg>
+    <div class="thick-row">
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 5 C40 30 40 80 22 105 C18 80 18 30 22 5 Z"/></svg></div><div class="mat">CR-39</div><div class="idx">índice 1.49</div><div class="lvl">El más grueso</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 8 C36 31 36 79 22 102 C19 79 19 31 22 8 Z"/></svg></div><div class="mat">Policarbonato</div><div class="idx">índice 1.59</div><div class="lvl">Irrompible</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 12 C33 33 33 77 22 98 C20 77 20 33 22 12 Z"/></svg></div><div class="mat">Hi-Index 1.60</div><div class="idx">índice 1.60</div><div class="lvl">Delgado</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 18 C30 35 30 75 22 92 C21 75 21 35 22 18 Z"/></svg></div><div class="mat">Ultra 1.67</div><div class="idx">índice 1.67</div><div class="lvl">Muy delgado</div></div>
+      <div class="thick-item"><div class="lens-cut"><svg viewBox="0 0 44 110"><path class="lens-edge" d="M22 24 C28 38 28 72 22 86 C21 72 21 38 22 24 Z"/></svg></div><div class="mat">Súper 1.74</div><div class="idx">índice 1.74</div><div class="lvl">El más delgado</div></div>
+    </div>
+    <p class="thick-note">Corte del borde de la mica a la misma graduación. <b>CR-39</b> es lo más económico; el <b>policarbonato</b> es ideal para niños y deporte; los <b>alto índice (1.60–1.74)</b> evitan el efecto "fondo de botella" en graduaciones altas.</p>
+  </div>
 
-      <!-- resistencia (estático) -->
-      <div class="panel impact">
-        <div class="imp-row">
-          <div class="imp-col cr"><div class="lens"></div><h4>CR-39</h4><p>Estándar</p><div class="lvl">Mayor tensión</div></div>
-          <div class="imp-col pc"><div class="lens"></div><h4>Policarbonato</h4><p>Reforzado</p><div class="lvl">Distribuye mejor</div></div>
-        </div>
-        <div class="imp-note"><b>Mayor resistencia a impactos.</b> Ideal para niños, deporte y trabajo activo.</div>
-      </div>
+  <!-- Simulador de micas en 3D (embebido) -->
+  <div class="sim-head reveal" style="margin-top:34px">
+    <h3 class="serif">Simulador de micas <span class="it">en 3D</span></h3>
+    <p>Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde — con vidrio y antirreflejante realistas. Gíralo con el dedo.</p>
+  </div>
+  <div class="sim3d reveal">
+    <iframe id="simframe" src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
+  </div>
+</section>
+
+<!-- EDU: tratamientos -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 3 <span class="ln"></span></div>
+    <h2 class="serif">Los <span class="it">tratamientos</span> que suman valor</h2>
+    <p>Cada uno resuelve algo distinto. Combínalos según el estilo de vida del paciente.</p>
+  </div>
+  <div class="tre-grid">
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><div class="demo-lens d-ar"><div class="glass"></div><div class="sheen"></div><div class="glare"></div></div></div>
+      <span class="tag">AR</span><h3>Antirreflejante</h3>
+      <p>Quita los reflejos del lente. Te ven los ojos, menos brillos en fotos y mejor visión nocturna al manejar.</p>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><div class="demo-lens d-blue"><div class="glass"></div><div class="rays"></div></div></div>
+      <span class="tag">Anti-Blue / Blue Light</span><h3>Filtro de luz azul</h3>
+      <p>Filtra la luz azul de celular, compu y TV. Menos fatiga visual en jornadas largas frente a pantallas.</p>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><div class="demo-lens d-foto"><div class="glass"></div></div></div>
+      <span class="tag">Transitions</span><h3>Fotocromático</h3>
+      <p>Se oscurece solo bajo el sol y se aclara en interior. Es lente y lente de sol en uno.</p>
+    </div>
+    <div class="edu-card reveal" data-d="1">
+      <div class="edu-vis"><div class="demo-lens d-colors"><div class="glass"></div></div></div>
+      <span class="tag">Foto Colors</span><h3>Fotocromático de color</h3>
+      <p>Igual que el fotocromático, pero se oscurece en un color (gris, rosa, café, azul, morado, verde). Más estética.</p>
+    </div>
+    <div class="edu-card reveal" data-d="2">
+      <div class="edu-vis"><div class="demo-lens d-polar"><div class="glass"></div><div class="gl"></div></div></div>
+      <span class="tag">Polarizado</span><h3>Anti-deslumbramiento</h3>
+      <p>Elimina el reflejo del sol en carretera, agua y nieve. El mejor para manejar y actividades al aire libre.</p>
+    </div>
+    <div class="edu-card reveal" data-d="3">
+      <div class="edu-vis"><div class="demo-lens d-tinte"><div class="glass"></div></div></div>
+      <span class="tag">Estilo Solar</span><h3>Tinte solar</h3>
+      <p>Agrega color o tinte fijo a un lente claro para protegerte de la luz intensa. <b>+$150</b> sobre el lente claro.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PREMIUM / ESPECIALES -->
+<section class="sec wrap">
+  <div class="sec-head reveal">
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Para asesorar mejor <span class="ln"></span></div>
+    <h2 class="serif">Opciones <span class="it">premium</span> y especiales</h2>
+    <p>Las que aparecen en la lista y conviene saber explicar.</p>
+  </div>
+  <div class="prem-grid">
+    <div class="prem-card reveal" data-d="1">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6 15 a6 4 0 0 1 12 0"/></svg></span>
+      <div><h3>Bifocal F/T vs Semi-invisible</h3>
+      <p><b>F/T</b> (Flat Top) tiene una línea visible que separa lejos y cerca. El <b>Semi-invisible</b> hace esa transición de forma discreta, casi sin notarse — más estético por un poco más.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="2">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 21 M12 3 L15 21" opacity=".6"/><path d="M4 9 H20"/></svg></span>
+      <div><h3>Progresivo Panoramic 360 <span class="badge">Premium</span></h3>
+      <p>Progresivo de campo amplio: zonas de lejos, intermedio y cerca <b>más grandes</b> y con menos distorsión a los lados. Visión más natural y adaptación más rápida que un progresivo estándar.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="1">
+      <span class="pico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></span>
+      <div><h3>Fotocromático Generación 9 <span class="badge">Última gen</span></h3>
+      <p>La versión más nueva del fotocromático: se <b>oscurece y aclara más rápido</b>, llega más oscuro al sol y dura más con el tiempo. Para quien lo usa todo el día, dentro y fuera.</p></div>
+    </div>
+    <div class="prem-card reveal" data-d="2">
+      <span class="pico"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg></span>
+      <div><h3>Polarizado Xperio 1.59 (Essilor) <span class="badge">Essilor</span></h3>
+      <p>Polarizado de marca premium: <b>máxima nitidez</b>, contraste superior y colores más definidos. El tope de gama para manejar y exteriores, en material resistente 1.59.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICES -->
+<div class="price-shell">
+  <div class="wrap">
+    <div class="sec-head reveal" style="margin-bottom:20px">
+      <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Precios <span class="ln"></span></div>
+      <h2 class="serif">Cotiza al <span class="it">instante</span></h2>
     </div>
 
-    <!-- tratamientos (toggles estáticos, sin animación) -->
-    <div class="tre-grid" id="treGrid"></div>
-  </section>
-
-  <!-- TIPO DE LENTE -->
-  <section class="sec">
-    <div class="sec-h"><div class="ey">Tipo de lente</div><h2 class="serif">¿Qué necesita ver el paciente?</h2></div>
-    <div class="lens-cards" id="lensCards"></div>
-  </section>
-
-  <!-- PRECIOS -->
-  <section class="sec" id="precios">
-    <div class="sec-h"><div class="ey">Precios</div><h2 class="serif">Cotiza al instante</h2></div>
-    <div class="price-tools">
-      <span class="seg"><button id="btn-s1" class="on" onclick="setSerie(1)">Serie 1</button><button id="btn-s2" onclick="setSerie(2)">Serie 2</button></span>
-      <label class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="search" type="text" placeholder="Buscar material, tratamiento o precio…" oninput="doSearch(this.value)"></label>
+    <div class="serie-toggle reveal">
+      <button id="btn-s1" class="on" onclick="setSerie(1)">Serie 1</button>
+      <button id="btn-s2" onclick="setSerie(2)">Serie 2</button>
     </div>
-    <div class="serie-sub" id="serie-sub"></div>
-    <span class="seg" id="tipoFilter" style="margin-bottom:14px"></span>
-    <div id="price-body" style="margin-top:14px"></div>
-    <div class="no-results" id="noresults">Sin coincidencias.</div>
-  </section>
+    <div class="serie-sub reveal" id="serie-sub"></div>
 
-  <footer class="footer">
-    <p class="disc">Los precios aplican en graduaciones estándar. La <b>Serie 2</b> es para graduaciones altas o especiales (consulta disponibilidad). Policarbonato con AR: 15 días hábiles.</p>
-    <p>Ópticas Car &amp; Era · Uso interno</p>
-  </footer>
+    <div class="cat-nav" id="catnav"></div>
+
+    <div class="searchbox">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Buscar material, tratamiento o precio…" oninput="doSearch(this.value)">
+    </div>
+
+    <div id="price-body"></div>
+    <div class="no-results" id="noresults">Sin coincidencias para tu búsqueda.</div>
+  </div>
 </div>
 
+<footer class="footer">
+  <p class="disc">Los precios aplican en graduaciones estándar. Consulta disponibilidad según receta. <b>Serie 2</b> aplica para graduaciones altas o especiales. Policarbonato con AR entrega en 15 días hábiles.</p>
+  <p>Ópticas Car &amp; Era · Uso interno</p>
+</footer>
+
 <script>
-/* ============ ICONOS ============ */
-const SVG = {
-  lejos:'<svg class="oi" viewBox="0 0 24 24"><path d="M3 12h13M11 7l5 5-5 5"/></svg>',
-  cerca:'<svg class="oi" viewBox="0 0 24 24"><rect x="4" y="6" width="12" height="9"/><path d="M7 18h6"/></svg>',
-  ambos:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M5 15a7 4.5 0 0 1 14 0"/></svg>',
-  todo:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 4 9 20M12 4l3 16"/></svg>',
-  comp:'<svg class="oi" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
-  manejo:'<svg class="oi" viewBox="0 0 24 24"><path d="M3 13l2-5a3 3 0 0 1 2.8-2h8.4A3 3 0 0 1 19 8l2 5"/><path d="M3 13h18v4H3z"/><circle cx="7" cy="17" r="1.3"/><circle cx="17" cy="17" r="1.3"/></svg>',
-  sol:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 1v3M12 20v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
-  deporte:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M6 6c3 2 3 10 0 12M18 6c-3 2-3 10 0 12"/></svg>',
-  general:'<svg class="oi" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
-  grad1:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6"/></svg>',
-  grad2:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6M12 9v6"/></svg>'
-};
+/* ============ DATOS DE PRECIOS ============ */
 const ICONS = {
   claros:'<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
-  digital:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>',
+  digital:'<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>',
   foto:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4" y1="12" x2="1" y2="12"/><line x1="23" y1="12" x2="20" y2="12"/></svg>',
   polar:'<svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 1 0 20"/><path d="M12 2a10 10 0 0 0 0 20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
   bifocal:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6 15 a6 4 0 0 1 12 0"/></svg>',
-  progresivo:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 21 M12 3 L15 21"/></svg>',
+  progresivo:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3 L9 21 M12 3 L15 21" opacity=".6"/></svg>',
   ultra:'<svg viewBox="0 0 24 24"><path d="M3 12 C7 5 17 5 21 12 C17 19 7 19 3 12 Z"/></svg>'
 };
+const SOLAR='Tinte solar +$150';
 
-/* ============ DATOS DE PRECIOS (intactos) ============ */
 const DATA = {
   1:{ sub:'<b>Serie 1</b> — graduaciones estándar', range:'SPH +4.00 / −6.00 · CIL hasta −2.00', cats:[
-    {id:'s1-claros', tipo:'sencilla', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+    {id:'s1-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
       {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:899},
       {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1699},
     ], note:'Estilo solar (tinte) +$150'},
-    {id:'s1-digital', tipo:'sencilla', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+    {id:'s1-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
       {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1499},
       {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:1999},
       {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2499},
       {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:2799},
       {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3299},
     ]},
-    {id:'s1-foto', tipo:'sencilla', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+    {id:'s1-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
       {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:2699},
       {mat:'Anti-blue AR', ben:'Fotocromático con filtro de luz azul', p:2799},
       {mat:'Blue Light', ben:'Fotocromático con mayor claridad y control de luz azul', p:3199},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:3599, star:true},
       {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2199},
     ], note:'Foto Colors +$700 en policarbonato'},
-    {id:'s1-polar', tipo:'sencilla', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
+    {id:'s1-polar', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
       {mat:'Polarizado 1.56', ben:'Reduce reflejos del sol y deslumbramientos', p:2699},
       {mat:'Polarizado Xperio 1.59 (Essilor)', ben:'Máxima nitidez, contraste superior y colores definidos', p:5499, star:true},
     ]},
-    {id:'s1-bifFT', tipo:'bifocal', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (SPH +3.00 a −2.00 · ADD hasta +3.00)', combo:[
+    {id:'s1-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (SPH +3.00 a −2.00 · ADD hasta +3.00)', combo:[
       {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1099],['Policarbonato Bco.',1999],['Fotocromático sin AR',3099]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2199],['Policarbonato',3299]]},
       {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2399],['Fotocromático',3999]]},
       {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',3699],['Policarbonato AR',4599]]},
     ], note:'Tinte solar +$150'},
-    {id:'s1-bifSI', tipo:'bifocal', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición más suave y discreta.', combo:[
+    {id:'s1-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición más suave y discreta.', combo:[
       {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1799]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2899],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',2999],['Fotocromático',3699]]},
       {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',3599],['Policarbonato',4199]]},
     ], note:'Tinte solar +$150'},
-    {id:'s1-prog', tipo:'progresivo', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas.', combo:[
+    {id:'s1-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas.', combo:[
       {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',1799],['Policarbonato Bco.',3099],['Fotocromático sin AR (Poli)',4299]]},
       {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',2599],['Policarbonato',3399]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3549],['Fotocromático',4599]]},
@@ -399,25 +472,25 @@ const DATA = {
   ]},
 
   2:{ sub:'<b>Serie 2</b> — graduaciones altas o especiales · consulta disponibilidad', range:'A partir de ESF ±5.75 · CIL −2.25', cats:[
-    {id:'s2-claros', tipo:'sencilla', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
+    {id:'s2-claros', icon:'claros', title:'Lentes claros · Esenciales', desc:'Económicos y funcionales para uso diario.', rows:[
       {mat:'Básico (CR-39)', ben:'Económico, ligero y funcional para uso diario', p:999},
       {mat:'Resistencia (Policarbonato)', ben:'Alta resistencia a impactos · niños, deporte y actividad', p:1999},
     ], note:'Estilo solar (tinte) +$150'},
-    {id:'s2-digital', tipo:'sencilla', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
+    {id:'s2-digital', icon:'digital', title:'Protección digital', desc:'Reduce reflejos, fatiga visual y luz azul.', rows:[
       {mat:'Hi-Index Antirreflejante', ben:'Reduce reflejos y mejora nitidez frente a pantallas', p:1799},
       {mat:'Policarbonato Antirreflejante', ben:'Resistencia a impactos + antirreflejo para uso activo', p:2699},
       {mat:'Anti-blue AR', ben:'Filtra luz azul y reduce la fatiga visual', p:2999},
       {mat:'Blue Light', ben:'Mayor filtrado de luz azul para jornadas prolongadas', p:3299},
       {mat:'Policarbonato Anti-Blue AR', ben:'Protección digital avanzada + máxima resistencia', p:3799},
     ]},
-    {id:'s2-foto', tipo:'sencilla', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
+    {id:'s2-foto', icon:'foto', title:'Fotocromáticos', desc:'Se adaptan a la luz: claros en interior, oscuros al sol.', rows:[
       {mat:'Policarbonato AR', ben:'Fotocromático con alta resistencia y filtro digital', p:3099},
       {mat:'Anti-blue AR · Hi-Index', ben:'Fotocromático con filtro de luz azul', p:3099},
       {mat:'Blue Light · Hi-Index', ben:'Fotocromático con mayor claridad y control de luz azul', p:3699},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:4099, star:true},
       {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2499},
     ], note:'Foto Colors +$700 en policarbonato'},
-    {id:'s2-ultra', tipo:'sencilla', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
+    {id:'s2-ultra', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
       {h:'Ultra-thin 1.67', s:'', lines:[
         ['ESF −4.00 a −12.00 · CIL hasta −2.00',4099],
         ['ESF −4.00 a −10.00 · CIL hasta −4.00',4699],
@@ -432,19 +505,19 @@ const DATA = {
         ['Positivos y cilindro, o fuera de rango',8999]]},
       {h:'Ultra-thin 1.67 + Fotocromático', s:'', lines:[['Esféricos ± y combinados (CIL)',6499]]},
     ]},
-    {id:'s2-bifFT', tipo:'bifocal', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
+    {id:'s2-bifFT', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1399],['Policarbonato Bco.',2999],['Fotocromático sin AR',3699]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',2599],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Menos cansancio con luz artificial', lines:[['Filtro Azul',2699],['Fotocromático',4599]]},
       {h:'Fotocromáticos', s:'Oscurecen al sol, claros en interior', lines:[['Hi-Index AR',4299],['Policarbonato AR',6199]]},
     ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
-    {id:'s2-bifSI', tipo:'bifocal', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición suave. (Esfera/Cilindro)', combo:[
+    {id:'s2-bifSI', icon:'bifocal', title:'Bifocales Semi-invisible', desc:'Lejos y cerca con transición suave. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Línea discreta para uso diario', lines:[['CR-39',1999]]},
       {h:'Antirreflejante', s:'Reduce reflejos al leer y caminar', lines:[['Hi-Index',3299],['Policarbonato',3999]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3399],['Fotocromático',3999]]},
       {h:'Fotocromáticos', s:'Se aclaran en interior, oscuros al sol', lines:[['Hi-Index',4099],['Policarbonato',4599]]},
     ], note:'Tinte solar +$150 · Policarbonato con AR entrega en 15 días hábiles'},
-    {id:'s2-prog', tipo:'progresivo', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas. (Esfera/Cilindro)', combo:[
+    {id:'s2-prog', icon:'progresivo', title:'Multifocales Progresivos', desc:'Lejos, intermedio y cerca en un solo lente, sin líneas. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Progresivos sencillos para iniciar', lines:[['CR-39',2099],['Policarbonato Bco.',3599],['Fotocromático sin AR (Poli)',4899]]},
       {h:'Antirreflejante', s:'Más claridad y menos reflejos', lines:[['Hi-Index',3199],['Policarbonato',3699]]},
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3949],['Fotocromático',5699]]},
@@ -455,247 +528,107 @@ const DATA = {
 };
 
 const money = n => '$' + n.toLocaleString('es-MX');
-let curSerie = 1, curTipo = 'sencilla';
-const TIPOS = [{id:'sencilla',label:'Visión sencilla'},{id:'bifocal',label:'Bifocal'},{id:'progresivo',label:'Progresivo'}];
-const catsFor = (serie,tipo)=> DATA[serie].cats.filter(c=> tipo==='all' || c.tipo===tipo);
+let curSerie = 1;
 
-/* ============ PRECIOS (render directo desde DATA) ============ */
-function catHTML(c){
-  let inner;
-  if(c.rows){
-    inner = '<div class="ptable">' + c.rows.map(r=>{
-      const star = r.star ? '<span class="star">★</span>' : '';
-      return '<div class="prow"><div><div class="mat">'+r.mat+' '+star+'</div><div class="ben">'+r.ben+'</div></div><div class="price">'+money(r.p)+'</div></div>';
-    }).join('') + '</div>';
-  } else {
-    inner = '<div class="combo">' + c.combo.map(b=>
-      '<div class="cblock"><h5>'+b.h+'</h5><div class="cs">'+(b.s||'')+'</div>'+
-      b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+'</div>'
-    ).join('') + '</div>';
-  }
-  const note = c.note ? '<div class="cat-note"><span class="b">Nota</span><span>'+c.note+'</span></div>' : '';
-  return '<div class="cat" id="'+c.id+'">'+
-    '<div class="cat-h"><span class="ico">'+ICONS[c.icon]+'</span><h3>'+c.title+'</h3></div>'+
-    '<div class="cat-desc">'+c.desc+'</div>'+ inner + note +'</div>';
-}
-function renderPrices(){
-  const d=DATA[curSerie];
-  document.getElementById('serie-sub').innerHTML = d.sub + '<span class="range-pill">'+d.range+'</span>';
-  document.getElementById('tipoFilter').innerHTML = TIPOS.map(t=>'<button class="'+(t.id===curTipo?'on':'')+'" onclick="setTipo(\''+t.id+'\')">'+t.label+'</button>').join('');
-  const q=(document.getElementById('search').value||'').trim().toLowerCase();
-  let cats = q ? catsFor(curSerie,'all') : catsFor(curSerie,curTipo);
-  if(q){
-    cats = cats.map(c=>{
-      const hay = txt=> txt.toLowerCase().includes(q);
-      if(c.rows){ const rows=c.rows.filter(r=>hay(r.mat+' '+r.ben+' '+r.p)); return rows.length?{...c,rows}:null; }
-      const combo=c.combo.map(b=>{ const lines=b.lines.filter(l=>hay(b.h+' '+l[0]+' '+l[1])); return lines.length?{...b,lines}:null; }).filter(Boolean);
-      return combo.length?{...c,combo}:null;
-    }).filter(Boolean);
-  }
-  document.getElementById('price-body').innerHTML = cats.map(catHTML).join('');
-  document.getElementById('noresults').style.display = (q && !cats.length) ? 'block' : 'none';
-  document.getElementById('tipoFilter').style.opacity = q ? '.4' : '1';
-}
-function setSerie(s){ curSerie=s; document.getElementById('btn-s1').classList.toggle('on',s===1); document.getElementById('btn-s2').classList.toggle('on',s===2); renderPrices(); }
-function setTipo(t){ curTipo=t; document.getElementById('search').value=''; renderPrices(); document.getElementById('precios').scrollIntoView({block:'start'}); }
-function doSearch(){ renderPrices(); }
-
-/* ============ TIPO DE LENTE (cards) ============ */
-const LENS_CARDS=[
-  {tipo:'sencilla', ico:'<svg class="lic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18"/></svg>', tag:'Visión sencilla', t:'Monofocal', p:'Una sola graduación. Para ver de lejos <b>o</b> de cerca.', who:'miopía, astigmatismo o solo lectura'},
-  {tipo:'bifocal', ico:'<svg class="lic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18"/><path d="M11 30a13 8 0 0 1 26 0"/></svg>', tag:'Lejos + cerca', t:'Bifocal', p:'Dos zonas: lejos arriba, cerca abajo (F/T o semi-invisible).', who:'presbicia, quien combinaba dos pares'},
-  {tipo:'progresivo', ico:'<svg class="lic" viewBox="0 0 48 48"><circle cx="24" cy="24" r="18"/><path d="M24 8 19 40M24 8l5 32"/></svg>', tag:'Todo en uno', t:'Progresivo', p:'Lejos, intermedio y cerca en un solo lente, <b>sin líneas</b>.', who:'presbicia que quiere un lente discreto'},
-];
-function renderLensCards(){
-  document.getElementById('lensCards').innerHTML = LENS_CARDS.map(c=>
-    '<button class="lcard" type="button" onclick="setTipo(\''+c.tipo+'\')">'+c.ico+
-    '<div class="tag">'+c.tag+'</div><h4>'+c.t+'</h4><p>'+c.p+'</p>'+
-    '<div class="who"><b>Para:</b> '+c.who+'</div><span class="go">Ver precios →</span></button>').join('');
-}
-
-/* ============ GROSOR POR ÍNDICE (SVG, instantáneo) ============ */
-const TI=[
-  {l:'CR-39 · 1.49', e:22, mm:'9.0', vd:'Borde más grueso (referencia)'},
-  {l:'1.60',         e:15, mm:'6.3', vd:'Borde 30% más delgado'},
-  {l:'1.67',         e:11, mm:'4.9', vd:'Borde 45% más delgado'},
-  {l:'1.74',         e:8,  mm:'3.6', vd:'Borde 60% más delgado'},
-];
-let tiCur=0;
-function tiPath(e){ const cx=30,c=4; return 'M'+(cx-e)+' 5 C'+(cx-c)+' 50 '+(cx-c)+' 100 '+(cx-e)+' 145 L'+(cx+e)+' 145 C'+(cx+c)+' 100 '+(cx+c)+' 50 '+(cx+e)+' 5 Z'; }
-function tiRender(){
-  document.getElementById('tiChips').innerHTML = TI.map((m,i)=>'<button class="ti-chip'+(i===tiCur?' on':'')+'" onclick="tiSet('+i+')">'+m.l+'</button>').join('');
-  const m=TI[tiCur];
-  document.getElementById('tiPath').setAttribute('d', tiPath(m.e));
-  document.getElementById('tiMM').innerHTML = m.mm+'<small> mm</small>';
-  document.getElementById('tiVd').textContent = m.vd;
-}
-function tiSet(i){ tiCur=i; tiRender(); }
-
-/* ============ TRATAMIENTOS (toggles estáticos) ============ */
-const TRE=[
-  {key:'ar', cls:'ar', tag:'AR', t:'Antirreflejante', p:'Quita los reflejos: te ven los ojos y mejora la visión nocturna.', mode:'tg', off:'Sin AR', on:'Con AR', html:'<span class="gl"></span>'},
-  {key:'blue', cls:'blue', tag:'Anti-Blue', t:'Filtro de luz azul', p:'Filtra parte de la luz azul de pantallas. Mayor comodidad.', mode:'tg', off:'Pantalla', on:'Con filtro', html:'<span class="ray"></span>'},
-  {key:'pol', cls:'pol', tag:'Polarizado', t:'Anti-deslumbramiento', p:'Elimina el reflejo del sol en carretera y agua. Ideal manejo.', mode:'tg', off:'Sin filtro', on:'Polarizado', html:'<span class="gl"></span>'},
-  {key:'foto', cls:'foto', tag:'Transitions', t:'Fotocromático', p:'Claro en interior, oscuro al sol. Mueve el control interior↔sol.', mode:'sl'},
-  {key:'colors', cls:'colors', tag:'Foto Colors', t:'Fotocromático de color', p:'Se oscurece en color: gris, rosa, café, azul, morado o verde.', mode:'st'},
-  {key:'tinte', cls:'tinte', tag:'Estilo Solar', t:'Tinte solar', p:'Color fijo permanente sobre el lente claro. +$150.', mode:'st'},
-];
-function treRender(){
-  document.getElementById('treGrid').innerHTML = TRE.map(x=>{
-    let ctrl='';
-    if(x.mode==='tg') ctrl='<div class="tre-ctrl"><span class="toggle"><button class="on" onclick="treTg(\''+x.key+'\',0,this)">'+x.off+'</button><button onclick="treTg(\''+x.key+'\',1,this)">'+x.on+'</button></span></div>';
-    else if(x.mode==='sl') ctrl='<div class="tre-ctrl"><span>☁️</span><input class="slider" type="range" min="0" max="100" value="0" oninput="document.getElementById(\'sw-foto\').style.setProperty(\'--d\',this.value/100)"><span>☀️</span></div>';
-    else ctrl='<div class="tre-ctrl"><span class="tre-state">Fijo · no cambia con la luz</span></div>';
-    return '<div class="tre"><div class="tre-top"><div class="sw '+x.cls+'" id="sw-'+x.key+'">'+(x.html||'')+'</div>'+
-      '<div><div class="tag">'+x.tag+'</div><h4>'+x.t+'</h4><p>'+x.p+'</p></div></div>'+ctrl+'</div>';
+function renderSerie(s){
+  const d = DATA[s];
+  document.getElementById('serie-sub').innerHTML = d.sub + '<br><span class="range-pill">' + d.range + '</span>';
+  // chips
+  const nav = document.getElementById('catnav');
+  nav.innerHTML = d.cats.map((c,i)=>'<button class="cat-chip'+(i===0?' on':'')+'" data-target="'+c.id+'" onclick="goCat(\''+c.id+'\')">'+c.title.replace(/ ·.*/,'')+'</button>').join('');
+  // body
+  const body = document.getElementById('price-body');
+  body.innerHTML = d.cats.map(c=>{
+    let inner;
+    if(c.rows){
+      inner = '<div class="ptable">' + c.rows.map(r=>{
+        const star = r.star ? '<span class="star">★</span>' : '';
+        return '<div class="prow" data-txt="'+(r.mat+' '+r.ben+' '+r.p).toLowerCase()+'">'+
+          '<div><div class="mat">'+r.mat+star+'</div><div class="ben">'+r.ben+'</div></div>'+
+          '<div class="price">'+money(r.p)+'</div></div>';
+      }).join('') + '</div>';
+    } else {
+      inner = '<div class="combo">' + c.combo.map(b=>{
+        const star = b.h.startsWith('★');
+        return '<div class="cblock" data-txt="'+(b.h+' '+b.s+' '+b.lines.map(l=>l.join(' ')).join(' ')).toLowerCase()+'">'+
+          '<h4>'+b.h+'</h4>'+(b.s?'<div class="cs">'+b.s+'</div>':'<div class="cs">&nbsp;</div>')+
+          b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+
+          '</div>';
+      }).join('') + '</div>';
+    }
+    const note = c.note ? '<div class="cat-note"><span class="b">Nota</span> '+c.note+'</div>' : '';
+    return '<div class="cat" id="'+c.id+'" data-cat>'+
+      '<div class="cat-title"><span class="ico">'+ICONS[c.icon]+'</span><h3>'+c.title+'</h3></div>'+
+      '<div class="cat-desc">'+c.desc+'</div>'+ inner + note +'</div>';
   }).join('');
-}
-function treTg(key,on,btn){
-  document.getElementById('sw-'+key).classList.toggle('on',!!on);
-  btn.parentElement.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',i===on));
+  observeReveal();
+  document.getElementById('search').value='';
+  document.getElementById('noresults').style.display='none';
 }
 
-/* ============ COTIZADOR (lógica intacta) ============ */
-const NEED = [
-  {id:'lejos', l:'Lejos',         s:'Manejar, TV, salón',          tipo:'sencilla',   ico:SVG.lejos},
-  {id:'cerca', l:'Cerca',         s:'Leer, celular, costura',      tipo:'sencilla',   ico:SVG.cerca},
-  {id:'ambos', l:'Lejos y cerca', s:'Dos zonas marcadas',          tipo:'bifocal',    ico:SVG.ambos},
-  {id:'todo',  l:'Todo el día',   s:'Lejos, intermedio y cerca',   tipo:'progresivo', ico:SVG.todo},
-];
-const USE = [
-  {id:'computadora', l:'Computadora', s:'Pantallas, oficina',  ico:SVG.comp},
-  {id:'manejo',      l:'Manejo',      s:'Carretera, sol',      ico:SVG.manejo},
-  {id:'exterior',    l:'Exterior',    s:'Sol, aire libre',     ico:SVG.sol},
-  {id:'deporte',     l:'Deporte / niños', s:'Resistencia',     ico:SVG.deporte},
-  {id:'general',     l:'Uso general', s:'Diario',              ico:SVG.general},
-];
-const GRAD = [
-  {id:1, l:'Estándar',        s:'Hasta ±6.00 esfera',                  ico:SVG.grad1},
-  {id:2, l:'Alta o especial', s:'Mayor a ±6.00 o astigmatismo alto',   ico:SVG.grad2},
-];
-const CATALOG = {
-  sencilla:[
-    {n:'Básico CR-39',                 mat:'CR-39',        tr:'Sin tratamiento',                p1:899,  p2:999,  ent:'35 min',    usos:['general']},
-    {n:'Resistencia Policarbonato',    mat:'Policarbonato',tr:'Resistente a impactos',          p1:1699, p2:1999, ent:'Mismo día', usos:['deporte','general']},
-    {n:'Hi-Index Antirreflejante',     mat:'Hi-Index',     tr:'Antirreflejante',                p1:1499, p2:1799, ent:'35 min',    usos:['general','manejo']},
-    {n:'Policarbonato Antirreflejante',mat:'Policarbonato',tr:'AR + resistencia',               p1:1999, p2:2699, ent:'15 días', usos:['deporte','manejo']},
-    {n:'Anti-Blue AR',                 mat:'Hi-Index',     tr:'Filtro luz azul + AR',           p1:2499, p2:2999, ent:'35 min',    usos:['computadora','general']},
-    {n:'Blue Light',                   mat:'Hi-Index',     tr:'Filtro azul reforzado',          p1:2799, p2:3299, ent:'35 min',    usos:['computadora']},
-    {n:'Policarbonato Anti-Blue AR',   mat:'Policarbonato',tr:'Filtro azul + resistencia',      p1:3299, p2:3799, ent:'15 días', usos:['computadora','deporte']},
-    {n:'Fotocromático Policarbonato',  mat:'Policarbonato',tr:'Fotocromático + AR',             p1:2699, p2:3099, ent:'15 días', usos:['exterior','deporte']},
-    {n:'Fotocromático Blue Light',     mat:'Hi-Index',     tr:'Fotocromático + filtro azul',    p1:3199, p2:3699, ent:'35 min',    usos:['exterior','computadora']},
-    {n:'Fotocromático Gen 9',          mat:'Hi-Index',     tr:'Última generación, ultra rápido',p1:3599, p2:4099, ent:'35 min',    usos:['exterior']},
-    {n:'Polarizado 1.56',              mat:'1.56',         tr:'Polarizado',                     p1:2699, p2:2699, ent:'Mismo día', usos:['manejo','exterior']},
-    {n:'Polarizado Xperio (Essilor)',  mat:'1.59',         tr:'Polarizado premium',             p1:5499, p2:5499, ent:'15 días',   usos:['manejo','exterior']},
-  ],
-  bifocal:[
-    {n:'Bifocal CR-39',               mat:'CR-39',        tr:'F/T sin tratamiento',     p1:1099, p2:1399, ent:'2-3 días', usos:['general']},
-    {n:'Bifocal AR Hi-Index',         mat:'Hi-Index',     tr:'F/T antirreflejante',     p1:2199, p2:2599, ent:'2-3 días', usos:['general','manejo']},
-    {n:'Bifocal Filtro Azul',         mat:'Hi-Index',     tr:'F/T filtro luz azul',     p1:2399, p2:2699, ent:'2-3 días', usos:['computadora']},
-    {n:'Bifocal AR Policarbonato',    mat:'Policarbonato',tr:'F/T AR + resistencia',    p1:3299, p2:3699, ent:'2-3 días', usos:['deporte','manejo']},
-    {n:'Bifocal Fotocromático',       mat:'Hi-Index',     tr:'F/T fotocromático',       p1:3699, p2:4299, ent:'3-5 días', usos:['exterior']},
-    {n:'Bifocal Foto Policarbonato',  mat:'Policarbonato',tr:'F/T fotocromático + resist.',p1:4599,p2:6199,ent:'3-5 días', usos:['exterior','deporte']},
-  ],
-  progresivo:[
-    {n:'Progresivo CR-39',            mat:'CR-39',        tr:'Sin tratamiento',           p1:1799, p2:2099, ent:'2-3 días', usos:['general']},
-    {n:'Progresivo AR Hi-Index',      mat:'Hi-Index',     tr:'Antirreflejante',           p1:2599, p2:3199, ent:'2-3 días', usos:['general','manejo']},
-    {n:'Progresivo Filtro Azul',      mat:'Hi-Index',     tr:'Filtro luz azul',           p1:3549, p2:3949, ent:'2-3 días', usos:['computadora']},
-    {n:'Progresivo AR Policarbonato', mat:'Policarbonato',tr:'AR + resistencia',          p1:3399, p2:3699, ent:'2-3 días', usos:['deporte','manejo']},
-    {n:'Progresivo Fotocromático',    mat:'Hi-Index',     tr:'Fotocromático',             p1:3799, p2:4299, ent:'3-5 días', usos:['exterior']},
-    {n:'Progresivo Panoramic 360',    mat:'Hi-Index',     tr:'Campo amplio + filtro azul',p1:3549, p2:3949, ent:'3-5 días', usos:['general','computadora','manejo']},
-    {n:'Progresivo Foto Policarbonato',mat:'Policarbonato',tr:'Fotocromático + resistencia',p1:4799,p2:5499,ent:'3-5 días', usos:['exterior','deporte']},
-  ]
-};
-function benefitsFor(p){
-  const t=(p.tr+' '+p.mat).toLowerCase(), b=[];
-  if(/antirreflej|\bar\b/.test(t)) b.push('Sin reflejos, mejor visión de noche');
-  if(/azul|blue/.test(t)) b.push('Filtra la luz azul de pantallas');
-  if(/fotocrom/.test(t)) b.push('Se oscurece solo al sol');
-  if(/polariz/.test(t)) b.push('Elimina el deslumbramiento del sol');
-  if(/policarb/.test(t)) b.push('Irrompible · ideal niños y deporte');
-  if(/hi-index|1\.6|1\.67|1\.74/.test(t)) b.push('Más delgado y ligero');
-  if(/cr-39/.test(t)) b.push('Económico y funcional');
-  if(/campo amplio|panoramic/.test(t)) b.push('Visión lateral más amplia');
-  if(/generaci/.test(t)) b.push('Transición más rápida y durable');
-  return b.slice(0,3);
+function setSerie(s){
+  curSerie = s;
+  document.getElementById('btn-s1').classList.toggle('on', s===1);
+  document.getElementById('btn-s2').classList.toggle('on', s===2);
+  renderSerie(s);
+  window.scrollTo({top:document.querySelector('.price-shell').offsetTop-50, behavior:'smooth'});
 }
-function recomendar(tipo, uso, serie){
-  const price = p => serie===2 ? (p.p2||p.p1) : p.p1;
-  const cat   = CATALOG[tipo];
-  const match = cat.filter(p=>p.usos.includes(uso)).sort((a,b)=>price(a)-price(b));
-  const all   = cat.slice().sort((a,b)=>price(a)-price(b));
-  const eco  = all[0];
-  const rec  = match[0] || all[Math.floor(all.length/2)];
-  let   prem = match[match.length-1] || all[all.length-1];
-  if(price(prem) < price(rec)) prem = all[all.length-1];
-  const chosen=[]; const pushU=p=>{ if(p && !chosen.find(x=>x.n===p.n)) chosen.push(p); };
-  pushU(eco); pushU(rec); pushU(prem);
-  for(const p of all){ if(chosen.length>=3) break; pushU(p); }
-  chosen.sort((a,b)=>price(a)-price(b));
-  const wrap=p=>({...p,price:price(p),ben:benefitsFor(p)});
-  return [
-    {tier:'Económica',   best:false, p:wrap(chosen[0])},
-    {tier:'Recomendada', best:true,  p:wrap(chosen[1])},
-    {tier:'Premium',     best:false, p:wrap(chosen[2])},
-  ];
-}
-const advState = {need:null, use:null, grad:null};
-const STEPS = ['Necesidad','Uso','Graduación','Resultado'];
-function advStep(){ if(advState.need===null)return 1; if(advState.use===null)return 2; if(advState.grad===null)return 3; return 4; }
-function advSteps(){
-  const cur=advStep();
-  document.getElementById('adv-steps').innerHTML = STEPS.map((s,i)=>{
-    const n=i+1, done=n<cur, on=n===cur;
-    return '<button type="button" class="adv-dot'+(on?' on':'')+(done?' done clk':'')+'"'+(done?' onclick="advGoto('+n+')"':' disabled')+'><span class="n">'+(done?'✓':n)+'</span><span class="lbl">'+s+'</span></button>'+(n<4?'<span class="adv-sep"></span>':'');
-  }).join('');
-}
-function optsHTML(list, field){
-  return '<div class="opts">'+ list.map(o=>{
-    const sel = advState[field]===o.id ? ' sel':'';
-    const v = typeof o.id==='number'?o.id:"'"+o.id+"'";
-    return '<button type="button" class="opt'+sel+'" onclick="advPick(\''+field+'\','+v+')">'+o.ico+'<span class="ol">'+o.l+'</span><span class="os">'+o.s+'</span></button>';
-  }).join('') +'</div>';
-}
-function advRender(){
-  advSteps();
-  const step=advStep(), body=document.getElementById('adv-body');
-  document.getElementById('adv-foot').style.display = step>1?'flex':'none';
-  if(step===1) body.innerHTML='<div class="adv-q">¿Qué necesita ver?</div><div class="adv-hint">Elige según lo que el paciente quiere enfocar.</div>'+optsHTML(NEED,'need');
-  else if(step===2) body.innerHTML='<div class="adv-q">¿Cómo usa sus lentes?</div><div class="adv-hint">Para sugerir el tratamiento que más conviene.</div>'+optsHTML(USE,'use');
-  else if(step===3) body.innerHTML='<div class="adv-q">¿Qué graduación tiene?</div><div class="adv-hint">La graduación alta usa lentes especiales (Serie 2).</div>'+optsHTML(GRAD,'grad');
-  else advReco(body);
-}
-function advReco(body){
-  const tipo=NEED.find(n=>n.id===advState.need).tipo;
-  const recos=recomendar(tipo,advState.use,advState.grad);
-  const tipoLbl={sencilla:'Visión sencilla',bifocal:'Bifocal',progresivo:'Progresivo'}[tipo];
-  const useLbl=USE.find(u=>u.id===advState.use).l;
-  body.innerHTML='<div class="adv-q">3 opciones para tu paciente</div>'+
-    '<div class="adv-hint">'+tipoLbl+' · '+useLbl+(advState.grad===2?' · graduación alta':'')+'</div>'+
-    '<div class="reco-grid">'+recos.map(r=>
-      '<div class="reco'+(r.best?' best':'')+'"><span class="tier">'+r.tier+'</span><h4>'+r.p.n+'</h4>'+
-      '<div class="rmeta">'+r.p.mat+' · '+r.p.tr+'</div><div class="rprice">'+money(r.p.price)+'</div>'+
-      '<ul>'+r.p.ben.map(b=>'<li>'+b+'</li>').join('')+'</ul>'+
-      '<div class="rent">Listos en <b>'+r.p.ent+'</b> · examen incluido</div></div>').join('')+'</div>'+
-    '<p style="text-align:center;font-size:12.5px;color:var(--ink3);margin-top:14px">Precios en graduación '+(advState.grad===2?'alta':'estándar')+'. '+
-    '<button type="button" onclick="setTipo(\''+tipo+'\')" style="background:none;border:none;color:var(--beige-ink);font-weight:600;font-family:inherit;font-size:12.5px;cursor:pointer;text-decoration:underline">Ver toda la lista →</button></p>';
-}
-function advPick(field,val){ advState[field]=val; advRender(); document.getElementById('cotizador').scrollIntoView({block:'start'}); }
-function advBack(){ const s=advStep(); if(s>=4)advState.grad=null; else if(s===3)advState.use=null; else if(s===2)advState.need=null; advRender(); }
-function advGoto(n){ if(n<=1)advState.need=null; if(n<=2)advState.use=null; if(n<=3)advState.grad=null; advRender(); }
-function advRestart(){ advState.need=advState.use=advState.grad=null; advRender(); document.getElementById('cotizador').scrollIntoView({block:'start'}); }
 
-/* ============ scrollspy nav (ligero) ============ */
-const navLinks=[...document.querySelectorAll('.h-nav a')];
-const navTargets=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
-let spyTick=false;
-addEventListener('scroll',()=>{ if(spyTick)return; spyTick=true; requestAnimationFrame(()=>{ spyTick=false;
-  let cur=navTargets[0], y=scrollY+80; navTargets.forEach(t=>{ if(t.offsetTop<=y)cur=t; });
-  navLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+cur.id));
-});},{passive:true});
+function goCat(id){
+  document.querySelectorAll('.cat-chip').forEach(c=>c.classList.toggle('on', c.dataset.target===id));
+  const el = document.getElementById(id);
+  if(el) window.scrollTo({top:el.offsetTop-110, behavior:'smooth'});
+}
+
+function doSearch(q){
+  q = q.trim().toLowerCase();
+  let anyVisible = false;
+  document.querySelectorAll('[data-cat]').forEach(cat=>{
+    const items = cat.querySelectorAll('[data-txt]');
+    let catVisible = false;
+    items.forEach(it=>{
+      const hit = !q || it.dataset.txt.includes(q);
+      it.style.display = hit ? '' : 'none';
+      if(hit) catVisible = true;
+    });
+    cat.style.display = catVisible ? '' : 'none';
+    if(catVisible) anyVisible = true;
+  });
+  document.getElementById('noresults').style.display = anyVisible ? 'none' : 'block';
+  document.getElementById('catnav').style.opacity = q ? '.4' : '1';
+}
+
+/* reveal observer */
+let io;
+function observeReveal(){
+  if(!io){
+    io = new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }), {threshold:.12});
+  }
+  document.querySelectorAll('.reveal:not(.in)').forEach(el=>io.observe(el));
+}
+
+/* header scroll + progress */
+const header = document.getElementById('header'), hprog = document.getElementById('hprog');
+addEventListener('scroll', ()=>{
+  header.classList.toggle('scrolled', scrollY>10);
+  const h = document.documentElement;
+  const pct = h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
+  hprog.style.width = pct+'%';
+}, {passive:true});
 
 /* init */
-advRender(); renderPrices(); renderLensCards(); tiRender(); treRender();
+renderSerie(1);
+observeReveal();
+</script>
+
+<!-- Ajuste de altura del simulador embebido -->
+<script>
+window.addEventListener("message",function(e){
+  if(e&&e.data&&typeof e.data.simHeight==="number"){
+    var f=document.getElementById("simframe");
+    if(f) f.style.height=(e.data.simHeight+10)+"px";
+  }
+});
 </script>
 </body>
 </html>
