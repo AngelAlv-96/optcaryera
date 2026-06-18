@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<title>Fotocromático 3D · Car & Era</title>
+<style>
+  :root{ --beige:#b3895a; --beige-deep:#9a7245; --ink:#1c1a16; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#0e1116;font-family:'Outfit',system-ui,sans-serif;-webkit-user-select:none;user-select:none;touch-action:none}
+  #wrap{position:relative;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+
+  .ui{position:absolute;inset:0;pointer-events:none;z-index:5}
+  .lbl{position:absolute;font-size:11px;font-weight:700;letter-spacing:.03em;color:#fff;background:rgba(12,14,18,.42);padding:4px 10px;border-radius:8px;backdrop-filter:blur(4px)}
+  .lbl-int{top:12px;left:12px}
+  .lbl-ext{top:12px;right:12px}
+  .name{position:absolute;bottom:74px;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6);text-align:center;width:44%}
+  .name small{display:block;font-weight:500;font-size:10.5px;color:#d7ccbb}
+  .name-l{left:3%}.name-r{right:3%}
+  .dark-read{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:11.5px;font-weight:600;color:#fff;background:rgba(12,14,18,.5);padding:4px 12px;border-radius:9px}
+
+  .ctrl{position:absolute;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(10,12,16,.85) 38%);pointer-events:auto;z-index:6}
+  .slide-row{display:flex;align-items:center;gap:12px;font-size:18px}
+  .slide-row input{flex:1;-webkit-appearance:none;appearance:none;height:11px;border-radius:11px;background:rgba(255,255,255,.28);outline:none}
+  .slide-row input::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:34px;border-radius:50%;background:var(--beige);border:4px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);cursor:pointer}
+  .slide-row input::-moz-range-thumb{width:34px;height:34px;border-radius:50%;background:var(--beige);border:4px solid #fff;cursor:pointer}
+  .hintbar{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:8px}
+  .tip{font-size:11px;color:#cbbfae}
+  .gen-toggle{display:inline-flex;background:rgba(255,255,255,.14);border-radius:100px;padding:3px;pointer-events:auto}
+  .gen-toggle button{border:none;background:none;color:#d7ccbb;font-family:inherit;font-weight:600;font-size:11.5px;padding:7px 12px;border-radius:100px;cursor:pointer}
+  .gen-toggle button.on{background:#fff;color:var(--ink)}
+
+  .grab{position:absolute;top:0;left:0;font-size:10.5px;color:#fff;background:rgba(179,137,90,.9);padding:4px 9px;border-radius:8px;transform:translate(-50%,-130%);white-space:nowrap;transition:opacity .3s;z-index:7}
+  .fallback{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#cbbfae;font-size:13px;text-align:center;padding:24px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="ui">
+    <div class="lbl lbl-int">☁️ Interior</div>
+    <div class="lbl lbl-ext">☀️ Exterior</div>
+    <div class="dark-read" id="darkRead">Lentes claros</div>
+    <div class="name name-l">Estándar<small id="nL">claro</small></div>
+    <div class="name name-r">Generación 9<small id="nR">claro</small></div>
+    <div class="grab" id="grab" style="opacity:0">Arrastra el sol ☀️</div>
+  </div>
+  <div class="ctrl">
+    <div class="slide-row"><span>☁️</span><input id="sun" type="range" min="0" max="100" value="0" aria-label="Interior a exterior"><span>☀️</span></div>
+    <div class="hintbar">
+      <span class="tip">Arrastra el sol · gira con el dedo</span>
+      <span class="gen-toggle"><button id="gBoth" class="on">Comparar</button><button id="gStd">Estándar</button><button id="gG9">Gen 9</button></span>
+    </div>
+  </div>
+  <div class="fallback" id="fallback">Tu dispositivo no pudo cargar la vista 3D.<br>El fotocromático se oscurece al sol y se aclara en interior.</div>
+</div>
+
+<script type="importmap">
+{ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+let renderer, scene, camera, controls, sunLight, hemi, sunMesh, sunGlow, particles, pPos, pVel;
+let lensL, lensR, lensMatL, lensMatR;
+const cv = document.getElementById('cv');
+let t = 0;              // 0 interior · 1 exterior
+let draggingSun = false;
+let running = true, raf = 0;
+let genMode = 'both';   // both | std | g9
+
+const lerp=(a,b,k)=>a+(b-a)*k;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const C_CLEAR=new THREE.Color('#eef2f4'), C_DARK=new THREE.Color('#161410');
+const SKY_IN=new THREE.Color('#2b2620'),  SKY_EX=new THREE.Color('#7db4ec');
+const LIGHT_IN=new THREE.Color('#9fb0c8'),LIGHT_EX=new THREE.Color('#fff4e0');
+
+function lensColor(d){ return new THREE.Color(lerp(C_CLEAR.r,C_DARK.r,d),lerp(C_CLEAR.g,C_DARK.g,d),lerp(C_CLEAR.b,C_DARK.b,d)); }
+// curvas fotocromáticas: Gen 9 oscurece más y más rápido
+const darkStd=v=>clamp(Math.pow(v,1.05)*0.72,0,1);
+const darkG9 =v=>clamp(Math.pow(v,0.62)*0.95,0,1);
+
+function makeLens(x){
+  const g=new THREE.Group();
+  const glassGeo=new THREE.SphereGeometry(1,64,48); glassGeo.scale(1,1.16,0.2);
+  const mat=new THREE.MeshPhysicalMaterial({
+    color:C_CLEAR.clone(), metalness:0, roughness:0.045, transmission:0.94,
+    thickness:0.9, ior:1.5, clearcoat:1, clearcoatRoughness:0.04,
+    attenuationColor:new THREE.Color('#7a6a52'), attenuationDistance:6, transparent:true
+  });
+  const glass=new THREE.Mesh(glassGeo,mat);
+  const rimGeo=new THREE.TorusGeometry(1.0,0.06,18,72); rimGeo.scale(1,1.16,1);
+  const rim=new THREE.Mesh(rimGeo,new THREE.MeshStandardMaterial({color:'#2a2a2e',metalness:.9,roughness:.35}));
+  rim.position.z=0; g.add(glass); g.add(rim);
+  g.position.x=x;
+  scene.add(g);
+  return {group:g,mat};
+}
+
+function radialTexture(){
+  const s=64,c=document.createElement('canvas'); c.width=c.height=s; const x=c.getContext('2d');
+  const g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
+  g.addColorStop(0,'rgba(255,228,150,1)'); g.addColorStop(0.4,'rgba(255,210,120,0.45)'); g.addColorStop(1,'rgba(255,200,100,0)');
+  x.fillStyle=g; x.fillRect(0,0,s,s);
+  const tx=new THREE.CanvasTexture(c); tx.colorSpace=THREE.SRGBColorSpace; return tx;
+}
+
+function makeParticles(){
+  const N=140; const geo=new THREE.BufferGeometry();
+  pPos=new Float32Array(N*3); pVel=new Float32Array(N*3);
+  for(let i=0;i<N;i++){
+    pPos[i*3]   = lerp(-3.4,3.4,Math.random());
+    pPos[i*3+1] = lerp(0.4,3.2,Math.random());
+    pPos[i*3+2] = lerp(-1.5,1.8,Math.random());
+    pVel[i*3]   = (Math.random()-0.5)*0.004;
+    pVel[i*3+1] = -0.006-Math.random()*0.01;
+    pVel[i*3+2] = (Math.random()-0.5)*0.004;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pPos,3));
+  const mat=new THREE.PointsMaterial({color:'#bfa6ff',size:0.07,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+  particles=new THREE.Points(geo,mat); scene.add(particles);
+}
+
+function init(){
+  renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  scene=new THREE.Scene(); scene.background=SKY_IN.clone();
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+
+  camera=new THREE.PerspectiveCamera(38,1,0.1,100); camera.position.set(0,0.2,7.2);
+  controls=new OrbitControls(camera,cv);
+  controls.enableDamping=true; controls.dampingFactor=.09; controls.enablePan=false; controls.enableZoom=false;
+  controls.minPolarAngle=Math.PI*0.32; controls.maxPolarAngle=Math.PI*0.68;
+  controls.minAzimuthAngle=-Math.PI*0.34; controls.maxAzimuthAngle=Math.PI*0.34;
+  controls.autoRotate=true; controls.autoRotateSpeed=0.5;
+
+  hemi=new THREE.HemisphereLight('#cfe0ff','#3a3026',0.7); scene.add(hemi);
+  sunLight=new THREE.DirectionalLight('#ffffff',0.6); sunLight.position.set(3,4,3); scene.add(sunLight);
+
+  const L=makeLens(-1.55), R=makeLens(1.55);
+  lensL=L.group; lensMatL=L.mat; lensR=R.group; lensMatR=R.mat;
+
+  // sol
+  sunMesh=new THREE.Mesh(new THREE.SphereGeometry(0.42,32,32),
+    new THREE.MeshBasicMaterial({color:'#ffd24d'}));
+  const glowMat=new THREE.SpriteMaterial({map:radialTexture(),color:'#ffffff',transparent:true,opacity:.0,blending:THREE.AdditiveBlending,depthWrite:false});
+  sunGlow=new THREE.Sprite(glowMat); sunGlow.scale.set(2.6,2.6,1);
+  sunMesh.add(sunGlow); scene.add(sunMesh);
+
+  makeParticles();
+
+  resize(); window.addEventListener('resize',resize);
+  cv.addEventListener('pointerdown',onDown);
+  window.addEventListener('pointermove',onMove);
+  window.addEventListener('pointerup',()=>{ draggingSun=false; controls.enabled=true; });
+  document.getElementById('sun').addEventListener('input',e=>{ setT(+e.target.value/100); controls.autoRotate=false; });
+  document.getElementById('gBoth').onclick=()=>setGen('both');
+  document.getElementById('gStd').onclick=()=>setGen('std');
+  document.getElementById('gG9').onclick=()=>setGen('g9');
+  document.addEventListener('visibilitychange',()=>{ running=!document.hidden; if(running) loop(); });
+
+  setT(0); setGen('both');
+  const grab=document.getElementById('grab');
+  setTimeout(()=>{ grab.style.opacity=1; },600);
+  setTimeout(()=>{ grab.style.opacity=0; },4200);
+  loop();
+}
+
+function setGen(m){
+  genMode=m;
+  document.getElementById('gBoth').classList.toggle('on',m==='both');
+  document.getElementById('gStd').classList.toggle('on',m==='std');
+  document.getElementById('gG9').classList.toggle('on',m==='g9');
+  const showL=(m==='both'||m==='std'), showR=(m==='both'||m==='g9');
+  lensL.visible=showL; lensR.visible=showR;
+  document.querySelector('.name-l').style.display=showL?'block':'none';
+  document.querySelector('.name-r').style.display=showR?'block':'none';
+  // centra el único lente visible
+  lensL.position.x = (m==='std')?0:-1.55;
+  lensR.position.x = (m==='g9')?0:1.55;
+}
+
+function setT(v){
+  t=clamp(v,0,1);
+  // sol: posición en arco + brillo
+  const sx=lerp(-3.6,3.6,t), sy=lerp(1.2,3.1,t);
+  sunMesh.position.set(sx,sy,-1.2);
+  sunMesh.material.color.setHex(0xffd24d);
+  sunGlow.material.opacity=lerp(0.05,0.85,t);
+  sunGlow.scale.setScalar(lerp(1.8,3.2,t));
+  // luz + cielo
+  scene.background.copy(SKY_IN).lerp(SKY_EX,t);
+  sunLight.position.set(sx,sy+0.5,3);
+  sunLight.intensity=lerp(0.55,2.5,t);
+  sunLight.color.copy(LIGHT_IN).lerp(LIGHT_EX,t);
+  hemi.intensity=lerp(0.55,1.0,t);
+  renderer && (renderer.toneMappingExposure=lerp(0.95,1.15,t));
+  // lentes
+  const dS=darkStd(t), dG=darkG9(t);
+  if(lensMatL){ lensMatL.color.copy(lensColor(dS)); lensMatL.transmission=lerp(0.94,0.07,dS); lensMatL.envMapIntensity=lerp(1.0,0.42,dS); }
+  if(lensMatR){ lensMatR.color.copy(lensColor(dG)); lensMatR.transmission=lerp(0.94,0.07,dG); lensMatR.envMapIntensity=lerp(1.0,0.42,dG); }
+  if(particles) particles.material.opacity=lerp(0,0.9,t);
+  // textos
+  const pct=v=>Math.round(v*100)+'%';
+  document.getElementById('nL').textContent='oscuro '+pct(dS);
+  document.getElementById('nR').textContent='oscuro '+pct(dG);
+  document.getElementById('darkRead').textContent = t<0.06?'Lentes claros (interior)':(t>0.9?'Oscurecidos al máximo (sol)':'Oscureciéndose…');
+  const s=document.getElementById('sun'); if(+s.value!==Math.round(t*100)) s.value=Math.round(t*100);
+  positionGrab();
+}
+
+function positionGrab(){
+  const grab=document.getElementById('grab');
+  const v=sunMesh.position.clone().project(camera);
+  grab.style.left=((v.x*0.5+0.5)*cv.clientWidth)+'px';
+  grab.style.top=((-v.y*0.5+0.5)*cv.clientHeight)+'px';
+}
+
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+function ptNDC(e){ const r=cv.getBoundingClientRect(); ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
+function onDown(e){
+  ptNDC(e); ray.setFromCamera(ndc,camera);
+  const hit=ray.intersectObject(sunMesh,true);
+  if(hit.length){ draggingSun=true; controls.enabled=false; controls.autoRotate=false; }
+}
+function onMove(e){
+  if(!draggingSun) return;
+  ptNDC(e);
+  setT(clamp(ndc.x*0.5+0.5,0,1));
+}
+
+function fitCamera(){
+  // ajusta la distancia para que ambos lentes quepan en cualquier proporción
+  const halfW=3.0, halfH=1.55;
+  const vFov=camera.fov*Math.PI/180;
+  const distV=halfH/Math.tan(vFov/2);
+  const distH=halfW/(Math.tan(vFov/2)*camera.aspect);
+  const d=Math.max(distV,distH)*1.1;
+  const dir=camera.position.clone().sub(controls.target);
+  if(dir.lengthSq()<1e-4) dir.set(0,0,1);
+  dir.normalize();
+  camera.position.copy(controls.target).addScaledVector(dir,d);
+}
+function resize(){
+  const w=cv.clientWidth||window.innerWidth, h=cv.clientHeight||window.innerHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+  fitCamera(); controls.update();
+}
+
+function loop(){
+  if(!running) return;
+  raf=requestAnimationFrame(loop);
+  // partículas caen y reaparecen arriba
+  if(particles && t>0.02){
+    const N=pPos.length/3;
+    for(let i=0;i<N;i++){
+      pPos[i*3]+=pVel[i*3]; pPos[i*3+1]+=pVel[i*3+1]; pPos[i*3+2]+=pVel[i*3+2];
+      if(pPos[i*3+1]<-1.4){ pPos[i*3+1]=3.2; pPos[i*3]=lerp(-3.4,3.4,Math.random()); }
+    }
+    particles.geometry.attributes.position.needsUpdate=true;
+  }
+  controls.update();
+  positionGrab();
+  renderer.render(scene,camera);
+}
+
+try{ init(); }
+catch(err){ console.warn('3D no disponible',err); document.getElementById('cv').style.display='none'; document.querySelector('.ctrl').style.display='none'; document.getElementById('fallback').style.display='flex'; }
+</script>
+</body>
+</html>
