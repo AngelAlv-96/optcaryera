@@ -80,6 +80,8 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .edu-card .who{margin-top:11px;font-size:12.5px;color:var(--ink);background:var(--beige-tint);border-radius:9px;padding:7px 11px;display:inline-block}
 .edu-card .who b{color:var(--beige-deep)}
 .edu-card.clickable{cursor:pointer}
+button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearance:none;appearance:none;color:inherit}
+.edu-card.clickable:focus-visible{outline:2px solid var(--beige);outline-offset:2px}
 .edu-card .see{display:block;margin-top:13px;font-size:12.5px;font-weight:600;color:var(--beige-deep);opacity:.85;transition:opacity .2s,transform .2s}
 .edu-card.clickable:hover .see{opacity:1;transform:translateX(3px)}
 @media(max-width:820px){.edu-grid{grid-template-columns:repeat(2,1fr)}}
@@ -225,7 +227,90 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .footer{padding:40px 24px;text-align:center;color:var(--ink3);font-size:13px}
 .footer .disc{max-width:620px;margin:0 auto 10px;color:var(--ink2)}
 
+/* ===== sticky sub-nav ===== */
+.h-nav{display:flex;gap:4px;margin:0 auto}
+.h-navlink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:100px;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;transition:background .18s,color .18s}
+.h-navlink:hover,.h-navlink.active{background:var(--beige-tint);color:var(--beige-deep)}
+@media(max-width:600px){.h-nav{gap:0}.h-navlink{padding:0 11px;font-size:13px}.h-logo{height:28px}.h-print span{display:none}}
+
+/* bigger touch targets on existing controls */
+.serie-toggle button{min-height:48px}
+.cat-chip{min-height:46px}
+.h-print{min-height:44px}
+
+/* ===== ASESOR (cotizador guiado) ===== */
+.advisor{padding:6px 0 30px;scroll-margin-top:70px}
+.adv-card{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:26px 22px 22px;box-shadow:0 18px 50px rgba(28,26,22,.07);max-width:900px;margin:0 auto}
+.adv-steps{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:22px;flex-wrap:wrap}
+.adv-dot{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink3);background:none;border:none;font-family:inherit;cursor:default;padding:0}
+.adv-dot.clickable{cursor:pointer}
+.adv-dot .n{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--beige-tint);color:var(--beige-deep);font-size:13px}
+.adv-dot.on .n{background:var(--beige);color:#fff}
+.adv-dot.done .n{background:var(--ink);color:#fff}
+.adv-dot.on{color:var(--ink)}
+.adv-dot .lbl{display:none}
+@media(min-width:640px){.adv-dot .lbl{display:inline}}
+.adv-sep{width:16px;height:2px;background:var(--line);border-radius:2px;flex:0 0 auto}
+.adv-q{text-align:center;font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(24px,4.5vw,34px);line-height:1.12;margin-bottom:5px}
+.adv-hint{text-align:center;font-size:14px;color:var(--ink2);margin:0 auto 20px;max-width:480px}
+.adv-opts{display:grid;gap:12px}
+.adv-opts.c2{grid-template-columns:repeat(2,1fr);max-width:520px;margin:0 auto}
+.adv-opts.c4{grid-template-columns:repeat(2,1fr)}
+@media(min-width:720px){.adv-opts.c4{grid-template-columns:repeat(4,1fr)}.adv-opts.c5{grid-template-columns:repeat(5,1fr)}}
+@media(max-width:719px){.adv-opts.c5{grid-template-columns:repeat(2,1fr)}}
+.opt{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:112px;justify-content:center;border:1.5px solid var(--line);background:var(--paper2);border-radius:16px;padding:16px 12px;cursor:pointer;font-family:inherit;text-align:center;transition:border-color .16s,background .16s,transform .16s,box-shadow .16s}
+.opt:hover{border-color:var(--beige);transform:translateY(-2px)}
+.opt:focus-visible{outline:2px solid var(--beige);outline-offset:2px}
+.opt.sel{border-color:var(--beige);background:var(--beige-tint);box-shadow:0 8px 22px rgba(179,137,90,.16)}
+.opt .oi{width:30px;height:30px;stroke:var(--beige-deep);fill:none;stroke-width:1.9}
+.opt .ol{font-weight:600;font-size:15px;color:var(--ink);line-height:1.2}
+.opt .os{font-size:12px;color:var(--ink2);line-height:1.25}
+.adv-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px}
+.adv-back{min-height:46px;padding:0 18px;border:1.5px solid var(--line);background:none;border-radius:100px;font-family:inherit;font-weight:600;font-size:14px;color:var(--ink2);cursor:pointer;transition:border-color .18s}
+.adv-back:hover{border-color:var(--ink)}
+.adv-restart{min-height:46px;padding:0 18px;border:none;background:none;font-family:inherit;font-weight:600;font-size:14px;color:var(--beige-deep);cursor:pointer}
+
+/* recommendation result */
+.reco-head{text-align:center;margin-bottom:18px}
+.reco-head .rl{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--beige-deep)}
+.reco-head h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(24px,4vw,32px);line-height:1.1;margin-top:4px}
+.reco-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:760px){.reco-grid{grid-template-columns:1fr}}
+.reco{position:relative;border:1.5px solid var(--line);border-radius:18px;padding:20px 18px;background:var(--paper2);display:flex;flex-direction:column}
+.reco.best{border-color:var(--beige);background:#fff;box-shadow:0 16px 38px rgba(179,137,90,.18)}
+@media(max-width:760px){.reco.best{order:-1}}
+.reco .tier{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.reco.best .tier{color:#fff;background:var(--beige);align-self:flex-start;padding:3px 10px;border-radius:7px}
+.reco h4{font-size:17px;font-weight:600;margin-top:8px;line-height:1.2}
+.reco .rmeta{font-size:13px;color:var(--ink2);margin-top:4px}
+.reco .rprice{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;margin-top:12px;line-height:1}
+.reco ul{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.reco li{font-size:13px;color:var(--ink);padding-left:20px;position:relative}
+.reco li::before{content:'✓';position:absolute;left:0;color:var(--beige-deep);font-weight:700}
+.reco .rent{margin-top:auto;padding-top:13px;font-size:12.5px;color:var(--ink3)}
+.reco .rent b{color:var(--ink2)}
+
+/* sticky bottom quote bar */
+.qbar{position:fixed;left:0;right:0;bottom:0;z-index:60;transform:translateY(130%);transition:transform .32s cubic-bezier(.2,.7,.2,1);background:rgba(28,26,22,.97);backdrop-filter:blur(10px);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.qbar.show{transform:none}
+.qbar-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.qbar .qb-txt{flex:1;min-width:0}
+.qbar .qb-lab{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#b9b0a2}
+.qbar .qb-build{font-size:13.5px;color:#eee5d8;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qbar .qb-price{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:27px;line-height:1;white-space:nowrap}
+.qbar .qb-cta{flex:0 0 auto;min-height:46px;padding:0 18px;border-radius:100px;background:#fff;color:var(--ink);font-weight:600;font-size:14px;border:none;cursor:pointer;font-family:inherit}
+@media(max-width:520px){.qbar .qb-build{display:none}.qbar-in{gap:10px}}
+
+/* collapsible advanced simulator */
+.adv-sim{max-width:900px;margin:30px auto 0}
+.sim-toggle{width:100%;min-height:58px;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed var(--beige);background:var(--beige-tint);border-radius:16px;font-family:inherit;font-weight:600;font-size:15px;color:var(--beige-deep);cursor:pointer}
+.sim-toggle .chev{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s}
+.sim-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.sim-panel{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.sim-panel.open{max-height:3000px}
+
 @media print{
+  .qbar,.adv-nav,.h-nav,.advisor{display:none!important}
   .header,.cat-nav,.searchbox,.serie-toggle,.hero-chips,.edu-card:hover{box-shadow:none!important}
   .cat-nav,.searchbox,.serie-toggle,.tipo-filter{display:none!important}
   .edu-card .see{display:none!important}
@@ -241,10 +326,15 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 <header class="header" id="header">
   <div class="header-in">
     <img src="logo-caryera-dark.svg" alt="Car & Era" class="h-logo">
+    <nav class="h-nav" id="hnav">
+      <a class="h-navlink" href="#asesor">Asesor</a>
+      <a class="h-navlink" href="#comparar">Comparar</a>
+      <a class="h-navlink" href="#precios">Precios</a>
+    </nav>
     <div class="h-right">
       <button class="h-print" onclick="window.print()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-        Imprimir
+        <span>Imprimir</span>
       </button>
     </div>
   </div>
@@ -252,52 +342,59 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 </header>
 
 <!-- HERO -->
-<section class="hero">
+<section class="hero" style="padding:38px 24px 18px">
   <div class="blob b1"></div><div class="blob b2"></div>
   <div class="hero-in reveal">
-    <div class="eyebrow"><span class="ln"></span> Catálogo interno <span class="ln"></span></div>
-    <h1 class="serif">Lista de Precios<span class="yr">2025</span></h1>
-    <p>Conoce los materiales, entiende qué le conviene a cada paciente y consulta el precio al instante. Una guía para asesorar con confianza.</p>
-    <div class="hero-chips">
-      <span class="hchip"><svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> Examen incluido</span>
-      <span class="hchip"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Laboratorio propio</span>
-      <span class="hchip"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Listos desde 35 min</span>
+    <div class="eyebrow"><span class="ln"></span> Catálogo interno · 2026 <span class="ln"></span></div>
+    <h1 class="serif" style="font-size:clamp(34px,6.5vw,58px)">Cotiza en <span style="font-style:italic;color:var(--beige-deep)">3 pasos</span></h1>
+    <p style="margin-top:12px">Responde qué necesita el paciente y te damos la opción económica, recomendada y premium con su precio.</p>
+  </div>
+</section>
+
+<!-- ASESOR GUIADO -->
+<section class="advisor wrap" id="asesor">
+  <div class="adv-card reveal">
+    <div class="adv-steps" id="adv-steps"></div>
+    <div id="adv-body"></div>
+    <div class="adv-nav" id="adv-navrow" style="display:none">
+      <button class="adv-back" type="button" onclick="advBack()">← Atrás</button>
+      <button class="adv-restart" type="button" onclick="advRestart()">Empezar de nuevo</button>
     </div>
   </div>
 </section>
 
 <!-- EDU: tipo de lente -->
-<section class="sec wrap">
+<section class="sec wrap" id="comparar">
   <div class="sec-head reveal">
     <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 1 <span class="ln"></span></div>
     <h2 class="serif">¿Qué <span class="it">tipo de lente</span> necesita?</h2>
     <p>Según lo que el paciente quiera ver. Define el tipo antes de elegir material y tratamiento.</p>
   </div>
   <div class="edu-grid">
-    <div class="edu-card clickable reveal" data-d="1" onclick="setTipo('sencilla')">
+    <button class="edu-card clickable reveal" type="button" data-d="1" onclick="setTipo('sencilla')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/></svg></div>
       <span class="tag">Visión sencilla</span>
       <h3>Monofocal</h3>
       <p>Una sola graduación en todo el lente. Para ver <b>de lejos</b> o <b>de cerca</b>.</p>
       <span class="who"><b>Para:</b> miopía, astigmatismo o solo lectura</span>
       <span class="see">Ver precios de visión sencilla →</span>
-    </div>
-    <div class="edu-card clickable reveal" data-d="2" onclick="setTipo('bifocal')">
+    </button>
+    <button class="edu-card clickable reveal" type="button" data-d="2" onclick="setTipo('bifocal')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M22 52 a18 11 0 0 1 36 0" stroke-width="2.4"/></svg></div>
       <span class="tag">Lejos + cerca</span>
       <h3>Bifocal</h3>
       <p>Dos zonas: lejos arriba, cerca abajo. Con línea visible (F/T) o semi-invisible.</p>
       <span class="who"><b>Para:</b> presbicia, quien ya combinaba dos pares</span>
       <span class="see">Ver precios de bifocales →</span>
-    </div>
-    <div class="edu-card clickable reveal" data-d="3" onclick="setTipo('progresivo')">
+    </button>
+    <button class="edu-card clickable reveal" type="button" data-d="3" onclick="setTipo('progresivo')">
       <div class="edu-vis"><svg class="lens-ico" viewBox="0 0 80 80"><circle class="lens-ring" cx="40" cy="40" r="33"/><path class="lens-ring" d="M40 14 L31 66 M40 14 L49 66" stroke-width="1.8" opacity=".55"/></svg></div>
       <span class="tag">Todo en uno</span>
       <h3>Progresivo</h3>
       <p>Lejos, intermedio y cerca en un solo lente, <b>sin líneas</b>. Transición natural.</p>
       <span class="who"><b>Para:</b> presbicia que quiere un lente discreto y cómodo</span>
       <span class="see">Ver precios de progresivos →</span>
-    </div>
+    </button>
   </div>
 </section>
 
@@ -320,13 +417,21 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     <p class="thick-note">Corte del borde de la mica a la misma graduación. <b>CR-39</b> es lo más económico; el <b>policarbonato</b> es ideal para niños y deporte; los <b>alto índice (1.60–1.74)</b> evitan el efecto "fondo de botella" en graduaciones altas.</p>
   </div>
 
-  <!-- Simulador de micas en 3D (embebido) -->
-  <div class="sim-head reveal" style="margin-top:34px">
-    <h3 class="serif">Simulador de micas <span class="it">en 3D</span></h3>
-    <p>Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde — con vidrio y antirreflejante realistas. Gíralo con el dedo.</p>
-  </div>
-  <div class="sim3d reveal">
-    <iframe id="simframe" src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
+  <!-- Simulador de micas en 3D (detrás de un botón) -->
+  <div class="adv-sim reveal">
+    <button class="sim-toggle" type="button" id="simToggle" aria-expanded="false" aria-controls="simPanel" onclick="toggleSim()">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+      Comparación avanzada de grosor (simulador 3D)
+      <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="sim-panel" id="simPanel">
+      <div class="sim-head" style="margin-top:18px">
+        <p style="font-size:15px;color:var(--ink2)">Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde. Gíralo con el dedo.</p>
+      </div>
+      <div class="sim3d" style="margin-top:8px">
+        <iframe id="simframe" data-src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -403,7 +508,7 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 </section>
 
 <!-- PRICES -->
-<div class="price-shell">
+<div class="price-shell" id="precios">
   <div class="wrap">
     <div class="sec-head reveal" style="margin-bottom:20px">
       <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Precios <span class="ln"></span></div>
@@ -427,6 +532,18 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 
     <div id="price-body"></div>
     <div class="no-results" id="noresults">Sin coincidencias para tu búsqueda.</div>
+  </div>
+</div>
+
+<!-- barra fija de cotización -->
+<div class="qbar" id="qbar">
+  <div class="qbar-in">
+    <div class="qb-txt">
+      <div class="qb-lab">Recomendado</div>
+      <div class="qb-build" id="qb-build"></div>
+    </div>
+    <div class="qb-price" id="qb-price"></div>
+    <button class="qb-cta" type="button" onclick="document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'})">Ver opciones</button>
   </div>
 </div>
 
@@ -687,6 +804,230 @@ addEventListener('scroll', ()=>{
 /* init */
 renderAll();
 observeReveal();
+
+/* ===================== ASESOR GUIADO ===================== */
+const SVG = {
+  lejos:'<svg class="oi" viewBox="0 0 24 24"><path d="M3 12h13M11 7l5 5-5 5"/><circle cx="20" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>',
+  cerca:'<svg class="oi" viewBox="0 0 24 24"><path d="M4 6h12v9H4z"/><path d="M7 18h6"/></svg>',
+  ambos:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M5 15a7 4.5 0 0 1 14 0"/></svg>',
+  todo:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 4 9 20M12 4l3 16" opacity=".55"/></svg>',
+  comp:'<svg class="oi" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+  manejo:'<svg class="oi" viewBox="0 0 24 24"><path d="M3 13l2-5a3 3 0 0 1 2.8-2h8.4A3 3 0 0 1 19 8l2 5"/><path d="M3 13h18v4H3z"/><circle cx="7" cy="17" r="1.4"/><circle cx="17" cy="17" r="1.4"/></svg>',
+  sol:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 1v3M12 20v3M4 12H1M23 12h-3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>',
+  deporte:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18M6 6c3 2 3 10 0 12M18 6c-3 2-3 10 0 12"/></svg>',
+  general:'<svg class="oi" viewBox="0 0 24 24"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  grad1:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6"/></svg>',
+  grad2:'<svg class="oi" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6M12 9v6"/></svg>'
+};
+const NEED = [
+  {id:'lejos', l:'Lejos',         s:'Manejar, TV, salón',          tipo:'sencilla',   ico:SVG.lejos},
+  {id:'cerca', l:'Cerca',         s:'Leer, celular, costura',      tipo:'sencilla',   ico:SVG.cerca},
+  {id:'ambos', l:'Lejos y cerca', s:'Dos zonas marcadas',          tipo:'bifocal',    ico:SVG.ambos},
+  {id:'todo',  l:'Todo el día',   s:'Lejos, intermedio y cerca',   tipo:'progresivo', ico:SVG.todo},
+];
+const USE = [
+  {id:'computadora', l:'Computadora', s:'Pantallas, oficina',  ico:SVG.comp},
+  {id:'manejo',      l:'Manejo',      s:'Carretera, sol',      ico:SVG.manejo},
+  {id:'exterior',    l:'Exterior',    s:'Sol, aire libre',     ico:SVG.sol},
+  {id:'deporte',     l:'Deporte / niños', s:'Resistencia',     ico:SVG.deporte},
+  {id:'general',     l:'Uso general', s:'Diario',              ico:SVG.general},
+];
+const GRAD = [
+  {id:1, l:'Estándar',        s:'Hasta ±6.00 esfera',                  ico:SVG.grad1},
+  {id:2, l:'Alta o especial', s:'Mayor a ±6.00 o astigmatismo alto',   ico:SVG.grad2},
+];
+
+/* catálogo: precio serie1 (p1) / serie2 (p2). usos: a qué uso aplica (general = base) */
+const CATALOG = {
+  sencilla:[
+    {n:'Básico CR-39',                 mat:'CR-39',        tr:'Sin tratamiento',                p1:899,  p2:999,  ent:'35 min',    usos:['general']},
+    {n:'Resistencia Policarbonato',    mat:'Policarbonato',tr:'Resistente a impactos',          p1:1699, p2:1999, ent:'Mismo día', usos:['deporte','general']},
+    {n:'Hi-Index Antirreflejante',     mat:'Hi-Index',     tr:'Antirreflejante',                p1:1499, p2:1799, ent:'35 min',    usos:['general','manejo']},
+    {n:'Policarbonato Antirreflejante',mat:'Policarbonato',tr:'AR + resistencia',               p1:1999, p2:2699, ent:'Mismo día', usos:['deporte','manejo']},
+    {n:'Anti-Blue AR',                 mat:'Hi-Index',     tr:'Filtro luz azul + AR',           p1:2499, p2:2999, ent:'35 min',    usos:['computadora','general']},
+    {n:'Blue Light',                   mat:'Hi-Index',     tr:'Filtro azul reforzado',          p1:2799, p2:3299, ent:'35 min',    usos:['computadora']},
+    {n:'Policarbonato Anti-Blue AR',   mat:'Policarbonato',tr:'Filtro azul + resistencia',      p1:3299, p2:3799, ent:'Mismo día', usos:['computadora','deporte']},
+    {n:'Fotocromático Policarbonato',  mat:'Policarbonato',tr:'Fotocromático + AR',             p1:2699, p2:3099, ent:'Mismo día', usos:['exterior','deporte']},
+    {n:'Fotocromático Blue Light',     mat:'Hi-Index',     tr:'Fotocromático + filtro azul',    p1:3199, p2:3699, ent:'35 min',    usos:['exterior','computadora']},
+    {n:'Fotocromático Gen 9',          mat:'Hi-Index',     tr:'Última generación, ultra rápido',p1:3599, p2:4099, ent:'35 min',    usos:['exterior']},
+    {n:'Polarizado 1.56',              mat:'1.56',         tr:'Polarizado',                     p1:2699, p2:2699, ent:'Mismo día', usos:['manejo','exterior']},
+    {n:'Polarizado Xperio (Essilor)',  mat:'1.59',         tr:'Polarizado premium',             p1:5499, p2:5499, ent:'15 días',   usos:['manejo','exterior']},
+  ],
+  bifocal:[
+    {n:'Bifocal CR-39',               mat:'CR-39',        tr:'F/T sin tratamiento',     p1:1099, p2:1399, ent:'2-3 días', usos:['general']},
+    {n:'Bifocal AR Hi-Index',         mat:'Hi-Index',     tr:'F/T antirreflejante',     p1:2199, p2:2599, ent:'2-3 días', usos:['general','manejo']},
+    {n:'Bifocal Filtro Azul',         mat:'Hi-Index',     tr:'F/T filtro luz azul',     p1:2399, p2:2699, ent:'2-3 días', usos:['computadora']},
+    {n:'Bifocal AR Policarbonato',    mat:'Policarbonato',tr:'F/T AR + resistencia',    p1:3299, p2:3699, ent:'2-3 días', usos:['deporte','manejo']},
+    {n:'Bifocal Fotocromático',       mat:'Hi-Index',     tr:'F/T fotocromático',       p1:3699, p2:4299, ent:'3-5 días', usos:['exterior']},
+    {n:'Bifocal Foto Policarbonato',  mat:'Policarbonato',tr:'F/T fotocromático + resist.',p1:4599,p2:6199,ent:'3-5 días', usos:['exterior','deporte']},
+  ],
+  progresivo:[
+    {n:'Progresivo CR-39',            mat:'CR-39',        tr:'Sin tratamiento',           p1:1799, p2:2099, ent:'2-3 días', usos:['general']},
+    {n:'Progresivo AR Hi-Index',      mat:'Hi-Index',     tr:'Antirreflejante',           p1:2599, p2:3199, ent:'2-3 días', usos:['general','manejo']},
+    {n:'Progresivo Filtro Azul',      mat:'Hi-Index',     tr:'Filtro luz azul',           p1:3549, p2:3949, ent:'2-3 días', usos:['computadora']},
+    {n:'Progresivo AR Policarbonato', mat:'Policarbonato',tr:'AR + resistencia',          p1:3399, p2:3699, ent:'2-3 días', usos:['deporte','manejo']},
+    {n:'Progresivo Fotocromático',    mat:'Hi-Index',     tr:'Fotocromático',             p1:3799, p2:4299, ent:'3-5 días', usos:['exterior']},
+    {n:'Progresivo Panoramic 360',    mat:'Hi-Index',     tr:'Campo amplio + filtro azul',p1:3549, p2:3949, ent:'3-5 días', usos:['general','computadora','manejo']},
+    {n:'Progresivo Foto Policarbonato',mat:'Policarbonato',tr:'Fotocromático + resistencia',p1:4799,p2:5499,ent:'3-5 días', usos:['exterior','deporte']},
+  ]
+};
+
+function benefitsFor(p){
+  const t=(p.tr+' '+p.mat).toLowerCase(), b=[];
+  if(/antirreflej|\bar\b/.test(t)) b.push('Sin reflejos, mejor visión de noche');
+  if(/azul|blue/.test(t)) b.push('Filtra la luz azul de pantallas');
+  if(/fotocrom/.test(t)) b.push('Se oscurece solo al sol');
+  if(/polariz/.test(t)) b.push('Elimina el deslumbramiento del sol');
+  if(/policarb/.test(t)) b.push('Irrompible · ideal niños y deporte');
+  if(/hi-index|1\.6|1\.67|1\.74/.test(t)) b.push('Más delgado y ligero');
+  if(/cr-39/.test(t)) b.push('Económico y funcional');
+  if(/campo amplio|panoramic/.test(t)) b.push('Visión lateral más amplia');
+  if(/generaci/.test(t)) b.push('Transición más rápida y durable');
+  return b.slice(0,3);
+}
+
+function recomendar(tipo, uso, serie){
+  const price = p => serie===2 ? (p.p2||p.p1) : p.p1;
+  const cat   = CATALOG[tipo];
+  const match = cat.filter(p=>p.usos.includes(uso)).sort((a,b)=>price(a)-price(b)); // las que SÍ sirven al uso
+  const all   = cat.slice().sort((a,b)=>price(a)-price(b));
+  // Económica = la más barata del tipo · Recomendada = la más barata que resuelve el uso · Premium = la mejor (más cara) que resuelve el uso
+  const eco  = all[0];
+  const rec  = match[0] || all[Math.floor(all.length/2)];
+  let   prem = match[match.length-1] || all[all.length-1];
+  if(price(prem) < price(rec)) prem = all[all.length-1];
+  // garantizar 3 productos distintos, ordenados por precio
+  const chosen=[]; const pushU=p=>{ if(p && !chosen.find(x=>x.n===p.n)) chosen.push(p); };
+  pushU(eco); pushU(rec); pushU(prem);
+  for(const p of all){ if(chosen.length>=3) break; pushU(p); }
+  chosen.sort((a,b)=>price(a)-price(b));
+  const wrap=p=>({...p,price:price(p),ben:benefitsFor(p)});
+  return [
+    {tier:'Económica',   best:false, p:wrap(chosen[0])},
+    {tier:'Recomendada', best:true,  p:wrap(chosen[1])},
+    {tier:'Premium',     best:false, p:wrap(chosen[2])},
+  ];
+}
+
+/* estado del asesor */
+const advState = {need:null, use:null, grad:null};
+const STEPS = ['Necesidad','Uso','Graduación','Resultado'];
+
+function advStep(){
+  if(advState.need===null) return 1;
+  if(advState.use ===null) return 2;
+  if(advState.grad===null) return 3;
+  return 4;
+}
+
+function advRenderSteps(){
+  const cur = advStep();
+  document.getElementById('adv-steps').innerHTML = STEPS.map((s,i)=>{
+    const n=i+1; const done=n<cur, on=n===cur;
+    const clk = (done) ? ' clickable" onclick="advGoto('+n+')"' : '"';
+    return '<button type="button" class="adv-dot'+(on?' on':'')+(done?' done':'')+(done?' clickable':'')+'"'+(done?' onclick="advGoto('+n+')"':' disabled style="cursor:default"')+'>'+
+      '<span class="n">'+(done?'✓':n)+'</span><span class="lbl">'+s+'</span></button>'+
+      (n<STEPS.length?'<span class="adv-sep"></span>':'');
+  }).join('');
+}
+
+function optsHTML(list, field, cols){
+  return '<div class="adv-opts c'+cols+'">'+ list.map(o=>{
+    const sel = advState[field]===o.id ? ' sel':'';
+    return '<button type="button" class="opt'+sel+'" onclick="advPick(\''+field+'\','+(typeof o.id==='number'?o.id:'\''+o.id+'\'')+')">'+
+      o.ico+'<span class="ol">'+o.l+'</span><span class="os">'+o.s+'</span></button>';
+  }).join('') +'</div>';
+}
+
+function advRender(){
+  advRenderSteps();
+  const step = advStep();
+  const body = document.getElementById('adv-body');
+  document.getElementById('adv-navrow').style.display = (step>1)?'flex':'none';
+  if(step===1){
+    body.innerHTML = '<div class="adv-q">¿Qué necesita ver?</div><div class="adv-hint">Elige según lo que el paciente quiere enfocar.</div>'+ optsHTML(NEED,'need',4);
+  } else if(step===2){
+    body.innerHTML = '<div class="adv-q">¿Cómo usa sus lentes?</div><div class="adv-hint">Para sugerir el tratamiento que más le conviene.</div>'+ optsHTML(USE,'use',5);
+  } else if(step===3){
+    body.innerHTML = '<div class="adv-q">¿Qué graduación tiene?</div><div class="adv-hint">La graduación alta usa lentes especiales (Serie 2).</div>'+ optsHTML(GRAD,'grad',2);
+  } else {
+    advRenderReco(body);
+  }
+}
+
+function advRenderReco(body){
+  const tipo = NEED.find(n=>n.id===advState.need).tipo;
+  const recos = recomendar(tipo, advState.use, advState.grad);
+  const tipoLbl = {sencilla:'Visión sencilla',bifocal:'Bifocal',progresivo:'Progresivo'}[tipo];
+  const useLbl = USE.find(u=>u.id===advState.use).l;
+  body.innerHTML =
+    '<div class="reco-head"><div class="rl">'+tipoLbl+' · '+useLbl+(advState.grad===2?' · graduación alta':'')+'</div>'+
+      '<h3 class="serif">Estas son sus 3 opciones</h3></div>'+
+    '<div class="reco-grid" id="adv-reco">'+ recos.map(r=>
+      '<div class="reco'+(r.best?' best':'')+'">'+
+        '<span class="tier">'+r.tier+'</span>'+
+        '<h4>'+r.p.n+'</h4>'+
+        '<div class="rmeta">'+r.p.mat+' · '+r.p.tr+'</div>'+
+        '<div class="rprice">'+money(r.p.price)+'</div>'+
+        '<ul>'+ r.p.ben.map(b=>'<li>'+b+'</li>').join('') +'</ul>'+
+        '<div class="rent">Listos en <b>'+r.p.ent+'</b> · examen incluido</div>'+
+      '</div>').join('') +'</div>'+
+    '<p style="text-align:center;font-size:13px;color:var(--ink3);margin-top:16px">Precios en graduación '+(advState.grad===2?'alta':'estándar')+'. '+
+      '<button type="button" onclick="setTipo(\''+tipo+'\');document.getElementById(\'precios\').scrollIntoView({behavior:\'smooth\'})" style="background:none;border:none;color:var(--beige-deep);font-weight:600;font-family:inherit;font-size:13px;cursor:pointer;text-decoration:underline">Ver toda la lista de '+tipoLbl.toLowerCase()+' →</button></p>';
+  // barra fija
+  const best = recos.find(r=>r.best).p;
+  document.getElementById('qb-build').textContent = tipoLbl+' · '+best.mat+' · '+best.tr;
+  document.getElementById('qb-price').textContent = money(best.price);
+  document.getElementById('qbar').classList.add('show');
+}
+
+function advPick(field, val){
+  advState[field]=val;
+  advRender();
+  document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function advBack(){
+  const step=advStep();
+  if(step>=4){ advState.grad=null; }
+  else if(step===3){ advState.use=null; }
+  else if(step===2){ advState.need=null; }
+  if(advStep()<4) document.getElementById('qbar').classList.remove('show');
+  advRender();
+}
+function advGoto(n){
+  if(n<=1) advState.need=null;
+  if(n<=2) advState.use=null;
+  if(n<=3) advState.grad=null;
+  document.getElementById('qbar').classList.remove('show');
+  advRender();
+}
+function advRestart(){
+  advState.need=advState.use=advState.grad=null;
+  document.getElementById('qbar').classList.remove('show');
+  advRender();
+  document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* simulador 3D colapsable (carga diferida) */
+function toggleSim(){
+  const t=document.getElementById('simToggle'), p=document.getElementById('simPanel'), f=document.getElementById('simframe');
+  const open = t.getAttribute('aria-expanded')==='true';
+  t.setAttribute('aria-expanded', String(!open));
+  p.classList.toggle('open', !open);
+  if(!open && f && !f.src && f.dataset.src){ f.src=f.dataset.src; }
+}
+
+/* scrollspy nav */
+const navLinks=[...document.querySelectorAll('.h-navlink')];
+const navTargets=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+addEventListener('scroll', ()=>{
+  let cur=navTargets[0];
+  const y=scrollY+90;
+  navTargets.forEach(t=>{ if(t.offsetTop<=y) cur=t; });
+  navLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+cur.id));
+}, {passive:true});
+
+advRender();
 </script>
 
 <!-- Ajuste de altura del simulador embebido -->
