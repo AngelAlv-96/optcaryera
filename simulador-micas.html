@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0d0f14">
+<meta name="theme-color" content="#f6f1ea">
 <title>Simulador de Micas — Ópticas Car & Era</title>
 <style>
 :root{
-  --bg:#0d0f14;--surface:#161a22;--surface2:#1f242e;--border:#2c323d;
-  --white:#f2f4f8;--muted:#8b93a3;--accent:#5ad1c8;--beige:#e2c6a6;
-  --thin:#3dd17a;--mid:#f0c84a;--thick:#f0683d;--xthick:#e8443d;
+  --bg:#f6f1ea;--surface:#ffffff;--surface2:#f7efe2;--border:#e9e0d2;
+  --white:#1c1a16;--muted:#8c857a;--accent:#b3895a;--beige:#9a7245;
+  --thin:#3a9d63;--mid:#c79a2c;--thick:#d9722f;--xthick:#cf4636;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--bg);color:var(--white);min-height:100%}
@@ -44,7 +44,7 @@ header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid 
 .ctrl label.lbl{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 8px;font-size:11.5px;transition:.12s;flex:1;text-align:center;min-width:54px}
-.chip.active{background:var(--accent);color:#04201d;border-color:var(--accent);font-weight:700}
+.chip.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
 
 .slider-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .slider-row input[type=range]{flex:1;accent-color:var(--accent)}
@@ -58,13 +58,13 @@ header .tag{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid 
 .canvas-card h3{font-size:13px;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .canvas-card h3 .pill{font-size:9px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:2px 8px;font-weight:600}
 .canvas-card .hint{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.4}
-canvas{display:block;width:100%;background:#0a0c10;border-radius:10px}
-#wrap3d{position:relative;width:100%;height:460px;background:#0a0c10;border-radius:10px;overflow:hidden}
+canvas{display:block;width:100%;background:#f3ece0;border-radius:10px}
+#wrap3d{position:relative;width:100%;height:460px;background:#eee7da;border-radius:10px;overflow:hidden}
 #cv3d{width:100%;height:100%;display:block;cursor:grab}
 #cv3d:active{cursor:grabbing}
 .view-toggle{display:flex;gap:6px;margin-bottom:10px}
 .view-toggle button{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px}
-.view-toggle button.active{background:var(--accent);color:#04201d;border-color:var(--accent);font-weight:700}
+.view-toggle button.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
 #cap3d{font-size:12px;margin-top:10px;line-height:1.4;color:var(--muted)}
 #cap3d b{color:var(--accent)}
 #cap3d .hideline{color:var(--beige)}
@@ -603,6 +603,15 @@ document.querySelectorAll('#view-toggle button').forEach(b=>b.onclick=()=>{docum
   MATERIALS.forEach(m=>{const o=`<option value="${m.id}">${m.name}</option>`;A.insertAdjacentHTML('beforeend',o);B.insertAdjacentHTML('beforeend',o);});
   A.value=state.idxA;B.value=state.idxB;A.onchange=()=>{state.idxA=A.value;render();};B.onchange=()=>{state.idxB=B.value;render();};})();
 render();
+
+/* ── Modo embebido (dentro de la Lista de Precios): oculta el header y reporta su altura ── */
+if(new URLSearchParams(location.search).has('embed')){
+  const hdr=document.querySelector('header'); if(hdr) hdr.style.display='none';
+  document.documentElement.style.background='transparent'; document.body.style.background='transparent';
+  const post=()=>{ try{ parent.postMessage({simHeight:document.body.scrollHeight},'*'); }catch(e){} };
+  try{ new ResizeObserver(post).observe(document.body); }catch(e){}
+  window.addEventListener('load',post); setTimeout(post,400); setTimeout(post,1500);
+}
 </script>
 </body>
 </html>

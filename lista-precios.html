@@ -127,24 +127,14 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .d-tinte .glass{position:absolute;inset:0;border-radius:50%;background:linear-gradient(180deg,#c98a3a,#e9c489)}
 @media(prefers-reduced-motion:reduce){.d-ar .glare,.d-blue .rays,.d-foto .glass,.d-polar .gl,.d-colors .glass{animation:none}}
 
-/* 3D lens viewer */
-.lens3d{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;margin-top:20px;overflow:hidden}
-.l3d-stage{position:relative;border-radius:16px;background:radial-gradient(circle at 50% 40%,#fbf7f0,#efe6d6);aspect-ratio:1/.82;min-height:260px}
-.l3d-stage canvas{position:absolute;inset:0;width:100%!important;height:100%!important;border-radius:16px;display:block;cursor:grab}
-.l3d-stage canvas:active{cursor:grabbing}
-.l3d-hint{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);font-size:11.5px;color:var(--ink3);background:rgba(255,253,249,.7);border-radius:100px;padding:4px 12px;pointer-events:none}
-.l3d-fail{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:13px;color:var(--ink2);padding:24px}
-.l3d-side h4{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;line-height:1.1}
-.l3d-side .l3d-lead{font-size:14px;color:var(--ink2);margin:6px 0 16px}
-.l3d-group{margin-bottom:14px}
-.l3d-group .lbl{font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--beige-deep);margin-bottom:7px;display:block}
-.l3d-btns{display:flex;flex-wrap:wrap;gap:7px}
-.l3d-btns button{border:1px solid var(--line);background:var(--paper2);border-radius:100px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .18s}
-.l3d-btns button:hover{border-color:var(--beige)}
-.l3d-btns button.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.l3d-cap{margin-top:6px;font-size:13px;color:var(--ink);background:var(--beige-tint);border-radius:11px;padding:11px 14px;min-height:62px}
-.l3d-cap b{color:var(--beige-deep)}
-@media(max-width:780px){.lens3d{grid-template-columns:1fr}.l3d-stage{aspect-ratio:1/.7}}
+/* simulador embebido */
+.sim-head{text-align:center;max-width:680px;margin:0 auto 16px}
+.sim-head h3{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:clamp(26px,4vw,38px);line-height:1.1}
+.sim-head h3 .it{font-style:italic;color:var(--beige-deep)}
+.sim-head p{font-size:15px;color:var(--ink2);margin-top:8px}
+.sim3d{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--card);box-shadow:0 14px 40px rgba(28,26,22,.06)}
+.sim3d iframe{width:100%;border:0;display:block;min-height:1180px;background:var(--paper)}
+@media(max-width:860px){.sim3d iframe{min-height:1640px}}
 
 /* premium / special cards */
 .prem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
@@ -310,39 +300,13 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
     <p class="thick-note">Corte del borde de la mica a la misma graduación. <b>CR-39</b> es lo más económico; el <b>policarbonato</b> es ideal para niños y deporte; los <b>alto índice (1.60–1.74)</b> evitan el efecto "fondo de botella" en graduaciones altas.</p>
   </div>
 
-  <!-- 3D interactivo -->
-  <div class="lens3d reveal">
-    <div class="l3d-stage">
-      <canvas id="lens3d"></canvas>
-      <div class="l3d-hint">Arrastra para girar 🔄</div>
-      <div class="l3d-fail" id="l3dfail">Tu navegador no pudo cargar el visor 3D. La comparación de arriba muestra lo mismo.</div>
-    </div>
-    <div class="l3d-side">
-      <h4 class="serif">Pruébalo en 3D</h4>
-      <p class="l3d-lead">Gira el lente con el dedo (o el mouse) y compara cómo cambia el grosor y el acabado de cada tratamiento.</p>
-      <div class="l3d-group">
-        <span class="lbl">Material · grosor</span>
-        <div class="l3d-btns" id="l3d-mat">
-          <button data-mat="0" class="on">CR-39</button>
-          <button data-mat="1">Policarbonato</button>
-          <button data-mat="2">Hi-Index 1.60</button>
-          <button data-mat="3">Ultra 1.67</button>
-          <button data-mat="4">Súper 1.74</button>
-        </div>
-      </div>
-      <div class="l3d-group">
-        <span class="lbl">Acabado · tratamiento</span>
-        <div class="l3d-btns" id="l3d-tre">
-          <button data-tre="claro" class="on">Claro</button>
-          <button data-tre="ar">Antirreflejante</button>
-          <button data-tre="foto">Fotocromático</button>
-          <button data-tre="polar">Polarizado</button>
-          <button data-tre="tinte">Tinte solar</button>
-          <button data-tre="colors">Foto Colors</button>
-        </div>
-      </div>
-      <div class="l3d-cap" id="l3dcap"></div>
-    </div>
+  <!-- Simulador de micas en 3D (embebido) -->
+  <div class="sim-head reveal" style="margin-top:34px">
+    <h3 class="serif">Simulador de micas <span class="it">en 3D</span></h3>
+    <p>Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde — con vidrio y antirreflejante realistas. Gíralo con el dedo.</p>
+  </div>
+  <div class="sim3d reveal">
+    <iframe id="simframe" src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
   </div>
 </section>
 
@@ -657,128 +621,14 @@ renderSerie(1);
 observeReveal();
 </script>
 
-<!-- Visor 3D del lente -->
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-}}
-</script>
-<script type="module">
-let THREE, OrbitControls, RoomEnvironment;
-const MATS=[
-  {n:'CR-39', edge:0.46},
-  {n:'Policarbonato', edge:0.36},
-  {n:'Hi-Index 1.60', edge:0.30},
-  {n:'Ultra 1.67', edge:0.22},
-  {n:'Súper 1.74', edge:0.15},
-];
-const TRE={
-  claro:'<b>Claro.</b> Lente transparente sin tratamiento. La base sobre la que se agregan AR, filtros o tintes.',
-  ar:'<b>Antirreflejante (AR).</b> Capa que elimina los reflejos del lente: te ven los ojos, menos brillos al manejar de noche y en fotos.',
-  foto:'<b>Fotocromático.</b> Se oscurece solo bajo el sol y se aclara en interior. Es lente y lente de sol en uno.',
-  polar:'<b>Polarizado.</b> Bloquea el reflejo del sol en carretera, agua y nieve. El mejor para manejar y exteriores.',
-  tinte:'<b>Tinte solar.</b> Color fijo sobre un lente claro para protegerte de la luz intensa. +$150 sobre el lente claro.',
-  colors:'<b>Foto Colors.</b> Fotocromático que se oscurece en un color (gris, rosa, café, azul, morado, verde). Más estética.'
-};
-const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
-let renderer,scene,camera,controls,lens,mat,raf,curMat=0,curTre='claro',tA=0,inited=false,failed=false;
-const cv=document.getElementById('lens3d'), capEl=document.getElementById('l3dcap'), failEl=document.getElementById('l3dfail');
-
-function setCap(){ capEl.innerHTML = TRE[curTre]; }
-setCap();
-
-function lensGeo(edge){
-  const R=1, ct=0.05, N=46, pts=[];
-  for(let i=0;i<=N;i++){const r=R*i/N, y=ct/2+(edge/2-ct/2)*(r/R)*(r/R); pts.push(new THREE.Vector2(r,y));}
-  for(let i=N;i>=0;i--){const r=R*i/N, y=ct/2+(edge/2-ct/2)*(r/R)*(r/R); pts.push(new THREE.Vector2(r,-y));}
-  const g=new THREE.LatheGeometry(pts,100); g.rotateX(Math.PI/2); return g;
-}
-function makeMat(t){
-  const base={metalness:0,roughness:0.04,transmission:1,ior:1.5,thickness:0.7,transparent:true,clearcoat:0.4,clearcoatRoughness:0.08,attenuationDistance:4,attenuationColor:new THREE.Color(0xeef7ff),color:new THREE.Color(0xffffff)};
-  const m=new THREE.MeshPhysicalMaterial(base);
-  if(t==='ar'){ m.iridescence=0.85; m.iridescenceIOR=1.3; m.iridescenceThicknessRange=[120,420]; m.clearcoat=1; m.attenuationColor=new THREE.Color(0xe7fff0); }
-  else if(t==='polar'){ m.transmission=0.18; m.color=new THREE.Color(0x2c2820); m.attenuationColor=new THREE.Color(0x352f24); m.roughness=0.06; m.clearcoat=0.3; }
-  else if(t==='tinte'){ m.transmission=0.5; m.color=new THREE.Color(0xca8a36); m.attenuationColor=new THREE.Color(0xffb14d); m.attenuationDistance=1.4; }
-  else if(t==='foto'||t==='colors'){ m.transmission=0.85; }
-  return m;
-}
-function applyLens(){
-  const g=lensGeo(MATS[curMat].edge);
-  if(!lens){ lens=new THREE.Mesh(g,makeMat(curTre)); mat=lens.material; lens.rotation.x=-0.32; scene.add(lens); }
-  else{ lens.geometry.dispose(); lens.geometry=g; }
-}
-function applyMat(){ if(mat) mat.dispose(); lens.material=makeMat(curTre); mat=lens.material; }
-
-function resize(){
-  if(!renderer) return;
-  const w=cv.clientWidth||420, h=cv.clientHeight||340;
-  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
-}
-function loop(){
-  raf=requestAnimationFrame(loop);
-  if(controls) controls.update();
-  if(!reduce && mat){
-    if(curTre==='foto'){ tA+=0.012; const k=Math.sin(tA)*0.5+0.5; mat.color.setRGB(1-0.82*k,1-0.82*k,1-0.80*k); mat.transmission=0.92-0.6*k; }
-    else if(curTre==='colors'){ tA+=0.006; mat.color.setHSL(tA%1,0.55,0.46); }
+<!-- Ajuste de altura del simulador embebido -->
+<script>
+window.addEventListener("message",function(e){
+  if(e&&e.data&&typeof e.data.simHeight==="number"){
+    var f=document.getElementById("simframe");
+    if(f) f.style.height=(e.data.simHeight+10)+"px";
   }
-  renderer.render(scene,camera);
-}
-function init(){
-  if(inited||failed) return; inited=true;
-  try{
-    renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
-    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-    renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.08;
-    scene=new THREE.Scene();
-    const pmrem=new THREE.PMREMGenerator(renderer);
-    scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
-    const w=cv.clientWidth||420,h=cv.clientHeight||340;
-    camera=new THREE.PerspectiveCamera(38,w/h,0.1,100); camera.position.set(0,0.45,3.5);
-    const d1=new THREE.DirectionalLight(0xffffff,1.7); d1.position.set(3,4,5); scene.add(d1);
-    const d2=new THREE.DirectionalLight(0xffe9c9,0.7); d2.position.set(-4,-2,3); scene.add(d2);
-    scene.add(new THREE.AmbientLight(0xffffff,0.45));
-    controls=new OrbitControls(camera,cv); controls.enableDamping=true; controls.dampingFactor=0.08; controls.enablePan=false; controls.minDistance=2.6; controls.maxDistance=5.5;
-    controls.autoRotate=!reduce; controls.autoRotateSpeed=1.7;
-    applyLens(); resize();
-    addEventListener('resize',resize);
-    loop();
-  }catch(e){ fail(e); }
-}
-function fail(e){ failed=true; console.warn('3D lens:',e&&e.message); if(failEl) failEl.style.display='flex'; cv.style.display='none'; }
-
-/* botones */
-document.querySelectorAll('#l3d-mat button').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#l3d-mat button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  curMat=+b.dataset.mat; if(lens) applyLens();
-}));
-document.querySelectorAll('#l3d-tre button').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('#l3d-tre button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
-  curTre=b.dataset.tre; tA=0; if(lens) applyMat(); setCap();
-}));
-
-/* carga de Three.js */
-async function load3D(){
-  if(inited||failed) return;
-  try{
-    THREE=await import('three');
-    ({OrbitControls}=await import('three/addons/controls/OrbitControls.js'));
-    ({RoomEnvironment}=await import('three/addons/environments/RoomEnvironment.js'));
-    init();
-  }catch(e){ fail(e); }
-}
-/* arranca cuando el visor se acerca a la vista (con fallback si el observer no dispara) */
-const stage=document.querySelector('.l3d-stage');
-let started=false;
-const kick=()=>{ if(started) return; started=true; load3D(); };
-try{
-  const io3d=new IntersectionObserver(es=>{ if(es.some(e=>e.isIntersecting)){ io3d.disconnect(); kick(); } },{rootMargin:'200px'});
-  io3d.observe(stage);
-}catch(e){}
-/* fallback: si en 1.2s no arrancó, cargar de todos modos */
-setTimeout(kick,1200);
-/* pausa fuera de pestaña */
-document.addEventListener('visibilitychange',()=>{ if(document.hidden){ if(raf)cancelAnimationFrame(raf); } else if(inited&&!failed){ loop(); } });
+});
 </script>
 </body>
 </html>
