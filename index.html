@@ -20799,13 +20799,18 @@ function enviarSolicitudDescuento(subtotal, overlay) {
     'Subtotal $'+subtotal.toFixed(2)+' → Precio final $'+precio.toFixed(2)+' (Descuento $'+desc.toFixed(2)+', '+pct+'%)',
     function() {
       var descEl = document.getElementById('vta-descuento');
-      descEl.disabled = false; descEl.style.opacity = '';
+      // Aplicar el descuento AUTORIZADO de forma programática y dejar el campo BLOQUEADO.
+      // Antes se hacía descEl.disabled=false (lo desbloqueaba) → el cajero podía teclear un
+      // descuento MAYOR sin re-autorizar (bug). Ahora queda fijo en el monto autorizado;
+      // para cambiarlo hay que volver a solicitar autorización con el botón.
       descEl.value = desc.toFixed(2);
+      descEl.disabled = true; descEl.style.opacity = '';
       recalcVtaTotales();
-      document.getElementById('vta-desc-auth-btn').innerHTML = '✓ $'+desc.toFixed(2);
-      document.getElementById('vta-desc-auth-btn').style.color = '#72c47e';
-      document.getElementById('vta-desc-auth-btn').style.borderColor = 'rgba(114,196,126,0.3)';
-      document.getElementById('vta-desc-auth-btn').onclick = null;
+      var _db = document.getElementById('vta-desc-auth-btn');
+      _db.innerHTML = '✓ $'+desc.toFixed(2)+' · cambiar';
+      _db.style.color = '#72c47e';
+      _db.style.borderColor = 'rgba(114,196,126,0.3)';
+      _db.onclick = autorizarDescuento; // re-autorizar para modificar el descuento
     });
 }
 
