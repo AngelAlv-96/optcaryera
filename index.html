@@ -7729,8 +7729,8 @@ async function loadDash() {
   } else {
     body.innerHTML = await renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol);
   }
-  // 🕐 Reloj checador en el dashboard — SOLO gerencia, SOLO ventana de apertura 10:00–10:45
-  if (rol === 'gerencia') {
+  // 🕐 Reloj checador en el dashboard — admin y gerencia, SOLO ventana de apertura 10:00–10:45
+  if (rol === 'admin' || rol === 'gerencia') {
     body.insertAdjacentHTML('afterbegin', '<div id="dash-checador"></div>');
     setTimeout(function(){ _loadDashChecador(); }, 60);
   }
@@ -7777,7 +7777,7 @@ function _chkFmtHora(v) {
 async function _loadDashChecador() {
   var cont = document.getElementById('dash-checador');
   if (!cont) return;
-  if (currentUser?.rol !== 'gerencia') { cont.innerHTML = ''; return; }
+  if (!['admin','gerencia'].includes(currentUser?.rol)) { cont.innerHTML = ''; return; }
   // Ventana de apertura: 10:00–10:45 (hora Chihuahua)
   var now = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: false }); // "HH:MM"
   var p = now.split(':'); var mins = (parseInt(p[0],10) || 0) * 60 + (parseInt(p[1],10) || 0);
