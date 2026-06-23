@@ -7729,6 +7729,11 @@ async function loadDash() {
   } else {
     body.innerHTML = await renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol);
   }
+  // 🕐 Reloj checador en el dashboard — SOLO gerencia, SOLO ventana de apertura 10:00–10:45
+  if (rol === 'gerencia') {
+    body.insertAdjacentHTML('afterbegin', '<div id="dash-checador"></div>');
+    setTimeout(function(){ _loadDashChecador(); }, 60);
+  }
   renderTipoCambioDash();
   // Badge cambios de precio (todos los roles que tienen el item visible)
   setTimeout(function() {
@@ -7756,6 +7761,79 @@ async function loadDash() {
   }
   // Start Clari pending sale polling for admin
   if (rol === 'admin') _startClariPendingPolling();
+}
+
+// 🕐 RELOJ CHECADOR en el dashboard (solo gerencia, ventana de apertura 10:00–10:45 Chihuahua)
+// Reusa los helpers de mod-asistencia.js: _asistGetActiveEmployees / _asistResolveSchedule / _asistDayKey / _asistHoyLocal
+function _chkFmtHora(v) {
+  if (!v) return '';
+  var s = String(v);
+  if (s.includes('T') || s.includes(' ')) {
+    try { var d = new Date(s.includes('T') ? s : s.replace(' ', 'T')); if (!isNaN(d)) return d.toLocaleTimeString('es-MX', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: false }); } catch(e) {}
+  }
+  var m = s.match(/(\d{1,2}:\d{2})/);
+  return m ? m[1] : s;
+}
+async function _loadDashChecador() {
+  var cont = document.getElementById('dash-checador');
+  if (!cont) return;
+  if (currentUser?.rol !== 'gerencia') { cont.innerHTML = ''; return; }
+  // Ventana de apertura: 10:00–10:45 (hora Chihuahua)
+  var now = new Date().toLocaleTimeString('en-GB', { timeZone: 'America/Chihuahua', hour: '2-digit', minute: '2-digit', hour12: false }); // "HH:MM"
+  var p = now.split(':'); var mins = (parseInt(p[0],10) || 0) * 60 + (parseInt(p[1],10) || 0);
+  if (mins < 600 || mins > 645) { cont.innerHTML = ''; return; }
+  try {
+    // Cargar config de asistencia si aún no está (gerencia pudo no haber abierto RH)
+    if (typeof _asistHorarios === 'undefined' || !_asistHorarios || !Object.keys(_asistPhoneMap || {}).length) {
+      var cfgRes = await db.from('app_config').select('id,value').in('id', ['empleados_telefono','horarios_asistencia','custom_users','asesores','expedientes_empleados']);
+      (cfgRes.data || []).forEach(function(c) {
+        var v = typeof c.value === 'string' ? JSON.parse(c.value) : c.value;
+        if (c.id === 'empleados_telefono') _asistPhoneMap = v || {};
+        if (c.id === 'horarios_asistencia') _asistHorarios = v;
+        if (c.id === 'custom_users') _asistUsers = v || {};
+        if (c.id === 'asesores') _asistAsesores = v || {};
+        if (c.id === 'expedientes_empleados') _asistExpedientes = v || {};
+      });
+    }
+    var hoy = _asistHoyLocal();
+    var dayKey = _asistDayKey(hoy);
+    var dObj = new Date(hoy + 'T12:00:00');
+    var res = await db.from('asistencia').select('uid,entrada,retardo_min').eq('fecha', hoy);
+    var recByUid = {}; (res.data || []).forEach(function(r) { recByUid[r.uid] = r; });
+    var emps = _asistGetActiveEmployees();
+    var rows = []; var nOk = 0, nRet = 0, nPend = 0;
+    emps.forEach(function(emp) {
+      var sched = _asistResolveSchedule(emp.uid, dayKey, dObj);
+      if (!sched) return; // descanso hoy
+      var rec = recByUid[emp.uid];
+      var estado, orden;
+      if (rec && rec.entrada) {
+        if (rec.retardo_min && rec.retardo_min > 0) { estado = 'retardo'; nRet++; orden = 1; }
+        else { estado = 'ok'; nOk++; orden = 2; }
+      } else { estado = 'pendiente'; nPend++; orden = 0; }
+      rows.push({ nombre: emp.nombre, sucursal: emp.sucursal, estado: estado, hora: rec ? _chkFmtHora(rec.entrada) : '', retardo: rec && rec.retardo_min, orden: orden });
+    });
+    if (!rows.length) { cont.innerHTML = ''; return; }
+    rows.sort(function(a, b) { return a.orden - b.orden || (a.sucursal || '').localeCompare(b.sucursal || ''); });
+    var h = '<div class="card" style="margin-bottom:16px;border:1px solid rgba(138,176,232,0.25)"><div class="card-head"><h3>🕐 Reloj checador · apertura</h3><span style="font-size:11px;color:var(--muted)">10:00–10:45 · ' + now + '</span></div>';
+    h += '<div style="display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap">';
+    h += '<span style="font-size:11px;color:#72c47e;font-weight:600">✅ ' + nOk + ' a tiempo</span>';
+    h += '<span style="font-size:11px;color:#e8a84a;font-weight:600">⚠️ ' + nRet + ' retardo' + (nRet!==1?'s':'') + '</span>';
+    h += '<span style="font-size:11px;color:#e08080;font-weight:600">⏳ ' + nPend + ' sin checar</span>';
+    h += '</div><div style="padding:0 12px 12px;max-height:300px;overflow-y:auto">';
+    rows.forEach(function(r) {
+      var c = r.estado === 'ok' ? '#72c47e' : r.estado === 'retardo' ? '#e8a84a' : '#e08080';
+      var ic = r.estado === 'ok' ? '✅' : r.estado === 'retardo' ? '⚠️' : '⏳';
+      var det = r.estado === 'pendiente' ? 'sin checar' : (r.hora + (r.estado === 'retardo' ? ' · +' + r.retardo + ' min' : ''));
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,0.04)">';
+      h += '<span style="font-size:14px">' + ic + '</span>';
+      h += '<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + r.nombre + '</div><div style="font-size:10px;color:var(--muted)">' + (r.sucursal || '') + '</div></div>';
+      h += '<span style="font-size:12px;font-weight:700;color:' + c + '">' + det + '</span>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+    cont.innerHTML = h;
+  } catch(e) { console.warn('[Dash checador]', e); cont.innerHTML = ''; }
 }
 
 // ── CLARI PENDING SALE POLLING (admin only) ──
