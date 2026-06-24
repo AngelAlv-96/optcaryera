@@ -17303,7 +17303,14 @@ function _clariApplyIncoming(m) {
   if (!list || !m || !m.phone || !m.content) return false;
   var input = list.querySelector('.clari-reply-input[data-phone="' + m.phone + '"]');
   var card = input && input.closest('.clari-card');
+  // ¿El admin tiene una respuesta a medio escribir? Si sí, NO movemos ni insertamos tarjetas
+  // (eso reordena la lista y en móvil parpadea / mueve el input bajo el dedo).
+  var _anyDraft = false;
+  list.querySelectorAll('.clari-reply-input').forEach(function(i) { if (i.value && i.value.trim()) _anyDraft = true; });
   if (!card) {
+    // Conversación nueva mientras el admin escribe: no insertes la tarjeta ahora (mueve el layout).
+    // Aparecerá en el próximo render completo, cuando ya no haya borrador.
+    if (_anyDraft) return true;
     // Conversación sin tarjeta en el DOM (nueva o fuera del filtro): prepend de UNA tarjeta, sin redibujar la lista
     if (!list.querySelector('.clari-card')) return false; // lista vacía/placeholder → render completo
     var msgsPhone = clariConversations.filter(function(x) { return x.phone === m.phone; });
@@ -17344,8 +17351,9 @@ function _clariApplyIncoming(m) {
     if (m.role !== 'assistant') { av.style.background = 'rgba(37,211,102,0.25)'; av.textContent = '🟢'; }
     else { av.style.background = 'rgba(255,255,255,0.06)'; av.textContent = '💬'; }
   }
-  // Subir la tarjeta al inicio (preservando foco/cursor si el admin estaba escribiendo en ella)
-  if (list.firstElementChild !== card) {
+  // Subir la tarjeta al inicio (preservando foco/cursor si el admin estaba escribiendo en ella).
+  // NO la movemos si hay un borrador a medio escribir (reordenar parpadea/mueve el input en móvil).
+  if (list.firstElementChild !== card && !_anyDraft) {
     var act = document.activeElement;
     var inCard = act && card.contains(act);
     var selS = 0, selE = 0;
@@ -17360,10 +17368,14 @@ function renderClariConversations() {
   const list = document.getElementById('clari-conv-list');
   const search = (document.getElementById('clari-search')?.value || '').toLowerCase();
   const lineFilter = document.getElementById('clari-line-filter')?.value || '';
-  // Si el admin está ESCRIBIENDO una respuesta, NO re-renderizar (borraría lo escrito).
-  // Se difiere y se reintenta en unos segundos hasta que deje de escribir.
+  // Si hay CUALQUIER respuesta a medio escribir (con foco O SIN foco — en móvil el foco se
+  // pierde fácil al teclear/scrollear, por eso el guard anterior fallaba ahí), NO re-renderizar
+  // la lista completa: parpadea y pierde el cursor / lo escrito. Se difiere y se reintenta hasta
+  // que el borrador se envíe o se borre.
   var _act = document.activeElement;
-  if (_act && _act.classList && _act.classList.contains('clari-reply-input') && _act.value.trim()) {
+  var _typing = false;
+  list.querySelectorAll('.clari-reply-input').forEach(function(i) { if (i.value && i.value.trim()) _typing = true; });
+  if (_typing) {
     clearTimeout(window._clariRenderRetry);
     window._clariRenderRetry = setTimeout(function() { renderClariConversations(); }, 4000);
     return;
