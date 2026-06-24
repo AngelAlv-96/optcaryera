@@ -68,6 +68,20 @@ function getActivePromos() {
   // Hot Sale APLAZO ELIMINADO (ya no existe): la promo de descuento HS2026 de Aplazo terminó. Aplazo SIGUE como método de pago/financiamiento (eso va en el knowledge general, no aquí).
   var hotSaleAplazo = '';
 
+  // 🎟️ CUPÓN "lente solar graduado gratis" (campaña de reactivación por WhatsApp). Hasta el 30 de junio 2026.
+  // Convierte el 2x1 en 3x1: el lente solar graduado adicional (normalmente $499) va GRATIS presentando el cupón.
+  var cuponSolar3x1Active = now >= new Date('2026-06-24T00:00:00-06:00') && now <= new Date('2026-06-30T23:59:59-06:00');
+  var cuponSolar3x1 = cuponSolar3x1Active ? (
+    '🎟️ CUPÓN ESPECIAL VIGENTE (HASTA EL 30 DE JUNIO 2026) — ¡ANÚNCIALO PRIMERO, es la promo más fuerte ahora!:\n' +
+    '• Con la promo 2x1 en lentes + este cupón, el cliente se lleva ADEMÁS un LENTE SOLAR GRADUADO GRATIS → en total es 3x1 (2 lentes del 2x1 + 1 solar gratis).\n' +
+    '• Durante esta campaña, el lente solar graduado que normalmente cuesta $499 adicional va GRATIS con el cupón. (Si te preguntan por el de $499: con el cupón ese solar ya NO se cobra hasta el 30 de junio.)\n' +
+    '• El lente solar graduado incluye graduación de VISIÓN SENCILLA sin costo. Bifocal/progresivo en el solar sería upgrade con costo.\n' +
+    '• ⚠️ El solar gratis va ENCIMA de la compra del 2x1 (no es un regalo suelto): el cliente compra sus lentes con el 2x1 y el solar graduado es el bono gratis del cupón.\n' +
+    '• El cliente debe PRESENTAR EL CUPÓN en sucursal (le llegó por WhatsApp). Si dice que recibió el cupón / "el del lente solar gratis" / manda la imagen del cupón → confírmaselo con entusiasmo e invítalo a pasar ANTES del 30 de junio. Aplica en las 4 sucursales.\n' +
+    '• NO combinable con otros descuentos. El precio del 2x1 depende del armazón/graduación/material que elija (no des número); el solar graduado de visión sencilla es el extra GRATIS del cupón.\n' +
+    '• Si en el historial ves el tag [Cupon-Solar-3x1] o el cliente menciona el cupón → YA lo recibió; trátalo como cliente con cupón vigente.\n\n'
+  ) : '';
+
   // Campaña pautada en redes: fotocromáticos de color. MUCHOS prospectos escriben por este anuncio
   // o mandan la foto del flyer — Clari debe reconocerla como NUESTRA y responder con info clara.
   var campanaFotoColor = '📣 CAMPAÑA ACTUAL EN REDES — FOTOCROMÁTICOS DE COLOR (flyer "UN SOLO LENTE. DOS FORMAS DE VERTE."):\n' +
@@ -80,7 +94,7 @@ function getActivePromos() {
 
   // Abril 15 - Junio 30, 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante TODO junio. Maestros hasta 18 de mayo.)
   if (year === 2026 && (month === 4 || month === 5 || month === 6)) {
-    return hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE (DURANTE JUNIO 2026):\n' +
+    return cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE (DURANTE JUNIO 2026):\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
       '• El 2x1 NO aplica a LENTES DE CONTACTO bajo ninguna circunstancia. Los lentes de contacto se venden por caja a precio individual de cada marca (ver lista de precios LC). NUNCA digas "2x1 en lentes de contacto" ni "aplica tanto para lentes de contacto como para armazón".\n' +
@@ -107,7 +121,7 @@ function getActivePromos() {
   }
 
   // Fallback (fuera de abril 2026 o antes del deploy)
-  return hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+  return cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional por $499 (par extra dentro de la promo).\n' +
