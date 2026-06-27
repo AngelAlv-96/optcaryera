@@ -3628,7 +3628,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     <button onclick="abrirSeguroVta()" style="flex:1;min-width:140px;padding:8px;background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.28);border-radius:8px;color:#79c47e;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🛡️ Visión Segura</button>
                     <button id="vta-recoger-otra-btn" onclick="_toggleRecogerOtra()" title="El cliente recoge su pedido en otra sucursal" style="padding:8px 10px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.22);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">📍 Otra sucursal</button>
                     <button onclick="abrirConvenioVta()" title="Convenio empresarial (el empleado presenta su código)" style="padding:8px 10px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🏢 Convenio</button>
-                    <button onclick="abrirRescateVta()" title="Descuento de rescate (5%/10%, 15% si la venta supera $3,500). Queda registrado." style="padding:8px 10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.28);border-radius:8px;color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🎯 Rescate</button>
+                    <button onclick="abrirRescateVta()" title="Descuento de rescate (5%/10%, 15% si la venta supera $5,000). Queda registrado." style="padding:8px 10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.28);border-radius:8px;color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🎯 Rescate</button>
                   </div>
                   <input type="checkbox" id="vta-recoger-otra" style="display:none">
                   <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
@@ -10316,10 +10316,10 @@ function _cancelarCumpleVta() {
 
 // 🎯 DESCUENTO DE RESCATE — descuento PRE-AUTORIZADO que el cajero aplica solo (sin pedir
 // autorización admin por venta), acotado: 5% o 10% general, 15% SOLO si el subtotal supera
-// $3,500. Control = registro de cada uso (cajero/monto/motivo) en la tabla descuentos_rescate.
+// $5,000. Control = registro de cada uso (cajero/monto/motivo) en la tabla descuentos_rescate.
 var _rescateVtaContext = null;   // {pct, motivo, _fresh}
 var RESCATE_MAX_GENERAL = 10;    // % máximo general
-var RESCATE_UMBRAL_15 = 3500;    // subtotal mínimo para habilitar el 15%
+var RESCATE_UMBRAL_15 = 5000;    // subtotal mínimo para habilitar el 15%
 function abrirRescateVta() {
   var sub = vtaItems.reduce(function(s,i){return s+i.subtotal},0);
   if (sub <= 0) { toast('Agrega productos primero', true); return; }
@@ -10441,7 +10441,7 @@ function _hintHTML(key, texto, max){
 function _renderPosHints(){
   var a = document.getElementById('hint-vs-pos-wrap'); if (a) a.innerHTML = _hintHTML('vs-pos', 'Ofrécela al cliente: protege sus lentes 12 meses. Eliges el plan y se suma a la venta.');
   var b = document.getElementById('hint-recoger-pos-wrap'); if (b) b.innerHTML = _hintHTML('recoger-pos', 'Márcalo si el cliente va a recoger su pedido en OTRA sucursal (se entrega y cobra allá).');
-  var c = document.getElementById('hint-rescate-pos-wrap'); if (c) c.innerHTML = _hintHTML('rescate-pos', '🆕 Descuento de rescate: si el cliente duda o se quiere ir, aplícale 5% o 10% (15% en ventas de +$3,500) para cerrar la venta. Queda registrado.', 5);
+  var c = document.getElementById('hint-rescate-pos-wrap'); if (c) c.innerHTML = _hintHTML('rescate-pos', '🆕 Descuento de rescate: si el cliente duda o se quiere ir, aplícale 5% o 10% (15% en ventas de +$5,000) para cerrar la venta. Queda registrado.', 5);
 }
 
 // ══════════════════════════════════════════════════════════════════
