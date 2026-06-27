@@ -2134,6 +2134,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="">Todos</option>
             </select>
             <button class="btn btn-g btn-sm" onclick="abrirRecibirOtraSuc()" title="Recibir un pedido vendido en otra sucursal" style="font-size:12px">&#128229; De otra sucursal</button>
+            <button class="btn btn-g btn-sm" id="btn-lab-limpiar-dups" onclick="limpiarDuplicadosLab()" title="Eliminar órdenes duplicadas (mismo folio + mismo armazón por doble clic)" style="font-size:12px;display:none;color:#e08080">&#129529; Limpiar duplicados</button>
             <button class="btn btn-g btn-sm" onclick="abrirScanOrden()" title="Escanear con cámara" style="font-size:14px">📷</button>
             <button class="btn btn-g btn-sm" onclick="loadLab()" title="Actualizar">&#x21bb; Actualizar</button>
           </div>
@@ -6233,6 +6234,8 @@ function debounceLabSearch() {
 async function loadLab() {
   const lista = document.getElementById('lab-list');
   lista.innerHTML = '<div class="lab-empty">Cargando...</div>';
+  var _bdl = document.getElementById('btn-lab-limpiar-dups');
+  if (_bdl) _bdl.style.display = (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') ? '' : 'none';
   const filtro = document.getElementById('lab-filtro').value;
   const q = (document.getElementById('lab-search')?.value || '').trim();
   const esOptica = currentUser?.rol === 'sucursal' || currentUser?.rol === 'gerencia';
@@ -16920,6 +16923,64 @@ async function _ejecutarEliminarOrdenLab(orderId, nombre) {
   if (error) { toast('Error al eliminar: ' + error.message, true); return; }
   toast('Orden eliminada');
   loadLab();
+}
+
+// 🧹 Limpia órdenes de laboratorio DUPLICADAS (mismo folio EXACTO + mismo armazón = la misma
+// pieza creada dos veces por doble clic). NO toca promos (sus pares tienen folios -2/-3 distintos)
+// ni garantías (GTA-, se revisan a mano). Conserva la orden de estado más avanzado de cada par.
+async function limpiarDuplicadosLab() {
+  if (!(currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') && !tienePermiso('del_ordenes')) {
+    toast('Necesitas permiso de admin/gerencia para limpiar duplicados', true); return;
+  }
+  toast('Buscando duplicados...');
+  // Traer órdenes (paginado) con lo mínimo necesario
+  var all = [], from = 0, page = 1000, guard = 0;
+  while (guard++ < 40) {
+    var res = await db.from('ordenes_laboratorio')
+      .select('id, armazon, estado_lab, created_at, notas_laboratorio')
+      .order('created_at', { ascending: true })
+      .range(from, from + page - 1);
+    if (res.error) { toast('Error al leer órdenes: ' + res.error.message, true); return; }
+    var data = res.data || [];
+    all = all.concat(data);
+    if (data.length < page) break;
+    from += page;
+  }
+  // Agrupar por folio EXACTO + armazón
+  var groups = {};
+  all.forEach(function(o) {
+    var fm = (o.notas_laboratorio || '').match(/Folio:\s*([^|]+)/);
+    var folio = fm ? fm[1].trim() : '';
+    if (!folio || /^GTA/i.test(folio)) return; // sin folio o garantía → omitir
+    var key = folio + '|||' + (o.armazon || '');
+    (groups[key] = groups[key] || []).push(o);
+  });
+  var PRIO = { 'Entregado':5, 'Listo para entrega':4, 'En camino a sucursal':4, 'Recibido en óptica':3, 'Recibido en lab':3, 'Biselado completado':3, 'Surtido':3, 'Tallando en lab externo':2, 'Enviado al lab':2, 'Devuelto al lab':1 };
+  var aBorrar = [], foliosAfectados = {};
+  Object.keys(groups).forEach(function(k) {
+    var arr = groups[k];
+    if (arr.length < 2) return;
+    // mismo folio+armazón creados con < 60 min de diferencia (doble clic / re-clic)
+    arr.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    var span = (new Date(arr[arr.length-1].created_at) - new Date(arr[0].created_at)) / 60000;
+    if (span > 60) return; // demasiado separados → no tocar (por seguridad)
+    var keep = arr.slice().sort(function(a, b) {
+      var pa = PRIO[a.estado_lab]||0, pb = PRIO[b.estado_lab]||0;
+      if (pb !== pa) return pb - pa;
+      return new Date(a.created_at) - new Date(b.created_at);
+    })[0];
+    arr.forEach(function(o) { if (o.id !== keep.id) { aBorrar.push(o.id); foliosAfectados[k.split('|||')[0]] = 1; } });
+  });
+  if (!aBorrar.length) { toast('No se encontraron órdenes duplicadas 🎉'); return; }
+  var folios = Object.keys(foliosAfectados);
+  if (!confirm('Se encontraron ' + aBorrar.length + ' orden(es) DUPLICADA(s) (mismo folio + mismo armazón).\n\nFolios: ' + folios.join(', ') + '\n\nSe conserva una de cada par (la de estado más avanzado) y se elimina la duplicada.\n\n¿Eliminar ' + aBorrar.length + ' duplicada(s)?')) return;
+  var ok = 0, fail = 0;
+  for (var i = 0; i < aBorrar.length; i++) {
+    var dres = await db.from('ordenes_laboratorio').delete().eq('id', aBorrar[i]);
+    if (dres.error) { fail++; console.warn('[limpiar-dup]', dres.error.message); } else ok++;
+  }
+  toast('✓ ' + ok + ' duplicada(s) eliminada(s)' + (fail ? (' · ' + fail + ' fallaron') : ''));
+  if (typeof loadLab === 'function') loadLab();
 }
 
 async function eliminarConsulta(hcId) {
