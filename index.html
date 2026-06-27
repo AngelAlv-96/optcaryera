@@ -14085,6 +14085,30 @@ async function guardarEImprimir() {
   };
   } // end else (armazon)
 
+  // 🛡️ Anti-duplicado (doble clic o re-clic 30s después, cuando el candado _actionBusy ya se liberó):
+  // si YA existe una orden con el MISMO folio y el MISMO armazón (= literalmente la misma pieza),
+  // avisa antes de crear otra. En un 2x1/3x1 los pares tienen folios distintos (-2/-3) y el addon
+  // solar es otro armazón/tipo, así que esto NO afecta promos — solo bloquea recrear la misma pieza.
+  if (folioFinal) {
+    try {
+      const { data: _dupChk } = await db.from('ordenes_laboratorio')
+        .select('id, armazon, created_at, notas_laboratorio')
+        .ilike('notas_laboratorio', '%Folio: ' + folioFinal + '%')
+        .limit(25);
+      const _mismaPieza = (_dupChk || []).find(function(o) {
+        var fm = (o.notas_laboratorio || '').match(/Folio:\s*([^|]+)/);
+        var fExact = fm ? fm[1].trim() : '';
+        return fExact === String(folioFinal).trim() && (o.armazon || '') === (orderPayload.armazon || '');
+      });
+      if (_mismaPieza) {
+        var _hace = Math.max(0, Math.round((Date.now() - new Date(_mismaPieza.created_at).getTime()) / 60000));
+        if (!confirm('⚠️ Ya existe una orden para el folio ' + folioFinal + ' con el armazón "' + (orderPayload.armazon || '') + '" (creada hace ' + _hace + ' min).\n\nProbablemente ya se guardó y esto sería un DUPLICADO.\n\n¿Crear otra de todos modos?')) {
+          return;
+        }
+      }
+    } catch (e) { console.warn('[dup-check]', e); }
+  }
+
   let { error } = await db.from('ordenes_laboratorio').insert(orderPayload);
 
   if (error && error.message && (error.message.includes('column') || error.code === '42703')) {
