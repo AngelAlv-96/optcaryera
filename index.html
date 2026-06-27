@@ -16800,7 +16800,22 @@ function imprimirReporteMateriales() {
   silentPrint(printContent, css);
 }
 
-function abrirRevisionQC(orderId, nombre, tel) {
+// Opciones para el datalist de "Revisado por" (QC): optometristas (datalist fijo) +
+// asesores de TODAS las sucursales + globales (cajeras/personal que revisa trabajos).
+// Así aparece cualquier empleado de la config, no solo los optometristas hardcodeados.
+function _qcRevisoresOptions() {
+  var set = {};
+  var dl = document.getElementById('dl-optometristas');
+  if (dl) Array.from(dl.options).forEach(function(o){ if(o.value) set[o.value]=1; });
+  try {
+    var cfg = _asesoresConfig || {};
+    Object.keys(cfg.sucursales||{}).forEach(function(s){ (cfg.sucursales[s]||[]).forEach(function(n){ if(n) set[n]=1; }); });
+    (cfg.globales||[]).forEach(function(n){ if(n) set[n]=1; });
+  } catch(e){}
+  return Object.keys(set).map(function(v){ return '<option value="'+String(v).replace(/"/g,'&quot;')+'">'; }).join('');
+}
+async function abrirRevisionQC(orderId, nombre, tel) {
+  if (!_asesoresConfig) { try { await cargarAsesoresConfig(); } catch(e){} }
   let overlay = document.getElementById('qc-review-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -16817,7 +16832,7 @@ function abrirRevisionQC(orderId, nombre, tel) {
       <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px">Revisado por</label>
       <input list="qc-examinadores" id="qc-revisor" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:14px;outline:none" placeholder="Nombre del asesor...">
       <datalist id="qc-examinadores">
-        ${(document.getElementById('hc-examinador')?.list?.options ? Array.from(document.getElementById('hc-examinador').list.options).map(o => '<option value="'+o.value+'">').join('') : '')}
+        ${_qcRevisoresOptions()}
       </datalist>
     </div>
     <div style="padding:12px 24px 20px;display:flex;gap:8px">
