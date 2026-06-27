@@ -69,7 +69,7 @@ async function imprimirTicketVentaTermico(ventaIdParam) {
   // Portal QR
   let token = v.token_portal;
   if (!token) { token = Math.random().toString(36).substring(2,12); await db.from('ventas').update({token_portal:token}).eq('id',v.id); }
-  const portalUrl = `${window.location.origin}/portal.html?t=${token}`;
+  const portalUrl = `${portalBase()}/portal.html?t=${token}`;
   const qrSvg = qrToSVG(portalUrl, 3);
   const fiscal = await getDatosFiscales();
   const fiscalSuc = v.sucursal === 'Online' && v.sucursal_entrega ? v.sucursal_entrega : v.sucursal;
@@ -434,7 +434,7 @@ async function compartirTicketDigital(ventaIdParam) {
   const saldo = Number(v.saldo);
   let token = v.token_portal;
   if (!token) { token = Math.random().toString(36).substring(2,12); await db.from('ventas').update({token_portal:token}).eq('id',v.id); }
-  const portalUrl = `${window.location.origin}/portal.html?t=${token}`;
+  const portalUrl = `${portalBase()}/portal.html?t=${token}`;
   // Convertir created_at (UTC) a fecha local correcta — evita mostrar día siguiente en ventas nocturnas
   const _fD = new Date(v.created_at);
   const fecha = new Date(_fD.getTime() - _fD.getTimezoneOffset()*60000).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
@@ -488,6 +488,6 @@ async function copiarLinkPortal(ventaIdParam) {
     token = v?.token_portal;
     if (!token) { token = Math.random().toString(36).substring(2,12); await db.from('ventas').update({token_portal:token}).eq('id',vid); }
   }
-  const url = `${window.location.origin}/portal.html?t=${token}`;
+  const url = `${portalBase()}/portal.html?t=${token}`;
   try { await navigator.clipboard.writeText(url); toast('✓ Link del portal copiado'); } catch { prompt('Copia este link:', url); }
 }

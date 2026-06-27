@@ -22968,7 +22968,7 @@ async function enviarComprobanteAbono() {
   const fecha = ab.fecha.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
   let token = v.token_portal;
   if (!token && v.id && !v.id.startsWith('sicar_')) { token = Math.random().toString(36).substring(2,12); await db.from('ventas').update({token_portal:token}).eq('id',v.id); }
-  const portalUrl = token ? `${window.location.origin}/portal.html?t=${token}` : '';
+  const portalUrl = token ? `${portalBase()}/portal.html?t=${token}` : '';
   const fallbackMsg = `💰 *ÓPTICAS CAR & ERA*\n\nHola ${nombre}, recibimos tu abono de $${ab.monto.toFixed(2)}.\n\n📋 Folio: ${ab.folio}\n💳 Saldo restante: $${ab.nuevoSaldo.toFixed(2)}\n\n¡Gracias por tu pago! 🙏`;
   var result = await sendWA(whatsappNum, fallbackMsg, {
     template: 'HX40dba775cdf9e14b874bc8c7ff0034a6',
@@ -25726,6 +25726,17 @@ function selPxFolio0(id, nombre) {
 let lastSaleId = null;
 let lastSaleData = null;
 
+// Dominio público para los links que ve el CLIENTE (portal del ticket). En producción usa
+// caryera.mx (dominio bonito, no expone la URL del sistema optcaryera.netlify.app); en
+// preview/local conserva el origen para que las pruebas sigan funcionando.
+function portalBase() {
+  try {
+    var o = window.location.origin;
+    if (o.indexOf('optcaryera.netlify.app') !== -1 || o.indexOf('caryera.mx') !== -1) return 'https://caryera.mx';
+    return o;
+  } catch (e) { return 'https://caryera.mx'; }
+}
+
 function mostrarPostSale(ventaId, folio, estado, total, monAplicar, pacNombre, pacTel, portalToken) {
   lastSaleId = ventaId;
   lastSaleData = { folio, estado, total, monAplicar, pacNombre, pacTel, portalToken };
@@ -27039,7 +27050,7 @@ async function calcularComisiones() {
 <!-- Extracted JS modules -->
 <script src="js/mod-auth.js?v=126"></script>
 <script src="js/mod-scanner.js?v=125"></script>
-<script src="js/mod-tickets.js?v=125"></script>
+<script src="js/mod-tickets.js?v=126"></script>
 <script src="js/mod-clari.js?v=126"></script>
 <script src="js/mod-catalogo.js?v=125"></script>
 <script src="js/mod-produccion.js?v=125"></script>
