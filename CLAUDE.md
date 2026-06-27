@@ -334,6 +334,18 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Acciones protegidas: descuentos, borrar ventas/órdenes/garantías/abonos, cancelar ventas
 - Lee auth_phones de whatsapp_config para enviar solicitudes
 
+## 🎯 DESCUENTO DE RESCATE (v442-v444)
+- **Qué es**: descuento PRE-AUTORIZADO que el cajero aplica solo en el POS (SIN pedir autorización admin por venta), para cerrar ventas dudosas. Acotado y registrado.
+- **Topes**: 5% o 10% en cualquier venta; **15% SOLO si el subtotal supera $5,000** (`RESCATE_UMBRAL_15=5000` en index.html; el botón de 15% ni aparece si no llega). General máx 10% (`RESCATE_MAX_GENERAL`).
+- **UI**: botón "🎯 Rescate" en `vta-extras-wrap` (junto a Convenio/Visión Segura) → `abrirRescateVta()` modal con % elegibles + motivo opcional → `_aplicarRescate(pct)`.
+- **Mecánica (patrón cupón cumple)**: `_rescateVtaContext` + rama en `recalcVtaTotales` (% sobre subtotal POST-promo, acumulable con 2x1); banner ámbar con ✕; reset en `initVenta` con patrón `_fresh`; **NO combinable** con cupón cumple ni convenio (guards). Evita el gate de descuento igual que cumple/convenio (escribe `vta-descuento` programático).
+- **Registro (control anti-abuso = solo auditoría, sin candados duros — decisión de Angel)**: al CERRAR la venta se inserta en tabla **`descuentos_rescate`** (folio, sucursal, cajero, asesor, subtotal, pct, monto_descuento, motivo, paciente_nombre). En ALLOWED_TABLES de dbwrite.
+- **Auditoría admin/gerencia**: panel "🎯 Descuentos de rescate" en la vista **Comisiones** (`_loadRescateAudit`, contenedor `com-rescate`) — agrupa por cajero (N usos · -$total) + detalle, filtrado por sucursal+quincena.
+- **Hint de uso**: aparece las primeras **5 veces** que el cajero entra al POS (`hint-rescate-pos-wrap` + `_renderPosHints` con max=5; helper `_hintHTML(key,texto,max)` acepta máximo configurable, default 3).
+
+## 🔄 BANNER DE NUEVA VERSIÓN (v443)
+- El personal NO recarga la página → no tomaban versiones nuevas. La registración del SW (index.html) ahora llama `reg.update()` cada 2 min + en cada `visibilitychange`; al detectar nueva versión (`updatefound`→`installed` CON `navigator.serviceWorker.controller` = es actualización, no 1ª instalación) muestra `_showUpdateBanner()`: banner fijo abajo con botón verde **"Actualizar"** (`window.location.reload()`, trae el index.html nuevo por network-first) + **"Después"** (cierra). **NO auto-recarga** (interrumpiría una venta). sw.js sigue con `skipWaiting` (solo se bumpea CACHE_NAME por versión). Transición: la 1ª vez tras desplegar el detector, las pestañas viejas necesitan UNA recarga manual; de ahí en adelante el banner aparece solo.
+
 ## 🛒 VENTAS ONLINE
 - Folios: ONL-XXXX (serie separada en folio_ventas)
 - Campos: canal_venta (Facebook/Instagram/WhatsApp/Otro), sucursal_entrega
