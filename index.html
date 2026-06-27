@@ -3636,6 +3636,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   </select>
                   <div id="hint-vs-pos-wrap"></div>
                   <div id="hint-recoger-pos-wrap"></div>
+                  <div id="hint-rescate-pos-wrap"></div>
                 </div>
 
                 <!-- Folio Assignment Panel (NxM promos) -->
@@ -10427,11 +10428,11 @@ function _syncRecogerOtra(on) {
 
 // 💡 HINTS de uso para botones nuevos — se muestran solo las primeras 3 veces y luego se ocultan
 // (no persistentes, con ✕ para descartar). El conteo vive en localStorage por dispositivo.
-function _hintShow(key){ try { return parseInt(localStorage.getItem('_hint_'+key)||'0',10) < 3; } catch(e){ return false; } }
+function _hintShow(key, max){ try { return parseInt(localStorage.getItem('_hint_'+key)||'0',10) < (max||3); } catch(e){ return false; } }
 function _hintSeen(key){ try { var n=parseInt(localStorage.getItem('_hint_'+key)||'0',10); localStorage.setItem('_hint_'+key, String(n+1)); } catch(e){} }
 function _hintDismiss(key){ try { localStorage.setItem('_hint_'+key,'99'); } catch(e){} var el=document.getElementById('hint-'+key); if(el) el.style.display='none'; }
-function _hintHTML(key, texto){
-  var show = _hintShow(key);
+function _hintHTML(key, texto, max){
+  var show = _hintShow(key, max);
   if (show) _hintSeen(key);
   return '<div id="hint-'+key+'" style="'+(show?'':'display:none;')+'margin-top:6px;font-size:10.5px;color:#8fb8d6;background:rgba(56,189,248,0.07);border:1px solid rgba(56,189,248,0.18);border-radius:6px;padding:6px 8px;line-height:1.35">'
     + '<div style="display:flex;gap:6px;align-items:flex-start"><span style="flex:1">💡 '+texto+'</span>'
@@ -10440,6 +10441,7 @@ function _hintHTML(key, texto){
 function _renderPosHints(){
   var a = document.getElementById('hint-vs-pos-wrap'); if (a) a.innerHTML = _hintHTML('vs-pos', 'Ofrécela al cliente: protege sus lentes 12 meses. Eliges el plan y se suma a la venta.');
   var b = document.getElementById('hint-recoger-pos-wrap'); if (b) b.innerHTML = _hintHTML('recoger-pos', 'Márcalo si el cliente va a recoger su pedido en OTRA sucursal (se entrega y cobra allá).');
+  var c = document.getElementById('hint-rescate-pos-wrap'); if (c) c.innerHTML = _hintHTML('rescate-pos', '🆕 Descuento de rescate: si el cliente duda o se quiere ir, aplícale 5% o 10% (15% en ventas de +$3,500) para cerrar la venta. Queda registrado.', 5);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -27224,9 +27226,41 @@ async function _loadRescateAudit(suc, utcStart, utcEnd) {
 </div>
 
 <script>
+var _updBannerShown = false;
+function _showUpdateBanner() {
+  if (_updBannerShown) return; _updBannerShown = true;
+  var b = document.createElement('div');
+  b.id = 'app-update-banner';
+  b.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100000;background:linear-gradient(135deg,#1a1a2e,#2d2d52);border:1px solid rgba(226,198,166,0.25);border-radius:14px;padding:12px 16px;max-width:380px;width:92%;box-shadow:0 12px 40px rgba(0,0,0,0.5);font-family:Outfit,sans-serif;display:flex;align-items:center;gap:12px';
+  b.innerHTML = '<span style="font-size:22px;flex-shrink:0">🔄</span>'
+    + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:1px">Nueva versión disponible</div><div style="font-size:10px;color:#aaa">Toca Actualizar para tener las últimas mejoras</div></div>'
+    + '<div style="display:flex;gap:6px;flex-shrink:0">'
+    + '<button onclick="_aplicarUpdate()" style="padding:7px 13px;background:rgba(114,196,126,0.2);border:1px solid rgba(114,196,126,0.35);border-radius:8px;color:#72c47e;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">Actualizar</button>'
+    + '<button onclick="(function(){var e=document.getElementById(\'app-update-banner\');if(e)e.remove();})()" style="padding:7px 9px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#888;font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">Después</button>'
+    + '</div>';
+  document.body.appendChild(b);
+}
+function _aplicarUpdate() {
+  try { var b=document.getElementById('app-update-banner'); if(b) b.innerHTML='<span style="font-size:13px;color:#fff;font-family:Outfit,sans-serif;padding:4px">Actualizando…</span>'; } catch(e){}
+  window.location.reload();
+}
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').then(function(reg) {
     console.log('✓ PWA Service Worker registrado');
+    // 🔄 Detección de nueva versión → banner con botón "Actualizar" (cerrable). Pedido de Angel:
+    // el personal no recarga la página; así se enteran y actualizan con un clic, sin interrumpir ventas.
+    try {
+      setInterval(function(){ try { reg.update(); } catch(e){} }, 120000); // revisar cada 2 min
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden) { try { reg.update(); } catch(e){} } });
+      reg.addEventListener('updatefound', function(){
+        var nw = reg.installing; if (!nw) return;
+        nw.addEventListener('statechange', function(){
+          // 'installed' + ya hay un controller = es una ACTUALIZACIÓN (no la primera instalación)
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) _showUpdateBanner();
+        });
+      });
+      if (reg.waiting && navigator.serviceWorker.controller) _showUpdateBanner();
+    } catch(e) { console.log('update-check err', e && e.message); }
     // Request push notification permission after short delay
     setTimeout(function() {
       if ('Notification' in window && Notification.permission === 'default') {
