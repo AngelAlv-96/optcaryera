@@ -834,6 +834,9 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   if (todayChi === '2026-05-10') {
     horarioOverride = '\n\n🌷 HORARIO ESPECIAL HOY (PRIORIDAD MÁXIMA): Hoy domingo 10 de mayo es Día de las Madres y cerramos a las 3:00pm — NO 5pm. Si te preguntan si abren hoy, qué horario tienen hoy, o cualquier cosa de horario hoy, responde SIEMPRE: "Hoy domingo 10 de mayo cerramos a las 3pm por Día de las Madres". NUNCA digas que cerramos a las 5pm hoy. Esto sobrescribe cualquier otra mención de horario.';
   }
+  if (todayChi === '2026-06-28') {
+    horarioOverride += '\n\n⛔ AVISO ESPECIAL HOY (PRIORIDAD MÁXIMA): HOY domingo 28 de junio de 2026, la sucursal PLAZA VÍA VITTORIA CERRÓ a las 3:00pm por causas extraordinarias y permanece CERRADA el resto del día. Las otras 3 sucursales (Américas, Pinocelli y Magnolia) SÍ están abiertas con horario normal de domingo (hasta las 5:00pm). REGLAS: (1) Si alguien dice que está en Plaza Vía Vittoria y la encontró CERRADA, discúlpate breve e invítalo a pasar a PLAZA MAGNOLIA (es la más conveniente y sí está abierta). (2) Si preguntan por el horario de HOY o si abren hoy, responde que Plaza Vía Vittoria está cerrada hoy pero que Américas, Pinocelli y Magnolia están abiertas hasta las 5pm. NUNCA digas que Vía Vittoria está abierta hoy. Esto aplica SOLO hoy domingo 28 de junio.';
+  }
   var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".' + horarioOverride + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Get conversation history early (needed for order follow-up detection)
