@@ -22427,6 +22427,10 @@ function filtrarHistVentas() {
     const clickAction = isSicar ? "verDetalleSicar('"+v._credito_id+"')" : "verDetalleVenta('"+v.id+"')";
     const borderColor = isSicar?'rgba(138,176,232,0.12)':isOnline?'rgba(56,189,248,0.12)':sp?'rgba(212,184,74,0.12)':'rgba(255,255,255,0.04)';
     const onlineEntrega = isOnline && v.sucursal_entrega ? ' · 🏪 '+v.sucursal_entrega : '';
+    // Botón "Ir al chat" — SOLO admin: abre el panel Clari filtrado por el teléfono del paciente
+    const _isAdminHist = currentUser?.rol === 'admin';
+    const _telCli = (v.pacientes?.telefono || '').replace(/'/g,'');
+    const chatBtn = _isAdminHist ? `<button onclick="event.stopPropagation();irAlChatVenta('${_telCli}')" title="Ir al chat de WhatsApp" style="flex-shrink:0;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.28);color:#25d366;border-radius:8px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;line-height:1">💬 Chat</button>` : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid ${borderColor};border-radius:10px;cursor:pointer;transition:border-color .12s" onmouseover="this.style.borderColor='rgba(226,198,166,0.2)'" onmouseout="this.style.borderColor='${borderColor}'" onclick="${clickAction}">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">${v.folio}</span><span style="font-size:9px;padding:2px 6px;background:${c}15;color:${c};border-radius:5px;font-weight:600">${v.estado}</span>${sucTag}${sicarTag}${onlineTag}${canalTag}${Number(v.monedero_usado)>0?'<span style="font-size:9px;padding:2px 5px;background:rgba(114,196,126,0.1);color:#72c47e;border-radius:5px">🪙</span>':''}</div>
@@ -22437,8 +22441,27 @@ function filtrarHistVentas() {
         <div style="font-size:15px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">$${Number(v.total).toFixed(2)}</div>
         ${sp?`<div style="font-size:10px;color:#e08080;font-weight:600">Saldo: $${Number(v.saldo).toFixed(2)}</div>`:`<div style="font-size:10px;color:#72c47e">✓</div>`}
       </div>
+      ${chatBtn}
     </div>`;
   }).join('');
+}
+
+// Ir al chat de WhatsApp del cliente de una venta (solo admin). Abre el panel Clari
+// y lo filtra por el teléfono del paciente (10 dígitos → matchea el 521XXXXXXXXXX guardado).
+function irAlChatVenta(phone) {
+  if (currentUser?.rol !== 'admin') return;
+  var n = _wcrmNorm10(phone || '');
+  if (!n) { toast('Esta venta no tiene teléfono registrado', true); return; }
+  go('clari');
+  try { clariTab('conv'); } catch(e) {}
+  var s = document.getElementById('clari-search');
+  if (s) s.value = n;
+  // Reaplica el filtro cuando terminen de cargar las conversaciones (loadClariConversations es async)
+  setTimeout(function() {
+    var s2 = document.getElementById('clari-search');
+    if (s2) s2.value = n;
+    if (typeof renderClariConversations === 'function') renderClariConversations();
+  }, 700);
 }
 
 let vtaDetalleId=null,vtaDetalleData=null,abonoMetodo='Efectivo',abonoMSI=3;
