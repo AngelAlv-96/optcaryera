@@ -17258,7 +17258,41 @@ let clariHasMore = false;
 let clariAutoRefresh = null;
 let clariOpenPhone = null;
 let clariRealtimeSub = null;
+let clariRealtimeOK = false;   // true cuando el canal Realtime está conectado → NO armar polling destructivo
+let _clariLastSeen = null;     // created_at del mensaje más reciente visto (para el poll incremental)
 var _botDisabledMap = {}; // {phone: timestamp_ms}
+
+// ¿Esta fila ya está en clariConversations? (dedup del poll incremental)
+function _clariRowSeen(row) {
+  return clariConversations.some(function(x) {
+    if (row.id != null && x.id != null) return x.id === row.id;
+    return x.phone === row.phone && x.created_at === row.created_at && x.content === row.content && x.role === row.role;
+  });
+}
+function _clariUpdateLastSeen() {
+  var mx = _clariLastSeen;
+  clariConversations.forEach(function(m) { if (!mx || m.created_at > mx) mx = m.created_at; });
+  _clariLastSeen = mx;
+}
+// Poll de respaldo SOLO cuando Realtime está caído. Trae únicamente lo NUEVO y lo aplica
+// incrementalmente (igual que Realtime) — NUNCA redibuja toda la lista → sin parpadeo.
+async function _clariPollIncremental() {
+  if (document.getElementById('view-clari')?.style.display === 'none') return;
+  if (!_clariLastSeen) return;
+  try {
+    var resp = await db.from('clari_conversations').select('*').gt('created_at', _clariLastSeen).order('created_at', { ascending: true });
+    var data = resp.data;
+    if (resp.error || !data || !data.length) return;
+    var needsRender = false;
+    data.forEach(function(row) {
+      if (_clariRowSeen(row)) return;
+      clariConversations.unshift(row);
+      if (!_clariApplyIncoming(row)) needsRender = true;
+      if (!_clariLastSeen || row.created_at > _clariLastSeen) _clariLastSeen = row.created_at;
+    });
+    if (needsRender) renderClariConversations();
+  } catch(e) {}
+}
 
 function clariTab(tab) {
   document.getElementById('clari-panel-conv').style.display = tab === 'conv' ? '' : 'none';
@@ -17352,6 +17386,7 @@ async function loadClariConversations(append) {
   // Load last purchase info for each conversation phone (folio + sucursal)
   await _clariLoadPurchaseInfo();
   renderClariConversations();
+  _clariUpdateLastSeen();
   // Realtime subscription — instant updates, no polling
   if (!clariRealtimeSub) {
     clariRealtimeSub = db.channel('clari-live')
@@ -17361,26 +17396,36 @@ async function loadClariConversations(append) {
           // Actualización incremental (solo la tarjeta afectada, sin parpadeo).
           // Fallback a render completo si la conversación es nueva o no está en el DOM.
           if (!_clariApplyIncoming(payload.new)) renderClariConversations();
+          if (!_clariLastSeen || payload.new.created_at > _clariLastSeen) _clariLastSeen = payload.new.created_at;
         }
       })
       .subscribe(function(status) {
         if (status === 'SUBSCRIBED') {
           console.log('[Clari] Realtime conectado');
-          // Stop polling if realtime is working
+          clariRealtimeOK = true;
+          // Realtime funciona → apaga el polling destructivo y NO lo vuelvas a armar
           if (clariAutoRefresh) { clearInterval(clariAutoRefresh); clariAutoRefresh = null; }
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          // El socket se cayó → reanuda el poll INCREMENTAL (sin parpadeo) mientras estemos en el panel
+          clariRealtimeOK = false;
+          if (!clariAutoRefresh && document.getElementById('view-clari')?.style.display !== 'none') {
+            clariAutoRefresh = setInterval(function() {
+              if (document.getElementById('view-clari')?.style.display !== 'none') { _clariPollIncremental(); }
+              else { clearInterval(clariAutoRefresh); clariAutoRefresh = null; }
+            }, 30000);
+          }
         }
       });
   }
-  // Fallback polling in case Realtime is not enabled on the table
-  if (clariAutoRefresh) clearInterval(clariAutoRefresh);
-  clariAutoRefresh = setInterval(function() {
-    if (document.getElementById('view-clari')?.style.display !== 'none') {
-      loadClariConversations();
-    } else {
-      clearInterval(clariAutoRefresh);
-      clariAutoRefresh = null;
-    }
-  }, 30000);
+  // Polling de respaldo SOLO si Realtime aún no está confirmado. Es INCREMENTAL (no redibuja la
+  // lista) → ya no parpadea. En cuanto el canal confirme SUBSCRIBED, el timer se apaga arriba.
+  if (clariAutoRefresh) { clearInterval(clariAutoRefresh); clariAutoRefresh = null; }
+  if (!clariRealtimeOK) {
+    clariAutoRefresh = setInterval(function() {
+      if (document.getElementById('view-clari')?.style.display !== 'none') { _clariPollIncremental(); }
+      else { clearInterval(clariAutoRefresh); clariAutoRefresh = null; }
+    }, 30000);
+  }
 }
 
 const CLARI_PID_MAIN = '1081895598321902';
@@ -17683,8 +17728,9 @@ async function enviarClariReply(input) {
     }
     input.value = '';
     toast('\u2713 Mensaje enviado');
-    // Con Realtime activo el mensaje aparece solo (incremental); recargar \u00fanicamente en modo fallback polling
-    if (clariAutoRefresh) setTimeout(function() { loadClariConversations(); }, 500);
+    // Con Realtime activo el mensaje aparece solo (incremental). En modo fallback, trae solo lo
+    // nuevo de forma incremental (sin redibujar toda la lista \u2192 sin parpadeo).
+    if (clariAutoRefresh) setTimeout(function() { _clariPollIncremental(); }, 500);
   } catch(e) {
     toast('Error al enviar: ' + e.message, true);
   }
