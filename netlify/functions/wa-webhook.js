@@ -1622,7 +1622,12 @@ async function cmdAsistencia(phone, action, profileName) {
           var actaPeriodoInicio = faltasDias[faltasDias.length - 1]; // earliest
           var actaPeriodoFin = fechaLocal; // today
 
-          await supaFetch('asistencia_firmas', {
+          // UPSERT sobre (uid, periodo_inicio) UNIQUE: en cada check-in se regenera el token y se
+          // reenvía el link. Si ya existe el registro de ese periodo, un INSERT normal fallaba por el
+          // UNIQUE → el link nuevo quedaba con un token HUÉRFANO (sin registro) → "token no encontrado/
+          // expirado". Con upsert, el registro existente se actualiza con el NUEVO token (firmado_at /
+          // firma_empleado NO van en el payload → se preservan si ya firmó).
+          await supaFetch('asistencia_firmas?on_conflict=uid,periodo_inicio', {
             method: 'POST',
             body: JSON.stringify({
               uid: uid,
@@ -1632,7 +1637,7 @@ async function cmdAsistencia(phone, action, profileName) {
               token_expires: actaExpires,
               enviado_at: nowISO
             }),
-            prefer: 'return=minimal'
+            prefer: 'resolution=merge-duplicates,return=minimal'
           });
 
           var SITE = process.env.URL || 'https://optcaryera.netlify.app';

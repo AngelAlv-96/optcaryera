@@ -379,6 +379,11 @@ async function checkSignatureRequests(employees, fechaLocal) {
       // Re-aplicar topes de fecha al inicio consolidado
       if (consolidatedInicio < ASISTENCIA_START_DATE) consolidatedInicio = ASISTENCIA_START_DATE;
       if (empIngreso && consolidatedInicio < empIngreso) consolidatedInicio = empIngreso;
+      // El upsert REUSA el registro con periodo_inicio == consolidatedInicio (lo actualiza in-place).
+      // Hay que EXCLUIRLO de toDelete o lo borraríamos justo después del upsert (quedaría sin registro).
+      if (Array.isArray(unsignedRes)) {
+        toDelete = unsignedRes.filter(function(uf) { return uf.tipo !== 'acta' && uf.periodo_inicio !== consolidatedInicio; }).map(function(uf) { return uf.id; });
+      }
 
       // Check there are actual records in this period
       var recCount = await supaFetch('asistencia?uid=eq.' + emp.uid + '&fecha=gte.' + consolidatedInicio + '&fecha=lte.' + periodoFin + '&select=id&limit=1');
@@ -388,8 +393,11 @@ async function checkSignatureRequests(employees, fechaLocal) {
       var token = crypto.randomBytes(24).toString('hex');
       var expires = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(); // 48h
 
-      // Create firma record consolidado (primero crear; si falla, no perdemos los viejos)
-      await supaFetch('asistencia_firmas', {
+      // Create firma record consolidado — UPSERT sobre (uid, periodo_inicio) UNIQUE: si ya existe un
+      // reporte de ese mismo inicio, un INSERT normal fallaba por el UNIQUE → el link nuevo quedaba con
+      // un token HUÉRFANO (sin registro) → "token no encontrado/expirado". Con upsert se actualiza el
+      // registro existente con el NUEVO token y se renueva la vigencia.
+      await supaFetch('asistencia_firmas?on_conflict=uid,periodo_inicio', {
         method: 'POST',
         body: JSON.stringify({
           uid: emp.uid,
@@ -400,7 +408,7 @@ async function checkSignatureRequests(employees, fechaLocal) {
           enviado_at: new Date().toISOString(),
           tipo: 'reporte'
         }),
-        prefer: 'return=minimal'
+        prefer: 'resolution=merge-duplicates,return=minimal'
       });
 
       // Borrar los reportes viejos sin firmar que se consolidaron

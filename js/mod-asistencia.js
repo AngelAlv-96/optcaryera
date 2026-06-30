@@ -855,13 +855,17 @@ async function asistJuntarReportes(uid) {
   if (!confirm('Juntar ' + pend.length + ' reportes sin firmar de ' + nombre + ' en uno solo (' + inicio + ' al ' + fin + ') y reenviar el link?')) return;
 
   try {
-    // 1. Crear el reporte consolidado primero (si falla, no perdemos los viejos)
+    // 1. Crear el reporte consolidado — UPSERT sobre (uid, periodo_inicio) UNIQUE: si ya existe un
+    // reporte de ese mismo inicio, un INSERT normal fallaba por el UNIQUE → el link nuevo quedaba con
+    // un token HUÉRFANO (sin registro) → "token no encontrado/expirado". Con upsert se actualiza el token.
     var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
     var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-    await db.from('asistencia_firmas').insert({ uid: uid, periodo_inicio: inicio, periodo_fin: fin, token: token, token_expires: expires, enviado_at: new Date().toISOString(), tipo: 'reporte' });
+    await db.from('asistencia_firmas').upsert({ uid: uid, periodo_inicio: inicio, periodo_fin: fin, token: token, token_expires: expires, enviado_at: new Date().toISOString(), tipo: 'reporte' }, { onConflict: 'uid,periodo_inicio' });
 
-    // 2. Borrar los reportes viejos sin firmar
+    // 2. Borrar los reportes viejos sin firmar — EXCEPTO el de periodo_inicio == inicio (ese lo reusó
+    //    el upsert; borrarlo dejaría el link sin registro).
     for (var i = 0; i < pend.length; i++) {
+      if (pend[i].periodo_inicio === inicio) continue;
       try { await db.from('asistencia_firmas').delete().eq('id', pend[i].id); } catch(eDel) { console.warn('[Juntar] delete fail id', pend[i].id, eDel); }
     }
 
@@ -2394,7 +2398,9 @@ async function asistEjecutarEnvio() {
       var token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
       var expires = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
-      await db.from('asistencia_firmas').insert({
+      // UPSERT sobre (uid, periodo_inicio) UNIQUE: si ya existe firma de ese inicio, un INSERT normal
+      // fallaba por el UNIQUE → el link quedaba con un token HUÉRFANO ("token no encontrado/expirado").
+      await db.from('asistencia_firmas').upsert({
         uid: emp.uid,
         periodo_inicio: inicio,
         periodo_fin: fin,
@@ -2402,7 +2408,7 @@ async function asistEjecutarEnvio() {
         token_expires: expires,
         enviado_at: new Date().toISOString(),
         tipo: tipo
-      });
+      }, { onConflict: 'uid,periodo_inicio' });
 
       // Build link
       var link = window.location.origin + '/firma-asistencia?token=' + token;
