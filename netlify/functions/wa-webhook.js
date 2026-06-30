@@ -72,16 +72,16 @@ function getActivePromos() {
   // Hot Sale APLAZO ELIMINADO (ya no existe): la promo de descuento HS2026 de Aplazo terminó. Aplazo SIGUE como método de pago/financiamiento (eso va en el knowledge general, no aquí).
   var hotSaleAplazo = '';
 
-  // 🎟️ CUPÓN "lente solar graduado gratis" (campaña de reactivación por WhatsApp). Extendido a julio 2026.
+  // 🎟️ CUPÓN "lente solar graduado gratis" (campaña de reactivación por WhatsApp). Vence el 30 de junio 2026 (después se envía otro cupón).
   // Convierte el 2x1 en 3x1: el lente solar graduado adicional (normalmente $499) va GRATIS presentando el cupón.
-  var cuponSolar3x1Active = now >= new Date('2026-06-24T00:00:00-06:00') && now <= new Date('2026-07-31T23:59:59-06:00');
+  var cuponSolar3x1Active = now >= new Date('2026-06-24T00:00:00-06:00') && now <= new Date('2026-06-30T23:59:59-06:00');
   var cuponSolar3x1 = cuponSolar3x1Active ? (
-    '🎟️ CUPÓN ESPECIAL VIGENTE — ¡ANÚNCIALO PRIMERO, es la promo más fuerte ahora!:\n' +
+    '🎟️ CUPÓN ESPECIAL VIGENTE (HASTA HOY 30 DE JUNIO 2026) — ¡ANÚNCIALO PRIMERO, es la promo más fuerte ahora!:\n' +
     '• Con la promo 2x1 en lentes + este cupón, el cliente se lleva ADEMÁS un LENTE SOLAR GRADUADO GRATIS → en total es 3x1 (2 lentes del 2x1 + 1 solar gratis).\n' +
-    '• Durante esta campaña, el lente solar graduado que normalmente cuesta $499 adicional va GRATIS con el cupón. (Si te preguntan por el de $499: con el cupón ese solar ya NO se cobra.)\n' +
+    '• Durante esta campaña, el lente solar graduado que normalmente cuesta $499 adicional va GRATIS con el cupón. (Si te preguntan por el de $499: con el cupón ese solar ya NO se cobra hasta hoy 30 de junio.)\n' +
     '• El lente solar graduado incluye graduación de VISIÓN SENCILLA sin costo. Bifocal/progresivo en el solar sería upgrade con costo.\n' +
     '• ⚠️ El solar gratis va ENCIMA de la compra del 2x1 (no es un regalo suelto): el cliente compra sus lentes con el 2x1 y el solar graduado es el bono gratis del cupón.\n' +
-    '• El cliente debe PRESENTAR EL CUPÓN en sucursal (le llegó por WhatsApp). Si dice que recibió el cupón / "el del lente solar gratis" / manda la imagen del cupón → confírmaselo con entusiasmo e invítalo a pasar. Aplica en las 4 sucursales.\n' +
+    '• El cliente debe PRESENTAR EL CUPÓN en sucursal (le llegó por WhatsApp). Si dice que recibió el cupón / "el del lente solar gratis" / manda la imagen del cupón → confírmaselo con entusiasmo e invítalo a pasar HOY 30 de junio (último día). Aplica en las 4 sucursales.\n' +
     '• NO combinable con otros descuentos. El precio del 2x1 depende del armazón/graduación/material que elija (no des número); el solar graduado de visión sencilla es el extra GRATIS del cupón.\n' +
     '• Si en el historial ves el tag [Cupon-Solar-3x1] o el cliente menciona el cupón → YA lo recibió; trátalo como cliente con cupón vigente.\n\n'
   ) : '';
@@ -96,7 +96,7 @@ function getActivePromos() {
     '• Precio: NO des un número — depende de la graduación + material + el tratamiento fotocromático de color. En sucursal arman la cotización exacta.\n' +
     '• ✅ SÍ ENTRAN EN EL 2x1: los lentes con fotocromático de color participan en la promo 2x1 (compras 2 pagas 1). Dilo con seguridad si preguntan. El precio del par se cotiza en sucursal según graduación + material + tratamiento.\n\n';
 
-  // Abril 15 en adelante 2026 (3x1 terminó el 14 de abril; combo Hot Sale extendido durante junio Y julio, en julio como "promoción de verano". Maestros hasta 18 de mayo.)
+  // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").
   if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7)) {
     return cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
       '⛔ ALCANCE DE LA PROMO 2x1 (LÉELO ANTES DE RESPONDER):\n' +
@@ -121,7 +121,7 @@ function getActivePromos() {
       '• Si preguntan "¿cuánto cuesta?" o "¿precio desde?": NO des un número. Responde: "Depende del armazón, graduación y material que elijas. En sucursal te arman la cotización con todas las opciones. Con 2x1 te llevas el doble pagando solo 1."\n' +
       '• Si preguntan "¿aplica para cualquier graduación?" o mencionan graduaciones altas (arriba de ±3.00, ±5.00, etc.): responde que SÍ, manejamos alta tolerancia en graduaciones. IMPORTANTE aclarar: "Es importante verificar primero tu graduación en un examen — te invito a pasar a cualquier sucursal para el examen de vista (incluido) y ahí te confirmamos opciones y cotización." NO prometas de entrada que aplica al 100% sin el examen — cada caso depende del tipo y potencia de la graduación, material disponible y armazón compatible.\n' +
       '• Si preguntan "¿qué está incluido?": explica que 2x1 significa llevar 2 lentes pagando 1 del mismo tipo que elijas, NO que un material específico viene incluido. El $499 solar es aparte.\n' +
-      'REGLA CUANDO PREGUNTEN POR 3x1: La promo 3x1 tuvo vigencia hasta el 14 de abril. Menciónalo brevemente ("Esa promo estuvo vigente hasta el 14 de abril") y de inmediato presenta la promo actual con entusiasmo: "Ahora tenemos 2x1 en lentes completos + un solar graduado adicional por $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad, NO como consuelo. No inventes otras promos.' + hotSaleAplazo;
+      'REGLA CUANDO PREGUNTEN POR 3x1: NO menciones promociones pasadas ni fechas de promos que ya terminaron. Presenta con entusiasmo la promoción ACTUAL vigente (la de arriba): "Tenemos 2x1 en lentes completos + un solar graduado adicional por $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad. No inventes otras promos.' + hotSaleAplazo;
   }
 
   // Fallback (fuera de abril 2026 o antes del deploy)
@@ -835,12 +835,8 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   }
   knowledgeWithPromos = knowledgeWithPromos.replace('{{NUEVA_SUCURSAL_STATUS}}', _vittoriaStatus);
   var horarioOverride = '';
-  if (todayChi === '2026-05-10') {
-    horarioOverride = '\n\n🌷 HORARIO ESPECIAL HOY (PRIORIDAD MÁXIMA): Hoy domingo 10 de mayo es Día de las Madres y cerramos a las 3:00pm — NO 5pm. Si te preguntan si abren hoy, qué horario tienen hoy, o cualquier cosa de horario hoy, responde SIEMPRE: "Hoy domingo 10 de mayo cerramos a las 3pm por Día de las Madres". NUNCA digas que cerramos a las 5pm hoy. Esto sobrescribe cualquier otra mención de horario.';
-  }
-  if (todayChi === '2026-06-28') {
-    horarioOverride += '\n\n⛔ AVISO ESPECIAL HOY (PRIORIDAD MÁXIMA): HOY domingo 28 de junio de 2026, la sucursal PLAZA VÍA VITTORIA CERRÓ a las 3:00pm por causas extraordinarias y permanece CERRADA el resto del día. Las otras 3 sucursales (Américas, Pinocelli y Magnolia) SÍ están abiertas con horario normal de domingo (hasta las 5:00pm). REGLAS: (1) Si alguien dice que está en Plaza Vía Vittoria y la encontró CERRADA, discúlpate breve e invítalo a pasar a PLAZA MAGNOLIA (es la más conveniente y sí está abierta). (2) Si preguntan por el horario de HOY o si abren hoy, responde que Plaza Vía Vittoria está cerrada hoy pero que Américas, Pinocelli y Magnolia están abiertas hasta las 5pm. NUNCA digas que Vía Vittoria está abierta hoy. Esto aplica SOLO hoy domingo 28 de junio.';
-  }
+  // (Aquí van avisos de horario especial date-gated puntuales — cierres por festivo, etc. Se agregan
+  //  con `if (todayChi === 'AAAA-MM-DD') { horarioOverride += '...'; }` y se quitan cuando pasan.)
   var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".' + horarioOverride + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
 
   // Get conversation history early (needed for order follow-up detection)
