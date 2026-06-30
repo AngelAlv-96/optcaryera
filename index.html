@@ -7553,6 +7553,7 @@ async function _cobrarYEntregar() {
   var btn = document.getElementById('btn-cobrar-entregar');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Procesando...'; }
   _actionBusy['entregarLentes'] = true;
+  var _exito = false;
 
   try {
     // Re-validar saldo actual desde DB (previene abono duplicado si otro usuario pagó mientras)
@@ -7606,11 +7607,16 @@ async function _cobrarYEntregar() {
     var ids = [];
     checks.forEach(function(c) { ids.push(c.value); });
     await _marcarEntregados(ids, asesor);
+    _exito = true;
+    // Cerrar el modal SÍ O SÍ (por si _marcarEntregados no alcanzó a cerrarlo) y dejar el botón en estado de éxito
+    if (btn) { btn.disabled = true; btn.textContent = '✅ Cobrado y entregado'; }
+    if (_entregaOverlay) { _entregaOverlay.remove(); _entregaOverlay = null; }
   } catch(e) {
     toast('Error: ' + (e.message||e), true);
   } finally {
     _actionBusy['entregarLentes'] = false;
-    if (btn) { btn.disabled = false; btn.textContent = '💰 Cobrar y entregar'; }
+    // Re-habilitar el botón SOLO si NO se completó (en éxito el modal se cierra y el botón queda bloqueado para no re-presionar)
+    if (btn && !_exito) { btn.disabled = false; btn.textContent = '💰 Cobrar y entregar'; }
   }
 }
 
