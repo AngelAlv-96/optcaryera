@@ -7581,6 +7581,25 @@ async function _cobrarYEntregar() {
 
     toast('✅ Abono $' + montoReal.toLocaleString('es-MX',{minimumFractionDigits:2}) + (ns <= 0 ? ' — ¡LIQUIDADA!' : ' · Saldo: $' + ns.toLocaleString('es-MX',{minimumFractionDigits:2})));
 
+    // 2.5 Enviar comprobante de abono por WhatsApp (best-effort — NO bloquea la entrega si falla)
+    try {
+      var { data: _pacC } = await db.from('pacientes').select('nombre,apellidos,telefono').eq('id', v.paciente_id).single();
+      var _telC = (_pacC?.telefono || '').replace(/\D/g, '');
+      if (_telC) {
+        var _waNumC = _telC.startsWith('52') ? _telC : (_telC.length === 10 ? '52' + _telC : _telC);
+        var _nomC = (_pacC?.nombre || '').split(' ')[0] || 'Cliente';
+        var _tokC = v.token_portal;
+        if (!_tokC && v.id && !String(v.id).startsWith('sicar_')) { _tokC = Math.random().toString(36).substring(2,12); await db.from('ventas').update({ token_portal: _tokC }).eq('id', v.id); }
+        var _portalC = _tokC ? (portalBase() + '/portal.html?t=' + _tokC) : 'https://optcaryera.netlify.app';
+        var _fechaC = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
+        await sendWA(_waNumC, '💰 *ÓPTICAS CAR & ERA*\n\nHola ' + _nomC + ', recibimos tu abono de $' + montoReal.toFixed(2) + '.\n\n📋 Folio: ' + v.folio + '\n💳 Saldo restante: $' + ns.toFixed(2) + '\n\n¡Gracias por tu pago! 🙏', {
+          template: 'HX40dba775cdf9e14b874bc8c7ff0034a6',
+          template_variables: { '1': _nomC, '2': v.sucursal || currentUser?.sucursal || '', '3': montoReal.toFixed(2), '4': v.folio, '5': _fechaC, '6': ns.toFixed(2), '7': _portalC }
+        });
+        toast('📲 Comprobante de abono enviado al cliente');
+      }
+    } catch(eComp) { console.warn('[comprobante cobrar-entregar]', eComp); }
+
     // 3. Marcar como entregados
     var ids = [];
     checks.forEach(function(c) { ids.push(c.value); });
