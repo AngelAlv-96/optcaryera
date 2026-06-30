@@ -7308,11 +7308,13 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     h += '<div style="display:flex;gap:8px">';
     if (saldo > 0) {
       h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar $' + saldo.toLocaleString('es-MX') + ' y entregar</button>';
-      h += '<div style="text-align:center;font-size:11px;color:#e08080;margin-top:6px">⚠️ No se puede entregar sin cobrar el saldo pendiente</div>';
     } else {
       h += '<button id="btn-solo-entregar" class="btn btn-p" onclick="_soloEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">✅ Marcar como entregados</button>';
     }
     h += '</div>';
+    if (saldo > 0) {
+      h += '<div style="text-align:center;font-size:11px;color:#79c47e;margin-top:8px">💡 Este botón hace todo en un paso: cobra el saldo de $' + saldo.toLocaleString('es-MX') + ' Y entrega los lentes. No necesitas otro botón.</div>';
+    }
   } else {
     h += '<div style="text-align:center;font-size:12px;color:#38bdf8;padding:6px">Este pedido es de otra sucursal. Recíbelo primero en Bitácora de Pedidos → 📥 Recibir de otra sucursal, y luego entrégalo aquí.</div>';
   }
