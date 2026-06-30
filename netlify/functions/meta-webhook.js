@@ -55,13 +55,13 @@ function getActivePromos() {
       '• 🗣️ CÓMO NOMBRARLA SEGÚN EL CONTEXTO: si el cliente menciona el Hot Sale, vio el anuncio del Hot Sale o ya lo conocía → preséntala como EXTENSIÓN ("Extendimos la promo del Hot Sale durante todo junio, sigue vigente"). Si es contexto nuevo/general (no menciona Hot Sale) → preséntala como "nuestra promoción de junio". NUNCA digas que el Hot Sale ya terminó sin aclarar de inmediato que el MISMO combo sigue vigente en junio.\n';
   var comboVigencia = esEventoHotSale ? 'del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun)' : esJulio ? 'durante el verano (vigente en julio de 2026)' : 'durante todo junio de 2026 (hasta el 30 de junio)';
   var hotSaleCarEra = comboActive ? (comboHeader +
-    '• Combo: 2x1 en lentes completos + lente solar graduado adicional por solo $499.\n' +
+    '• Combo: 2x1 en lentes completos + un lente solar graduado adicional que va GRATIS en compras de $3,000 o más (o por solo $499 si la compra es menor a $3,000). EL 2x1 SIGUE IGUAL — el solar es un EXTRA encima del 2x1.\n' +
     '• INCLUIDO sin costo extra dentro del precio del combo (esta es la diferencia con el 2x1 estándar): armazón de los SELECCIONADOS + micas transparentes CR-39 visión sencilla + tratamiento antirreflejante + protección UV.\n' +
     '• ⚠️ "Armazones seleccionados" — NO todos los modelos aplican. Es una línea curada. Si el cliente pregunta por un armazón específico ("¿este modelo entra?", "vi uno X marca"): "Los armazones de la promo son una línea seleccionada, pásate a sucursal a ver cuáles están." NUNCA prometas que cualquier armazón aplica al precio de la promo.\n' +
     '• Upgrades con costo aparte (NO incluidos): graduación bifocal o progresiva, material policarbonato o alto índice, tratamientos adicionales (blue light, transitions, polarizado).\n' +
     '• ⛔ NO se combina con otros descuentos: NI descuento de Aplazo, NI ningún otro descuento adicional. Es UNA u OTRA, no se apilan.\n' +
     '• Vigencia: ' + comboVigencia + '.\n' +
-    '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con esta promo. Ejemplo: "Tenemos 2x1 en lentes + lente solar graduado adicional por solo $499, micas antirreflejante incluidas, armazones seleccionados." (2-3 líneas máximo).\n' +
+    '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos en general / "qué tienen" / 2x1 / precios sin contexto específico → arranca con esta promo. Ejemplo: "Tenemos 2x1 en lentes + un lente solar graduado adicional GRATIS en compras de $3,000 o más (o $499 si es menor), micas antirreflejante incluidas, armazones seleccionados." (2-3 líneas máximo).\n' +
     '• Si el cliente menciona el flyer / "vi tu Hot Sale" / "el anuncio": confirma con seguridad que el combo sigue vigente, NO dudes ni niegues.\n' +
     '• Si el cliente pregunta si el armazón que YA TIENE aplica: "La promo incluye armazón seleccionado, micas y AR — si traes tu armazón propio o quieres uno fuera de la lista seleccionada, te conviene más el 2x1 estándar. Pásate a sucursal y te cotizan ambas opciones."\n' +
     '• Cuando termine esta promoción regresa el 2x1 estándar (sin armazón seleccionado, AR opcional con costo).\n' +
@@ -102,7 +102,7 @@ function getActivePromos() {
       '• Si el cliente confunde "lentes" con "lentes de contacto" y pregunta si el 2x1 aplica a LC → aclara: "El 2x1 es para lentes oftálmicos (armazón con graduación). Los lentes de contacto se cotizan aparte por caja según la marca."\n' +
       '• Si el cliente quiere combinar lentes oftálmicos + LC: 2x1 aplica solo a los oftálmicos, y los LC se cotizan por separado.\n\n' +
       '🎁 2x1 en lentes completos: compras 2 lentes completos y pagas solo 1. El PRECIO DEPENDE DE LO QUE ELIJAS: armazón + graduación + material + tratamientos. Cada cliente paga distinto según sus elecciones — NO hay un precio fijo de la promo.\n' +
-      '☀️ ADICIONAL dentro de la promo: un lente solar graduado EXTRA por $499 (este $499 es un par adicional — armazón solar + graduación sencilla CR-39 incluidos en ese precio fijo). Es un "bono" encima del 2x1, no es lo mismo que la promo principal.\n' +
+      '☀️ ADICIONAL dentro de la promo: un lente solar graduado EXTRA. ☀️ VA GRATIS si la compra TOTAL del cliente es de $3,000 o más; si la compra es menor a $3,000, ese solar cuesta solo $499. Es un par adicional (armazón solar + graduación sencilla CR-39 incluidos) — un "bono" encima del 2x1, NO es la promo principal. Es el mejor gancho para subir el ticket: si el cliente está cerca de $3,000, dile que llegando a esa compra el solar le sale GRATIS.\n' +
       '👨‍⚕️ Examen de vista incluido al comprar lentes.\n' +
       '🕒 Lentes listos desde 35 minutos (laboratorio propio).\n' +
       '💳 Meses sin intereses.\n' +
@@ -116,14 +116,14 @@ function getActivePromos() {
       '• Tratamientos opcionales (antirreflejante, blue light, transitions, polarizado) suben precio aparte.\n' +
       '• Si preguntan "¿cuánto cuesta?" o "¿precio desde?": NO des un número. Responde: "Depende del armazón, graduación y material que elijas. En sucursal te arman la cotización con todas las opciones. Con 2x1 te llevas el doble pagando solo 1."\n' +
       '• Si preguntan "¿aplica para cualquier graduación?" o mencionan graduaciones altas (arriba de ±3.00, ±5.00, etc.): responde que SÍ, manejamos alta tolerancia en graduaciones. IMPORTANTE aclarar: "Es importante verificar primero tu graduación en un examen — te invito a pasar a cualquier sucursal para el examen de vista (incluido) y ahí te confirmamos opciones y cotización." NO prometas de entrada que aplica al 100% sin el examen — cada caso depende del tipo y potencia de la graduación, material disponible y armazón compatible.\n' +
-      '• Si preguntan "¿qué está incluido?": explica que 2x1 significa llevar 2 lentes pagando 1 del mismo tipo que elijas, NO que un material específico viene incluido. El $499 solar es aparte.\n' +
-      'REGLA CUANDO PREGUNTEN POR 3x1: NO menciones promociones pasadas ni fechas de promos que ya terminaron. Presenta con entusiasmo la promoción ACTUAL vigente (la de arriba): "Tenemos 2x1 en lentes completos + un solar graduado adicional por $499, examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad. No inventes otras promos.' + hotSaleAplazo;
+      '• Si preguntan "¿qué está incluido?": explica que 2x1 significa llevar 2 lentes pagando 1 del mismo tipo que elijas, NO que un material específico viene incluido. El solar graduado adicional es aparte (gratis en compras de $3,000+, o $499 si es menor).\n' +
+      'REGLA CUANDO PREGUNTEN POR 3x1: NO menciones promociones pasadas ni fechas de promos que ya terminaron. Presenta con entusiasmo la promoción ACTUAL vigente (la de arriba): "Tenemos 2x1 en lentes completos + un solar graduado adicional GRATIS en compras de $3,000 o más (o $499 si es menor), examen incluido y listos desde 35 min". Hazlo sonar como una gran oportunidad. No inventes otras promos.' + hotSaleAplazo;
   }
 
   return cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
-    '☀️ Lente solar graduado adicional por $499 (par extra dentro de la promo).\n' +
+    '☀️ Lente solar graduado adicional: GRATIS en compras de $3,000 o más, o por solo $499 si la compra es menor (par extra dentro de la promo).\n' +
     '👨‍⚕️ Examen de vista incluido. Lentes listos desde 35 minutos.\n' +
     '💳 Meses sin intereses.\n' +
     'NUNCA afirmes que la promo incluye un material específico — el precio varía según lo que elija el cliente.' + hotSaleAplazo;
@@ -259,7 +259,7 @@ REGLAS ESTRICTAS SOBRE CÓMO HABLAR DE LA PROMO:
 - Cuando alguien pregunte "¿qué cobra extra?" menciona las 4 elecciones (armazón, graduación, material, tratamientos), no solo tratamientos.
 - Si un cliente pregunta por precio exacto o precio "desde": NO des un número. Dile que depende de lo que elija (armazón + graduación + material) y que en sucursal le dan cotización personalizada.
 - NUNCA inventes promociones que no estén listadas arriba. Solo comunica la promoción vigente actual, tal como aparece. No menciones promos pasadas ni futuras.
-- El ADICIONAL de $499 (lente solar graduado) es un PAR EXTRA dentro de la promo 2x1 — su armazón solar y graduación sencilla sí vienen incluidos en ese precio fijo de $499 (porque es un producto empacado aparte, no la promo 2x1 principal).
+- El lente solar graduado ADICIONAL es un PAR EXTRA dentro de la promo 2x1: va GRATIS si la compra total del cliente es de $3,000 o más, o cuesta solo $499 si la compra es menor a $3,000. Su armazón solar y graduación sencilla (CR-39) vienen incluidos (es un producto empacado aparte, no la promo 2x1 principal). El 2x1 NO cambia — el solar es un extra encima.
 
 PRODUCTOS Y SERVICIOS:
 👓 Armazones (el precio varía por modelo — NO menciones un precio "desde $X" porque confunde al cliente; si preguntan por precio diles que depende del modelo que elija + graduación + material, y que en sucursal arman cotización)
