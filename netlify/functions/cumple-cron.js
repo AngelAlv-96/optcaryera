@@ -89,11 +89,21 @@ exports.handler = async function(event) {
       }
     } catch (e) { console.warn('[CUMPLE] empleados load:', e.message); }
 
-    // Elegibles: número MX (no El Paso 915), no empleado
+    // Excluir COMPRADORES RECIENTES (últimos 60 días): un cupón de descuento justo después de que
+    // ya pagaron los hace sentir que "debieron esperar"; además no van a recomprar en meses (pedido de Angel).
+    const RECENT_BUYER_DAYS = 60;
+    let recentBuyerSet = new Set();
+    try {
+      const cut = new Date(nowCH.getTime() - RECENT_BUYER_DAYS * 86400000).toISOString();
+      const vts = await supaREST('GET', 'ventas?created_at=gte.' + cut + '&estado=neq.Cancelada&select=pacientes(telefono)&limit=3000');
+      if (vts) vts.forEach(v => { const t = v.pacientes && v.pacientes.telefono; if (t) { const d = String(t).replace(/[^0-9]/g, '').slice(-10); if (d.length === 10) recentBuyerSet.add(d); } });
+    } catch (e) { console.warn('[CUMPLE] compradores recientes:', e.message); }
+
+    // Elegibles: número MX (no El Paso 915), no empleado, no comprador reciente (60 días)
     const candidatos = lista.map(p => {
       const d10 = String(p.telefono || '').replace(/[^0-9]/g, '').slice(-10);
       return { id: p.id, nombre: (p.nombre || '').trim().split(' ')[0] || 'cliente', phone: normalizePhone(p.telefono), d10 };
-    }).filter(c => c.d10.length === 10 && !c.d10.startsWith('915') && !empSet.has(c.d10));
+    }).filter(c => c.d10.length === 10 && !c.d10.startsWith('915') && !empSet.has(c.d10) && !recentBuyerSet.has(c.d10));
 
     // Dedup: no enviar 2 veces este año (tag [Cumple-AAAA])
     const yaEnviado = new Set();

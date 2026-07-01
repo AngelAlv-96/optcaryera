@@ -53,6 +53,11 @@
 [functions."cobranza-cron"]
   schedule = "0 17 * * *"
 
+# Recordatorio de transferencias pendientes de confirmar — cada 15 min re-notifica al admin
+# cuando venció el "Recordar 15 min" de un comprobante (app_config transfer_pending_*)
+[functions."transfer-reminder-cron"]
+  schedule = "*/15 * * * *"
+
 # ─── Página pública de presentación en el dominio propio ───
 # SOLO la RAÍZ de caryera.mx / www.caryera.mx muestra la presentación de la óptica.
 # optcaryera.netlify.app/ sigue sirviendo el SISTEMA (index.html) sin cambios.

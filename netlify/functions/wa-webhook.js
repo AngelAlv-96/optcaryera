@@ -1995,8 +1995,9 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
         '(A) Caja o blíster de lentes de contacto\n' +
         '(B) Receta oftalmológica / prescripción\n' +
         '(C) Imagen de una promoción publicitaria de una óptica (flyer, anuncio, captura de pantalla, redes sociales, poster en sucursal)\n' +
-        '(D) Otra cosa no reconocible\n\n' +
-        'PRIMERO clasifica la imagen. Si es (C) PROMO, responde con JSON de promo (no intentes extraer graduación). Si es (A) o (B), extrae datos de LC/receta. Si es (D) OTRA COSA (sticker, emoji, meme, GIF, selfie, foto de una persona, saludo tipo "buenos días/bonito día", paisaje, mascota, comida, objeto no óptico, captura sin promoción), responde EXACTAMENTE {"es_promo":false,"es_otro":true,"descripcion_breve":"qué es la imagen en pocas palabras"} y NADA MÁS.\n' +
+        '(D) Otra cosa no reconocible\n' +
+        '(E) COMPROBANTE DE PAGO / TRANSFERENCIA BANCARIA (captura o foto de una transferencia SPEI/bancaria, depósito, recibo de pago de un banco o app: BBVA, Banorte, Santander, Banamex, HSBC, Nu, Mercado Pago, etc. Señales: dice "transferencia exitosa/enviada", "monto", "importe", "$", "clave de rastreo", "referencia", "cuenta destino", fecha y hora de operación, logo/nombre de un banco).\n\n' +
+        'PRIMERO clasifica la imagen. Si es (E) COMPROBANTE DE PAGO, responde EXACTAMENTE con JSON: {"es_comprobante":true,"monto":"NÚMERO sin signo ni comas, ej 2500.00 o null si no se ve","banco":"banco de origen si se ve o null","fecha":"fecha/hora de la operación si se ve o null","referencia":"clave de rastreo o referencia si se ve o null"} y NADA MÁS (no intentes extraer graduación). Si es (C) PROMO, responde con JSON de promo. Si es (A) o (B), extrae datos de LC/receta. Si es (D) OTRA COSA (sticker, emoji, meme, GIF, selfie, foto de una persona, saludo tipo "buenos días/bonito día", paisaje, mascota, comida, objeto no óptico, captura sin promoción), responde EXACTAMENTE {"es_promo":false,"es_otro":true,"descripcion_breve":"qué es la imagen en pocas palabras"} y NADA MÁS.\n' +
         '⛔ NUNCA inventes una RECETA ni una graduación a partir de una imagen que no contiene datos ópticos. Si NO ves números de graduación (PWR/SPH/CYL/AXIS) NI una caja/blíster de lentes de contacto NI texto claro de una receta médica, entonces ES (D): usa es_otro:true. NO fuerces marca="RECETA" en imágenes sin graduación legible.\n\n' +
         'SI ES PROMO (flyer, anuncio, captura de Facebook/Instagram/WhatsApp, poster con precios, texto promocional tipo "2x1", "50% desc", "desde $X"):\n' +
         'Extrae TEXTO VISIBLE completo y condiciones. Formato JSON:\n' +
@@ -2059,8 +2060,8 @@ async function lcPhotoOCR(mediaUrl, mediaType) {
 }
 
 // Build human-readable LC summary + match with catalog
-async function processLCPhoto(mediaUrl, mediaType, phone, userName) {
-  var ocr = await lcPhotoOCR(mediaUrl, mediaType);
+async function processLCPhoto(mediaUrl, mediaType, phone, userName, preOcr) {
+  var ocr = preOcr || await lcPhotoOCR(mediaUrl, mediaType);
   if (!ocr) {
     return { reply: '🔍 No pude identificar los datos de esta foto.\n\nPor favor envía una foto más clara.\n\n¡Intenta de nuevo! 😊' };
   }
@@ -2408,6 +2409,95 @@ async function deletePendingSale(phone) {
   await supaFetch('app_config?id=eq.' + key, { method: 'DELETE', prefer: 'return=minimal' });
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// COMPROBANTE DE TRANSFERENCIA (cobranza): el cliente manda su comprobante →
+// Clari lo liga a su compra con saldo → avisa al admin con botones (Sí cayó /
+// No cayó / Recordar 15 min) → si el admin confirma, se registra el abono.
+var TRANSFER_TEMPLATE_SID = 'HXd111dcb92c1d846d927ccbd38ce05f37'; // confirmar_transferencia (1=cliente,2=folio,3=monto)
+
+// La compra CON SALDO más reciente del cliente (para ligarle el abono)
+async function getClientePendingVenta(phone) {
+  var p10 = String(phone || '').replace(/\D/g, '').slice(-10);
+  if (p10.length !== 10) return null;
+  var pacs = await supaFetch('pacientes?telefono=ilike.*' + p10 + '*&select=id,nombre,apellidos&limit=5');
+  if (!pacs || !pacs.length) return null;
+  var ids = pacs.map(function(p) { return p.id; }).join(',');
+  var ventas = await supaFetch('ventas?paciente_id=in.(' + ids + ')&saldo=gt.0&estado=neq.Cancelada&select=id,folio,total,pagado,saldo,estado,paciente_id,sucursal&order=created_at.desc&limit=1');
+  if (!ventas || !ventas.length) return null;
+  var v = ventas[0];
+  var pac = pacs.find(function(p) { return p.id === v.paciente_id; }) || pacs[0];
+  v._nombre = ((pac.nombre || '') + ' ' + (pac.apellidos || '')).trim();
+  return v;
+}
+
+function _transferKey(phone) { return 'transfer_pending_' + String(phone || '').replace(/\D/g, '').slice(-10); }
+async function saveTransferPending(phone, data) { await supaFetch('app_config', { method: 'POST', body: JSON.stringify({ id: _transferKey(phone), value: JSON.stringify(data) }), prefer: 'return=minimal' }); }
+async function getTransferPending(phone) { var d = await supaFetch('app_config?id=eq.' + _transferKey(phone) + '&select=value'); if (d && d[0] && d[0].value) return typeof d[0].value === 'string' ? JSON.parse(d[0].value) : d[0].value; return null; }
+async function updateTransferPending(phone, data) { await supaFetch('app_config?id=eq.' + _transferKey(phone), { method: 'PATCH', body: JSON.stringify({ value: JSON.stringify(data) }), prefer: 'return=minimal' }); }
+async function deleteTransferPending(phone) { await supaFetch('app_config?id=eq.' + _transferKey(phone), { method: 'DELETE', prefer: 'return=minimal' }); }
+
+// El transfer pending awaiting más antiguo (FIFO) — el admin confirma con botón sin decir de quién
+async function findOldestTransferPending(statusFilter) {
+  var rows = await supaFetch('app_config?id=like.transfer_pending_*&select=id,value&limit=20');
+  if (!rows || !rows.length) return null;
+  var list = rows.map(function(r) { var v = typeof r.value === 'string' ? JSON.parse(r.value) : r.value; return v; }).filter(Boolean);
+  if (statusFilter) list = list.filter(function(v) { return v.status === statusFilter; });
+  list.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+  return list[0] || null;
+}
+
+async function getAuthPhones() {
+  var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+  if (cfgData && cfgData[0] && cfgData[0].value) { var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value; return { auth: cfg.auth_phones || [], admin: cfg.admin_phones || cfg.recipients_corte || [] }; }
+  return { auth: [], admin: [] };
+}
+
+async function notifyAdminTransfer(pending) {
+  var ph = await getAuthPhones();
+  var dest = (ph.auth && ph.auth.length) ? ph.auth : ph.admin;
+  var montoTxt = pending.monto ? String(pending.monto) : 'no detectado';
+  var fallback = '🔔 ' + (pending.cliente_nombre || 'Un cliente') + ' envió un comprobante de transferencia por su compra (folio ' + pending.folio + '), monto aproximado $' + montoTxt + '.\n¿Ya cayó en la cuenta? Responde: "Sí cayó", "No cayó" o "Recordar 15 min".';
+  for (var i = 0; i < dest.length; i++) {
+    await sendWhatsAppTemplate(dest[i], TRANSFER_TEMPLATE_SID, { '1': pending.cliente_nombre || 'Cliente', '2': String(pending.folio), '3': montoTxt }, fallback);
+  }
+}
+
+// Cliente mandó un comprobante → ligar a su compra con saldo y avisar al admin. Devuelve true si se manejó.
+async function handleTransferComprobante(from, userName, ocr) {
+  var venta = await getClientePendingVenta(from);
+  if (!venta) return false; // sin compra con saldo → no es un abono que podamos ligar
+  var montoNum = (ocr && ocr.monto != null) ? parseFloat(String(ocr.monto).replace(/[^0-9.]/g, '')) : null;
+  if (!(montoNum > 0)) montoNum = null;
+  var pending = {
+    venta_id: venta.id, folio: venta.folio, saldo: Number(venta.saldo) || 0,
+    paciente_id: venta.paciente_id, sucursal: venta.sucursal || null,
+    cliente_phone: String(from || '').replace(/\D/g, ''), cliente_nombre: venta._nombre || userName || 'Cliente',
+    monto: montoNum, referencia: (ocr && ocr.referencia) || null, banco: (ocr && ocr.banco) || null,
+    status: 'awaiting_admin', remind_at: null, created_at: new Date().toISOString()
+  };
+  await saveTransferPending(from, pending);
+  await notifyAdminTransfer(pending);
+  var reply = '¡Gracias! 🧾 Recibí tu comprobante. Lo estamos verificando y en un momento te confirmo que quedó aplicado a tu compra (folio ' + venta.folio + ') 😊';
+  await sendWhatsAppReply(from, reply);
+  await saveMessage(from, 'assistant', reply);
+  return true;
+}
+
+// Registra el abono (venta_pagos método Transferencia) + actualiza ventas. Devuelve resumen.
+async function registrarAbonoTransferencia(pending, monto) {
+  var vs = await supaFetch('ventas?id=eq.' + pending.venta_id + '&select=total,pagado,saldo,estado&limit=1');
+  var v = (vs && vs[0]) ? vs[0] : { pagado: 0, saldo: pending.saldo, estado: 'Apartado' };
+  var saldoActual = Number(v.saldo) || 0;
+  var m = Math.min(Number(monto) || 0, saldoActual);
+  if (!(m > 0)) throw new Error('Monto inválido o la venta ya no tiene saldo');
+  await supaFetch('venta_pagos', { method: 'POST', body: JSON.stringify({ venta_id: pending.venta_id, monto: m, metodo_pago: 'Transferencia', referencia: pending.referencia || null, recibido_por: 'Clari WA (confirmado por admin)', notas: 'Abono por transferencia bancaria confirmado por admin' }), prefer: 'return=minimal' });
+  var nuevoPagado = (Number(v.pagado) || 0) + m;
+  var nuevoSaldo = Math.max(0, saldoActual - m);
+  var nuevoEstado = nuevoSaldo <= 0 ? 'Liquidada' : v.estado;
+  await supaFetch('ventas?id=eq.' + pending.venta_id, { method: 'PATCH', body: JSON.stringify({ pagado: nuevoPagado, saldo: nuevoSaldo, estado: nuevoEstado }), prefer: 'return=minimal' });
+  return { monto: m, saldo: nuevoSaldo, estado: nuevoEstado, folio: pending.folio };
+}
+
 async function notifyAdminPendingSale(saleData, customerPhone) {
   // Get admin phones
   var cfgData = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
@@ -2747,7 +2837,13 @@ exports.handler = async function(event) {
             await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)' + (custImgUrl ? '\n[IMG:' + custImgUrl + ']' : ''), userName);
             try {
               console.log('[LC-OCR] Processing photo from customer ' + from);
-              var lcResult = await processLCPhoto(custMediaUrl, custMediaType, from, userName);
+              var custOcr = await lcPhotoOCR(custMediaUrl, custMediaType);
+              // 🧾 ¿Es un comprobante de transferencia y el cliente tiene compra con saldo? → flujo de abono
+              if (custOcr && custOcr.es_comprobante === true) {
+                var handledComp = await handleTransferComprobante(from, userName, custOcr);
+                if (handledComp) return { statusCode: 200, headers: H, body: '<Response></Response>' };
+              }
+              var lcResult = await processLCPhoto(custMediaUrl, custMediaType, from, userName, custOcr);
               await sendWhatsAppReply(from, lcResult.reply);
               await saveMessage(from, 'assistant', lcResult.reply);
             } catch(lcErr) {
@@ -2790,13 +2886,20 @@ exports.handler = async function(event) {
         if (!isAdminWithMedia && mediaUrl2 && (mediaType2||'').startsWith('image/')) {
           var custImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
           await saveMessage(from, 'user', '📷 ' + userText + (custImgUrl2 ? '\n[IMG:' + custImgUrl2 + ']' : ''), userName);
-          // If caption mentions LC-related terms OR promo references → LC/Promo OCR. Otherwise → let Clari handle with photo context
+          // If caption mentions LC / promo / PAGO references → OCR. Otherwise → let Clari handle with photo context
           var lcTerms = /lente(s)?\s*(de)?\s*contacto|caja|graduaci[oó]n|receta|rx|prescripci[oó]n|recompra|pedir\s*lentes/i;
           var promoTerms = /promo(ci[oó]n)?|oferta|descuento|anuncio|flyer|cupon|cup[oó]n|2x1|3x1|por\s*ciento|%|promocional|mira|fijate|vi\s+est[ae]|esta\s+es/i;
-          if (lcTerms.test(userText) || promoTerms.test(userText)) {
+          var pagoTerms = /transfer|dep[oó]sit|comprobante|abon|\bpag(u[eé]|o|ar|ando)\b|clabe|spei|ya\s*(te\s*)?(hice|mand[eé]|envi[eé]|deposit[eé]|pagu[eé])|aqu[ií]\s*est[aá]|mi\s*pago/i;
+          if (pagoTerms.test(userText) || lcTerms.test(userText) || promoTerms.test(userText)) {
             try {
               console.log('[LC-OCR+Text] Processing photo from customer ' + from + ' caption: ' + userText.substring(0,50));
-              var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName);
+              var ocr2 = await lcPhotoOCR(mediaUrl2, mediaType2);
+              // 🧾 Comprobante de transferencia + cliente con saldo → flujo de abono
+              if (ocr2 && ocr2.es_comprobante === true) {
+                var handledComp2 = await handleTransferComprobante(from, userName, ocr2);
+                if (handledComp2) return { statusCode: 200, headers: H, body: '<Response></Response>' };
+              }
+              var lcResult2 = await processLCPhoto(mediaUrl2, mediaType2, from, userName, ocr2);
               await sendWhatsAppReply(from, lcResult2.reply);
               await saveMessage(from, 'assistant', lcResult2.reply);
             } catch(lcErr2) {
@@ -2858,6 +2961,68 @@ exports.handler = async function(event) {
               await sendWhatsAppReply(from, '❌ Venta rechazada. Se notificó al cliente.');
               await saveMessage(from, 'user', userText, userName);
               console.log('[LC Sale] Rejected: ' + pendData.customerName);
+            }
+            isAuthResponse = true;
+          }
+        }
+      }
+
+      // ── ADMIN CONFIRMA TRANSFERENCIA (botones: Sí cayó / No cayó / Recordar 15 min) ──
+      if (isAdmin && !isAuthResponse) {
+        var ltT = lowerText;
+        var btnSi = /^s[ií]\s*cay[oó]/.test(ltT) || ltT === 'transfer_si';
+        var btnNo = /^no\s*cay[oó]/.test(ltT) || ltT === 'transfer_no';
+        var btnRec = /recordar\s*15/.test(ltT) || ltT === 'transfer_recordar';
+        var soloNumero = /^\$?\s*[\d,]+(\.\d{1,2})?\s*$/.test(userText.trim());
+
+        if (btnSi || btnNo || btnRec) {
+          var tp = await findOldestTransferPending('awaiting_admin');
+          if (tp) {
+            if (btnRec) {
+              tp.remind_at = new Date(Date.now() + 15 * 60000).toISOString();
+              await updateTransferPending(tp.cliente_phone, tp);
+              await sendWhatsAppReply(from, '⏰ Ok, te recuerdo en ~15 min sobre la transferencia de ' + tp.cliente_nombre + ' (folio ' + tp.folio + ').');
+            } else if (btnNo) {
+              await sendWhatsAppReply(tp.cliente_phone, 'Hola 👋 Todavía no vemos reflejada tu transferencia. ¿Puedes verificar que se haya completado y, si quieres, reenviarnos el comprobante? En cuanto la veamos la aplicamos a tu compra 😊');
+              await saveMessage(tp.cliente_phone, 'assistant', 'Aviso al cliente: transferencia aún no reflejada (folio ' + tp.folio + ')');
+              await deleteTransferPending(tp.cliente_phone);
+              await sendWhatsAppReply(from, '❌ Ok, marcada como NO recibida. Le avisé al cliente que verifique.');
+            } else if (btnSi) {
+              if (tp.monto && Number(tp.monto) > 0) {
+                try {
+                  var res = await registrarAbonoTransferencia(tp, tp.monto);
+                  await sendWhatsAppReply(tp.cliente_phone, '✅ ¡Listo! Recibimos tu transferencia de $' + res.monto.toLocaleString('es-MX') + ' y la aplicamos a tu compra (folio ' + res.folio + ').' + (res.saldo > 0 ? ' Saldo restante: $' + res.saldo.toLocaleString('es-MX') + '.' : ' ¡Tu compra quedó liquidada! 🎉') + ' Gracias por tu preferencia 👓💛');
+                  await saveMessage(tp.cliente_phone, 'assistant', 'Abono transferencia $' + res.monto + ' aplicado a folio ' + res.folio + '. Saldo: $' + res.saldo);
+                  await deleteTransferPending(tp.cliente_phone);
+                  await sendWhatsAppReply(from, '✅ Registrado: abono de $' + res.monto.toLocaleString('es-MX') + ' (Transferencia) al folio ' + res.folio + '. ' + (res.saldo > 0 ? 'Saldo: $' + res.saldo.toLocaleString('es-MX') : 'Venta LIQUIDADA') + '. Se le confirmó al cliente.');
+                } catch (regErr) {
+                  console.error('[Transfer] registro:', regErr.message);
+                  await sendWhatsAppReply(from, '⚠️ No pude registrar el abono automáticamente (' + regErr.message + '). Revísalo en el sistema, folio ' + tp.folio + '.');
+                }
+              } else {
+                tp.status = 'awaiting_amount';
+                await updateTransferPending(tp.cliente_phone, tp);
+                await sendWhatsAppReply(from, '👍 ¿De cuánto fue la transferencia de ' + tp.cliente_nombre + ' (folio ' + tp.folio + ')? Responde solo el número (ej. 2500).');
+              }
+            }
+            isAuthResponse = true;
+          } else {
+            await sendWhatsAppReply(from, 'No tengo ninguna transferencia pendiente de confirmar en este momento.');
+            isAuthResponse = true;
+          }
+        } else if (soloNumero) {
+          // ¿Hay una transferencia esperando el monto?
+          var tpAmt = await findOldestTransferPending('awaiting_amount');
+          if (tpAmt) {
+            var montoManual = parseFloat(userText.replace(/[^0-9.]/g, ''));
+            try {
+              var res2 = await registrarAbonoTransferencia(tpAmt, montoManual);
+              await sendWhatsAppReply(tpAmt.cliente_phone, '✅ ¡Listo! Recibimos tu transferencia de $' + res2.monto.toLocaleString('es-MX') + ' y la aplicamos a tu compra (folio ' + res2.folio + ').' + (res2.saldo > 0 ? ' Saldo restante: $' + res2.saldo.toLocaleString('es-MX') + '.' : ' ¡Tu compra quedó liquidada! 🎉') + ' Gracias 👓💛');
+              await saveMessage(tpAmt.cliente_phone, 'assistant', 'Abono transferencia $' + res2.monto + ' aplicado a folio ' + res2.folio + '. Saldo: $' + res2.saldo);
+              await deleteTransferPending(tpAmt.cliente_phone);
+              await sendWhatsAppReply(from, '✅ Registrado: abono de $' + res2.monto.toLocaleString('es-MX') + ' (Transferencia) al folio ' + res2.folio + '. ' + (res2.saldo > 0 ? 'Saldo: $' + res2.saldo.toLocaleString('es-MX') : 'Venta LIQUIDADA') + '.');
+            } catch (regErr2) {
+              await sendWhatsAppReply(from, '⚠️ No pude registrar el abono (' + regErr2.message + '). Folio ' + tpAmt.folio + '.');
             }
             isAuthResponse = true;
           }
