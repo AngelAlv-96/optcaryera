@@ -677,12 +677,18 @@ async function lookupOrders(phone, text) {
     var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
     var baseFolio = folio.replace(/-\d+$/, '');
     var venta = ventasMap[baseFolio] || null;
+    // Plaza Vía Vittoria no abre domingos (v462): en su mensaje de pedido listo, no ofrezcas el domingo.
+    // ⚠️ AL REABRIR VITTORIA LOS DOMINGOS: quitar este reemplazo.
+    var msgCliente = statusInfo.msg;
+    if ((sucursal || '').toLowerCase().indexOf('vittoria') !== -1) {
+      msgCliente = msgCliente.replace(/, domingos 11am-5pm/gi, ' (esta sucursal no abre domingos)');
+    }
     var result = {
       nombre: nombre,
       folio: folio,
       estado: estado,
       emoji: statusInfo.emoji,
-      mensaje_cliente: statusInfo.msg,
+      mensaje_cliente: msgCliente,
       sucursal: sucursal,
       fecha: fecha
     };

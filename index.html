@@ -6753,14 +6753,25 @@ async function guardarTelefono(pacienteId, ordenId, overlay) {
   }
 }
 
-function enviarWA(tel, nombre, tipo, ordenId) {
+// Horario de recogida para mensajes de "lentes listos". Plaza Vía Vittoria NO abre los domingos
+// (v462, hasta nuevo aviso) → su mensaje exclusivo omite el domingo. Las demás llevan el horario normal.
+// ⚠️ AL REABRIR VITTORIA LOS DOMINGOS: quitar el caso Vittoria de este helper (que devuelva el horario normal).
+function _horarioRecogidaTxt(suc) {
+  var esVittoria = (suc||'').toLowerCase().indexOf('vittoria') !== -1;
+  return esVittoria ? 'Lun.-Sab. 10:00am-7:00pm (domingos cerrado)' : 'Lun.-Sab. 10:00am-7:00pm | Dom. 11:00am-5:00pm';
+}
+async function enviarWA(tel, nombre, tipo, ordenId) {
   let num = formatWAPhone(tel);
   const primerNombre = nombre.split(' ')[0];
+  // Detecta la sucursal del pedido para elegir el horario correcto (Vittoria no abre domingos).
+  let _sucRec = '';
+  if (ordenId) { try { var { data: _od } = await db.from('ordenes_laboratorio').select('sucursal').eq('id', ordenId).single(); if (_od) _sucRec = _od.sucursal || ''; } catch(e){} }
+  const _hor = _horarioRecogidaTxt(_sucRec);
   let msgText;
   if (tipo === 'lc') {
-    msgText = `Hola ${primerNombre}, le informamos que sus lentes de contacto ya llegaron y están listos para recoger en Ópticas Car & Era. ¡Le esperamos!\n\nHorario:\nLun.-Sab. 10:00am-7:00pm | Dom. 11:00am-5:00pm\n\nGracias por su preferencia!`;
+    msgText = `Hola ${primerNombre}, le informamos que sus lentes de contacto ya llegaron y están listos para recoger en Ópticas Car & Era. ¡Le esperamos!\n\nHorario:\n${_hor}\n\nGracias por su preferencia!`;
   } else {
-    msgText = `Hola ${primerNombre}, le informamos que sus lentes ya estan listos para recoger en Opticas Car & Era. Le esperamos!\n\nCalifica tu experiencia (1 min):\nhttps://forms.gle/FgKbWHqateZGoVtp6\n\nHorario:\nLun.-Sab. 10:00am-7:00pm | Dom. 11:00am-5:00pm\n\nGracias por su preferencia!`;
+    msgText = `Hola ${primerNombre}, le informamos que sus lentes ya estan listos para recoger en Opticas Car & Era. Le esperamos!\n\nCalifica tu experiencia (1 min):\nhttps://forms.gle/FgKbWHqateZGoVtp6\n\nHorario:\n${_hor}\n\nGracias por su preferencia!`;
   }
   confirmarEnvioWA(num, msgText, nombre, ordenId);
 }
@@ -6844,12 +6855,15 @@ async function ejecutarEnvioWA(overlay, num, msg, ordenId, esNuevoTel) {
       var { data: _oData } = await db.from('ordenes_laboratorio').select('sucursal, pacientes(nombre)').eq('id', ordenId).single();
       if (_oData) { _nombre = _oData.pacientes?.nombre?.split(' ')[0] || ''; _suc = _oData.sucursal || _suc; }
     }
-    var result = await sendWA(num, msg, {
-      template: 'HX7541b62cd4541056ea18eb628f1c4bad',
-      template_variables: { '1': _nombre || 'cliente', '2': _suc || 'nuestra sucursal' },
-      noFallback: true, silent: true
-    });
-    if (!result.ok) result = await sendWA(num, msg, { silent: true });
+    // Plaza Vía Vittoria no abre domingos (v462) → usa su plantilla exclusiva (horario sin domingo).
+    // ⚠️ AL REABRIR VITTORIA LOS DOMINGOS: borrar _esVittoria/_tplListo y volver a la plantilla normal fija.
+    var _esVittoria = (_suc || '').toLowerCase().indexOf('vittoria') !== -1;
+    var _tplListo = _esVittoria ? 'HX3754dcba88e08bd5943bebba0d858995' : 'HX7541b62cd4541056ea18eb628f1c4bad';
+    var _tvars = { '1': _nombre || 'cliente', '2': _suc || 'nuestra sucursal' };
+    var result = await sendWA(num, msg, { template: _tplListo, template_variables: _tvars, noFallback: true, silent: true });
+    if (!result.ok) result = await sendWA(num, msg, { silent: true }); // freeform (msg ya trae el horario correcto)
+    // Último recurso fuera de ventana 24h si la plantilla exclusiva de Vittoria aún no está aprobada por Meta.
+    if (!result.ok && _esVittoria) result = await sendWA(num, msg, { template: 'HX7541b62cd4541056ea18eb628f1c4bad', template_variables: _tvars, noFallback: true, silent: true });
     if (result.ok) {
       _waMarkSent('lentes', _waPhoneKey(num, ordenId));
       if (btn) {
