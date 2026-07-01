@@ -632,7 +632,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         }
       });
       orderContext += '\nINSTRUCCIONES PEDIDOS:\n' +
-        '- Si el cliente pregunta cómo abonar/pagar en línea y arriba viene "portal_pago" para su folio, DALE ESE LINK (ahí su abono se registra a su compra). ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio. No necesita ir a la sucursal para abonar en línea.\n' +
+        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio.\n' +
         '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Si están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE — NO dar direcciones, referencias, horarios ni teléfonos. Ya sabe dónde queda.\n' +

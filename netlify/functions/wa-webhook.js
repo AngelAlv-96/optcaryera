@@ -899,7 +899,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         '- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n' +
         '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
-        '- Si el cliente pregunta cómo abonar/pagar en línea y arriba viene "portal_pago" para su folio, DALE ESE LINK (ahí su abono se registra a su compra). ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio. No necesita ir a la sucursal para abonar en línea.\n' +
+        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje, es solo una invitación amable. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio.\n' +
         '- Si la venta está Liquidada y los lentes están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE EXISTENTE — NO dar direcciones, referencias de ubicación, horarios ni teléfonos. Ya sabe dónde está la sucursal. Solo mencionar el nombre.\n' +
         '- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n' +
