@@ -3630,6 +3630,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     <button id="vta-recoger-otra-btn" onclick="_toggleRecogerOtra()" title="El cliente recoge su pedido en otra sucursal" style="padding:8px 10px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.22);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">📍 Otra sucursal</button>
                     <button onclick="abrirConvenioVta()" title="Convenio empresarial (el empleado presenta su código)" style="padding:8px 10px;background:rgba(91,141,239,0.08);border:1px solid rgba(91,141,239,0.25);border-radius:8px;color:#7da6f5;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🏢 Convenio</button>
                     <button onclick="abrirRescateVta()" title="Descuento de rescate (5%/10%, 15% si la venta supera $5,000). Queda registrado." style="padding:8px 10px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.28);border-radius:8px;color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🎯 Rescate</button>
+                    <button onclick="abrirCuponVta()" title="Canjear un cupón personalizado que le enviamos al cliente" style="padding:8px 10px;background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.28);border-radius:8px;color:#f472b6;font-size:12px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;white-space:nowrap;transition:all .15s">🎟️ Cupón</button>
                   </div>
                   <input type="checkbox" id="vta-recoger-otra" style="display:none">
                   <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
@@ -4128,6 +4129,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div id="com-table" style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden"></div>
           <div id="com-sobres-pagados" style="margin-top:16px"></div>
           <div id="com-rescate" style="margin-top:16px"></div>
+          <div id="com-cupones" style="margin-top:16px"></div>
           <div id="com-detalle" style="margin-top:16px"></div>
         </div>
       </div>
@@ -5810,7 +5812,7 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','recotra-input','entrega-search','conteo-input','am-rq-modelo'];
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','recotra-input','entrega-search','conteo-input','am-rq-modelo','cupon-codigo'];
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -10355,6 +10357,7 @@ function abrirRescateVta() {
   if (sub <= 0) { toast('Agrega productos primero', true); return; }
   if (_cumple30Active || (_cumpleVtaContext && _cumpleVtaContext.premio==='30pct')) { toast('Ya hay un cupón de cumpleaños activo — no se combinan', true); return; }
   if (_convVtaContext) { toast('Ya hay un convenio activo — no se combinan', true); return; }
+  if (_cuponVtaContext) { toast('Ya hay un cupón activo — no se combinan', true); return; }
   var opts = [5, 10];
   if (sub > RESCATE_UMBRAL_15) opts.push(15);
   var btns = opts.map(function(p){
@@ -10400,6 +10403,76 @@ function _cancelarRescateVta() {
   var dE=document.getElementById('vta-descuento'); if(dE) dE.value='0';
   var b=document.getElementById('vta-rescate-banner'); if(b) b.style.display='none';
   recalcVtaTotales();
+}
+
+// 🎟️ SISTEMA DE CUPONES — código personalizado por cliente, canje en el POS.
+// Tipos de beneficio (tabla cupones.beneficio_tipo): solar_gratis | kit_gratis | desc_pct | desc_monto.
+// El cajero teclea/escanea el código → se valida (existe, no usado, no vencido) → se aplica el beneficio
+// → al CERRAR la venta se marca usado con el folio (no se reusa). NO combinable con cumple/convenio/rescate.
+var _cuponVtaContext = null; // {id, codigo, tipo, valor, descripcion, nombre, _fresh}
+function abrirCuponVta() {
+  var ov = document.createElement('div'); ov.className = 'm-overlay open';
+  ov.innerHTML = '<div class="modal" style="max-width:380px;padding:24px">'
+    + '<div style="text-align:center;font-size:24px;margin-bottom:6px">🎟️</div>'
+    + '<div style="text-align:center;font-size:15px;font-weight:800;color:var(--white);margin-bottom:2px">Canjear cupón</div>'
+    + '<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:14px">Teclea o escanea el código del cliente</div>'
+    + '<input id="cupon-codigo" type="text" placeholder="Ej. SOLAR-4F9A" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_validarCupon();}" style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid rgba(245,158,11,0.35);border-radius:10px;padding:14px;color:var(--white);font-family:Outfit,sans-serif;font-size:18px;font-weight:800;text-align:center;letter-spacing:1px;outline:none;text-transform:uppercase">'
+    + '<div id="cupon-msg" style="text-align:center;font-size:12px;margin-top:8px;min-height:16px"></div>'
+    + '<div style="display:flex;gap:8px;margin-top:14px">'
+    + '<button onclick="this.closest(\'.m-overlay\').remove()" class="btn btn-g" style="flex:1">Cancelar</button>'
+    + '<button onclick="_validarCupon()" class="btn btn-p" style="flex:1">Validar y aplicar</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){ document.getElementById('cupon-codigo')?.focus(); }, 100);
+}
+async function _validarCupon() {
+  var codigo = (document.getElementById('cupon-codigo')?.value || '').trim().toUpperCase();
+  var msg = document.getElementById('cupon-msg');
+  function err(t){ if(msg){ msg.style.color='#e08080'; msg.textContent=t; } }
+  if (!codigo) { err('Ingresa el código'); return; }
+  if (_cumple30Active || _convVtaContext || _rescateVtaContext) { err('Ya hay otra promo/descuento activo — no se combinan'); return; }
+  if (msg) { msg.style.color='var(--muted)'; msg.textContent='Validando...'; }
+  try {
+    var { data: cs } = await db.from('cupones').select('*').ilike('codigo', codigo).limit(1);
+    var c = cs && cs[0];
+    if (!c) { err('❌ Código no encontrado'); return; }
+    if (c.usado) { err('❌ Este cupón ya fue usado' + (c.usado_at ? ' (' + new Date(c.usado_at).toLocaleDateString('es-MX') + ')' : '')); return; }
+    if (c.vigencia && c.vigencia < new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' })) { err('❌ Cupón vencido (' + c.vigencia + ')'); return; }
+    _cuponVtaContext = { id: c.id, codigo: c.codigo, tipo: c.beneficio_tipo, valor: Number(c.beneficio_valor) || 0, descripcion: c.descripcion || '', nombre: c.nombre || '', _fresh: true };
+    setTimeout(function(){ if (_cuponVtaContext) _cuponVtaContext._fresh = false; }, 500);
+    var ov = document.querySelector('.m-overlay.open'); if (ov && ov.querySelector('#cupon-codigo')) ov.remove();
+    _aplicarCuponPOS();
+  } catch(e) { err('Error: ' + (e.message || e)); }
+}
+function _aplicarCuponPOS() {
+  var c = _cuponVtaContext; if (!c) return;
+  if (c.tipo === 'solar_gratis') {
+    if (!vtaItems.some(function(i){ return i._cuponItem; })) vtaItems.push({ producto_id:null, descripcion:'☀️ Lente solar graduado GRATIS (cupón ' + c.codigo + ')', categoria:'Accesorio', cantidad:1, precio_unitario:0, descuento_item:0, subtotal:0, _cuponItem:true });
+    renderVtaItems();
+  } else if (c.tipo === 'kit_gratis') {
+    if (!vtaItems.some(function(i){ return i._cuponItem; })) vtaItems.push({ producto_id:null, descripcion:'🎁 Kit gratis — solución + microfibra (cupón ' + c.codigo + ')', categoria:'Accesorio', cantidad:1, precio_unitario:0, descuento_item:0, subtotal:0, _cuponItem:true });
+    renderVtaItems();
+  }
+  // desc_pct y desc_monto se aplican en recalcVtaTotales (rama _cuponVtaContext)
+  recalcVtaTotales();
+  _showCuponBanner();
+}
+function _showCuponBanner() {
+  var view = document.getElementById('view-ventas'); if (!view || !_cuponVtaContext) return;
+  var b = document.getElementById('vta-cupon-banner');
+  if (!b) { b = document.createElement('div'); b.id='vta-cupon-banner'; view.insertBefore(b, view.firstChild); }
+  var c = _cuponVtaContext;
+  var benTxt = c.tipo === 'desc_pct' ? (c.valor + '% de descuento') : c.tipo === 'desc_monto' ? ('$' + c.valor + ' de descuento') : c.tipo === 'solar_gratis' ? 'Lente solar graduado GRATIS' : c.tipo === 'kit_gratis' ? 'Kit gratis' : (c.descripcion || 'beneficio');
+  b.style.cssText = 'margin:10px;padding:10px 14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.45);border-radius:10px;color:#fbbf24;font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:space-between';
+  b.innerHTML = '<span>🎟️ Cupón <b>' + c.codigo + '</b>' + (c.nombre ? ' (' + c.nombre + ')' : '') + ': <b>' + benTxt + '</b> aplicado. Se marca usado al cerrar la venta.</span><button onclick="_cancelarCuponVta()" title="Quitar cupón de esta venta" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0">✕</button>';
+  b.style.display = 'flex';
+}
+function _cancelarCuponVta() {
+  _cuponVtaContext = null;
+  vtaItems = vtaItems.filter(function(i){ return !i._cuponItem; });
+  var dE = document.getElementById('vta-descuento'); if (dE) dE.value = '0';
+  var b = document.getElementById('vta-cupon-banner'); if (b) b.style.display = 'none';
+  renderVtaItems(); recalcVtaTotales();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -10494,6 +10567,8 @@ async function _convGetConfig() {
 }
 
 function abrirConvenioVta() {
+  if (_cuponVtaContext) { toast('Ya hay un cupón activo — no se combinan', true); return; }
+  if (_rescateVtaContext) { toast('Ya hay un descuento de rescate activo — no se combinan', true); return; }
   const ov = document.createElement('div');
   ov.className = 'm-overlay open';
   ov.innerHTML = `<div class="modal" style="max-width:480px;padding:24px">
@@ -20941,6 +21016,9 @@ function initVenta() {
   if (!_rescateVtaContext) {
     var _rbn=document.getElementById('vta-rescate-banner'); if(_rbn) _rbn.style.display='none';
   }
+  // 🎟️ Cupón: mismo patrón — se limpia entre ventas (los cupones se canjean en el momento, no _fresh).
+  _cuponVtaContext = null;
+  var _cbn2=document.getElementById('vta-cupon-banner'); if(_cbn2) _cbn2.style.display='none';
   document.getElementById('vta-pac-search').value='';
   document.getElementById('vta-pac-info').style.display='none';
   document.getElementById('vta-pac-info').innerHTML='';
@@ -21442,6 +21520,17 @@ function recalcVtaTotales() {
     const promoDesc = vtaPromoAplicada ? (vtaPromoAplicada.descuento||0) : 0;
     const baseAfterPromo = Math.max(0, sub - promoDesc);
     desc = promoDesc + Math.round(baseAfterPromo*((_rescateVtaContext.pct||0)/100)*100)/100;
+    desc = Math.min(desc, sub);
+    const dEl=document.getElementById('vta-descuento'); if(dEl) dEl.value = desc.toFixed(2);
+  } else if (_cuponVtaContext && (_cuponVtaContext.tipo === 'desc_pct' || _cuponVtaContext.tipo === 'desc_monto')) {
+    // 🎟️ Cupón con descuento (% o $ fijo) sobre el subtotal post-promo. Los tipos solar_gratis/kit_gratis
+    // NO tocan el descuento (se agregan como ítem $0), así que caen al else de abajo.
+    const promoDesc = vtaPromoAplicada ? (vtaPromoAplicada.descuento||0) : 0;
+    const baseAfterPromo = Math.max(0, sub - promoDesc);
+    var _cupDesc = _cuponVtaContext.tipo === 'desc_pct'
+      ? Math.round(baseAfterPromo*((_cuponVtaContext.valor||0)/100)*100)/100
+      : Math.min(_cuponVtaContext.valor||0, baseAfterPromo);
+    desc = promoDesc + _cupDesc;
     desc = Math.min(desc, sub);
     const dEl=document.getElementById('vta-descuento'); if(dEl) dEl.value = desc.toFixed(2);
   } else {
@@ -21971,6 +22060,16 @@ async function _procesarVentaInner() {
       } catch(e) { console.warn('[Rescate]', e); toast('⚠️ Venta cobrada, pero el descuento de rescate NO se registró: '+e.message, true); }
       _rescateVtaContext = null;
       var _rbn2=document.getElementById('vta-rescate-banner'); if(_rbn2) _rbn2.style.display='none';
+    }
+    // 🎟️ Marcar el cupón como USADO (con folio) — así queda canjeado y no se puede reusar
+    if (_cuponVtaContext) {
+      try {
+        const _cuUp = await db.from('cupones').update({ usado: true, usado_at: new Date().toISOString(), venta_folio: folio, usado_por: currentUser?.nombre||currentUser?.id||null, sucursal: ventaSucursal }).eq('id', _cuponVtaContext.id).select('id').single();
+        if (_cuUp.error) throw new Error(_cuUp.error.message);
+        toast('🎟️ Cupón '+_cuponVtaContext.codigo+' canjeado');
+      } catch(e) { console.warn('[Cupon]', e); toast('⚠️ Venta cobrada, pero el cupón NO se marcó usado: '+e.message, true); }
+      _cuponVtaContext = null;
+      var _cbn3=document.getElementById('vta-cupon-banner'); if(_cbn3) _cbn3.style.display='none';
     }
     // 🛡️ Registrar Visión Segura agregada en el POS (1 protección por armazón, ligada al paciente)
     var _segItems = (vtaItems||[]).filter(function(it){ return it._vsPlan; });
@@ -27363,6 +27462,60 @@ async function calcularComisiones() {
   _cargarSobresCobrados(qVal);
   // Panel auditoría de descuentos de rescate (admin/gerencia)
   _loadRescateAudit(suc, utcStart, utcEnd);
+  // Panel de cupones por campaña (global, admin/gerencia)
+  _loadCuponesReport();
+}
+
+// ═══ Panel: cupones por campaña — enviados / canjeados / venta generada (global) ═══
+async function _loadCuponesReport() {
+  var el = document.getElementById('com-cupones');
+  if (!el) return;
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') { el.innerHTML = ''; return; }
+  try {
+    var { data, error } = await db.from('cupones')
+      .select('campana,beneficio_tipo,usado,usado_at,venta_folio,usado_por,sucursal,created_at')
+      .order('created_at', { ascending: false }).limit(5000);
+    if (error) throw error;
+    data = data || [];
+    if (!data.length) {
+      el.innerHTML = '<details style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden"><summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:#f472b6">🎟️ Cupones por campaña</summary><div style="padding:12px 14px;color:var(--muted);font-size:12px">Aún no hay cupones generados. Se crean por campaña (función cupon-generar).</div></details>';
+      return;
+    }
+    // Sumar la venta generada (total de las ventas cuyo folio canjeó un cupón)
+    var folios = data.filter(function(c){return c.usado && c.venta_folio;}).map(function(c){return c.venta_folio;});
+    var ventaPorFolio = {};
+    if (folios.length) {
+      try {
+        var vr = await db.from('ventas').select('folio,total').in('folio', folios);
+        (vr.data||[]).forEach(function(v){ ventaPorFolio[v.folio] = Number(v.total)||0; });
+      } catch(e){}
+    }
+    // Agrupar por campaña
+    var byCamp = {};
+    data.forEach(function(c){
+      var k = c.campana || '(sin campaña)';
+      if (!byCamp[k]) byCamp[k] = { enviados:0, canjeados:0, venta:0, tipo:c.beneficio_tipo };
+      byCamp[k].enviados++;
+      if (c.usado) { byCamp[k].canjeados++; if (c.venta_folio) byCamp[k].venta += (ventaPorFolio[c.venta_folio]||0); }
+    });
+    var totalEnv = data.length, totalCanj = data.filter(function(c){return c.usado;}).length;
+    var totalVenta = Object.keys(byCamp).reduce(function(s,k){return s+byCamp[k].venta;},0);
+    var _tipoLabel = { solar_gratis:'☀️ Solar gratis', kit_gratis:'🎁 Kit gratis', desc_pct:'% desc', desc_monto:'$ desc' };
+    var rows = Object.keys(byCamp).sort(function(a,b){return byCamp[b].enviados-byCamp[a].enviados;}).map(function(k){
+      var g = byCamp[k];
+      var tasa = g.enviados ? Math.round(g.canjeados/g.enviados*100) : 0;
+      return '<div style="padding:9px 11px;border-bottom:1px solid rgba(255,255,255,0.04)">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:var(--white);font-weight:700">'+k+'</span><span style="font-size:10px;color:var(--muted)">'+(_tipoLabel[g.tipo]||g.tipo||'')+'</span></div>'
+        + '<div style="display:flex;gap:14px;margin-top:4px;font-size:11px">'
+        + '<span style="color:var(--muted)">Enviados <b style="color:var(--white)">'+g.enviados+'</b></span>'
+        + '<span style="color:#f472b6">Canjeados <b>'+g.canjeados+'</b> ('+tasa+'%)</span>'
+        + '<span style="color:#72c47e">Venta <b>$'+g.venta.toLocaleString('es-MX',{maximumFractionDigits:0})+'</b></span>'
+        + '</div></div>';
+    }).join('');
+    el.innerHTML = '<details style="background:var(--surface);border:1px solid rgba(236,72,153,0.2);border-radius:12px;overflow:hidden">'
+      + '<summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:#f472b6">🎟️ Cupones — '+totalCanj+'/'+totalEnv+' canjeados · $'+totalVenta.toLocaleString('es-MX',{maximumFractionDigits:0})+' venta</summary>'
+      + '<div style="padding:6px 8px"><div style="border:1px solid rgba(255,255,255,0.05);border-radius:8px;overflow:hidden">'+rows+'</div></div></details>';
+  } catch(e) { console.warn('[Cupones report]', e); el.innerHTML=''; }
 }
 
 // ═══ Panel auditoría: descuentos de rescate del período/sucursal (cuántas veces y quién) ═══

@@ -35,7 +35,7 @@ const ALLOWED_TABLES = [
   'precio_cambios',
   'comisiones_pagadas','cumple_canjes',
   'empresas_convenio','convenio_usos','convenio_empleados',
-  'descuentos_rescate'
+  'descuentos_rescate','cupones'
 ];
 
 async function supaREST(method, path, body, extraHeaders) {
