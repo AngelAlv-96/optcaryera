@@ -58,6 +58,11 @@
 [functions."transfer-reminder-cron"]
   schedule = "*/15 * * * *"
 
+# Re-enganche con cupón — cada 5 min: a un prospecto que chateó hoy y lleva ~10 min inactivo
+# (sin compra, sin cupón) se le genera y envía su código Cupón México. Auto-off tras el 4-jul.
+[functions."cupon-reengage-cron"]
+  schedule = "*/5 * * * *"
+
 # ─── Página pública de presentación en el dominio propio ───
 # SOLO la RAÍZ de caryera.mx / www.caryera.mx muestra la presentación de la óptica.
 # optcaryera.netlify.app/ sigue sirviendo el SISTEMA (index.html) sin cambios.
