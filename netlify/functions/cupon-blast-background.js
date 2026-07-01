@@ -66,10 +66,13 @@ exports.handler = async function(event) {
 
     let enviados = 0, fallidos = 0;
     for (const c of elegibles) {
-      try { const rc = await supaREST("GET", "cupones?id=eq." + c.id + "&select=enviado_at"); if (rc && rc[0] && rc[0].enviado_at) continue; } catch (e) { continue; }
+      // CLAIM ATÓMICO antes de enviar (enviado_at IS NULL) → imposible duplicar aunque corran varias instancias.
+      let claimed = null;
+      try { claimed = await supaREST("PATCH", "cupones?id=eq." + c.id + "&enviado_at=is.null", { enviado_at: new Date().toISOString() }); } catch (e) { continue; }
+      if (!claimed || !claimed.length) continue;
       const r = await sendTemplate(c.telefono, c.codigo, templateSid);
-      if (r.ok) { await supaREST("PATCH", "cupones?id=eq." + c.id, { enviado_at: new Date().toISOString() }); await saveHistory(c.telefono, campana, c.codigo); enviados++; }
-      else { fallidos++; }
+      if (r.ok) { await saveHistory(c.telefono, campana, c.codigo); enviados++; }
+      else { try { await supaREST("PATCH", "cupones?id=eq." + c.id, { enviado_at: null }); } catch (e) {} fallidos++; }
       await new Promise(res => setTimeout(res, RATE_LIMIT_MS));
     }
     console.log("[CUPON-BG] " + campana + " listo: enviados=" + enviados + " fallidos=" + fallidos);

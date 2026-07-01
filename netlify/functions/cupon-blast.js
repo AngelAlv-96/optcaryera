@@ -86,17 +86,19 @@ exports.handler = async function(event) {
 
     let enviados = 0, fallidos = 0; const errores = [];
     for (const c of limited) {
-      // Re-check enviado_at fresco (fail-closed)
-      try {
-        const rc = await supaREST("GET", "cupones?id=eq." + c.id + "&select=enviado_at");
-        if (rc && rc[0] && rc[0].enviado_at) continue;
-      } catch (e) { console.warn("[CUPON-BLAST] recheck " + c.codigo + ", salto:", e.message); continue; }
+      // CLAIM ATÓMICO antes de enviar: PATCH con condición enviado_at IS NULL → solo UNA instancia gana
+      // (si otra ya lo reclamó, el PATCH no matchea y devuelve []). Imposible duplicar aunque corran varias a la vez.
+      let claimed = null;
+      try { claimed = await supaREST("PATCH", "cupones?id=eq." + c.id + "&enviado_at=is.null", { enviado_at: new Date().toISOString() }); }
+      catch (e) { console.warn("[CUPON-BLAST] claim " + c.codigo + ", salto:", e.message); continue; }
+      if (!claimed || !claimed.length) continue; // otra instancia ya lo reclamó/envió
       const r = await sendTemplate(c.telefono, c.codigo, templateSid);
-      if (r.ok) {
-        await supaREST("PATCH", "cupones?id=eq." + c.id, { enviado_at: new Date().toISOString() });
-        await saveHistory(c.telefono, campana, c.codigo);
-        enviados++;
-      } else { fallidos++; errores.push({ codigo: c.codigo, err: r.err }); }
+      if (r.ok) { await saveHistory(c.telefono, campana, c.codigo); enviados++; }
+      else {
+        // liberar el claim para que se pueda reintentar en otra corrida
+        try { await supaREST("PATCH", "cupones?id=eq." + c.id, { enviado_at: null }); } catch (e) {}
+        fallidos++; errores.push({ codigo: c.codigo, err: r.err });
+      }
       await new Promise(res => setTimeout(res, RATE_LIMIT_MS));
     }
 
