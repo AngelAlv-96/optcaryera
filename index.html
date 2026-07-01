@@ -21986,8 +21986,11 @@ async function _procesarVentaInner() {
       const { data: promo } = await db.from('promociones').select('usos_actuales').eq('id', vtaPromoAplicada.id).single();
       if (promo) await db.from('promociones').update({ usos_actuales: (promo.usos_actuales || 0) + 1 }).eq('id', vtaPromoAplicada.id);
       if (foliosGen) parts.push(`📋 Folios: ${foliosGen.join(', ')}`);
-      // Auto-crear orden de lab para folios addon (solar) con graduación del paciente
-      if (foliosDetalle && vpData?.id) {
+      // ⛔ NO auto-crear la orden de lab del folio addon (solar). El personal la genera A MANO en la
+      // Bitácora (con el material/tratamiento correctos). Antes se creaba sola con specs fijas
+      // (VS/CR-39/Blanco) y salía MAL. Ahora el folio -N queda DISPONIBLE (usado:false) para generarlo
+      // manualmente como cualquier otro folio de la promo. (Pedido de Angel.)
+      if (false && foliosDetalle && vpData?.id) {
         for (let fi = 0; fi < foliosDetalle.length; fi++) {
           const fd = foliosDetalle[fi];
           if (!fd.es_addon) continue;
