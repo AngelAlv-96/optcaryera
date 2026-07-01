@@ -284,7 +284,12 @@ La graduación de una receta oftálmica (armazón) NO es igual a la de LC. Regla
 
 FORMAS DE PAGO:
 Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Aplazo (pagos a plazos sin tarjeta)
-Abonos en línea: https://clip.mx/@caryera
+
+ABONOS / PAGOS EN LÍNEA DE UNA COMPRA YA HECHA (saldo pendiente):
+⛔ NUNCA mandes el link general https://clip.mx/@caryera para un abono de un pedido — ese link NO se liga a su compra y su pago NO se registra en su cuenta.
+✅ Si en los PEDIDOS ENCONTRADOS de este cliente viene un campo "portal_pago" (su portal de ticket), dale ESE link: ahí paga con tarjeta y el abono se registra automáticamente a su folio (además ve su saldo). No necesita ir a la sucursal para abonar.
+✅ Si NO ves su pedido/portal (no lo encontraste o es crédito SICAR): pídele su folio o el teléfono con el que compró, o invítalo a abonar en cualquier sucursal. NO mandes el link general de Clip.
+El link general https://clip.mx/@caryera SOLO se usa para pagos de pedidos NUEVOS que Clari está cerrando por chat (lentes de contacto), nunca para abonos de una compra existente.
 
 APLAZO — COMPRA AHORA, PAGA DESPUÉS (sin tarjeta de crédito):
 Aplazo es un sistema externo de pagos a plazos. El cliente lo usa como medio de pago, igual que tarjeta o efectivo.
@@ -492,6 +497,9 @@ function formatOrders(orders) {
       result.pagado = o._ventaData.pagado;
       result.saldo = o._ventaData.saldo;
       result.estado_pago = o._ventaData.estado;
+      if (o._ventaData.saldo > 0 && o._ventaData.token_portal && !o._ventaData.es_sicar) {
+        result.portal_pago = 'https://caryera.mx/portal.html?t=' + o._ventaData.token_portal;
+      }
     }
     return result;
   });
@@ -508,7 +516,7 @@ async function enrichOrdersWithSales(orders) {
   var baseKeys = Object.keys(baseFolios);
   for (var i = 0; i < baseKeys.length; i++) {
     var bf = baseKeys[i];
-    var ventas = await supaFetch('ventas?folio=eq.' + bf + '&select=folio,total,pagado,saldo,estado&limit=1');
+    var ventas = await supaFetch('ventas?folio=eq.' + bf + '&select=folio,total,pagado,saldo,estado,token_portal&limit=1');
     if (ventas && ventas.length > 0) {
       orders.forEach(function(o) {
         var f = ((o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/) || [])[1] || '';
@@ -603,9 +611,13 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         if (o.total_venta && !shownSale[baseFolio]) {
           shownSale[baseFolio] = true;
           orderContext += '   Venta folio ' + baseFolio + ': Total $' + Number(o.total_venta).toLocaleString('es-MX') + ' | Pagado $' + Number(o.pagado).toLocaleString('es-MX') + ' | Saldo $' + Number(o.saldo).toLocaleString('es-MX') + ' | ' + o.estado_pago + '\n';
+          if (o.portal_pago) {
+            orderContext += '   portal_pago (para abonar en línea, se registra a este folio): ' + o.portal_pago + '\n';
+          }
         }
       });
       orderContext += '\nINSTRUCCIONES PEDIDOS:\n' +
+        '- Si el cliente pregunta cómo abonar/pagar en línea y arriba viene "portal_pago" para su folio, DALE ESE LINK (ahí su abono se registra a su compra). ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio. No necesita ir a la sucursal para abonar en línea.\n' +
         '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Si están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE — NO dar direcciones, referencias, horarios ni teléfonos. Ya sabe dónde queda.\n' +

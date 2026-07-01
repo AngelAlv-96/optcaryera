@@ -287,7 +287,12 @@ NUNCA prometas tiempos de entrega exactos — sugiere estimados sin afirmar ("lo
 
 FORMAS DE PAGO:
 Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Aplazo (pagos a plazos sin tarjeta)
-Abonos en línea: https://clip.mx/@caryera
+
+ABONOS / PAGOS EN LÍNEA DE UNA COMPRA YA HECHA (saldo pendiente):
+⛔ NUNCA mandes el link general https://clip.mx/@caryera para un abono de un pedido — ese link NO se liga a su compra y su pago NO se registra en su cuenta.
+✅ Si en los PEDIDOS ENCONTRADOS de este cliente viene un campo "portal_pago" (su portal de ticket), dale ESE link: ahí paga con tarjeta y el abono se registra automáticamente a su folio (además ve su saldo). Dile algo como: "Puedes abonar en línea desde el portal de tu ticket, ahí tu pago se registra a tu compra 👉 [link]". No necesita ir a la sucursal para abonar.
+✅ Si NO ves su pedido/portal (no lo encontraste o es crédito SICAR): pídele su folio o el teléfono con el que compró para localizar su compra, o invítalo a abonar en cualquier sucursal. NO mandes el link general de Clip.
+El link general https://clip.mx/@caryera SOLO se usa para pagos de pedidos NUEVOS que Clari está cerrando por chat (lentes de contacto), nunca para abonos de una compra existente.
 
 APLAZO — COMPRA AHORA, PAGA DESPUÉS (sin tarjeta de crédito):
 Aplazo es un sistema externo de pagos a plazos. El cliente lo compra como medio de pago, igual que tarjeta o efectivo.
@@ -642,7 +647,7 @@ async function lookupOrders(phone, text) {
   if (baseKeys.length > 0) {
     for (var vi = 0; vi < baseKeys.length; vi++) {
       var vf = baseKeys[vi];
-      var ventas = await supaFetch('ventas?folio=eq.' + vf + '&select=folio,total,pagado,saldo,estado&limit=1');
+      var ventas = await supaFetch('ventas?folio=eq.' + vf + '&select=folio,total,pagado,saldo,estado,token_portal&limit=1');
       if (ventas && ventas.length > 0) ventasMap[vf] = ventas[0];
     }
   }
@@ -685,6 +690,10 @@ async function lookupOrders(phone, text) {
       result.pagado = venta.pagado;
       result.saldo = venta.saldo;
       result.estado_pago = venta.estado;
+      // Si tiene saldo pendiente y portal de ticket, el abono va POR AHÍ (se liga a su folio y se registra).
+      if (venta.saldo > 0 && venta.token_portal && !venta.es_sicar) {
+        result.portal_pago = 'https://caryera.mx/portal.html?t=' + venta.token_portal;
+      }
     }
     return result;
   });
@@ -862,6 +871,9 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         if (o.total_venta && !shownSale[baseFolio]) {
           shownSale[baseFolio] = true;
           orderContext += '   Venta folio ' + baseFolio + ': Total $' + Number(o.total_venta).toLocaleString('es-MX') + ' | Pagado $' + Number(o.pagado).toLocaleString('es-MX') + ' | Saldo $' + Number(o.saldo).toLocaleString('es-MX') + ' | ' + o.estado_pago + '\n';
+          if (o.portal_pago) {
+            orderContext += '   portal_pago (para abonar en línea, se registra a este folio): ' + o.portal_pago + '\n';
+          }
         }
       });
       orderContext += '\nINSTRUCCIONES IMPORTANTES SOBRE PEDIDOS:\n' +
@@ -872,6 +884,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         '- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n' +
         '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
+        '- Si el cliente pregunta cómo abonar/pagar en línea y arriba viene "portal_pago" para su folio, DALE ESE LINK (ahí su abono se registra a su compra). ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio. No necesita ir a la sucursal para abonar en línea.\n' +
         '- Si la venta está Liquidada y los lentes están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE EXISTENTE — NO dar direcciones, referencias de ubicación, horarios ni teléfonos. Ya sabe dónde está la sucursal. Solo mencionar el nombre.\n' +
         '- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n' +
