@@ -239,7 +239,7 @@ REGLAS PARA PROMOCIONES / REFERENCIAS DEL CLIENTE:
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
-📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
+📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 890-3072. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 ⚠️ Plaza Vía Vittoria CIERRA los DOMINGOS (hasta nuevo aviso). Los DEMÁS días abre normal (lunes a sábado 10am-7pm). Las OTRAS 3 sucursales (Américas, Pinocelli, Magnolia) SÍ abren los domingos (11am-5pm). Si un cliente pregunta por Vittoria un domingo, quiere ir a Vittoria en domingo, o pregunta a cuál sucursal puede ir en domingo → avísale amablemente que Vittoria los domingos está cerrada y sugiérele Américas, Pinocelli o Magnolia (abren 11am-5pm). Entre semana y sábados, Vittoria opera normal.
 
@@ -976,7 +976,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       '- Promo vigente: usa la promoción actual del negocio (la que aparece en PROMOCIÓN VIGENTE arriba)\n' +
       '- Examen de vista incluido al comprar lentes (armazón o lentes de contacto)\n' +
       '- Lentes listos en 35 minutos (laboratorio propio)\n' +
-      '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 174-8866\n' +
+      '- Horario: L-S 10am-7pm, Dom 11am-5pm | Tel: (656) 890-3072\n' +
       '- Si quiere agendar, toma nota de su nombre y horario preferido y confirma que le avisamos\n' +
       '- Menciona que nos mudamos para tener más espacio y atenderlos mejor\n\n' +
       'REGLAS DE TRATO REACTIVACIÓN:\n' +

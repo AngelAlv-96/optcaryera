@@ -229,7 +229,7 @@ REGLAS PARA PROMOCIONES / REFERENCIAS DEL CLIENTE:
 const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza de las Américas (Zona Pronaf): Dentro del centro comercial, entrada por Smart, entre Joyería Alex y Continental Music. Tel: (656) 703-8499
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500
-📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
+📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 890-3072. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 ⚠️ Plaza Vía Vittoria CIERRA los DOMINGOS (hasta nuevo aviso). Los DEMÁS días abre normal (lunes a sábado 10am-7pm). Las OTRAS 3 sucursales (Américas, Pinocelli, Magnolia) SÍ abren los domingos (11am-5pm). Si un cliente pregunta por Vittoria un domingo, quiere ir a Vittoria en domingo, o pregunta a cuál sucursal puede ir en domingo → avísale amablemente que Vittoria los domingos está cerrada y sugiérele Américas, Pinocelli o Magnolia (abren 11am-5pm). Entre semana y sábados, Vittoria opera normal.
 
@@ -690,7 +690,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
     '- SIEMPRE envía el link de Google Maps cuando pregunten ubicación de Magnolia\n' +
     '- Promo: usa la promoción vigente actual (la que aparece en PROMOCIÓN VIGENTE arriba) + Examen de vista incluido al comprar lentes (armazón o LC)\n' +
     '- Lentes listos en 35 minutos\n' +
-    '- Tel: (656) 174-8866\n' +
+    '- Tel: (656) 890-3072\n' +
     '- Si el cliente se muestra desinteresado o molesto, agradece amablemente y no insistas';
 
   var history = await getConversationHistory(senderId);
