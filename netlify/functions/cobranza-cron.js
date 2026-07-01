@@ -103,7 +103,8 @@ exports.handler = async function(event) {
     } catch (e) { console.warn("[COBRANZA] empleados:", e.message); }
 
     const candidatos = [];
-    const skips = { sin_tel: 0, empleado: 0, no_local: 0, muy_nuevo: 0, ya_completo: 0, espaciado: 0, pago_reciente: 0, vencido_ya_1: 0 };
+    const pushedPhones = new Set(); // 1 recordatorio por PERSONA por corrida (aunque tenga varios apartados)
+    const skips = { sin_tel: 0, empleado: 0, no_local: 0, muy_nuevo: 0, ya_completo: 0, espaciado: 0, pago_reciente: 0, vencido_ya_1: 0, mismo_cliente: 0, espaciado_fono: 0 };
 
     for (const v of apartados) {
       const tel10 = last10(v.pacientes.telefono);
@@ -120,16 +121,26 @@ exports.handler = async function(event) {
       const phone = normalizePhone(v.pacientes.telefono);
       const folio = v.folio;
 
-      // ¿Cuántos recordatorios se han mandado a ESTE folio? + fecha del último
-      let nSent = 0, lastSent = null;
+      // 1 recordatorio por persona por corrida: si ya empujamos a este teléfono, saltar (tiene otro apartado)
+      if (pushedPhones.has(phone)) { skips.mismo_cliente++; continue; }
+
+      // Recordatorios previos de cobranza a este TELÉFONO (cualquier folio) — para dedup por folio y espaciado por persona
+      let nSent = 0, lastSentFolio = null, lastSentFono = null;
       try {
         const prev = await supaREST("GET",
-          "clari_conversations?phone=eq." + phone + "&content=ilike.*" + TAG_PREFIX + ":" + encodeURIComponent(folio) + "*&select=created_at&order=created_at.desc&limit=5");
-        if (prev) { nSent = prev.length; if (prev[0]) lastSent = new Date(prev[0].created_at); }
+          "clari_conversations?phone=eq." + phone + "&content=ilike.*" + TAG_PREFIX + ":*&select=content,created_at&order=created_at.desc&limit=20");
+        if (prev && prev.length) {
+          lastSentFono = new Date(prev[0].created_at);
+          const forFolio = prev.filter(function (m) { return (m.content || "").indexOf(TAG_PREFIX + ":" + folio + "]") !== -1; });
+          nSent = forFolio.length;
+          if (forFolio[0]) lastSentFolio = new Date(forFolio[0].created_at);
+        }
       } catch (e) { console.warn("[COBRANZA] prev " + folio + ", salto:", e.message); continue; } // fail-closed
 
+      // Espaciado por PERSONA: no mandar a un mismo teléfono más de 1 vez cada 7 días (aunque tenga varios apartados)
+      if (lastSentFono && (now - lastSentFono) < SPACING_DAYS * MS_DAY) { skips.espaciado_fono++; continue; }
       if (nSent >= 3) { skips.ya_completo++; continue; }
-      if (lastSent && (now - lastSent) < SPACING_DAYS * MS_DAY) { skips.espaciado++; continue; }
+      if (lastSentFolio && (now - lastSentFolio) < SPACING_DAYS * MS_DAY) { skips.espaciado++; continue; }
       // Apartado ya vencido (>45d): solo UNA vez (catch-up), no entra a la cadencia repetida.
       if (ageDays > STAGES_DAYS[2] && nSent >= 1) { skips.vencido_ya_1++; continue; }
       if (dueStage <= nSent) { skips.espaciado++; continue; }
@@ -142,6 +153,7 @@ exports.handler = async function(event) {
       } catch (e) { /* si falla el check, seguimos (el recordatorio es benigno) */ }
 
       candidatos.push({ phone, folio, nombre: (v.pacientes.nombre || ""), token: v.token_portal, stage: dueStage, ageDays });
+      pushedPhones.add(phone);
     }
 
     const limited = candidatos.slice(0, MAX_PER_RUN);
