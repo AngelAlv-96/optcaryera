@@ -233,6 +233,7 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza Pinocelli: Av. Miguel de la Madrid esquina con Ramacoi. Tel: (656) 559-1500  
 📍 Plaza Magnolia: Av. Manuel J. Clouthier (Jilotepec), casi a la altura de Plaza El Reloj, frente a Tostadas El Primo, en una plaza nueva donde está Helados Trevly. Tel: (656) 174-8866. Maps: https://maps.app.goo.gl/HBomFDEfJJNPna697
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
+⚠️ Plaza Vía Vittoria CIERRA los DOMINGOS (hasta nuevo aviso). Los DEMÁS días abre normal (lunes a sábado 10am-7pm). Las OTRAS 3 sucursales (Américas, Pinocelli, Magnolia) SÍ abren los domingos (11am-5pm). Si un cliente pregunta por Vittoria un domingo, quiere ir a Vittoria en domingo, o pregunta a cuál sucursal puede ir en domingo → avísale amablemente que Vittoria los domingos está cerrada y sugiérele Américas, Pinocelli o Magnolia (abren 11am-5pm). Entre semana y sábados, Vittoria opera normal.
 
 ⛔⛔ REGLA CRÍTICA SOBRE UBICACIÓN DEL CLIENTE (PROHIBICIÓN ABSOLUTA): NUNCA, bajo NINGUNA circunstancia, (a) preguntes al cliente dónde está, en qué zona vive o de qué colonia escribe, NI (b) le OFREZCAS por iniciativa propia decirle o recomendarle cuál sucursal le queda más cerca. Las dos cosas están prohibidas por igual — ofrecer "te digo la más cercana si me dices tu zona" es solo otra forma de pedir su ubicación y también está PROHIBIDO. PROHIBIDAS estas frases y TODAS sus variantes: "¿Sabes por qué zona estás?", "¿En qué zona o colonia estás?", "¿Dónde te ubicas?", "¿Por dónde vives?", "¿De qué parte de Juárez nos escribes?", "Te comparto la más cercana si me dices tu zona", "¿Quieres que te diga cuál te queda más cerca?", "Dime por qué zona estás y te digo cuál te conviene", "Si me dices tu colonia te recomiendo una". Esto aplica SIEMPRE — cuando el cliente pregunte "¿dónde están ubicados?", cuando lo invites a pasar, o cuando compartas las sucursales: en TODOS esos casos das la lista de las 4 sucursales (o las que apliquen) y CIERRAS, sin preguntar nada de su ubicación y SIN ofrecer averiguar la más cercana. La ÚNICA excepción: el cliente, POR SU PROPIA CUENTA, pregunta EXPLÍCITAMENTE "¿cuál me queda más cerca?" (o equivalente) — solo entonces, y solo si no dijo su zona, puedes preguntar UNA vez su colonia o una referencia, porque sin ese dato no puedes responderle lo que él mismo pidió.
 
@@ -245,9 +246,9 @@ MAPA DE ZONAS (SOLO para responder cuando el cliente pregunta cuál le queda má
 
 {{NUEVA_SUCURSAL_STATUS}}
 
-⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm
+⏰ HORARIO: Lunes a sábado 10:00am - 7:00pm | Domingos 11:00am - 5:00pm. ⚠️ EXCEPCIÓN: Plaza Vía Vittoria NO abre los domingos (hasta nuevo aviso); las otras 3 sí. De lunes a sábado las 4 abren normal.
 No se necesita cita previa.
-📅 ABRIMOS TODOS LOS DÍAS DEL AÑO con el horario normal (incluidos días feriados como 1 de mayo, 16 de septiembre, 20 de noviembre, jueves/viernes santo, etc.). Solo cerramos 2 días al año: 1 de enero y 25 de diciembre. Si alguien pregunta si abrimos en un día feriado distinto a esos dos, responde directamente que SÍ con el horario normal del día — NO des explicaciones largas sobre feriados, solo confirma que estamos abiertos. Ejemplo: "Sí abrimos hoy en horario normal hasta las 7pm 👓".
+📅 ABRIMOS TODOS LOS DÍAS DEL AÑO con el horario normal (incluidos días feriados como 1 de mayo, 16 de septiembre, 20 de noviembre, jueves/viernes santo, etc.). Solo cerramos 2 días al año: 1 de enero y 25 de diciembre. (Única excepción semanal: Plaza Vía Vittoria descansa los domingos, hasta nuevo aviso.) Si alguien pregunta si abrimos en un día feriado distinto a esos dos, responde directamente que SÍ con el horario normal del día — NO des explicaciones largas sobre feriados, solo confirma que estamos abiertos. Ejemplo: "Sí abrimos hoy en horario normal hasta las 7pm 👓".
 
 {{PROMOS_PLACEHOLDER}}
 
@@ -839,8 +840,16 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
   } else {
     _vittoriaStatus = '🆕 SOBRE PLAZA VÍA VITTORIA: es nuestra sucursal MÁS NUEVA (inaugurada el 30 de mayo de 2026), ya abierta con horario normal. Cuando pregunten por ubicaciones o estén indecisos sobre a cuál ir, SUGIÉRELA con entusiasmo como la opción más nueva (sobre todo si están por la zona de Av. Ejército Nacional / Farmacias Similares). 🎁 PROMO DE APERTURA (SOLO Plaza Vía Vittoria, para los primeros clientes): el lente solar graduado adicional va GRATIS, sin costo extra — menciónala como gancho a quien pregunte por esta sucursal. NO digas que "abre mañana" ni que aún no abre. Profesional y breve.';
   }
+  // Plaza Vía Vittoria descansa los DOMINGOS (hasta nuevo aviso): en domingo NO se promueve y se encamina a las otras 3.
+  var esDomingo = (todayWeekday || '').toLowerCase().indexOf('domingo') !== -1;
+  if (esDomingo) {
+    _vittoriaStatus = '⚠️ HOY ES DOMINGO y Plaza Vía Vittoria está CERRADA los domingos (hasta nuevo aviso). Las otras 3 (Plaza de las Américas, Plaza Pinocelli, Plaza Magnolia) SÍ abren hoy de 11am a 5pm. HOY: NO promuevas ni sugieras Vittoria como opción para visitar; si el cliente pregunta por Vittoria o quiere ir a Vittoria hoy, avísale amable y breve que los domingos está cerrada y ofrécele Américas, Pinocelli o Magnolia. Vittoria vuelve a abrir mañana (lunes) en horario normal.';
+  }
   knowledgeWithPromos = knowledgeWithPromos.replace('{{NUEVA_SUCURSAL_STATUS}}', _vittoriaStatus);
   var horarioOverride = '';
+  if (esDomingo) {
+    horarioOverride += '\n⚠️ HOY (domingo): Plaza Vía Vittoria está CERRADA. Abren SOLO Américas, Pinocelli y Magnolia, de 11am a 5pm. Si preguntan por Vittoria o a cuál pueden ir hoy, encamínalos a esas 3. NUNCA invites a alguien a ir HOY a Vittoria.';
+  }
   // (Aquí van avisos de horario especial date-gated puntuales — cierres por festivo, etc. Se agregan
   //  con `if (todayChi === 'AAAA-MM-DD') { horarioOverride += '...'; }` y se quitan cuando pasan.)
   var systemPrompt = config.personality + '\n\nFECHA Y HORA ACTUAL EN CHIHUAHUA: ' + nowMx + '\nHOY ES ' + todayWeekday.toUpperCase() + '. NUNCA inventes el día de la semana — usa este. Horario: lunes a sábado 10am-7pm, domingos 11am-5pm. Si HOY no es domingo, NO digas "hoy domingo".' + horarioOverride + '\n\nINFORMACIÓN DEL NEGOCIO:\n' + knowledgeWithPromos;
