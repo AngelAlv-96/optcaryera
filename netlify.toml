@@ -48,6 +48,11 @@
 [functions."convenio-pase-blast"]
   schedule = "*/15 * * * *"
 
+# Cobranza de apartados — recordatorio amable para abonar/completar en línea (día 15/30/45 por apartado)
+# Diario ~11am CST (17:00 UTC). Guard 10am-7pm + dedup [Cobranza-Apartado:FOLIO] + MAX 10/run. Dry: ?dry=1
+[functions."cobranza-cron"]
+  schedule = "0 17 * * *"
+
 # ─── Página pública de presentación en el dominio propio ───
 # SOLO la RAÍZ de caryera.mx / www.caryera.mx muestra la presentación de la óptica.
 # optcaryera.netlify.app/ sigue sirviendo el SISTEMA (index.html) sin cambios.
