@@ -82,16 +82,28 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:90;opa
 .hero h1.in .w>span{transform:none}
 .hero h1 .w:nth-child(1)>span{transition-delay:.05s}.hero h1 .w:nth-child(2)>span{transition-delay:.13s}.hero h1 .w:nth-child(3)>span{transition-delay:.21s}.hero h1 .w:nth-child(4)>span{transition-delay:.29s}.hero h1 .w:nth-child(5)>span{transition-delay:.37s}
 @media(prefers-reduced-motion:reduce){.hero h1 .w>span{transform:none!important}}
-/* motivo óptico animado */
-.hero-mark{width:104px;height:104px;margin:0 auto 22px;display:block}
-.hm-ring{fill:none;stroke:var(--beige);stroke-width:2.2;opacity:.9}
-.hm-ring2{fill:none;stroke:var(--beige-deep);stroke-width:1.3;opacity:.45;stroke-dasharray:5 9}
-.hm-core{fill:none;stroke:var(--ink);stroke-width:2.4}
-.hm-spin{transform-origin:52px 52px;animation:hmSpin 14s linear infinite}
-.hm-arc{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-dasharray:30 250;transform-origin:52px 52px;animation:hmArc 3.6s var(--ease) infinite}
-@keyframes hmSpin{to{transform:rotate(360deg)}}
-@keyframes hmArc{0%{stroke-dashoffset:280;opacity:0}30%{opacity:1}60%,100%{stroke-dashoffset:0;opacity:0}}
-@media(prefers-reduced-motion:reduce){.hm-spin,.hm-arc{animation:none}}
+/* lentes dibujados en línea (draw-on) */
+.hero-glasses{width:min(340px,72vw);height:auto;margin:0 auto 18px;display:block;animation:hgFloat 7s ease-in-out 2.4s infinite}
+@keyframes hgFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-7px) rotate(-.7deg)}}
+.hg{fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:1;animation:hgDraw 1.4s var(--ease) forwards}
+.hg.d2{animation-delay:.3s}.hg.d3{animation-delay:.55s}
+@keyframes hgDraw{to{stroke-dashoffset:0}}
+.hg-ar{fill:none;stroke:var(--beige);stroke-width:2.4;stroke-linecap:round;opacity:0;animation:hgAr .8s var(--ease) 1.4s forwards}
+@keyframes hgAr{to{opacity:.95}}
+.hg-glint{fill:none;stroke:#fff;stroke-width:3.2;stroke-linecap:round;stroke-dasharray:36 300;stroke-dashoffset:336;opacity:0;animation:hgGlint 4.8s ease-in-out 2.2s infinite}
+@keyframes hgGlint{0%{stroke-dashoffset:336;opacity:0}10%{opacity:.95}30%{stroke-dashoffset:0;opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+@media(prefers-reduced-motion:reduce){.hero-glasses,.hg,.hg-ar,.hg-glint{animation:none}.hg{stroke-dashoffset:0}.hg-ar{opacity:.95}.hg-glint{display:none}}
+/* CTAs del hero */
+.hero-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.hcta{display:inline-flex;align-items:center;gap:9px;min-height:52px;padding:0 26px;border-radius:100px;font-family:inherit;font-weight:600;font-size:15px;cursor:pointer;transition:transform var(--t1) var(--ease),box-shadow var(--t1) var(--ease),border-color var(--t1)}
+.hcta.pri{background:var(--ink);color:#fff;border:none;box-shadow:0 10px 26px rgba(28,26,22,.22);position:relative;overflow:hidden}
+.hcta.pri::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.28),transparent);animation:ctaShine 3.8s ease-in-out 1.6s infinite}
+.hcta.pri:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(28,26,22,.3)}
+.hcta.gho{background:none;color:var(--ink);border:1.5px solid var(--line)}
+.hcta.gho:hover{border-color:var(--ink);transform:translateY(-2px)}
+.hcta .arw{transition:transform var(--t1) var(--ease)}
+.hcta:hover .arw{transform:translateX(3px)}
+@media(prefers-reduced-motion:reduce){.hcta.pri::after{animation:none}}
 .hero-chips{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:24px}
 .hchip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:9px 16px;font-size:13px;font-weight:500;color:var(--ink2);box-shadow:var(--e1);transition:transform var(--t1) var(--ease),box-shadow var(--t1) var(--ease),border-color var(--t1)}
 .hchip:hover{transform:translateY(-3px);box-shadow:var(--e2);border-color:var(--beige-soft)}
@@ -175,8 +187,8 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 .sim-head h3 .it{font-style:italic;color:var(--beige-deep)}
 .sim-head p{font-size:15px;color:var(--ink2);margin-top:8px}
 .sim3d{border:1px solid var(--line);border-radius:22px;overflow:hidden;background:var(--card);box-shadow:0 14px 40px rgba(28,26,22,.06)}
-.sim3d iframe{width:100%;border:0;display:block;min-height:1180px;background:var(--paper)}
-@media(max-width:860px){.sim3d iframe{min-height:1640px}}
+.sim3d iframe{width:100%;border:0;display:block;min-height:920px;background:var(--paper)}
+@media(max-width:860px){.sim3d iframe{min-height:1500px}}
 
 /* premium / special cards */
 .prem-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
@@ -287,7 +299,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 .h-nav{display:flex;gap:4px;margin:0 auto}
 .h-navlink{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:100px;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;transition:background .18s,color .18s}
 .h-navlink:hover,.h-navlink.active{background:var(--beige-tint);color:var(--beige-deep)}
-@media(max-width:600px){.h-nav{gap:0}.h-navlink{padding:0 11px;font-size:13px}.h-logo{height:28px}.h-print span{display:none}}
+@media(max-width:600px){.header-in{padding:11px 12px;gap:8px}.h-nav{gap:0}.h-navlink{padding:0 8px;font-size:12.5px}.h-logo{height:25px}.h-print span{display:none}.h-print{padding:8px 10px}}
 
 /* bigger touch targets on existing controls */
 .serie-toggle button{min-height:48px}
@@ -379,13 +391,8 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 @media(prefers-reduced-motion:reduce){.qbar .qb-cta::after{animation:none}}
 @media(max-width:520px){.qbar .qb-build{display:none}.qbar-in{gap:10px}}
 
-/* collapsible advanced simulator */
-.adv-sim{max-width:900px;margin:30px auto 0}
-.sim-toggle{width:100%;min-height:58px;display:flex;align-items:center;justify-content:center;gap:10px;border:1.5px dashed var(--beige);background:var(--beige-tint);border-radius:16px;font-family:inherit;font-weight:600;font-size:15px;color:var(--beige-deep);cursor:pointer}
-.sim-toggle .chev{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;transition:transform .2s}
-.sim-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
-.sim-panel{max-height:0;overflow:hidden;transition:max-height .35s ease}
-.sim-panel.open{max-height:3000px}
+/* simulador embebido (directo en la sub-pestaña Material) */
+.adv-sim{max-width:1000px;margin:30px auto 0}
 
 /* ===================== DEMOS INTERACTIVOS (toca para ver) ===================== */
 .demos-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
@@ -442,7 +449,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 @keyframes blR2{0%,28%{opacity:0}48%,100%{opacity:.5}}
 @keyframes blL{0%,28%{box-shadow:none}55%,100%{box-shadow:0 0 14px rgba(120,160,255,.6)}}
 .bl-lbl{position:absolute;font-size:10px;font-weight:700;color:#cfe0ff;background:rgba(18,26,48,.78);padding:3px 7px;border-radius:6px;z-index:4;opacity:0;white-space:nowrap}
-.bl-l1{left:13%;top:18%}.bl-l2{left:55%;top:78%;transform:translateX(-50%);color:#9fb6ff}.bl-l3{right:6%;top:20%}
+.bl-l1{left:13%;top:18%}.bl-l2{left:55%;top:24%;transform:translateX(-50%);color:#9fb6ff}.bl-l3{right:6%;top:70%}
 .sc-blue.play .bl-lbl{animation:capIn 3.6s ease forwards}
 
 /* Fotocromático (slider interior↔exterior) */
@@ -541,6 +548,83 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
 .ti-note{text-align:center;font-size:14px;color:var(--ink2);margin-top:18px}
 .ti-note b{color:var(--ink)}
 
+/* ===================== PANTALLAS (navegación tipo app) ===================== */
+.screen{display:none}
+.screen.active{display:block}
+.screen.active.slide-r{animation:scrR .32s var(--ease)}
+.screen.active.slide-l{animation:scrL .32s var(--ease)}
+@keyframes scrR{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes scrL{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:none}}
+.apanel{display:none}
+.apanel.active{display:block;animation:scrR .28s var(--ease)}
+@media(prefers-reduced-motion:reduce){.screen.active,.apanel.active{animation:none!important}}
+
+/* sub-pestañas de Aprende (segmented de 3) */
+.subtabs-wrap{padding-top:26px;display:flex;justify-content:center}
+.subtabs{position:relative;display:flex;background:var(--card);border:1px solid var(--line);border-radius:100px;padding:5px;box-shadow:var(--e1);max-width:100%}
+.subtabs::before{content:'';position:absolute;top:5px;bottom:5px;left:5px;width:calc((100% - 10px)/3);background:var(--ink);border-radius:100px;transition:transform .34s var(--ease-spring)}
+.subtabs.st-1::before{transform:translateX(100%)}
+.subtabs.st-2::before{transform:translateX(200%)}
+.subtabs button{position:relative;z-index:1;flex:1;border:none;background:none;font-family:inherit;font-weight:600;font-size:14px;color:var(--ink2);padding:11px 20px;border-radius:100px;cursor:pointer;transition:color .26s;white-space:nowrap;min-height:48px}
+.subtabs button.on{color:#fff}
+@media(prefers-reduced-motion:reduce){.subtabs::before{transition:none}}
+@media(max-width:560px){.subtabs button{padding:11px 10px;font-size:12.5px}}
+
+/* ===================== UPGRADES v452 ===================== */
+/* numeral fantasma de sección */
+.sec-head{position:relative}
+.sec-num{position:absolute;top:-38px;left:50%;transform:translateX(-50%);font-family:'Cormorant Garamond',serif;font-weight:700;font-size:clamp(84px,14vw,124px);line-height:1;color:rgba(179,137,90,.07);-webkit-text-stroke:1px rgba(179,137,90,.28);pointer-events:none;user-select:none;z-index:-1}
+
+/* botón volver arriba */
+.totop{position:fixed;right:16px;bottom:16px;z-index:55;width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--card);box-shadow:var(--e2);color:var(--ink);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(14px);pointer-events:none;transition:opacity .25s,transform .25s var(--ease),bottom .3s var(--ease)}
+.totop.show{opacity:1;transform:none;pointer-events:auto}
+#qbar.show ~ .totop{bottom:88px}
+
+/* transición al cambiar serie / tipo */
+#price-body,.cat-nav,.serie-sub,.tipo-filter{transition:opacity .18s var(--ease),transform .18s var(--ease)}
+body.pb-swap #price-body{opacity:0;transform:translateY(12px)}
+body.pb-swap .cat-nav,body.pb-swap .serie-sub{opacity:0}
+@media(prefers-reduced-motion:reduce){#price-body,.cat-nav,.serie-sub,.tipo-filter{transition:none}}
+
+/* polarizado: sol + coche svg */
+.po-sun{position:absolute;left:11%;top:9%;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#fff7cf,#ffd75e);box-shadow:0 0 26px rgba(255,215,94,.85);z-index:1}
+.po-car{width:76px;height:auto;font-size:unset}
+
+/* luz azul: monitor + persona svg */
+.bl-mon{width:88px;height:auto;font-size:unset}
+.bl-face{width:58px;height:auto;font-size:unset}
+.sc-blue.play .bl-scr{animation:scrGlow 3.6s ease forwards}
+@keyframes scrGlow{0%{opacity:.55}22%,100%{opacity:1}}
+
+/* policarbonato: onda de choque */
+.poly-ring{position:absolute;left:50%;top:38%;width:14px;height:14px;border:2px solid rgba(255,255,255,.95);border-radius:50%;transform:translate(-50%,-50%) scale(0);opacity:0;pointer-events:none}
+.poly-stage.play .cr .poly-ring{animation:ringHit 3.4s ease forwards}
+.poly-stage.play .pc .poly-ring{animation:ringSoft 3.4s ease forwards}
+@keyframes ringHit{0%,37%{opacity:0;transform:translate(-50%,-50%) scale(0)}43%{opacity:1}62%{opacity:0;transform:translate(-50%,-50%) scale(4.4)}100%{opacity:0}}
+@keyframes ringSoft{0%,40%{opacity:0;transform:translate(-50%,-50%) scale(0)}46%{opacity:.6}60%{opacity:0;transform:translate(-50%,-50%) scale(2.2)}100%{opacity:0}}
+
+/* fotocromático: nubes en exterior */
+.ft-cloud{position:absolute;background:#fff;border-radius:100px;opacity:calc(var(--t)*.85);filter:blur(.5px);z-index:1}
+.ft-cloud::before,.ft-cloud::after{content:'';position:absolute;background:#fff;border-radius:50%}
+.ft-cloud.c1{width:64px;height:18px;left:10%;top:20%;animation:cloudDrift 17s ease-in-out infinite}
+.ft-cloud.c1::before{width:26px;height:26px;left:10px;top:-12px}
+.ft-cloud.c1::after{width:18px;height:18px;left:34px;top:-8px}
+.ft-cloud.c2{width:46px;height:14px;left:56%;top:11%;animation:cloudDrift 23s ease-in-out infinite reverse}
+.ft-cloud.c2::before{width:18px;height:18px;left:8px;top:-9px}
+@keyframes cloudDrift{0%,100%{transform:translateX(0)}50%{transform:translateX(28px)}}
+@media(prefers-reduced-motion:reduce){.ft-cloud{animation:none}}
+
+/* foto colors: puntos de color sincronizados */
+.co-dots{position:absolute;top:12px;left:50%;transform:translateX(-50%);display:flex;gap:7px;z-index:6}
+.co-dots span{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.6);opacity:.5;transition:transform .2s var(--ease-spring),opacity .2s,border-color .2s}
+.co-dots span.on{opacity:1;transform:scale(1.35);border-color:#fff}
+.co-name{transition:background .4s}
+
+/* AR: brillo que pulsa en el lado sin AR */
+.glareB{animation:glarePulse 2.8s ease-in-out infinite}
+@keyframes glarePulse{0%,100%{opacity:.82}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.glareB{animation:none}}
+
 @media print{
   .demos-grid,.thick-int,.poly-card,.demo-card{display:none!important}
   .qbar,.adv-nav,.h-nav,.advisor{display:none!important}
@@ -552,8 +636,10 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   [data-serie]{display:block!important}
   .reveal{opacity:1!important;transform:none!important}
   .ptable .prow,.combo .cblock,.reco{animation:none!important;opacity:1!important;transform:none!important}
-  .hero .blob,.hero-mark{display:none!important}
+  .hero .blob,.hero-mark,.hero-glasses,.hero-cta,.totop,.sec-num{display:none!important}
   .hero h1 .w>span{transform:none!important}
+  .screen,.apanel{display:block!important;animation:none!important}
+  .subtabs-wrap{display:none!important}
 }
 </style>
 </head>
@@ -563,9 +649,9 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   <div class="header-in">
     <img src="logo-caryera-dark.svg" alt="Car & Era" class="h-logo">
     <nav class="h-nav" id="hnav">
-      <a class="h-navlink" href="#asesor">Asesor</a>
-      <a class="h-navlink" href="#comparar">Comparar</a>
-      <a class="h-navlink" href="#precios">Precios</a>
+      <a class="h-navlink" href="#cotizar" data-screen="cotizar">Cotizar</a>
+      <a class="h-navlink" href="#aprende" data-screen="aprende">Aprende</a>
+      <a class="h-navlink" href="#precios" data-screen="precios">Precios</a>
     </nav>
     <div class="h-right">
       <button class="h-print" onclick="window.print()">
@@ -577,19 +663,31 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   <div class="hprog" id="hprog"></div>
 </header>
 
+<main id="screens">
+<!-- ═══════ PANTALLA 1: COTIZAR ═══════ -->
+<div class="screen active" data-screen="cotizar">
+
 <!-- HERO -->
 <section class="hero" style="padding:42px 24px 18px">
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
   <div class="hero-in reveal">
-    <svg class="hero-mark" id="heroMark" viewBox="0 0 104 104" aria-hidden="true">
-      <g class="hm-spin"><circle class="hm-ring2" cx="52" cy="52" r="46"/></g>
-      <circle class="hm-ring" cx="52" cy="52" r="38"/>
-      <circle class="hm-core" cx="52" cy="52" r="13"/>
-      <circle class="hm-arc" cx="52" cy="52" r="38"/>
+    <svg class="hero-glasses" viewBox="0 0 340 132" aria-hidden="true">
+      <path class="hg d3" d="M28 56 L6 45" pathLength="1"/>
+      <path class="hg d3" d="M312 56 L334 45" pathLength="1"/>
+      <rect class="hg" x="28" y="32" width="118" height="78" rx="33" pathLength="1"/>
+      <rect class="hg d2" x="194" y="32" width="118" height="78" rx="33" pathLength="1"/>
+      <path class="hg d2" d="M146 58 q24 -18 48 0" pathLength="1"/>
+      <path class="hg-ar" d="M50 92 q-12 -14 -6 -32"/>
+      <path class="hg-ar" d="M216 92 q-12 -14 -6 -32"/>
+      <path class="hg-glint" d="M212 102 L302 42" pathLength="300"/>
     </svg>
     <div class="eyebrow"><span class="ln"></span> Catálogo interno · 2026 <span class="ln"></span></div>
     <h1 class="serif" id="heroH1" style="font-size:clamp(30px,6vw,52px)"><span class="w"><span>Cotiza</span></span> <span class="w"><span>respondiendo</span></span> <span class="w"><span style="font-style:italic;color:var(--beige-deep)">3&nbsp;preguntas</span></span></h1>
     <p style="margin-top:12px">Responde qué necesita el paciente y te damos la opción económica, recomendada y premium con su precio.</p>
+    <div class="hero-cta">
+      <button class="hcta pri" type="button" onclick="document.getElementById('asesor').scrollIntoView({behavior:'smooth'})">Cotizar en 3 pasos <span class="arw">→</span></button>
+      <button class="hcta gho" type="button" onclick="showScreen('precios')">Ver lista completa</button>
+    </div>
   </div>
 </section>
 
@@ -605,10 +703,25 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   </div>
 </section>
 
+</div><!-- /screen cotizar -->
+
+<!-- ═══════ PANTALLA 2: APRENDE ═══════ -->
+<div class="screen" data-screen="aprende">
+
+<div class="subtabs-wrap wrap">
+  <div class="subtabs" id="subtabs">
+    <button type="button" class="on" data-sub="tipo" onclick="showSubTab('tipo')">Tipo de lente</button>
+    <button type="button" data-sub="material" onclick="showSubTab('material')">Material y grosor</button>
+    <button type="button" data-sub="tratamientos" onclick="showSubTab('tratamientos')">Tratamientos</button>
+  </div>
+</div>
+
+<div class="apanel active" data-sub="tipo">
 <!-- EDU: tipo de lente -->
 <section class="sec wrap" id="comparar">
   <div class="sec-head reveal">
-    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 1 <span class="ln"></span></div>
+    <span class="sec-num" aria-hidden="true">01</span>
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Aprende · 01 <span class="ln"></span></div>
     <h2 class="serif">¿Qué <span class="it">tipo de lente</span> necesita?</h2>
     <p>Según lo que el paciente quiera ver. Define el tipo antes de elegir material y tratamiento.</p>
   </div>
@@ -639,11 +752,14 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     </button>
   </div>
 </section>
+</div><!-- /apanel tipo -->
 
+<div class="apanel" data-sub="material">
 <!-- EDU: material / grosor -->
 <section class="sec wrap">
   <div class="sec-head reveal">
-    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 2 <span class="ln"></span></div>
+    <span class="sec-num" aria-hidden="true">02</span>
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Aprende · 02 <span class="ln"></span></div>
     <h2 class="serif">El <span class="it">material</span> define grosor y resistencia</h2>
     <p>Mientras más alta la graduación, más conviene un índice alto: el lente queda más delgado y ligero.</p>
   </div>
@@ -661,11 +777,11 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   <div class="demo-card poly-card reveal">
     <div class="poly-stage" id="dPoly" onclick="demoPlay('dPoly')">
       <div class="poly-col">
-        <div class="poly-lens cr"><span class="poly-ball"></span><span class="poly-alert">⚠️</span></div>
+        <div class="poly-lens cr"><span class="poly-ball"></span><span class="poly-ring"></span><span class="poly-alert">⚠️</span></div>
         <div class="poly-name">CR-39 <small>vibra con el golpe</small></div>
       </div>
       <div class="poly-col">
-        <div class="poly-lens pc"><span class="poly-ball"></span><span class="poly-ok">✓</span></div>
+        <div class="poly-lens pc"><span class="poly-ball"></span><span class="poly-ring"></span><span class="poly-ok">✓</span></div>
         <div class="poly-name">Policarbonato <small>mayor resistencia a impactos</small></div>
       </div>
       <div class="demo-hint">👆 Toca para ver el impacto</div>
@@ -673,28 +789,25 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <p class="poly-cap"><b>Resistente a impactos</b> · ideal para niños, deporte y trabajo activo</p>
   </div>
 
-  <!-- Simulador de micas en 3D (detrás de un botón) -->
+  <!-- Simulador de micas en 3D (directo en la sub-pestaña) -->
   <div class="adv-sim reveal">
-    <button class="sim-toggle" type="button" id="simToggle" aria-expanded="false" aria-controls="simPanel" onclick="toggleSim()">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
-      Comparación avanzada de grosor (simulador 3D)
-      <svg class="chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
-    <div class="sim-panel" id="simPanel">
-      <div class="sim-head" style="margin-top:18px">
-        <p style="font-size:15px;color:var(--ink2)">Captura la graduación del paciente y muéstrale en vivo cómo el alto índice y el armazón adelgazan el borde. Gíralo con el dedo.</p>
-      </div>
-      <div class="sim3d" style="margin-top:8px">
-        <iframe id="simframe" data-src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
-      </div>
+    <div class="sim-head" style="margin-top:22px">
+      <h3 class="serif">Simulador 3D: <span class="it">compara materiales</span> en vivo</h3>
+      <p style="font-size:15px;color:var(--ink2)">Captura la graduación del paciente y muéstrale las dos micas lado a lado — el alto índice deja el borde más delgado. Gíralas con el dedo.</p>
+    </div>
+    <div class="sim3d" style="margin-top:12px">
+      <iframe id="simframe" data-src="simulador-micas.html?embed=1" title="Simulador de micas en 3D" loading="lazy" scrolling="no"></iframe>
     </div>
   </div>
 </section>
+</div><!-- /apanel material -->
 
+<div class="apanel" data-sub="tratamientos">
 <!-- EDU: tratamientos -->
 <section class="sec wrap">
   <div class="sec-head reveal">
-    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Paso 3 <span class="ln"></span></div>
+    <span class="sec-num" aria-hidden="true">03</span>
+    <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Aprende · 03 <span class="ln"></span></div>
     <h2 class="serif">Los <span class="it">tratamientos</span> que suman valor</h2>
     <p>Cada uno resuelve algo distinto. Combínalos según el estilo de vida del paciente.</p>
   </div>
@@ -703,7 +816,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <!-- Fotocromático (slider interior↔exterior) -->
     <div class="demo-card always reveal">
       <div class="demo-stage sc-foto" id="dFoto">
-        <div class="ft-bg2"></div><div class="ft-room"></div><div class="ft-sun"></div>
+        <div class="ft-bg2"></div><div class="ft-room"></div><div class="ft-sun"></div><div class="ft-cloud c1"></div><div class="ft-cloud c2"></div>
         <div class="ft-lens"></div>
         <div class="ft-readout" id="ftReadout">Interior ☁️</div>
       </div>
@@ -727,7 +840,15 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <!-- Polarizado (toca para ver) -->
     <div class="demo-card reveal">
       <div class="demo-stage sc-polar" id="dPolar" onclick="demoPlay('dPolar')">
-        <div class="po-road"></div><div class="po-line"></div><div class="po-glare"></div><div class="po-streak"></div><div class="po-car">🚗</div>
+        <div class="po-road"></div><div class="po-line"></div><div class="po-sun"></div><div class="po-glare"></div><div class="po-streak"></div>
+        <svg class="po-car" viewBox="0 0 120 66" aria-hidden="true">
+          <path d="M18 46 q0 -18 13 -24 q9 -14 29 -14 q20 0 29 14 q13 6 13 24 v8 q0 6 -6 6 h-72 q-6 0 -6 -6 z" fill="#25303c"/>
+          <path d="M39 12 q21 -7 42 0 l5 11 h-52 z" fill="#9dc0d6"/>
+          <rect x="21" y="42" width="15" height="7" rx="3.5" fill="#e05545"/>
+          <rect x="84" y="42" width="15" height="7" rx="3.5" fill="#e05545"/>
+          <rect x="47" y="46" width="26" height="8" rx="2" fill="#171d25"/>
+          <circle cx="33" cy="60" r="6" fill="#14181d"/><circle cx="87" cy="60" r="6" fill="#14181d"/>
+        </svg>
         <div class="po-lens"></div>
         <div class="po-state po-before">Antes: deslumbramiento</div>
         <div class="po-state po-after">Después: mayor contraste</div>
@@ -740,7 +861,22 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <!-- Filtro de luz azul (toca para ver) -->
     <div class="demo-card reveal">
       <div class="demo-stage sc-blue" id="dBlue" onclick="demoPlay('dBlue')">
-        <div class="bl-mon">💻</div><div class="bl-rays"></div><div class="bl-lens"></div><div class="bl-rays2"></div><div class="bl-face">🙂</div>
+        <svg class="bl-mon" viewBox="0 0 88 76" aria-hidden="true">
+          <rect x="4" y="4" width="80" height="52" rx="6" fill="#0e1524" stroke="#3d4c6e" stroke-width="2"/>
+          <rect class="bl-scr" x="9" y="9" width="70" height="42" rx="3" fill="#1d2b4a" opacity=".55"/>
+          <rect x="15" y="16" width="42" height="5" rx="2.5" fill="#5a7fd6" opacity=".85"/>
+          <rect x="15" y="26" width="56" height="4" rx="2" fill="#40598f"/>
+          <rect x="15" y="34" width="48" height="4" rx="2" fill="#40598f"/>
+          <rect x="15" y="42" width="30" height="4" rx="2" fill="#40598f"/>
+          <rect x="36" y="56" width="16" height="9" fill="#26314a"/>
+          <rect x="26" y="65" width="36" height="5" rx="2.5" fill="#26314a"/>
+        </svg>
+        <div class="bl-rays"></div><div class="bl-lens"></div><div class="bl-rays2"></div>
+        <svg class="bl-face" viewBox="0 0 70 92" aria-hidden="true">
+          <circle cx="38" cy="26" r="17" fill="#2a3550"/>
+          <path d="M8 92 q4 -36 30 -36 q26 0 28 36 z" fill="#2a3550"/>
+          <circle cx="25" cy="24" r="3" fill="#9fb6ff"/>
+        </svg>
         <div class="bl-lbl bl-l1">Luz de pantalla</div><div class="bl-lbl bl-l2">Parte filtrada</div><div class="bl-lbl bl-l3">Luz que continúa</div>
         <div class="demo-cap">Filtra parte de la luz azul</div>
         <div class="demo-hint">👆 Toca para ver cómo funciona</div>
@@ -753,6 +889,7 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     <div class="demo-card reveal">
       <div class="demo-stage sc-mini sc-colors" id="dColors" onclick="colorsPlay()">
         <div class="mini-lens"></div>
+        <div class="co-dots" id="coDots" aria-hidden="true"></div>
         <div class="co-name" id="coName">Gris</div>
         <div class="demo-hint">👆 Toca para ver los colores</div>
       </div>
@@ -806,9 +943,15 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
     </div>
   </div>
 </section>
+</div><!-- /apanel tratamientos -->
+
+</div><!-- /screen aprende -->
+
+<!-- ═══════ PANTALLA 3: PRECIOS ═══════ -->
+<div class="screen" data-screen="precios">
 
 <!-- PRICES -->
-<div class="price-shell" id="precios">
+<div class="price-shell" id="precios-shell">
   <div class="wrap">
     <div class="sec-head reveal" style="margin-bottom:20px">
       <div class="eyebrow" style="justify-content:center"><span class="ln"></span> Precios <span class="ln"></span></div>
@@ -835,6 +978,9 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
   </div>
 </div>
 
+</div><!-- /screen precios -->
+</main><!-- /screens -->
+
 <!-- barra fija de cotización -->
 <div class="qbar" id="qbar">
   <div class="qbar-in">
@@ -843,9 +989,11 @@ button.edu-card{width:100%;font-family:inherit;text-align:left;-webkit-appearanc
       <div class="qb-build" id="qb-build"></div>
     </div>
     <div class="qb-price" id="qb-price"></div>
-    <button class="qb-cta" type="button" onclick="document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'})">Ver opciones</button>
+    <button class="qb-cta" type="button" onclick="showScreen('cotizar');document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'})">Ver opciones</button>
   </div>
 </div>
+
+<button class="totop" id="toTop" type="button" aria-label="Volver arriba" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
 
 <footer class="footer">
   <p class="disc">Los precios aplican en graduaciones estándar. Consulta disponibilidad según receta. <b>Serie 2</b> aplica para graduaciones altas o especiales. Policarbonato con AR entrega en 15 días hábiles.</p>
@@ -991,13 +1139,13 @@ function catHTML(c){
       const star = r.star ? '<span class="star">★</span>' : '';
       return '<div class="prow" data-txt="'+(r.mat+' '+r.ben+' '+r.p).toLowerCase()+'">'+
         '<div><div class="mat">'+r.mat+star+'</div><div class="ben">'+r.ben+'</div></div>'+
-        '<div class="price">'+money(r.p)+'</div></div>';
+        '<div class="price" data-p="'+r.p+'">'+money(r.p)+'</div></div>';
     }).join('') + '</div>';
   } else {
     inner = '<div class="combo">' + c.combo.map(b=>{
       return '<div class="cblock" data-txt="'+(b.h+' '+b.s+' '+b.lines.map(l=>l.join(' ')).join(' ')).toLowerCase()+'">'+
         '<h4>'+b.h+'</h4>'+(b.s?'<div class="cs">'+b.s+'</div>':'<div class="cs">&nbsp;</div>')+
-        b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p">'+money(l[1])+'</span></div>').join('')+
+        b.lines.map(l=>'<div class="cline"><span class="l">'+l[0]+'</span><span class="p" data-p="'+l[1]+'">'+money(l[1])+'</span></div>').join('')+
         '</div>';
     }).join('') + '</div>';
   }
@@ -1008,9 +1156,11 @@ function catHTML(c){
 }
 
 function renderBody(cats){
+  if(typeof finalizeCounts==='function') finalizeCounts();
   document.getElementById('catnav').innerHTML = cats.map(c=>
     '<button class="cat-chip" data-target="'+c.id+'" onclick="goCat(\''+c.id+'\')">'+c.title.replace(/ ·.*/,'')+'</button>').join('');
   document.getElementById('price-body').innerHTML = cats.map(catHTML).join('');
+  if(typeof observePrices==='function') observePrices();
 }
 
 function renderTipoFilter(){
@@ -1039,19 +1189,19 @@ function setSerie(s){
   document.getElementById('btn-s1').classList.toggle('on', s===1);
   document.getElementById('btn-s2').classList.toggle('on', s===2);
   document.querySelector('.serie-toggle').classList.toggle('s2', s===2);
-  renderAll();
+  swapRender(renderAll);
   scrollToPrices();
 }
 
 function setTipo(t){
   curTipo = t;
-  renderAll();
+  swapRender(renderAll);
   scrollToPrices();
 }
 
 function scrollToPrices(){
-  const sh = document.querySelector('.price-shell');
-  if(sh) window.scrollTo({top: sh.offsetTop-50, behavior:'smooth'});
+  if(typeof showScreen==='function' && curScreen!=='precios') showScreen('precios');
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function goCat(id){
@@ -1066,6 +1216,7 @@ function hlMark(html, q){
 }
 function doSearch(q){
   q = q.trim().toLowerCase();
+  finalizeCounts();
   // mientras se busca, mostrar TODOS los tipos para no esconder coincidencias
   const wantMode = q ? 'all' : 'tipo';
   if(wantMode !== bodyMode){
@@ -1107,29 +1258,74 @@ addEventListener('scroll', ()=>{
   const h = document.documentElement;
   const pct = h.scrollTop/(h.scrollHeight-h.clientHeight)*100;
   hprog.style.width = pct+'%';
+  const tt = document.getElementById('toTop');
+  if(tt) tt.classList.toggle('show', scrollY>700);
 }, {passive:true});
-
-/* init */
-renderAll();
-observeReveal();
 
 /* === helpers de movimiento === */
 const REDUCED = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+const _cuActive = new Set();
 function countUp(el, to, dur){
   if(!el) return;
   to = +to; dur = dur||900;
   if(REDUCED){ el.textContent = money(to); return; }
+  const h = {el, to, raf:0};
+  _cuActive.add(h);
   const t0 = performance.now();
   function step(ts){
     const k = Math.min(1, (ts-t0)/dur);
     const eased = 1 - Math.pow(1-k, 3);
     el.textContent = money(Math.round(to*eased));
-    if(k<1) requestAnimationFrame(step);
+    if(k<1){ h.raf = requestAnimationFrame(step); } else { _cuActive.delete(h); }
   }
-  requestAnimationFrame(step);
+  h.raf = requestAnimationFrame(step);
 }
+function finalizeCounts(){
+  _cuActive.forEach(h=>{ cancelAnimationFrame(h.raf); h.el.textContent = money(h.to); });
+  _cuActive.clear();
+}
+/* count-up de precios al entrar a pantalla (una vez por bloque) */
+let _pio = null;
+function observePrices(){
+  if(REDUCED || !('IntersectionObserver' in window)) return;
+  if(_pio) _pio.disconnect();
+  _pio = new IntersectionObserver(es=>es.forEach(e=>{
+    if(!e.isIntersecting) return;
+    _pio.unobserve(e.target);
+    e.target.dataset.counted = '1';
+    e.target.querySelectorAll('[data-p]').forEach((el,i)=>{
+      setTimeout(()=>countUp(el, el.dataset.p, 620), i*55);
+    });
+  }), {threshold:.15});
+  document.querySelectorAll('#price-body [data-cat]:not([data-counted])').forEach(c=>_pio.observe(c));
+}
+/* transición al cambiar serie / tipo (fade-out → render → fade-in) */
+function swapRender(fn){
+  if(REDUCED){ fn(); return; }
+  document.body.classList.add('pb-swap');
+  setTimeout(()=>{
+    fn();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.remove('pb-swap')));
+  }, 180);
+}
+
+/* init */
+renderAll();
+observeReveal();
+
 /* titular del hero (máscara palabra-por-palabra) */
 requestAnimationFrame(()=>{ const h=document.getElementById('heroH1'); if(h) h.classList.add('in'); });
+
+/* parallax sutil de los blobs del hero (solo pointer fino) */
+if(!REDUCED && matchMedia('(pointer:fine)').matches){
+  const heroEl = document.querySelector('.hero');
+  const blobs = [...heroEl.querySelectorAll('.blob')];
+  heroEl.addEventListener('pointermove', e=>{
+    const r = heroEl.getBoundingClientRect();
+    const dx = (e.clientX-r.left)/r.width-.5, dy = (e.clientY-r.top)/r.height-.5;
+    blobs.forEach((b,i)=>{ const f=(i+1)*9; b.style.translate = (dx*f)+'px '+(dy*f)+'px'; });
+  }, {passive:true});
+}
 
 /* ===================== ASESOR GUIADO ===================== */
 const SVG = {
@@ -1316,7 +1512,7 @@ function advRecoBuild(){
         '<div class="rent">Listos en <b>'+r.p.ent+'</b> · examen incluido</div>'+
       '</div>').join('') +'</div>'+
     '<p style="text-align:center;font-size:13px;color:var(--ink3);margin-top:14px">Precios en graduación '+(advState.grad===2?'alta':'estándar')+'.</p>'+
-    '<div style="text-align:center;margin-top:4px"><button type="button" onclick="setTipo(\''+tipo+'\');document.getElementById(\'precios\').scrollIntoView({behavior:\'smooth\'})" style="display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border:1.5px solid var(--line);border-radius:100px;background:none;color:var(--beige-deep);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer">Ver toda la lista de '+tipoLbl.toLowerCase()+' →</button></div>';
+    '<div style="text-align:center;margin-top:4px"><button type="button" onclick="setTipo(\''+tipo+'\')" style="display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border:1.5px solid var(--line);border-radius:100px;background:none;color:var(--beige-deep);font-weight:600;font-family:inherit;font-size:14px;cursor:pointer">Ver toda la lista de '+tipoLbl.toLowerCase()+' →</button></div>';
   const best = recos.find(r=>r.best).p;
   const post = ()=>{
     // tarjetas escalonadas + precios animados
@@ -1368,24 +1564,99 @@ function advRestart(){
   document.getElementById('asesor').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-/* simulador 3D colapsable (carga diferida) */
-function toggleSim(){
-  const t=document.getElementById('simToggle'), p=document.getElementById('simPanel'), f=document.getElementById('simframe');
-  const open = t.getAttribute('aria-expanded')==='true';
-  t.setAttribute('aria-expanded', String(!open));
-  p.classList.toggle('open', !open);
-  if(!open && f && !f.src && f.dataset.src){ f.src=f.dataset.src; }
-}
+/* (el simulador 3D ahora carga al entrar a la sub-pestaña Material — loadSimIfNeeded) */
 
-/* scrollspy nav */
+/* ===================== NAVEGACIÓN DE PANTALLAS (tabs tipo app) ===================== */
+const SCREENS=['cotizar','aprende','precios'];
+const SUBS=['tipo','material','tratamientos'];
+let curScreen='cotizar', curSub='tipo';
+const scrollPos={};
 const navLinks=[...document.querySelectorAll('.h-navlink')];
-const navTargets=navLinks.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
-addEventListener('scroll', ()=>{
-  let cur=navTargets[0];
-  const y=scrollY+90;
-  navTargets.forEach(t=>{ if(t.offsetTop<=y) cur=t; });
-  navLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+cur.id));
-}, {passive:true});
+
+function _syncHash(replace){
+  const h='#'+curScreen+(curScreen==='aprende'?'/'+curSub:'');
+  try{ history[replace?'replaceState':'pushState'](null,'',h); }catch(e){}
+}
+function loadSimIfNeeded(){
+  const f=document.getElementById('simframe');
+  if(f && !f.src && f.dataset.src) f.src=f.dataset.src;
+}
+function onScreenShown(id){
+  observeReveal();
+  if(id==='precios'){ observePrices(); catScrollSpy(); }
+  if(id==='aprende' && curSub==='material') loadSimIfNeeded();
+}
+function showScreen(id, sub, push=true){
+  if(!SCREENS.includes(id)) id='cotizar';
+  const same = id===curScreen;
+  if(same && (!sub || sub===curSub)){ if(push) _syncHash(false); return; }
+  if(!same){
+    const dir = SCREENS.indexOf(id)>SCREENS.indexOf(curScreen)?'slide-r':'slide-l';
+    scrollPos[curScreen]=scrollY;
+    document.querySelectorAll('.screen').forEach(s=>{
+      const on=s.dataset.screen===id;
+      s.classList.remove('slide-r','slide-l');
+      s.classList.toggle('active',on);
+      if(on && !REDUCED) s.classList.add(dir);
+    });
+    curScreen=id;
+    navLinks.forEach(a=>a.classList.toggle('active', a.dataset.screen===id));
+    window.scrollTo({top:scrollPos[id]||0});
+  }
+  if(id==='aprende' && sub && sub!==curSub) showSubTab(sub,false);
+  onScreenShown(id);
+  if(push) _syncHash(false);
+}
+function showSubTab(sub, push=true){
+  if(!SUBS.includes(sub)) sub='tipo';
+  curSub=sub;
+  document.querySelectorAll('.apanel').forEach(p=>p.classList.toggle('active', p.dataset.sub===sub));
+  const st=document.getElementById('subtabs');
+  st.classList.remove('st-1','st-2');
+  const i=SUBS.indexOf(sub); if(i>0) st.classList.add('st-'+i);
+  st.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.sub===sub));
+  if(sub==='material') loadSimIfNeeded();
+  observeReveal();
+  if(curScreen==='aprende') window.scrollTo({top:0});
+  if(push) _syncHash(false);
+}
+/* nav del header = tab switcher */
+navLinks.forEach(a=>a.addEventListener('click', e=>{ e.preventDefault(); showScreen(a.dataset.screen); }));
+navLinks[0].classList.add('active');
+/* routing por hash (deep-links + botón atrás) */
+function route(hash, push){
+  const m=(hash||'').replace(/^#/,'').split('/');
+  const id=SCREENS.includes(m[0])?m[0]:'cotizar';
+  const sub=SUBS.includes(m[1])?m[1]:null;
+  showScreen(id, sub||undefined, push);
+}
+addEventListener('popstate', ()=>route(location.hash, false));
+if(location.hash && !/^#(cotizar)?$/.test(location.hash)) route(location.hash, false);
+_syncHash(true);
+/* swipe lateral en móvil: [cotizar → aprende/tipo → material → tratamientos → precios] */
+(function(){
+  const FLOW=[['cotizar',null],['aprende','tipo'],['aprende','material'],['aprende','tratamientos'],['precios',null]];
+  const flowIdx=()=> FLOW.findIndex(f=>f[0]===curScreen && (f[1]===null||f[1]===curSub));
+  let x0=null,y0=null;
+  const scr=document.getElementById('screens');
+  scr.addEventListener('touchstart',e=>{
+    if(e.touches.length!==1){ x0=null; return; }
+    if(e.target.closest('input[type=range],.cat-nav,.rng,.ft-ctrl,.ba,iframe,.sim3d')){ x0=null; return; }
+    x0=e.touches[0].clientX; y0=e.touches[0].clientY;
+  },{passive:true});
+  scr.addEventListener('touchend',e=>{
+    if(x0===null) return;
+    const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+    x0=null;
+    if(Math.abs(dx)<60 || Math.abs(dx)<Math.abs(dy)*1.5) return;
+    const i=flowIdx(); if(i<0) return;
+    const ni=i+(dx<0?1:-1);
+    if(ni<0 || ni>=FLOW.length) return;
+    const [id,sub]=FLOW[ni];
+    if(id===curScreen && sub) showSubTab(sub);
+    else showScreen(id, sub||undefined);
+  },{passive:true});
+})();
 
 advRender();
 
@@ -1432,14 +1703,20 @@ function arSet(v){
   ba.style.setProperty('--x', v+'%');
 }
 
-/* Fotocromático de color (nombre sincronizado) */
+/* Fotocromático de color (nombre + puntos sincronizados) */
 const COSEQ=['Gris','Rosa','Café','Azul','Morado','Verde'];
+const COHEX={'Gris':'#8a8a8a','Rosa':'#c96fa8','Café':'#8a5a2a','Azul':'#3556c0','Morado':'#6a3fa0','Verde':'#2e8b57'};
+(function(){ const d=document.getElementById('coDots'); if(d) d.innerHTML=COSEQ.map(c=>'<span style="background:'+COHEX[c]+'"></span>').join(''); })();
+function coSync(i){
+  const el=document.getElementById('coName');
+  if(el){ el.textContent=COSEQ[i]; el.style.background=COHEX[COSEQ[i]]; }
+  document.querySelectorAll('#coDots span').forEach((s,j)=>s.classList.toggle('on', j===i));
+}
 function colorsPlay(){
   demoPlay('dColors');
-  const el=document.getElementById('coName'); if(!el) return;
-  el.textContent=COSEQ[0];
+  coSync(0);
   clearInterval(window._coInt); let i=0;
-  window._coInt=setInterval(()=>{ i++; if(i>=COSEQ.length){clearInterval(window._coInt);return;} el.textContent=COSEQ[i]; }, 750);
+  window._coInt=setInterval(()=>{ i++; if(i>=COSEQ.length){clearInterval(window._coInt); coSync(0); return;} coSync(i); }, 750);
 }
 
 /* Grosor por índice */
