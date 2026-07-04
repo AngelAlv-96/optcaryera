@@ -20025,7 +20025,7 @@ async function buscarOrdenGarantia() {
       const esGta = folio.startsWith('GTA-');
       const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
       const puedeForzar = _gtaPuedeForzar();
-      const selFolio = !esGta && (esPermitido || puedeForzar) && !(yaConGta && !puedeForzar);
+      const selFolio = !esGta && (esPermitido || puedeForzar);
       const forzando = selFolio && !esPermitido && !yaConGta;
       html += `<div onclick="${selFolio ? `seleccionarOrdenGarantia('${o.id}')` : ''}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:${selFolio ? 'pointer' : 'default'};border-bottom:1px solid rgba(255,255,255,0.04);opacity:${selFolio ? '1' : '0.4'}" ${selFolio ? 'onmouseover="this.style.background=\'rgba(226,198,166,0.06)\'" onmouseout="this.style.background=\'\'"' : ''}>
         <div style="flex:1;min-width:0">
@@ -20035,7 +20035,7 @@ async function buscarOrdenGarantia() {
         <div style="text-align:right">
           <span style="font-size:10px;padding:2px 6px;background:${st.dot}18;color:${st.dot};border-radius:6px;font-weight:600">${o.estado_lab}</span>
           ${esGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya es garantía</div>' : ''}
-          ${yaConGta ? (puedeForzar ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">🔄 Ya tiene garantía · crear otra</div>' : '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya tiene garantía</div>') : ''}
+          ${yaConGta ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">🔄 Ya tiene garantía · crear otra</div>' : ''}
           ${forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : (!esPermitido && !esGta && !yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">No entregado</div>' : '')}
         </div>
       </div>`;
@@ -20087,10 +20087,10 @@ async function cargarOrdenesParaGarantia(pacienteId, nombre) {
     const esGta = folio.startsWith('GTA-');
     const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
     const puedeForzar = _gtaPuedeForzar();
-    const bloqueado = esGta || (yaConGta && !puedeForzar) || (!esPermitido && !puedeForzar);
-    const forzandoGta = !bloqueado && yaConGta; // ya tiene garantía, admin/gerencia creando otra
+    const bloqueado = esGta || (!esPermitido && !puedeForzar);
+    const forzandoGta = !bloqueado && yaConGta; // ya tiene garantía, crear otra (cualquier rol con acceso)
     const forzando = !bloqueado && !esPermitido && !yaConGta; // admin/gerencia forzando orden no entregada
-    const motBloqueo = esGta ? 'Ya es garantía' : (yaConGta && !puedeForzar) ? 'Ya tiene garantía' : (!esPermitido && !puedeForzar) ? 'Solo órdenes entregadas' : '';
+    const motBloqueo = esGta ? 'Ya es garantía' : (!esPermitido && !puedeForzar) ? 'Solo órdenes entregadas' : '';
 
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:${bloqueado?'default':'pointer'};border-radius:8px;transition:background .15s;opacity:${bloqueado?'0.45':'1'}" ${bloqueado?'':`onmouseover="this.style.background='rgba(226,198,166,0.05)'" onmouseout="this.style.background=''" onclick="seleccionarOrdenGarantia('${o.id}')"`}>
       <div>
@@ -20113,11 +20113,9 @@ async function seleccionarOrdenGarantia(ordenId) {
 
   const folio0 = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
   if (folio0.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
-  // Orden que ya tiene garantía: admin/gerencia pueden crear OTRA (el resumen final pide confirmación).
-  // No usamos confirm() aquí a propósito: si el navegador suprime diálogos, el click quedaría muerto.
-  if ((o.notas_laboratorio||'').includes('GTA_FOLIO:') && !_gtaPuedeForzar()) {
-    toast('Esta orden ya tiene una garantía registrada', true); return;
-  }
+  // Orden que ya tiene garantía: se permite crear OTRA (cualquier rol con acceso a garantías; el resumen
+  // final de procesarGarantia pide confirmación). No usamos confirm() aquí: si el navegador suprime
+  // diálogos, el click quedaría muerto. El badge "🔄 Ya tiene garantía · crear otra" señala la intención.
   if (!GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab)) {
     if (_gtaPuedeForzar()) {
       if (!confirm('⚠️ Esta orden no está entregada (estado actual: ' + o.estado_lab + ').\n\n¿Forzar la garantía de todos modos?')) return;
@@ -20358,7 +20356,7 @@ async function procesarGarantia() {
   if (fresh) {
     const freshFolio = (fresh.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
     if (freshFolio.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
-    if ((fresh.notas_laboratorio||'').includes('GTA_FOLIO:') && !_gtaPuedeForzar()) { toast('Esta orden ya tiene una garantía registrada', true); return; }
+    // (Se permite crear garantías adicionales sobre una orden que ya tiene una — cualquier rol con acceso.)
     if (!GTA_ESTADOS_PERMITIDOS.includes(fresh.estado_lab) && !_gtaPuedeForzar()) { toast('La orden cambió de estado y ya no es elegible para garantía', true); return; }
   }
 
