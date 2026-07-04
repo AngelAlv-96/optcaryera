@@ -18,6 +18,7 @@ const VIGENCIA = '2026-07-04';
 const VIGENCIA_FIN = '2026-07-04T23:59:59-06:00'; // el cron deja de operar después de esta fecha
 const INACTIVE_MIN = 10;
 const RECENT_HOURS = 6;
+const RECENT_PURCHASE_DAYS = 30; // no re-enganchar a quien compró/recibió en este rango (encuesta/ticket/comprobante)
 const MAX_PER_RUN = 10;
 const RATE_LIMIT_MS = 1500;
 
@@ -47,6 +48,22 @@ async function sendTemplate(to, codigo) {
   } catch (e) { return { ok: false, err: e.message }; }
 }
 
+// Mensaje de URGENCIA freeform tras el cupón (los destinatarios chatearon hace <=RECENT_HOURS, ventana 24h abierta).
+async function sendUrgencia(to) {
+  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_WA) return { ok: false };
+  const auth = Buffer.from(TWILIO_SID + ":" + TWILIO_TOKEN).toString("base64");
+  const fromNum = TWILIO_WA.startsWith("whatsapp:") ? TWILIO_WA : "whatsapp:" + TWILIO_WA;
+  const body = "⚡ Ojo: tu cupón del 20% vence HOY, ya es el ÚLTIMO día. Aprovéchalo hoy mismo en cualquiera de nuestras 4 sucursales antes de que cierre 👓";
+  const p = new URLSearchParams();
+  p.append("From", fromNum); p.append("To", "whatsapp:+" + normalizePhone(to)); p.append("Body", body);
+  try {
+    const r = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + TWILIO_SID + "/Messages.json", { method: "POST", headers: { "Authorization": "Basic " + auth, "Content-Type": "application/x-www-form-urlencoded" }, body: p.toString() });
+    const d = await r.json();
+    if (d.error_code) { console.warn("[CUPON-REENGAGE] urgencia WA error " + d.error_code); return { ok: false }; }
+    return { ok: true };
+  } catch (e) { return { ok: false }; }
+}
+
 exports.handler = async function() {
   try {
     const now = new Date();
@@ -69,6 +86,18 @@ exports.handler = async function() {
         const ex = await supaREST("GET", "cupones?campana=eq." + encodeURIComponent(CAMPANA) + "&telefono=ilike.*" + tel10 + "*&select=id&limit=1");
         if (ex && ex.length) continue;
       } catch (e) { continue; }
+      // ⛔ NUNCA re-enganchar a quien ACABA DE COMPRAR/RECIBIR (regla de Angel): la respuesta a la
+      // encuesta de reseña ("Buenas promos"/"Todo excelente") es un role=user y la RPC la cuenta como
+      // "prospecto chateó", pero es un COMPRADOR reciente. Se salta si en los últimos RECENT_PURCHASE_DAYS
+      // días tiene una señal de compra/entrega en su historial: encuesta de reseña, ticket digital o
+      // comprobante de abono. (Los prospectos reales que nunca compraron no traen estas marcas.)
+      try {
+        const desde = new Date(Date.now() - RECENT_PURCHASE_DAYS * 864e5).toISOString();
+        // or=() con parens/comas/puntos literales; solo los espacios de los patrones van como %20
+        const orFilter = "or=(content.ilike.*Encuesta de opini*,content.ilike.*Ticket digital*,content.ilike.*Comprobante de abono*)".replace(/ /g, "%20");
+        const bought = await supaREST("GET", "clari_conversations?phone=ilike.*" + tel10 + "*&created_at=gte." + encodeURIComponent(desde) + "&" + orFilter + "&select=id&limit=1");
+        if (bought && bought.length) { console.log("[CUPON-REENGAGE] skip comprador reciente ..." + tel10.slice(-4)); continue; }
+      } catch (e) { continue; }
       // Genera código único
       let codigo = null;
       for (let a = 0; a < 6; a++) {
@@ -86,6 +115,8 @@ exports.handler = async function() {
       if (r.ok) {
         try { await supaREST("PATCH", "cupones?id=eq." + cupId, { enviado_at: new Date().toISOString() }); } catch (e) {}
         try { await supaREST("POST", "clari_conversations", { phone: tel, role: "assistant", content: "[" + CAMPANA + "] Cupón " + codigo + " enviado (re-enganche inactividad)", user_name: "cupon-reengage" }); } catch (e) {}
+        // Mensaje de urgencia: el cupón vence HOY (último día de la campaña)
+        try { await sendUrgencia(tel); } catch (e) {}
         enviados++;
       } else {
         // borrar el cupón para que reintente en otra corrida
