@@ -20025,8 +20025,8 @@ async function buscarOrdenGarantia() {
       const esGta = folio.startsWith('GTA-');
       const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
       const puedeForzar = _gtaPuedeForzar();
-      const selFolio = !esGta && !yaConGta && (esPermitido || puedeForzar);
-      const forzando = selFolio && !esPermitido;
+      const selFolio = !esGta && (esPermitido || puedeForzar) && !(yaConGta && !puedeForzar);
+      const forzando = selFolio && !esPermitido && !yaConGta;
       html += `<div onclick="${selFolio ? `seleccionarOrdenGarantia('${o.id}')` : ''}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:${selFolio ? 'pointer' : 'default'};border-bottom:1px solid rgba(255,255,255,0.04);opacity:${selFolio ? '1' : '0.4'}" ${selFolio ? 'onmouseover="this.style.background=\'rgba(226,198,166,0.06)\'" onmouseout="this.style.background=\'\'"' : ''}>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--white)">${esGta?'🔄 ':''}${folio} — ${nombre}</div>
@@ -20035,7 +20035,7 @@ async function buscarOrdenGarantia() {
         <div style="text-align:right">
           <span style="font-size:10px;padding:2px 6px;background:${st.dot}18;color:${st.dot};border-radius:6px;font-weight:600">${o.estado_lab}</span>
           ${esGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya es garantía</div>' : ''}
-          ${yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya tiene garantía</div>' : ''}
+          ${yaConGta ? (puedeForzar ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">🔄 Ya tiene garantía · crear otra</div>' : '<div style="font-size:9px;color:#e08080;margin-top:2px">Ya tiene garantía</div>') : ''}
           ${forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : (!esPermitido && !esGta && !yaConGta ? '<div style="font-size:9px;color:#e08080;margin-top:2px">No entregado</div>' : '')}
         </div>
       </div>`;
@@ -20087,9 +20087,10 @@ async function cargarOrdenesParaGarantia(pacienteId, nombre) {
     const esGta = folio.startsWith('GTA-');
     const yaConGta = (o.notas_laboratorio||'').includes('GTA_FOLIO:');
     const puedeForzar = _gtaPuedeForzar();
-    const bloqueado = esGta || yaConGta || (!esPermitido && !puedeForzar);
-    const forzando = !bloqueado && !esPermitido; // admin/gerencia forzando orden no entregada
-    const motBloqueo = esGta ? 'Ya es garantía' : yaConGta ? 'Ya tiene garantía' : (!esPermitido && !puedeForzar) ? 'Solo órdenes entregadas' : '';
+    const bloqueado = esGta || (yaConGta && !puedeForzar) || (!esPermitido && !puedeForzar);
+    const forzandoGta = !bloqueado && yaConGta; // ya tiene garantía, admin/gerencia creando otra
+    const forzando = !bloqueado && !esPermitido && !yaConGta; // admin/gerencia forzando orden no entregada
+    const motBloqueo = esGta ? 'Ya es garantía' : (yaConGta && !puedeForzar) ? 'Ya tiene garantía' : (!esPermitido && !puedeForzar) ? 'Solo órdenes entregadas' : '';
 
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:${bloqueado?'default':'pointer'};border-radius:8px;transition:background .15s;opacity:${bloqueado?'0.45':'1'}" ${bloqueado?'':`onmouseover="this.style.background='rgba(226,198,166,0.05)'" onmouseout="this.style.background=''" onclick="seleccionarOrdenGarantia('${o.id}')"`}>
       <div>
@@ -20098,7 +20099,7 @@ async function cargarOrdenesParaGarantia(pacienteId, nombre) {
       </div>
       <div style="text-align:right">
         <span style="font-size:10px;padding:2px 8px;background:${st.dot}18;color:${st.dot};border-radius:8px;font-weight:600">${o.estado_lab}</span>
-        ${bloqueado ? `<div style="font-size:9px;color:#e08080;margin-top:2px">${motBloqueo}</div>` : (forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : '<div style="font-size:9px;color:#72c47e;margin-top:2px">✓ Seleccionar</div>')}
+        ${bloqueado ? `<div style="font-size:9px;color:#e08080;margin-top:2px">${motBloqueo}</div>` : (forzandoGta ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">🔄 Ya tiene garantía · crear otra</div>' : forzando ? '<div style="font-size:9px;color:#d4b84a;margin-top:2px">⚠ No entregado · forzar</div>' : '<div style="font-size:9px;color:#72c47e;margin-top:2px">✓ Seleccionar</div>')}
       </div>
     </div>`;
   }).join('');
@@ -20112,7 +20113,13 @@ async function seleccionarOrdenGarantia(ordenId) {
 
   const folio0 = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
   if (folio0.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
-  if ((o.notas_laboratorio||'').includes('GTA_FOLIO:')) { toast('Esta orden ya tiene una garantía registrada', true); return; }
+  if ((o.notas_laboratorio||'').includes('GTA_FOLIO:')) {
+    if (_gtaPuedeForzar()) {
+      if (!confirm('⚠️ Esta orden YA tiene una garantía registrada.\n\n¿Crear OTRA garantía adicional sobre la misma orden? (se generará un folio GTA nuevo)')) return;
+    } else {
+      toast('Esta orden ya tiene una garantía registrada', true); return;
+    }
+  }
   if (!GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab)) {
     if (_gtaPuedeForzar()) {
       if (!confirm('⚠️ Esta orden no está entregada (estado actual: ' + o.estado_lab + ').\n\n¿Forzar la garantía de todos modos?')) return;
@@ -20353,7 +20360,7 @@ async function procesarGarantia() {
   if (fresh) {
     const freshFolio = (fresh.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
     if (freshFolio.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
-    if ((fresh.notas_laboratorio||'').includes('GTA_FOLIO:')) { toast('Esta orden ya tiene una garantía registrada', true); return; }
+    if ((fresh.notas_laboratorio||'').includes('GTA_FOLIO:') && !_gtaPuedeForzar()) { toast('Esta orden ya tiene una garantía registrada', true); return; }
     if (!GTA_ESTADOS_PERMITIDOS.includes(fresh.estado_lab) && !_gtaPuedeForzar()) { toast('La orden cambió de estado y ya no es elegible para garantía', true); return; }
   }
 
