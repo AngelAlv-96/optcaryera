@@ -20113,12 +20113,10 @@ async function seleccionarOrdenGarantia(ordenId) {
 
   const folio0 = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
   if (folio0.startsWith('GTA-')) { toast('No se puede hacer garantía sobre otra garantía', true); return; }
-  if ((o.notas_laboratorio||'').includes('GTA_FOLIO:')) {
-    if (_gtaPuedeForzar()) {
-      if (!confirm('⚠️ Esta orden YA tiene una garantía registrada.\n\n¿Crear OTRA garantía adicional sobre la misma orden? (se generará un folio GTA nuevo)')) return;
-    } else {
-      toast('Esta orden ya tiene una garantía registrada', true); return;
-    }
+  // Orden que ya tiene garantía: admin/gerencia pueden crear OTRA (el resumen final pide confirmación).
+  // No usamos confirm() aquí a propósito: si el navegador suprime diálogos, el click quedaría muerto.
+  if ((o.notas_laboratorio||'').includes('GTA_FOLIO:') && !_gtaPuedeForzar()) {
+    toast('Esta orden ya tiene una garantía registrada', true); return;
   }
   if (!GTA_ESTADOS_PERMITIDOS.includes(o.estado_lab)) {
     if (_gtaPuedeForzar()) {
