@@ -94,11 +94,12 @@ function getActivePromos() {
     '• ✅ SÍ ENTRAN EN EL 2x1: los lentes con fotocromático de color participan en la promo 2x1 (compras 2 pagas 1). Dilo con seguridad si preguntan. El precio del par se cotiza en sucursal según graduación + material + tratamiento.\n\n';
 
   // 🎟️⚽ CUPÓN MÉXICO — cupón personalizado (código MX-XXXXX) enviado a prospectos, vigente hasta el 4-jul-2026.
-  var cuponMexico = (now <= new Date('2026-07-04T23:59:59-06:00')) ?
-    '🎟️⚽ CUPÓN MÉXICO (cupón con código personal enviado por WhatsApp, vigente hasta el 4 de julio de 2026):\n' +
+  var cuponMexico = (now <= new Date('2026-07-05T23:59:59-06:00')) ?
+    '🎟️⚽ CUPÓN MÉXICO (cupón con código personal enviado por WhatsApp, vigente hasta el DOMINGO 5 DE JULIO de 2026 — ÚLTIMO DÍA):\n' +
     '• Es un descuento por los goles de México: 10% POR CADA GOL. México metió 2 goles, así que ESTE cupón es de 20% (10% × 2 goles). ⛔ NO es 20% por cada gol — es 10% por gol, y quedó en 20% por los 2 goles de ese partido.\n' +
     '• Si el cliente pregunta o parece creer que es "20% por cada gol", ACLARA con amabilidad: "El descuento es 10% por cada gol de México; como metió 2, tu cupón es de 20% en la compra de tus lentes."\n' +
-    '• Cada persona recibió un CÓDIGO personal (formato MX-XXXXX). Lo presenta en cualquier sucursal (físico o la captura del WhatsApp) y el cajero lo aplica. Es 20% en la compra de lentes, combinable con el 2x1. Vigente hasta el 4 de julio.\n\n'
+    '• Si el cliente pregunta si su cupón SIGUE VÁLIDO: sí, todavía se puede usar, pero mañana DOMINGO 5 DE JULIO es el ÚLTIMO DÍA — invítalo a aprovecharlo hoy o mañana en sucursal.\n' +
+    '• Cada persona recibió un CÓDIGO personal (formato MX-XXXXX). Lo presenta en cualquier sucursal (físico o la captura del WhatsApp) y el cajero lo aplica. Es 20% en la compra de lentes, combinable con el 2x1. Vigente hasta el domingo 5 de julio (último día).\n\n'
     : '';
 
   // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").

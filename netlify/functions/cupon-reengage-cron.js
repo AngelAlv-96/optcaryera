@@ -14,8 +14,8 @@ const CAMPANA = 'Cupon-Mexico';
 const TEMPLATE_SID = 'HXbc8c646d16a33be2e1fc536bf7737362'; // cupon_mexico (media + {{1}}=codigo)
 const BENEFICIO_TIPO = 'desc_pct';
 const BENEFICIO_VALOR = 20;
-const VIGENCIA = '2026-07-04';
-const VIGENCIA_FIN = '2026-07-04T23:59:59-06:00'; // el cron deja de operar después de esta fecha
+const VIGENCIA = '2026-07-05';
+const VIGENCIA_FIN = '2026-07-04T18:00:00-06:00'; // APAGADO por Angel el 4-jul 6:22pm: ya no se envían más cupones (el envío queda off; el cupón sigue canjeable hasta el 5-jul)
 const INACTIVE_MIN = 10;
 const RECENT_HOURS = 6;
 const RECENT_PURCHASE_DAYS = 30; // no re-enganchar a quien compró/recibió en este rango (encuesta/ticket/comprobante)
