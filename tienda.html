@@ -1145,7 +1145,7 @@ return{key:cn.toLowerCase().replace(/\s+/g,'_'),nombre:cn,marca:mk,lab:LM[mk]||'
 .sort(function(a,b){return a.marca.localeCompare(b.marca)||a.nombre.localeCompare(b.nombre)});
 renderCarousel();ren();renderTopProducts();_recompraInit()}catch(e){console.error(e)}}
 
-// 🔄 RECOMPRA: link personalizado (tienda.html?recompra=TOKEN) — precarga producto + graduación + suscripción
+// 🔄 RECOMPRA: vista dedicada (tienda.html?recompra=TOKEN) — pantalla limpia, solo el pedido listo
 async function _recompraInit(){
 var params=new URLSearchParams(window.location.search);var tok=params.get('recompra');if(!tok)return;
 try{
@@ -1153,22 +1153,51 @@ var r=await fetch(SU+'/rest/v1/lc_recompra?token=eq.'+encodeURIComponent(tok)+'&
 var d=await r.json();if(!Array.isArray(d)||!d.length)return;var rc=d[0];
 var pk=(rc.producto_key||'').toLowerCase(),pn=(rc.producto||'').toLowerCase();
 var p=P.find(function(x){return x.key===pk})||P.find(function(x){return x.nombre.toLowerCase()===pn})||P.find(function(x){return pn.indexOf(x.nombre.toLowerCase())>=0})||P.find(function(x){return x.nombre.toLowerCase().indexOf(pn.split(' ').slice(0,2).join(' '))>=0});
-cart=[];
-if(p){cart.push({nombre:p.nombre+' (OD)',precio:p.precio,qty:1,grad:rc.grad_od||'',key:p.key});cart.push({nombre:p.nombre+' (OI)',precio:p.precio,qty:1,grad:rc.grad_oi||'',key:p.key});}
-saveCart();uB();
-var nm=rc.nombre||'',prodName=p?p.nombre:(rc.producto||'tus lentes');
-var b=document.createElement('div');b.id='recompra-banner';
-b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;background:linear-gradient(135deg,#b3895a,#8a6a45);color:#fff;padding:16px 18px;box-shadow:0 6px 24px rgba(0,0,0,.28);font-family:var(--ft)';
-b.innerHTML='<div style="max-width:640px;margin:0 auto;position:relative">'
-+'<div style="font-size:16px;font-weight:700">¡Hola'+(nm?' '+nm:'')+'! 👋 Tu recompra está lista</div>'
-+'<div style="font-size:13px;margin-top:5px;opacity:.96;line-height:1.4">Ya cargamos tus <b>'+prodName+'</b> con tu graduación ('+(rc.grad_od||'')+' · '+(rc.grad_oi||'')+'). Solo confirma tu pedido y activa tu <b>suscripción con 10% de descuento</b>.</div>'
-+'<button onclick="document.getElementById(\'recompra-banner\').remove();tC();setTimeout(function(){goCartStep(2);_recompraActivateSub()},250)" style="margin-top:11px;background:#fff;color:#8a6a45;border:0;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-family:var(--ft);font-size:13px">Ver mi recompra →</button>'
-+'<span onclick="document.getElementById(\'recompra-banner\').remove()" style="position:absolute;top:0;right:2px;cursor:pointer;font-size:20px;opacity:.85">✕</span>'
-+'</div>';
-document.body.appendChild(b);document.body.style.paddingTop='0';
-setTimeout(function(){var cn=document.getElementById('cn');if(cn&&nm)cn.value=nm;var ct=document.getElementById('ct');if(ct&&rc.telefono)ct.value=String(rc.telefono).replace(/\D/g,'').slice(-10);var cs=document.getElementById('cs');if(cs&&rc.sucursal){for(var i=0;i<cs.options.length;i++){if(cs.options[i].value===rc.sucursal){cs.selectedIndex=i;break;}}}},600);
+var precio=p?p.precio:0,prodName=p?p.nombre:(rc.producto||'Tus lentes de contacto'),nm=rc.nombre||'';
+cart=[];if(p){cart.push({nombre:p.nombre+' (OD)',precio:precio,qty:1,grad:rc.grad_od||'',key:p.key});cart.push({nombre:p.nombre+' (OI)',precio:precio,qty:1,grad:rc.grad_oi||'',key:p.key});}
+saveCart();
+// prellenar campos ocultos del checkout (chk() los lee)
+var cnE=document.getElementById('cn');if(cnE)cnE.value=nm;
+var ctE=document.getElementById('ct');if(ctE)ctE.value=String(rc.telefono||'').replace(/\D/g,'').slice(-10);
+var csE=document.getElementById('cs');if(csE&&rc.sucursal){for(var i=0;i<csE.options.length;i++){if(csE.options[i].value===rc.sucursal){csE.selectedIndex=i;break;}}}
+// suscripción activa por defecto
+if(typeof _subActive!=='undefined'&&!_subActive&&typeof toggleSub==='function')toggleSub();
+var tot=precio*2,od=(rc.grad_od||'').replace(/OD:?/i,'').trim(),oi=(rc.grad_oi||'').replace(/OI:?/i,'').trim();
+var ov=document.createElement('div');ov.id='recompra-view';
+ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#f6f1ea;overflow-y:auto;font-family:var(--ft,sans-serif);-webkit-overflow-scrolling:touch';
+ov.innerHTML='<div style="max-width:460px;margin:0 auto;padding:26px 18px 44px">'
++'<div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;letter-spacing:1.5px;color:#b3895a;font-weight:700;text-transform:uppercase">Ópticas Car & Era</div>'
++'<div style="font-size:22px;font-weight:800;color:#1c1a16;margin-top:8px">Tu recompra'+(nm?', '+nm:'')+' 🔄</div>'
++'<div style="font-size:13px;color:#6b6b6b;margin-top:4px">Te dejamos todo listo. Solo confirma y paga.</div></div>'
++'<div style="background:#fff;border:1px solid #e6ddd0;border-radius:14px;padding:16px;margin-bottom:14px">'
++'<div style="font-size:16px;font-weight:700;color:#1c1a16">'+prodName+'</div>'
++'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
++(od?'<span style="background:#f6f1ea;border-radius:8px;padding:6px 10px;font-size:12px;color:#1c1a16"><b>OD</b> '+od+'</span>':'')
++(oi?'<span style="background:#f6f1ea;border-radius:8px;padding:6px 10px;font-size:12px;color:#1c1a16"><b>OI</b> '+oi+'</span>':'')
++'</div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:#6b6b6b;border-top:1px solid #f0e9dd;padding-top:10px"><span>2 cajas (una por ojo)</span><span style="color:#1c1a16;font-weight:700">$'+tot.toLocaleString('es-MX')+'</span></div></div>'
++'<div id="rv-sub-card" onclick="_rvToggleSub()" style="background:#fff;border:2px solid #b3895a;border-radius:14px;padding:14px;margin-bottom:14px;cursor:pointer">'
++'<div style="display:flex;align-items:flex-start;gap:10px"><div id="rv-sub-check" style="width:22px;height:22px;border-radius:6px;background:#b3895a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px">✓</div>'
++'<div><div style="font-size:14px;font-weight:700;color:#1c1a16">🔄 Suscripción de recompra <span style="color:#b3895a">−10%</span></div>'
++'<div style="font-size:11px;color:#6b6b6b;margin-top:3px;line-height:1.4">Te llegan tus lentes automáticamente. El 10% aplica desde tu siguiente compra. Cancela cuando quieras por WhatsApp.</div></div></div>'
++'<div id="rv-freq-wrap" style="margin-top:10px"><label style="font-size:11px;color:#6b6b6b">Cada cuánto</label><select id="rv-freq" onclick="event.stopPropagation()" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1px solid #e6ddd0;margin-top:4px;background:#fff"><option value="30">Mensual (30 días)</option><option value="60" selected>Bimestral (60 días)</option><option value="90">Trimestral (90 días)</option></select></div></div>'
++'<div style="background:#fff;border:1px solid #e6ddd0;border-radius:14px;padding:16px;margin-bottom:16px">'
++'<label style="font-size:11px;color:#6b6b6b">Nombre</label><input id="rv-nombre" value="'+String(nm).replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #e6ddd0;margin:4px 0 10px;background:#fff">'
++'<label style="font-size:11px;color:#6b6b6b">WhatsApp</label><input id="rv-tel" inputmode="tel" value="'+String(rc.telefono||'').replace(/\D/g,'').slice(-10)+'" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #e6ddd0;margin:4px 0 10px;background:#fff">'
++'<label style="font-size:11px;color:#6b6b6b">Recoger en</label><select id="rv-suc" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #e6ddd0;margin-top:4px;background:#fff"><option value="">Elige sucursal</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option></select></div>'
++'<button id="rv-pay" onclick="_recompraPay()" style="width:100%;background:#1c1a16;color:#fff;border:0;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">Confirmar y pagar $'+tot.toLocaleString('es-MX')+' 💳</button>'
++'<div style="text-align:center;margin-top:8px;font-size:11px;color:#9a9a9a">Pago seguro con tarjeta vía Clip</div>'
++'<div style="text-align:center;margin-top:14px"><a href="/tienda.html" style="font-size:12px;color:#6b6b6b">Ver toda la tienda</a></div></div>';
+document.body.appendChild(ov);document.body.style.overflow='hidden';
+var rvSuc=document.getElementById('rv-suc');if(rvSuc&&rc.sucursal)rvSuc.value=rc.sucursal;
 }catch(e){console.error('recompra',e)}}
-function _recompraActivateSub(){try{if(typeof _subActive!=='undefined'&&!_subActive&&typeof toggleSub==='function')toggleSub();}catch(e){}}
+function _rvToggleSub(){if(typeof toggleSub==='function')toggleSub();var on=(typeof _subActive!=='undefined')&&_subActive;var ck=document.getElementById('rv-sub-check'),cd=document.getElementById('rv-sub-card'),fw=document.getElementById('rv-freq-wrap');if(ck){ck.textContent=on?'✓':'';ck.style.background=on?'#b3895a':'#d8cdbb';}if(cd)cd.style.borderColor=on?'#b3895a':'#e6ddd0';if(fw)fw.style.display=on?'block':'none';}
+function _recompraPay(){var nm=document.getElementById('rv-nombre').value.trim(),tel=document.getElementById('rv-tel').value.trim(),suc=document.getElementById('rv-suc').value;
+if(!nm){alert('Ingresa tu nombre');return}if(tel.replace(/\D/g,'').length<7){alert('Ingresa tu WhatsApp');return}if(!suc){alert('Elige la sucursal para recoger');return}
+document.getElementById('cn').value=nm;document.getElementById('ct').value=tel;var cs=document.getElementById('cs');for(var i=0;i<cs.options.length;i++){if(cs.options[i].value===suc){cs.selectedIndex=i;break;}}
+if(typeof _subActive!=='undefined'&&_subActive){var fs=document.getElementById('sub-freq-sel'),rf=document.getElementById('rv-freq');if(fs&&rf)fs.value=rf.value;}
+var btn=document.getElementById('rv-pay');btn.disabled=true;btn.textContent='Procesando...';
+setTimeout(function(){var b=document.getElementById('rv-pay');if(b){b.disabled=false;b.textContent='Confirmar y pagar 💳';}},9000);
+chk();}
 
 // Stock badge HTML
 function stockBadge(p){return p.stk>0?'<span class="stock-badge stock-badge--ok">En stock</span>':'<span class="stock-badge stock-badge--order">Sobre pedido</span>'}
