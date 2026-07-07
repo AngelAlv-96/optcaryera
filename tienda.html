@@ -1146,6 +1146,7 @@ return{key:cn.toLowerCase().replace(/\s+/g,'_'),nombre:cn,marca:mk,lab:LM[mk]||'
 renderCarousel();ren();renderTopProducts();_recompraInit()}catch(e){console.error(e)}}
 
 // 🔄 RECOMPRA: vista dedicada (tienda.html?recompra=TOKEN) — pantalla limpia, solo el pedido listo
+var _rvFreq=90;
 async function _recompraInit(){
 var params=new URLSearchParams(window.location.search);var tok=params.get('recompra');if(!tok)return;
 try{
@@ -1163,23 +1164,25 @@ var csE=document.getElementById('cs');if(csE&&rc.sucursal){for(var i=0;i<csE.opt
 // suscripción activa por defecto
 if(typeof _subActive!=='undefined'&&!_subActive&&typeof toggleSub==='function')toggleSub();
 var tot=precio*2,od=(rc.grad_od||'').replace(/OD:?/i,'').trim(),oi=(rc.grad_oi||'').replace(/OI:?/i,'').trim();
+var img=rc.imagen_url||((typeof I!=='undefined'&&p&&I[p.key])?I[p.key]:'');_rvFreq=rc.frecuencia_dias||(p?(p.fr*(p.pa||1)):90);var usoLower=(rc.uso||(p?p.uso:'mensual')||'mensual').toLowerCase();
 var ov=document.createElement('div');ov.id='recompra-view';
 ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#f6f1ea;overflow-y:auto;font-family:var(--ft,sans-serif);-webkit-overflow-scrolling:touch';
 ov.innerHTML='<div style="max-width:460px;margin:0 auto;padding:26px 18px 44px">'
 +'<div style="text-align:center;margin-bottom:20px"><div style="font-size:11px;letter-spacing:1.5px;color:#b3895a;font-weight:700;text-transform:uppercase">Ópticas Car & Era</div>'
 +'<div style="font-size:22px;font-weight:800;color:#1c1a16;margin-top:8px">Tu recompra'+(nm?', '+nm:'')+' 🔄</div>'
 +'<div style="font-size:13px;color:#6b6b6b;margin-top:4px">Te dejamos todo listo. Solo confirma y paga.</div></div>'
-+'<div style="background:#fff;border:1px solid #e6ddd0;border-radius:14px;padding:16px;margin-bottom:14px">'
-+'<div style="font-size:16px;font-weight:700;color:#1c1a16">'+prodName+'</div>'
-+'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
++'<div style="background:#fff;border:1px solid #e6ddd0;border-radius:14px;padding:16px;margin-bottom:14px;text-align:center">'
++(img?'<img src="'+img+'" alt="" style="width:130px;height:130px;object-fit:contain;margin:0 auto 8px;mix-blend-mode:multiply" onerror="this.style.display=\'none\'">':'')
++'<div style="font-size:17px;font-weight:700;color:#1c1a16">'+prodName+'</div>'
++'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center">'
 +(od?'<span style="background:#f6f1ea;border-radius:8px;padding:6px 10px;font-size:12px;color:#1c1a16"><b>OD</b> '+od+'</span>':'')
 +(oi?'<span style="background:#f6f1ea;border-radius:8px;padding:6px 10px;font-size:12px;color:#1c1a16"><b>OI</b> '+oi+'</span>':'')
 +'</div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:13px;color:#6b6b6b;border-top:1px solid #f0e9dd;padding-top:10px"><span>2 cajas (una por ojo)</span><span style="color:#1c1a16;font-weight:700">$'+tot.toLocaleString('es-MX')+'</span></div></div>'
 +'<div id="rv-sub-card" onclick="_rvToggleSub()" style="background:#fff;border:2px solid #b3895a;border-radius:14px;padding:14px;margin-bottom:14px;cursor:pointer">'
 +'<div style="display:flex;align-items:flex-start;gap:10px"><div id="rv-sub-check" style="width:22px;height:22px;border-radius:6px;background:#b3895a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px">✓</div>'
 +'<div><div style="font-size:14px;font-weight:700;color:#1c1a16">🔄 Suscripción de recompra <span style="color:#b3895a">−10%</span></div>'
-+'<div style="font-size:11px;color:#6b6b6b;margin-top:3px;line-height:1.4">Te llegan tus lentes automáticamente. El 10% aplica desde tu siguiente compra. Cancela cuando quieras por WhatsApp.</div></div></div>'
-+'<div id="rv-freq-wrap" style="margin-top:10px"><label style="font-size:11px;color:#6b6b6b">Cada cuánto</label><select id="rv-freq" onclick="event.stopPropagation()" style="width:100%;box-sizing:border-box;padding:8px;border-radius:8px;border:1px solid #e6ddd0;margin-top:4px;background:#fff"><option value="30">Mensual (30 días)</option><option value="60" selected>Bimestral (60 días)</option><option value="90">Trimestral (90 días)</option></select></div></div>'
++'<div id="rv-sub-details" style="margin-top:5px"><div style="font-size:12px;color:#1c1a16">Recompra automática <b>cada '+_rvFreq+' días</b> <span style="color:#6b6b6b">(tus lentes son de cambio '+usoLower+')</span>.</div>'
++'<div style="font-size:11px;color:#6b6b6b;margin-top:7px;line-height:1.5">• Te enviamos el link de pago automáticamente cada periodo — no tienes que acordarte.<br>• Es <b>recurrente</b>: sigue activa hasta que la canceles por WhatsApp, cuando quieras.<br>• El <b>10% de descuento</b> aplica desde tu siguiente recompra.<br>• El periodo se calcula según tu tipo de lente (no lo eliges tú).</div></div></div></div></div>'
 +'<div style="background:#fff;border:1px solid #e6ddd0;border-radius:14px;padding:16px;margin-bottom:16px">'
 +'<label style="font-size:11px;color:#6b6b6b">Nombre</label><input id="rv-nombre" value="'+String(nm).replace(/"/g,'&quot;')+'" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #e6ddd0;margin:4px 0 10px;background:#fff">'
 +'<label style="font-size:11px;color:#6b6b6b">WhatsApp</label><input id="rv-tel" inputmode="tel" value="'+String(rc.telefono||'').replace(/\D/g,'').slice(-10)+'" style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #e6ddd0;margin:4px 0 10px;background:#fff">'
@@ -1190,11 +1193,11 @@ ov.innerHTML='<div style="max-width:460px;margin:0 auto;padding:26px 18px 44px">
 document.body.appendChild(ov);document.body.style.overflow='hidden';
 var rvSuc=document.getElementById('rv-suc');if(rvSuc&&rc.sucursal)rvSuc.value=rc.sucursal;
 }catch(e){console.error('recompra',e)}}
-function _rvToggleSub(){if(typeof toggleSub==='function')toggleSub();var on=(typeof _subActive!=='undefined')&&_subActive;var ck=document.getElementById('rv-sub-check'),cd=document.getElementById('rv-sub-card'),fw=document.getElementById('rv-freq-wrap');if(ck){ck.textContent=on?'✓':'';ck.style.background=on?'#b3895a':'#d8cdbb';}if(cd)cd.style.borderColor=on?'#b3895a':'#e6ddd0';if(fw)fw.style.display=on?'block':'none';}
+function _rvToggleSub(){if(typeof toggleSub==='function')toggleSub();var on=(typeof _subActive!=='undefined')&&_subActive;var ck=document.getElementById('rv-sub-check'),cd=document.getElementById('rv-sub-card'),dt=document.getElementById('rv-sub-details');if(ck){ck.textContent=on?'✓':'';ck.style.background=on?'#b3895a':'#d8cdbb';}if(cd)cd.style.borderColor=on?'#b3895a':'#e6ddd0';if(dt)dt.style.opacity=on?'1':'.5';}
 function _recompraPay(){var nm=document.getElementById('rv-nombre').value.trim(),tel=document.getElementById('rv-tel').value.trim(),suc=document.getElementById('rv-suc').value;
 if(!nm){alert('Ingresa tu nombre');return}if(tel.replace(/\D/g,'').length<7){alert('Ingresa tu WhatsApp');return}if(!suc){alert('Elige la sucursal para recoger');return}
 document.getElementById('cn').value=nm;document.getElementById('ct').value=tel;var cs=document.getElementById('cs');for(var i=0;i<cs.options.length;i++){if(cs.options[i].value===suc){cs.selectedIndex=i;break;}}
-if(typeof _subActive!=='undefined'&&_subActive){var fs=document.getElementById('sub-freq-sel'),rf=document.getElementById('rv-freq');if(fs&&rf)fs.value=rf.value;}
+if(typeof _subActive!=='undefined'&&_subActive){var fs=document.getElementById('sub-freq-sel');if(fs){var fv=String(_rvFreq),has=false;for(var j=0;j<fs.options.length;j++){if(fs.options[j].value===fv)has=true;}if(!has){var o=document.createElement('option');o.value=fv;o.text=fv+' días';fs.appendChild(o);}fs.value=fv;}}
 var btn=document.getElementById('rv-pay');btn.disabled=true;btn.textContent='Procesando...';
 setTimeout(function(){var b=document.getElementById('rv-pay');if(b){b.disabled=false;b.textContent='Confirmar y pagar 💳';}},9000);
 chk();}
