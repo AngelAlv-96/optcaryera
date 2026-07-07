@@ -7924,6 +7924,24 @@ function _startClariPendingPolling() {
   _checkClariPending();
   _clariPendingTimer = setInterval(_checkClariPending, 30 * 1000); // every 30s
 }
+// Beep de alerta (doble tono) con Web Audio — no requiere archivo de audio.
+// Nota: el navegador lo bloquea hasta que el usuario haya interactuado con la página (política de autoplay); el try/catch lo cubre.
+function _playAlertBeep() {
+  try {
+    var actx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25].forEach(function(t0) {
+      var osc = actx.createOscillator(), gain = actx.createGain();
+      osc.connect(gain); gain.connect(actx.destination);
+      osc.type = 'sine'; osc.frequency.value = 880;
+      var t = actx.currentTime + t0;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.2, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      osc.start(t); osc.stop(t + 0.2);
+    });
+    setTimeout(function(){ try { actx.close(); } catch(e) {} }, 800);
+  } catch(e) {}
+}
 async function _checkClariPending() {
   if (currentUser?.rol !== 'admin') return;
   try {
@@ -7975,8 +7993,8 @@ async function _checkClariPending() {
           });
         });
       }
-      // Also play sound if available
-      try { new Audio('data:audio/wav;base64,UklGRl9vT19telefonoWAVEZm10telefonoIBAAAAB').play().catch(function(){}); } catch(e) {}
+      // Also play sound if available (el base64 anterior estaba corrupto y nunca sonó — ahora beep real con Web Audio)
+      _playAlertBeep();
     }
   } catch(e) { console.warn('[Clari Pending]', e); }
 }
@@ -9313,7 +9331,7 @@ async function _conteoCheckTarea() {
   if (isTrainingMode()) return;
 
   var suc = currentUser.sucursal || '';
-  var hoy = new Date().toISOString().slice(0,10);
+  var hoy = hoyLocal(); // fecha Chihuahua — NUNCA toISOString() (regla #10: después de 6pm saltaba a mañana)
   var hora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' })).getHours();
 
   // Check localStorage for schedule and dismissals
@@ -9397,7 +9415,7 @@ function _conteoMostrarBurbuja(sinDismiss) {
 function _conteoDismiss() {
   var suc = currentUser?.sucursal || 'admin';
   var key = 'conteo_tarea_' + suc;
-  var hoy = new Date().toISOString().slice(0,10);
+  var hoy = hoyLocal(); // fecha Chihuahua (regla #10)
   var estado = {};
   try { estado = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
   if (!estado.dismisses) estado.dismisses = {};
@@ -9409,7 +9427,7 @@ function _conteoDismiss() {
 
   var restantes = 3 - estado.dismisses[hoy];
   if (restantes > 0) {
-    toast('Puedes posponerla ' + restantes + ' vez' + (restantes > 1 ? 'es' : '') + ' más hoy', 'warn');
+    toast('Puedes posponerla ' + restantes + ' vez' + (restantes > 1 ? 'es' : '') + ' más hoy');
   }
 }
 
@@ -9464,7 +9482,7 @@ function _conteoIniciarGuiado() {
 function _conteoMarcarIniciado() {
   var suc = currentUser?.sucursal || 'admin';
   var key = 'conteo_tarea_' + suc;
-  var hoy = new Date().toISOString().slice(0,10);
+  var hoy = hoyLocal(); // fecha Chihuahua (regla #10)
   var estado = {};
   try { estado = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
   estado.completado = hoy;
@@ -23724,6 +23742,25 @@ var _cajaEfectivoActual = 0; // Efectivo actual en caja (global, para alerta flo
 var _cajaAlertaDismisses = 0; // Veces que han cerrado la alerta hoy
 var _cajaAlertaSnoozedUntil = 0; // timestamp hasta cuando está en snooze
 var _cajaAlertaWaSent = false; // ya se notificó al admin por WA
+// Persistencia por día (localStorage): recargar la página (o el banner "Actualizar")
+// ya NO resetea los pospuestos ni cancela el aviso WA al admin
+function _cajaAlertaLoad() {
+  try {
+    var raw = JSON.parse(localStorage.getItem('caja_alerta_' + (currentUser?.sucursal || '')) || '{}');
+    if (raw.d === hoyLocal()) {
+      _cajaAlertaDismisses = raw.dismisses || 0;
+      _cajaAlertaSnoozedUntil = raw.snoozedUntil || 0;
+      _cajaAlertaWaSent = !!raw.waSent;
+    }
+  } catch(e) {}
+}
+function _cajaAlertaSave() {
+  try {
+    localStorage.setItem('caja_alerta_' + (currentUser?.sucursal || ''), JSON.stringify({
+      d: hoyLocal(), dismisses: _cajaAlertaDismisses, snoozedUntil: _cajaAlertaSnoozedUntil, waSent: _cajaAlertaWaSent
+    }));
+  } catch(e) {}
+}
 
 async function initCaja() {
   var sucSel = document.getElementById('caja-suc-selector');
@@ -24946,6 +24983,19 @@ async function registrarRetiro() {
   }
 }
 
+// ── Apilador de banners flotantes abajo-centro (evita que se encimen si coinciden) ──
+// Orden de prioridad (el 1º queda pegado abajo): alerta efectivo → banner actualizar → banner push
+var _BOTTOM_FLOAT_IDS = ['alerta-efectivo-flotante', 'app-update-banner', 'push-notif-banner'];
+function _stackBottomFloats() {
+  var y = 20;
+  _BOTTOM_FLOAT_IDS.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.isConnected || el.style.display === 'none') return;
+    el.style.bottom = y + 'px';
+    y += (el.offsetHeight || 60) + 12;
+  });
+}
+
 // ═══ ALERTA FLOTANTE EFECTIVO >$5K ═══
 function _checkAlertaEfectivoFlotante() {
   // Solo desktop (no mobile) y rol sucursal con caja abierta
@@ -24958,6 +25008,7 @@ function _checkAlertaEfectivoFlotante() {
     _cajaAlertaDismisses = 0;
     _cajaAlertaSnoozedUntil = 0;
     _cajaAlertaWaSent = false;
+    _cajaAlertaSave();
     return;
   }
   // Check snooze (solo si no han superado 3 dismisses)
@@ -24966,16 +25017,21 @@ function _checkAlertaEfectivoFlotante() {
   // Notificar admin por WA si llevan >1 hora
   if (!_cajaAlertaWaSent && _cajaAlertaDismisses >= 3) {
     _cajaAlertaWaSent = true;
+    _cajaAlertaSave();
     _notificarAdminEfectivo();
   }
 }
 function _showAlertaFlotante() {
-  var existing = document.getElementById('alerta-efectivo-flotante');
-  if (existing) { existing.style.display = ''; return; } // ya existe, solo mostrar
   var canDismiss = _cajaAlertaDismisses < 3;
-  var div = document.createElement('div');
-  div.id = 'alerta-efectivo-flotante';
-  div.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,#b91c1c,#dc2626);border:2px solid #fca5a5;border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(185,28,28,0.4);max-width:380px;width:90%;animation:_alertaPulse 2s infinite';
+  var div = document.getElementById('alerta-efectivo-flotante');
+  if (!div) {
+    div = document.createElement('div');
+    div.id = 'alerta-efectivo-flotante';
+    div.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,#b91c1c,#dc2626);border:2px solid #fca5a5;border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(185,28,28,0.4);max-width:380px;width:90%;animation:_alertaPulse 2s infinite';
+    document.body.appendChild(div);
+  } else {
+    div.style.display = ''; // re-mostrar; el contenido se re-renderiza abajo para refrescar el contador (x/3)
+  }
   var h = '<div style="display:flex;align-items:center;gap:10px">';
   h += '<div style="font-size:24px;line-height:1">🚨</div>';
   h += '<div style="flex:1">';
@@ -24989,7 +25045,6 @@ function _showAlertaFlotante() {
   }
   h += '</div></div>';
   div.innerHTML = h;
-  document.body.appendChild(div);
   // Add pulse animation if not exists
   if (!document.getElementById('_alertaPulseStyle')) {
     var style = document.createElement('style');
@@ -24997,21 +25052,25 @@ function _showAlertaFlotante() {
     style.textContent = '@keyframes _alertaPulse{0%,100%{box-shadow:0 8px 32px rgba(185,28,28,0.4)}50%{box-shadow:0 8px 40px rgba(185,28,28,0.7),0 0 60px rgba(220,38,38,0.3)}}';
     document.head.appendChild(style);
   }
+  _stackBottomFloats();
 }
 function _removeAlertaFlotante() {
   var el = document.getElementById('alerta-efectivo-flotante');
   if (el) el.style.display = 'none';
+  _stackBottomFloats();
 }
 function _snoozeAlertaEfectivo() {
   _cajaAlertaDismisses++;
   if (_cajaAlertaDismisses >= 3) {
     // No more snooze, re-show immediately undismissable
+    _cajaAlertaSave();
     var el = document.getElementById('alerta-efectivo-flotante');
     if (el) el.remove();
     _showAlertaFlotante();
     return;
   }
   _cajaAlertaSnoozedUntil = Date.now() + (20 * 60 * 1000); // 20 min
+  _cajaAlertaSave();
   _removeAlertaFlotante();
 }
 async function _notificarAdminEfectivo() {
@@ -25030,6 +25089,7 @@ async function _initAlertaEfectivoGlobal() {
   if (currentUser?.rol === 'gerencia' || currentUser?.rol === 'laboratorio') return;
   var suc = currentUser?.sucursal;
   if (!suc || suc === 'Todas') return; // admin ve todas, no aplica alerta individual
+  _cajaAlertaLoad(); // restaurar pospuestos/aviso-WA del día (sobrevive recargas)
   var today = hoyLocal();
   try {
     // Check if caja is open
@@ -25068,7 +25128,14 @@ function _epUltimoNoHaVenido(notas) {
   var ultimo = matches[matches.length - 1];
   var fechaMatch = ultimo.match(/\(([^)]+)\)/);
   if (!fechaMatch) return null;
-  try { return new Date(fechaMatch[1].replace(/(\d+)\s+(\w+)\s+(\d+)/, '$2 $1, $3')); } catch(e) { return null; }
+  // Mes en español (es-MX): new Date() solo entiende inglés — "ene/abr/ago/dic" fallaban → mapa explícito
+  var m = fechaMatch[1].match(/(\d{1,2})\s+([a-záéíóúñ.]+)\s+(\d{4})/i);
+  if (!m) return null;
+  var MESES = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, sept:8, oct:9, nov:10, dic:11 };
+  var mkey = m[2].toLowerCase().replace(/\./g, '');
+  var mes = (MESES[mkey] !== undefined) ? MESES[mkey] : MESES[mkey.slice(0, 3)];
+  if (mes === undefined) return null;
+  try { return new Date(Number(m[3]), mes, Number(m[1])); } catch(e) { return null; }
 }
 
 async function _checkEntregasPendientes() {
@@ -27680,9 +27747,10 @@ function _showUpdateBanner() {
     + '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:1px">Nueva versión disponible</div><div style="font-size:10px;color:#aaa">Toca Actualizar para tener las últimas mejoras</div></div>'
     + '<div style="display:flex;gap:6px;flex-shrink:0">'
     + '<button onclick="_aplicarUpdate()" style="padding:7px 13px;background:rgba(114,196,126,0.2);border:1px solid rgba(114,196,126,0.35);border-radius:8px;color:#72c47e;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">Actualizar</button>'
-    + '<button onclick="(function(){var e=document.getElementById(\'app-update-banner\');if(e)e.remove();})()" style="padding:7px 9px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#888;font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">Después</button>'
+    + '<button onclick="(function(){var e=document.getElementById(\'app-update-banner\');if(e)e.remove();_stackBottomFloats();})()" style="padding:7px 9px;background:none;border:1px solid rgba(255,255,255,0.12);border-radius:8px;color:#888;font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">Después</button>'
     + '</div>';
   document.body.appendChild(b);
+  _stackBottomFloats();
 }
 function _aplicarUpdate() {
   try { var b=document.getElementById('app-update-banner'); if(b) b.innerHTML='<span style="font-size:13px;color:#fff;font-family:Outfit,sans-serif;padding:4px">Actualizando…</span>'; } catch(e){}
@@ -27716,9 +27784,9 @@ if ('serviceWorker' in navigator) {
           + '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px">Activar notificaciones</div><div style="font-size:10px;color:#aaa">Recibe cortes de caja y alertas en tiempo real</div></div>'
           + '<div style="display:flex;gap:6px;flex-shrink:0">'
           + '<button onclick="activarPushNotif()" style="padding:6px 12px;background:rgba(114,196,126,0.2);border:1px solid rgba(114,196,126,0.3);border-radius:8px;color:#72c47e;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">Activar</button>'
-          + '<button onclick="document.getElementById(\'push-notif-banner\').remove();localStorage.setItem(\'push_dismissed\',\'1\')" style="padding:6px 8px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">No</button>'
+          + '<button onclick="document.getElementById(\'push-notif-banner\').remove();localStorage.setItem(\'push_dismissed\',\'1\');_stackBottomFloats()" style="padding:6px 8px;background:none;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#888;font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">No</button>'
           + '</div>';
-        if (!localStorage.getItem('push_dismissed')) document.body.appendChild(notifBanner);
+        if (!localStorage.getItem('push_dismissed')) { document.body.appendChild(notifBanner); _stackBottomFloats(); }
       }
     }, 3000);
   }).catch(function(err) {
@@ -27728,6 +27796,7 @@ if ('serviceWorker' in navigator) {
 function activarPushNotif() {
   var banner = document.getElementById('push-notif-banner');
   if (banner) banner.remove();
+  _stackBottomFloats();
   Notification.requestPermission().then(function(perm) {
     if (perm === 'granted') {
       toast('✓ Notificaciones activadas');
