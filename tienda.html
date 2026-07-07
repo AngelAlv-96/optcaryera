@@ -1143,7 +1143,32 @@ P=Object.keys(G).map(function(k){var p=k.split('|'),g=G[k],pr=g.pr.sort(function
 return{key:cn.toLowerCase().replace(/\s+/g,'_'),nombre:cn,marca:mk,lab:LM[mk]||'',tipo:p[1],uso:uso,precio:precio,pa:g.pa,fr:g.fr,stk:g.stk}})
 .filter(function(p){return p.precio>0&&!HK.includes(p.marca)&&!HI.includes(p.key)&&p.uso!=='Anual'})
 .sort(function(a,b){return a.marca.localeCompare(b.marca)||a.nombre.localeCompare(b.nombre)});
-renderCarousel();ren();renderTopProducts()}catch(e){console.error(e)}}
+renderCarousel();ren();renderTopProducts();_recompraInit()}catch(e){console.error(e)}}
+
+// 🔄 RECOMPRA: link personalizado (tienda.html?recompra=TOKEN) — precarga producto + graduación + suscripción
+async function _recompraInit(){
+var params=new URLSearchParams(window.location.search);var tok=params.get('recompra');if(!tok)return;
+try{
+var r=await fetch(SU+'/rest/v1/lc_recompra?token=eq.'+encodeURIComponent(tok)+'&select=*',{headers:{'apikey':SK,'Authorization':'Bearer '+SK}});
+var d=await r.json();if(!Array.isArray(d)||!d.length)return;var rc=d[0];
+var pk=(rc.producto_key||'').toLowerCase(),pn=(rc.producto||'').toLowerCase();
+var p=P.find(function(x){return x.key===pk})||P.find(function(x){return x.nombre.toLowerCase()===pn})||P.find(function(x){return pn.indexOf(x.nombre.toLowerCase())>=0})||P.find(function(x){return x.nombre.toLowerCase().indexOf(pn.split(' ').slice(0,2).join(' '))>=0});
+cart=[];
+if(p){cart.push({nombre:p.nombre+' (OD)',precio:p.precio,qty:1,grad:rc.grad_od||'',key:p.key});cart.push({nombre:p.nombre+' (OI)',precio:p.precio,qty:1,grad:rc.grad_oi||'',key:p.key});}
+saveCart();uB();
+var nm=rc.nombre||'',prodName=p?p.nombre:(rc.producto||'tus lentes');
+var b=document.createElement('div');b.id='recompra-banner';
+b.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9999;background:linear-gradient(135deg,#b3895a,#8a6a45);color:#fff;padding:16px 18px;box-shadow:0 6px 24px rgba(0,0,0,.28);font-family:var(--ft)';
+b.innerHTML='<div style="max-width:640px;margin:0 auto;position:relative">'
++'<div style="font-size:16px;font-weight:700">¡Hola'+(nm?' '+nm:'')+'! 👋 Tu recompra está lista</div>'
++'<div style="font-size:13px;margin-top:5px;opacity:.96;line-height:1.4">Ya cargamos tus <b>'+prodName+'</b> con tu graduación ('+(rc.grad_od||'')+' · '+(rc.grad_oi||'')+'). Solo confirma tu pedido y activa tu <b>suscripción con 10% de descuento</b>.</div>'
++'<button onclick="document.getElementById(\'recompra-banner\').remove();tC();setTimeout(function(){goCartStep(2);_recompraActivateSub()},250)" style="margin-top:11px;background:#fff;color:#8a6a45;border:0;border-radius:8px;padding:10px 20px;font-weight:700;cursor:pointer;font-family:var(--ft);font-size:13px">Ver mi recompra →</button>'
++'<span onclick="document.getElementById(\'recompra-banner\').remove()" style="position:absolute;top:0;right:2px;cursor:pointer;font-size:20px;opacity:.85">✕</span>'
++'</div>';
+document.body.appendChild(b);document.body.style.paddingTop='0';
+setTimeout(function(){var cn=document.getElementById('cn');if(cn&&nm)cn.value=nm;var ct=document.getElementById('ct');if(ct&&rc.telefono)ct.value=String(rc.telefono).replace(/\D/g,'').slice(-10);var cs=document.getElementById('cs');if(cs&&rc.sucursal){for(var i=0;i<cs.options.length;i++){if(cs.options[i].value===rc.sucursal){cs.selectedIndex=i;break;}}}},600);
+}catch(e){console.error('recompra',e)}}
+function _recompraActivateSub(){try{if(typeof _subActive!=='undefined'&&!_subActive&&typeof toggleSub==='function')toggleSub();}catch(e){}}
 
 // Stock badge HTML
 function stockBadge(p){return p.stk>0?'<span class="stock-badge stock-badge--ok">En stock</span>':'<span class="stock-badge stock-badge--order">Sobre pedido</span>'}
