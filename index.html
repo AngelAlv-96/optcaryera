@@ -16496,17 +16496,21 @@ function mostrarFoliosSurtido(el) {
 }
 
 var _tratAliasMap = {}; // { "anti blue": "Blue Free", ... } — alias display para el tratamiento (no afecta DB de órdenes)
+// Aprendizaje de renombres (NO se aplica solo, es memoria): { "anti blue ar": [{alias:"Opti Blue", veces:3, ultimo:"2026-07-07", por:"Angel"}] }
+// Sobrevive al ↩ Revertir — el alias activo se quita pero el aprendizaje queda (badge "?" con tooltip)
+var _tratAliasHist = {};
 
 async function _loadTratAliases() {
   try {
-    var { data } = await db.from('app_config').select('value').eq('id', 'tratamiento_print_aliases').single();
-    if (data?.value) {
-      var v = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
-      _tratAliasMap = v || {};
-    } else {
-      _tratAliasMap = {};
-    }
-  } catch(e) { _tratAliasMap = {}; }
+    var { data } = await db.from('app_config').select('id,value').in('id', ['tratamiento_print_aliases', 'tratamiento_alias_historial']);
+    _tratAliasMap = {}; _tratAliasHist = {};
+    (data || []).forEach(function(row) {
+      var v = null;
+      try { v = typeof row.value === 'string' ? JSON.parse(row.value) : row.value; } catch(e) {}
+      if (row.id === 'tratamiento_print_aliases') _tratAliasMap = v || {};
+      else if (row.id === 'tratamiento_alias_historial') _tratAliasHist = v || {};
+    });
+  } catch(e) { _tratAliasMap = {}; _tratAliasHist = {}; }
 }
 
 function _aplicarTratAlias(normTrat) {
@@ -16731,6 +16735,16 @@ async function loadReporteMateriales() {
       if (_hasAlias) {
         // Indicador "editado" + tooltip con original (visible para todos)
         _aliasIndicator = `<span style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(232,168,74,0.18);color:#e8a84a;border-radius:8px;font-weight:600;letter-spacing:0.05em" title="Original: ${_origTratForBtn.replace(/"/g, '&quot;')}">EDITADO</span>`;
+      } else {
+        // Sin alias activo pero CON aprendizaje de renombres → badge "?" con tooltip (hover)
+        var _histArr = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
+        if (_histArr.length) {
+          var _histTxt = _histArr.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ');
+          var _tipTxt = ('Aprendizaje de renombre: ' + _histTxt + (_canEditAlias ? ' — click para aplicar' : '')).replace(/"/g, '&quot;');
+          var _topAliasEsc = String(_histArr[0].alias || '').replace(/\\/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          var _clickApply = _canEditAlias ? ` onclick="event.stopPropagation();aplicarAliasAprendido('${_origTratEsc}','${_topAliasEsc}')"` : '';
+          _aliasIndicator = `<span${_clickApply} style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(138,176,232,0.16);color:#8ab0e8;border-radius:8px;font-weight:700;${_canEditAlias ? 'cursor:pointer;' : ''}" title="${_tipTxt}">?</span>`;
+        }
       }
       if (_canEditAlias) {
         _editBtn = `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Editar nombre para impresión (alias)">✏</span>`;
@@ -16889,11 +16903,57 @@ async function _guardarTratAliasMap(origTrat, nuevoAlias, esReset) {
     var resJson = await res.json();
     if (!res.ok || resJson.error) throw new Error(resJson.error || ('HTTP ' + res.status));
     _tratAliasMap = mapDB;
-    toast(esReset || !nuevoAlias ? '↩ Revertido a "' + origTrat + '"' : '✓ Alias guardado: ' + origTrat + ' → ' + nuevoAlias);
+    // Registrar el APRENDIZAJE del renombre (memoria permanente, sobrevive al Revertir) — best-effort
+    if (!esReset && nuevoAlias && nuevoAlias.toLowerCase() !== origTrat.toLowerCase()) {
+      await _registrarAliasAprendizaje(key, nuevoAlias);
+    }
+    toast(esReset || !nuevoAlias ? '↩ Revertido a "' + origTrat + '" (el aprendizaje queda guardado)' : '✓ Alias guardado: ' + origTrat + ' → ' + nuevoAlias);
     await loadReporteMateriales();
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
+}
+
+// ── Aprendizaje de renombres de tratamiento ──
+// Cada vez que se guarda un alias se registra en app_config id='tratamiento_alias_historial'
+// (cuántas veces, cuándo y quién). NO se aplica solo — es base de datos para predicción.
+async function _registrarAliasAprendizaje(key, alias) {
+  try {
+    var { data: cur } = await db.from('app_config').select('value').eq('id', 'tratamiento_alias_historial').single();
+    var hist = {};
+    if (cur?.value) { try { hist = typeof cur.value === 'string' ? JSON.parse(cur.value) : cur.value; } catch(e) { hist = {}; } }
+    var arr = hist[key] || [];
+    var ent = arr.find(function(a) { return (a.alias || '').toLowerCase() === alias.toLowerCase(); });
+    if (ent) { ent.veces = (ent.veces || 0) + 1; ent.ultimo = hoyLocal(); ent.por = currentUser?.nombre || currentUser?.id || ''; }
+    else arr.push({ alias: alias, veces: 1, ultimo: hoyLocal(), por: currentUser?.nombre || currentUser?.id || '' });
+    arr.sort(function(a, b) { return (b.veces || 0) - (a.veces || 0); });
+    hist[key] = arr.slice(0, 5); // máx 5 alias aprendidos por tratamiento
+    var saveAction = cur ? 'update' : 'insert';
+    var res = await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'app_config',
+        action: saveAction,
+        data: saveAction === 'insert' ? { id: 'tratamiento_alias_historial', value: JSON.stringify(hist) } : { value: JSON.stringify(hist) },
+        filters: saveAction === 'update' ? [{ col: 'id', op: 'eq', val: 'tratamiento_alias_historial' }] : undefined,
+        auth: { id: currentUser?.id, pass: currentUser?.pass }
+      })
+    });
+    var resJson = await res.json();
+    if (!res.ok || resJson.error) throw new Error(resJson.error || ('HTTP ' + res.status));
+    _tratAliasHist = hist;
+  } catch(e) { console.warn('[AliasAprendizaje]', e); } // no bloquea el guardado del alias
+}
+
+// Click en el badge "?" → aplicar el alias más usado del aprendizaje (con confirmación, nunca automático)
+async function aplicarAliasAprendido(origTrat, alias) {
+  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
+    toast('Solo admin/gerencia pueden aplicar alias', true);
+    return;
+  }
+  if (!confirm('Aprendizaje guardado: "' + origTrat + '" se ha renombrado antes como "' + alias + '".\n\n¿Aplicar ese alias ahora?')) return;
+  await _guardarTratAliasMap(origTrat, alias, false);
 }
 
 async function editarAliasTratamiento(origTrat) {
@@ -28436,7 +28496,7 @@ async function clbCargarResumen() {
 
     var resSem = await db.from('compras_lab').select('total').gte('fecha', semana).limit(500);
     var resMes = await db.from('compras_lab').select('total').gte('fecha', mesIni).limit(500);
-    var resHist = await db.from('compras_lab').select('total').limit(1000);
+    var resHist = await db.from('compras_lab').select('total').order('fecha', { ascending: false }).limit(1000);
 
     var totalSem = (resSem.data||[]).reduce(function(s,r){ return s + (parseFloat(r.total)||0); }, 0);
     var totalMes = (resMes.data||[]).reduce(function(s,r){ return s + (parseFloat(r.total)||0); }, 0);
@@ -28924,7 +28984,9 @@ async function clbCargarHistorial() {
   var cont = document.getElementById('clb-historial');
   if (!cont) return;
   try {
-    var res = await db.from('compras_lab').select('*').limit(200);
+    // ⚠️ .order() en la DB es OBLIGATORIO: sin él, limit(200) devolvía las 200 MÁS VIEJAS
+    // (la tabla ya pasa de 200 filas) y las compras de junio/julio nunca aparecían (lección v313)
+    var res = await db.from('compras_lab').select('*').order('fecha', { ascending: false }).order('id', { ascending: false }).limit(200);
     var data = (res.data || []).sort(function(a,b){ return (b.fecha||'') > (a.fecha||'') ? 1 : (b.fecha||'') < (a.fecha||'') ? -1 : (b.id||0) - (a.id||0); });
     _clbHistorial = data;
 
