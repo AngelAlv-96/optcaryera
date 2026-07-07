@@ -780,6 +780,23 @@ function isOrderFollowUp(history) {
   return false;
 }
 
+// Detecta si acabamos de enviar una notificación de "lentes listos" — un mensaje de seguimiento
+// que cuestione si están listos DEBE verificarse contra el estado real (no creerle al cliente)
+function recentlyNotifiedReady(history) {
+  if (!history || !history.length) return false;
+  var recent = history.slice(-5);
+  for (var i = 0; i < recent.length; i++) {
+    if (recent[i].role === 'assistant') {
+      var c = (recent[i].content || '').toLowerCase();
+      if (c.includes('listos para recoger') || c.includes('listos para que los recojas') ||
+          c.includes('están listos') || c.includes('estan listos') || c.includes('ya llegaron a la sucursal')) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ── CONVERSATION HISTORY ──
 async function getConversationHistory(phone) {
   if (!SERVICE_KEY) return [];
@@ -899,6 +916,12 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
     shouldLookupOrder = true;
     console.log('[OrderLookup] triggered by follow-up detection');
   }
+  // Si acabamos de avisar "lentes listos", cualquier respuesta (aunque diga "me dijeron que no")
+  // debe consultar el estado REAL para no contradecir la notificación del sistema
+  if (!shouldLookupOrder && recentlyNotifiedReady(history)) {
+    shouldLookupOrder = true;
+    console.log('[OrderLookup] triggered by recent listos notification');
+  }
   if (shouldLookupOrder) {
     var orders = await lookupOrders(phone, userMessage);
     if (orders && orders.length > 0) {
@@ -926,6 +949,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         '- Usa el mensaje_cliente como base para responder. NO inventes información adicional.\n' +
         '- NUNCA digas que los lentes están listos o casi listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n' +
+        '- ⚠️ SI EL ESTADO ES "Recibido en óptica" o "Listo para entrega", los lentes YA ESTÁN LISTOS AHORA (el laboratorio terminó, muchas veces ANTES de la fecha que traía el ticket). Si el cliente dice que en la sucursal le dijeron "todavía no", "hasta las 5", "hasta la tarde", "hasta mañana" o cualquier hora/fecha posterior, ⛔ NO le des la razón ni repitas esa hora — el sistema ya los muestra LISTOS. Dile con gusto que ¡buenas noticias! sus lentes quedaron listos antes de tiempo y ya puede pasar a recogerlos; menciona el folio para que en el mostrador confirmen que ESE pedido ya está listo. NUNCA le digas a un cliente que sus lentes estarán listos MÁS TARDE de lo que ya muestra el sistema.\n' +
         '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
         '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje, es solo una invitación amable. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio.\n' +
         '- Si la venta está Liquidada y los lentes están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
