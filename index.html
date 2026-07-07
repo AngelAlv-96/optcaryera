@@ -16733,17 +16733,25 @@ async function loadReporteMateriales() {
       var _aliasIndicator = '';
       var _editBtn = '';
       if (_hasAlias) {
-        // Indicador "editado" + tooltip con original (visible para todos)
-        _aliasIndicator = `<span style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(232,168,74,0.18);color:#e8a84a;border-radius:8px;font-weight:600;letter-spacing:0.05em" title="Original: ${_origTratForBtn.replace(/"/g, '&quot;')}">EDITADO</span>`;
+        // Indicador "editado" + tooltip con original Y el historial de aprendizaje (visible para todos)
+        var _histAct = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
+        var _histActTxt = _histAct.length
+          ? ' — Aprendizaje: ' + _histAct.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ')
+          : '';
+        var _tipEditado = ('Original: ' + _origTratForBtn + _histActTxt).replace(/"/g, '&quot;');
+        _aliasIndicator = `<span style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(232,168,74,0.18);color:#e8a84a;border-radius:8px;font-weight:600;letter-spacing:0.05em" title="${_tipEditado}">EDITADO</span>`;
       } else {
-        // Sin alias activo pero CON aprendizaje de renombres → badge "?" con tooltip (hover)
+        // Sin alias activo pero CON aprendizaje de renombres → badge de SUGERENCIA visible
+        // (no requiere haber revertido: si el nombre es el del sistema y ya se aprendió un renombre, aquí se sugiere)
         var _histArr = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
         if (_histArr.length) {
           var _histTxt = _histArr.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ');
           var _tipTxt = ('Aprendizaje de renombre: ' + _histTxt + (_canEditAlias ? ' — click para aplicar' : '')).replace(/"/g, '&quot;');
-          var _topAliasEsc = String(_histArr[0].alias || '').replace(/\\/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          var _topAliasRaw = String(_histArr[0].alias || '');
+          var _topAliasEsc = _topAliasRaw.replace(/\\/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          var _topAliasHTML = _topAliasRaw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           var _clickApply = _canEditAlias ? ` onclick="event.stopPropagation();aplicarAliasAprendido('${_origTratEsc}','${_topAliasEsc}')"` : '';
-          _aliasIndicator = `<span${_clickApply} style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(138,176,232,0.16);color:#8ab0e8;border-radius:8px;font-weight:700;${_canEditAlias ? 'cursor:pointer;' : ''}" title="${_tipTxt}">?</span>`;
+          _aliasIndicator = `<span${_clickApply} style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(138,176,232,0.16);color:#8ab0e8;border-radius:8px;font-weight:700;white-space:nowrap;${_canEditAlias ? 'cursor:pointer;' : ''}" title="${_tipTxt}">? ${_topAliasHTML}</span>`;
         }
       }
       if (_canEditAlias) {
