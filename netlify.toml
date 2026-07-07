@@ -9,6 +9,10 @@
 [functions."lc-cron"]
   schedule = "0 16 * * *"
 
+# LC recompra — oferta de suscripción 7 días después de la compra (diario 12pm CST / 18:00 UTC)
+[functions."lc-recompra-cron"]
+  schedule = "0 18 * * *"
+
 # Review/NPS — procesa cola de encuestas cada 15 min (se encolan 2h después de entrega)
 [functions."review-cron"]
   schedule = "*/15 * * * *"
