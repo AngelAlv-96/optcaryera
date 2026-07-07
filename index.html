@@ -1319,6 +1319,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <p id="fecha-txt">Cargando...</p>
           </div>
           <div class="topbar-right">
+            <button class="btn btn-g btn-sm" id="coin-sound-btn" onclick="toggleCoinSound()" style="display:none" title="Sonido de moneda al registrarse una venta">🪙</button>
             <button class="btn btn-g btn-sm" onclick="loadDash()" title="Actualizar">&#x21bb;</button>
           </div>
         </div>
@@ -5971,6 +5972,59 @@ function _rtHandleChange(table) {
   }, 3000);
 }
 
+// ── 🪙 SONIDO DE VENTA NUEVA (solo admin/gerencia) ───────────
+// Cada INSERT en `ventas` (vía Realtime) suena una moneda estilo Mario mientras la sesión esté abierta.
+// Mute con el botón 🪙 del dashboard (localStorage venta_sound_off). Throttle 1.2s (imports masivos no metralleta).
+var _coinCtx = null, _coinLastPlay = 0;
+function _coinEnsureCtx() {
+  try {
+    if (!_coinCtx) _coinCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_coinCtx.state === 'suspended') _coinCtx.resume();
+  } catch(e) {}
+  return _coinCtx;
+}
+// La política de autoplay exige un gesto del usuario para "desbloquear" el audio — el primer click/tap lo hace.
+document.addEventListener('pointerdown', function() {
+  if (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') _coinEnsureCtx();
+}, { passive: true });
+function _coinSoundEnabled() { return localStorage.getItem('venta_sound_off') !== '1'; }
+function _playCoinSound() {
+  try {
+    if (!_coinSoundEnabled()) return;
+    var now = Date.now();
+    if (now - _coinLastPlay < 1200) return;
+    _coinLastPlay = now;
+    var ctx = _coinEnsureCtx();
+    if (!ctx || ctx.state !== 'running') return;
+    // Moneda clásica: B5 breve → salto a E6 con decay largo (onda cuadrada)
+    var t = ctx.currentTime;
+    var osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'square';
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(987.77, t);         // B5
+    osc.frequency.setValueAtTime(1318.51, t + 0.09); // E6
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.setValueAtTime(0.09, t + 0.09);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+    osc.start(t); osc.stop(t + 0.75);
+  } catch(e) {}
+}
+function toggleCoinSound() {
+  var off = !_coinSoundEnabled();
+  localStorage.setItem('venta_sound_off', off ? '0' : '1');
+  _coinSyncBtn();
+  if (_coinSoundEnabled()) { _coinLastPlay = 0; _playCoinSound(); toast('🪙 Sonido de ventas activado'); }
+  else toast('🔇 Sonido de ventas silenciado');
+}
+function _coinSyncBtn() {
+  var btn = document.getElementById('coin-sound-btn');
+  if (!btn) return;
+  var esAdmin = currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia';
+  btn.style.display = esAdmin ? '' : 'none';
+  btn.textContent = _coinSoundEnabled() ? '🪙' : '🔇';
+  btn.title = _coinSoundEnabled() ? 'Sonido de moneda al registrarse una venta (click para silenciar)' : 'Sonido de ventas silenciado (click para activar)';
+}
+
 function initRealtimeSubscriptions() {
   if (_rtSubs) return; // Ya inicializado
   // Definir mapa aquí dentro para evitar hoisting issues
@@ -5993,8 +6047,13 @@ function initRealtimeSubscriptions() {
   if (allTables.indexOf('creditos_abonos') === -1) allTables.push('creditos_abonos');
   _rtSubs = db.channel('app-realtime');
   allTables.forEach(function(t) {
-    _rtSubs = _rtSubs.on('postgres_changes', { event: '*', schema: 'public', table: t }, function() {
+    _rtSubs = _rtSubs.on('postgres_changes', { event: '*', schema: 'public', table: t }, function(payload) {
       _rtHandleChange(t);
+      // 🪙 Venta nueva → moneda para admin/gerencia con sesión abierta
+      if (t === 'ventas' && payload?.eventType === 'INSERT' &&
+          (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia')) {
+        _playCoinSound();
+      }
       // Recalcular alerta de efectivo en tiempo real
       if (_rtCashTables[t]) {
         if (_rtCashDebounce) clearTimeout(_rtCashDebounce);
@@ -7742,6 +7801,7 @@ async function loadDash() {
   var suc = currentUser?.sucursal || 'Todas';
   var body = document.getElementById('dash-body');
   if (!body) return;
+  _coinSyncBtn(); // botón 🪙 (sonido de ventas) visible solo para admin/gerencia
   // Antes de las 10am, mostrar resumen del día anterior
   var nowLocal = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
   var dashDate;
