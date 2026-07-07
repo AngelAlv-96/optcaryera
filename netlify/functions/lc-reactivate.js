@@ -237,8 +237,9 @@ exports.handler = async function(event) {
 
     console.log(`[LC-REACTIVATE] Completado: ${enviados}/${limited.length}`);
 
-    // Notify admin with summary
-    if (enviados > 0) {
+    // Notify admin with summary — DESACTIVADO (v330/pedido de Angel 7-jul): el resumen por-lote spameaba
+    // el WhatsApp del admin en cada corrida. Los resultados van en la respuesta JSON de la función.
+    if (false && enviados > 0) {
       const adminPhones = await getAdminPhones();
       const summary = `📊 *LC Reactivación — Resumen*\n\n`
         + `✅ Enviados: ${enviados}/${limited.length}\n`
