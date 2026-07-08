@@ -5975,7 +5975,7 @@ function _rtHandleChange(table) {
 // ── 🪙 SONIDO DE VENTA NUEVA (solo admin/gerencia) ───────────
 // Cada INSERT en `ventas` (vía Realtime) suena una moneda estilo Mario mientras la sesión esté abierta.
 // Mute con el botón 🪙 del dashboard (localStorage venta_sound_off). Throttle 1.2s (imports masivos no metralleta).
-var _coinCtx = null, _coinLastPlay = 0;
+var _coinCtx = null, _coinLastPlay = 0, _coinPendiente = false;
 function _coinEnsureCtx() {
   try {
     if (!_coinCtx) _coinCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -5984,18 +5984,35 @@ function _coinEnsureCtx() {
   return _coinCtx;
 }
 // La política de autoplay exige un gesto del usuario para "desbloquear" el audio — el primer click/tap lo hace.
+// Si una venta llegó ANTES del primer click (moneda pendiente), se toca en cuanto haya gesto.
 document.addEventListener('pointerdown', function() {
-  if (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') _coinEnsureCtx();
+  if (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia') {
+    _coinEnsureCtx();
+    if (_coinPendiente) {
+      _coinPendiente = false;
+      setTimeout(function() { _playCoinSound(); }, 60); // tras el resume() del gesto
+    }
+  }
 }, { passive: true });
+// Al volver a la pestaña, re-activar el audio si el navegador lo suspendió
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden && _coinCtx && _coinCtx.state === 'suspended') { try { _coinCtx.resume(); } catch(e) {} }
+});
 function _coinSoundEnabled() { return localStorage.getItem('venta_sound_off') !== '1'; }
 function _playCoinSound() {
   try {
-    if (!_coinSoundEnabled()) return;
+    if (!_coinSoundEnabled()) { console.log('[🪙] omitida: silenciada (botón 🔇)'); return; }
     var now = Date.now();
-    if (now - _coinLastPlay < 1200) return;
-    _coinLastPlay = now;
+    if (now - _coinLastPlay < 1200) { console.log('[🪙] omitida: throttle'); return; }
     var ctx = _coinEnsureCtx();
-    if (!ctx || ctx.state !== 'running') return;
+    if (!ctx || ctx.state !== 'running') {
+      // Autoplay bloqueado (aún no hay click en la página) — quedará pendiente para el próximo gesto.
+      // OJO: NO quemar el throttle aquí (antes se marcaba antes de este check y silenciaba la siguiente).
+      _coinPendiente = true;
+      console.log('[🪙] audio bloqueado por el navegador (falta un click en la página) — moneda pendiente');
+      return;
+    }
+    _coinLastPlay = now;
     // Moneda clásica: B5 breve → salto a E6 con decay largo (onda cuadrada)
     var t = ctx.currentTime;
     var osc = ctx.createOscillator(), gain = ctx.createGain();
@@ -6052,6 +6069,7 @@ function initRealtimeSubscriptions() {
       // 🪙 Venta nueva → moneda para admin/gerencia con sesión abierta
       if (t === 'ventas' && payload?.eventType === 'INSERT' &&
           (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia')) {
+        console.log('[🪙] Venta nueva vía Realtime:', payload?.new?.folio || payload?.new?.id || '');
         _playCoinSound();
       }
       // Recalcular alerta de efectivo en tiempo real
