@@ -7796,6 +7796,105 @@ async function _promptEntregaLentes(folio) {
 // El valor canónico en DB / código sigue siendo "Plaza Vía Vittoria" intacto.
 function _sucDisplay(s) { return (s || '').replace(/^Plaza\s+/i, ''); }
 
+// ── 🎂 CUMPLEAÑOS DE EMPLEADOS EN EL DASHBOARD (v502) ──
+// Tarjeta festiva + lluvia de confeti cuando algún empleado cumple años HOY.
+// Fuente: fecha_nacimiento de app_config.expedientes_empleados (RH). Visible para TODOS los roles.
+var _cumpleEmpCache = null; // { fecha, lista } — un query por día
+async function _loadDashCumpleEmpleados() {
+  try {
+    var body = document.getElementById('dash-body');
+    if (!body || document.getElementById('dash-cumple-emp')) return;
+    var hoy = hoyLocal();
+    var mmdd = hoy.slice(5);
+    var lista;
+    if (_cumpleEmpCache && _cumpleEmpCache.fecha === hoy) {
+      lista = _cumpleEmpCache.lista;
+    } else {
+      // El expediente se CONSERVA al dar de baja (LFT) — el estado "activo" real es tener teléfono
+      // en empleados_telefono (el checador). Baja = se quita el teléfono → se cancela la felicitación;
+      // alta nueva = se agrega teléfono + expediente → se activa sola.
+      var { data } = await db.from('app_config').select('id,value').in('id', ['expedientes_empleados', 'empleados_telefono']);
+      var exp = {}, telMap = {};
+      (data || []).forEach(function(row) {
+        var v = null;
+        try { v = typeof row.value === 'string' ? JSON.parse(row.value) : row.value; } catch(e) {}
+        if (row.id === 'expedientes_empleados') exp = v || {};
+        else if (row.id === 'empleados_telefono') telMap = v || {};
+      });
+      var activos = {};
+      Object.keys(telMap).forEach(function(ph) { activos[telMap[ph]] = true; });
+      lista = [];
+      Object.keys(exp || {}).forEach(function(uid) {
+        if (/prueba/i.test(uid)) return;   // empleados de prueba fuera
+        if (!activos[uid]) return;          // dado de baja (sin teléfono en el checador) → no felicitar
+        var e = exp[uid] || {};
+        if (e.fecha_nacimiento && String(e.fecha_nacimiento).slice(5, 10) === mmdd) {
+          var nombre = (e.nombre_completo || uid.replace(/^(asesor_|extra_)/, '').replace(/_/g, ' ')).trim();
+          nombre = nombre.toLowerCase().replace(/(^|[\s.])\S/g, function(c) { return c.toUpperCase(); });
+          lista.push(nombre);
+        }
+      });
+      _cumpleEmpCache = { fecha: hoy, lista: lista };
+    }
+    if (!lista.length) return;
+
+    // CSS de la tarjeta (bob del pastel + shimmer) — respeta reduced-motion
+    if (!document.getElementById('cumple-emp-css')) {
+      var st = document.createElement('style');
+      st.id = 'cumple-emp-css';
+      st.textContent = '@keyframes cumpleBob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-6px) rotate(5deg)}}' +
+        '@keyframes cumpleShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}' +
+        '#dash-cumple-emp .cumple-emoji{display:inline-block;animation:cumpleBob 2.2s ease-in-out infinite}' +
+        '#dash-cumple-emp{background:linear-gradient(120deg,rgba(212,184,74,.18),rgba(226,198,166,.10),rgba(212,184,74,.18));background-size:200% 100%;animation:cumpleShimmer 6s linear infinite}' +
+        '@media (prefers-reduced-motion: reduce){#dash-cumple-emp,.cumple-emoji{animation:none!important}}';
+      document.head.appendChild(st);
+    }
+    var nombres = lista.join(' y ');
+    body.insertAdjacentHTML('afterbegin',
+      '<div id="dash-cumple-emp" style="border:1px solid rgba(212,184,74,.35);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px">' +
+        '<span class="cumple-emoji" style="font-size:34px;flex-shrink:0">🎂</span>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:15px;font-weight:800;color:var(--beige)">¡Hoy es cumpleaños de ' + nombres + '! 🎉</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px">No olviden felicitar de parte de todo el equipo Car & Era 💛</div>' +
+        '</div>' +
+        '<span style="font-size:22px;flex-shrink:0">🥳</span>' +
+      '</div>');
+
+    // Confeti UNA vez al día por dispositivo (que no canse en cada visita al dashboard)
+    var confKey = 'cumple_emp_confetti';
+    if (localStorage.getItem(confKey) !== hoy) {
+      localStorage.setItem(confKey, hoy);
+      _lanzarConfeti();
+    }
+  } catch(e) { console.warn('[CumpleEmp]', e); }
+}
+
+// Lluvia de confeti ligera (sin librerías) — se limpia sola a los 7s
+function _lanzarConfeti() {
+  try {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (document.getElementById('confeti-wrap')) return;
+    if (!document.getElementById('confeti-css')) {
+      var st = document.createElement('style');
+      st.id = 'confeti-css';
+      st.textContent = '@keyframes confetiFall{0%{transform:translateY(-40px) rotate(0deg)}100%{transform:translateY(105vh) rotate(720deg)}}';
+      document.head.appendChild(st);
+    }
+    var wrap = document.createElement('div');
+    wrap.id = 'confeti-wrap';
+    wrap.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100001;overflow:hidden';
+    var colores = ['#e2c6a6', '#d4b84a', '#72c47e', '#8ab0e8', '#e08080', '#c47ed4', '#f59e0b'];
+    for (var i = 0; i < 80; i++) {
+      var p = document.createElement('div');
+      var size = 6 + Math.random() * 7;
+      p.style.cssText = 'position:absolute;top:-40px;left:' + (Math.random() * 100).toFixed(1) + 'vw;width:' + size.toFixed(0) + 'px;height:' + (size * 0.5).toFixed(0) + 'px;background:' + colores[i % colores.length] + ';opacity:' + (0.7 + Math.random() * 0.3).toFixed(2) + ';border-radius:2px;animation:confetiFall ' + (2.6 + Math.random() * 2.4).toFixed(2) + 's linear ' + (Math.random() * 1.6).toFixed(2) + 's forwards';
+      wrap.appendChild(p);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(function() { try { wrap.remove(); } catch(e) {} }, 7000);
+  } catch(e) {}
+}
+
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
   var suc = currentUser?.sucursal || 'Todas';
@@ -7844,6 +7943,8 @@ async function loadDash() {
     body.insertAdjacentHTML('afterbegin', '<div id="dash-checador"></div>');
     setTimeout(function(){ _loadDashChecador(); }, 60);
   }
+  // 🎂 Cumpleaños de empleados — tarjeta festiva + confeti (todos los roles)
+  setTimeout(function(){ _loadDashCumpleEmpleados(); }, 100);
   renderTipoCambioDash();
   // Badge cambios de precio (todos los roles que tienen el item visible)
   setTimeout(function() {
