@@ -6079,12 +6079,27 @@ function initRealtimeSubscriptions() {
       }
     });
   });
-  _rtSubs.subscribe(function(status) {
+  _rtSubs.subscribe(function(status, err) {
     if (status === 'SUBSCRIBED') {
-      console.log('[RT] Realtime conectado — ' + tables.length + ' tablas');
+      console.log('[RT] Realtime conectado — ' + allTables.length + ' tablas');
+      _rtRetryCount = 0;
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      // ⚠️ v504: UNA tabla mal configurada (ej. suscrita pero NO publicada en supabase_realtime)
+      // mata TODO el canal EN SILENCIO — así murió el tiempo real semanas (retiros_caja/creditos_abonos
+      // sin publicar). Ahora el error se ve y se reintenta con backoff.
+      console.warn('[RT] Canal Realtime ' + status + (err ? ' — ' + (err.message || err) : '') + '. Datos en vivo (dashboard/moneda) NO están llegando; reintento ' + (_rtRetryCount + 1) + '/5');
+      if (_rtRetryCount < 5) {
+        _rtRetryCount++;
+        setTimeout(function() {
+          try { db.removeChannel(_rtSubs); } catch(e) {}
+          _rtSubs = null;
+          initRealtimeSubscriptions();
+        }, 15000 * _rtRetryCount);
+      }
     }
   });
 }
+var _rtRetryCount = 0; // reintentos de re-suscripción del canal Realtime (v504)
 // ── Fin Realtime ─────────────────────────────────────────────
 
 // ── PULL TO REFRESH (móvil) ──────────────────────────────────
@@ -7046,6 +7061,8 @@ setInterval(function() {
 function renderTipoCambioDash() {
   var el = document.getElementById('dash-tipo-cambio');
   if (!el) return;
+  // Anti-parpadeo (v504): re-asignar innerHTML idéntico también repinta — solo escribir si cambió
+  el = { set innerHTML(h) { _setDashSection('dash-tipo-cambio', h); } };
   if (_tipoCambio <= 0) { el.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">💵</span><div><div style="font-size:11px;color:var(--muted)">Tipo de cambio</div><div style="font-size:14px;color:var(--muted)">Cargando...</div></div></div>'; return; }
   el.innerHTML = '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">💵</span><div><div style="font-size:11px;color:var(--muted)">Tipo de cambio</div><div style="font-size:18px;font-weight:800;color:#72c47e">$' + _tipoCambio.toFixed(2) + ' MXN</div></div>' + (currentUser?.rol==='admin'?'<button onclick="editarTipoCambio()" style="margin-left:auto;background:none;border:1px solid rgba(226,198,166,0.2);border-radius:6px;padding:4px 8px;color:var(--beige);font-size:10px;cursor:pointer">✏</button>':'') + '</div>';
 }
@@ -7913,6 +7930,17 @@ function _lanzarConfeti() {
   } catch(e) {}
 }
 
+var _dashLastHTML = ''; // anti-parpadeo: último HTML renderizado del dashboard (v504)
+// Anti-parpadeo de secciones diferidas: compara contra el ÚLTIMO STRING ESCRITO (no contra el DOM,
+// que normaliza el markup al serializar y nunca coincide) — solo re-escribe si el contenido cambió
+var _dashSectionCache = {};
+function _setDashSection(id, h) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (_dashSectionCache[id] === h) return; // sin cambios → no repintar
+  _dashSectionCache[id] = h;
+  el.innerHTML = h;
+}
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
   var suc = currentUser?.sucursal || 'Todas';
@@ -7949,16 +7977,24 @@ async function loadDash() {
   var badgeEl = document.getElementById('badge-citas');
   if (badgeEl) badgeEl.textContent = urgentes.length || 0;
 
+  var _dashHTML;
   if (rol === 'laboratorio') {
-    body.innerHTML = renderDashLab(orders, urgentes, demorados);
+    _dashHTML = renderDashLab(orders, urgentes, demorados);
   } else if (rol === 'sucursal') {
-    body.innerHTML = await renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd);
+    _dashHTML = await renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd);
   } else {
-    body.innerHTML = await renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol);
+    _dashHTML = await renderDashAdmin(orders, urgentes, demorados, today, utcStart, utcEnd, rol);
+  }
+  // Anti-parpadeo (v504): si el contenido NO cambió desde el último render, no repintar —
+  // el refresco de 2 min y los eventos Realtime solo redibujan cuando hay datos nuevos
+  if (_dashHTML !== _dashLastHTML) {
+    _dashLastHTML = _dashHTML;
+    body.innerHTML = _dashHTML;
+    _dashSectionCache = {}; // el repintado deja las secciones diferidas en cascarón → deben re-escribirse
   }
   // 🕐 Reloj checador en el dashboard — admin y gerencia, SOLO ventana de apertura 10:00–10:45
   if (rol === 'admin' || rol === 'gerencia') {
-    body.insertAdjacentHTML('afterbegin', '<div id="dash-checador"></div>');
+    if (!document.getElementById('dash-checador')) body.insertAdjacentHTML('afterbegin', '<div id="dash-checador"></div>');
     setTimeout(function(){ _loadDashChecador(); }, 60);
   }
   // 🎂 Cumpleaños de empleados — tarjeta festiva + confeti (todos los roles)
@@ -8780,6 +8816,8 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
 async function _loadDashCajaDeferred(utcStart, utcEnd) {
   var section = document.getElementById('dash-caja-section');
   if (!section) return;
+  // Anti-parpadeo (v504): solo re-escribir si el contenido cambió
+  section = { set innerHTML(h) { _setDashSection('dash-caja-section', h); } };
   try {
     var [{data:pagosHoy},{data:abonosHoy}] = await Promise.all([
       db.from('venta_pagos').select('monto,metodo_pago,recibido_por,created_at,ventas(folio,sucursal,estado,pacientes(nombre,apellidos))').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(30),
@@ -8849,6 +8887,8 @@ function _miniStat(lbl, val, color, icon) {
 async function _loadDashAuditoria() {
   var section = document.getElementById('dash-audit-section');
   if (!section) return;
+  // Anti-parpadeo (v504): solo re-escribir si el contenido cambió
+  section = { set innerHTML(h) { _setDashSection('dash-audit-section', h); } };
   try {
     var [{data: _allAuditOrds}, {data: auditorias}] = await Promise.all([
       db.from('ordenes_laboratorio').select('id,estado_lab,sucursal,notas_laboratorio,created_at,paciente_id'),
@@ -27953,7 +27993,7 @@ async function _loadRescateAudit(suc, utcStart, utcEnd) {
 <script src="js/mod-lc.js?v=166"></script>
 <script src="js/mod-asistencia.js?v=170"></script>
 <script src="js/mod-contabilidad.js?v=179"></script>
-<script src="js/mod-estrategia.js?v=182"></script>
+<script src="js/mod-estrategia.js?v=183"></script>
 
 
 <!-- CATALOGO MATERIALES MODAL -->

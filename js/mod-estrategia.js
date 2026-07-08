@@ -1358,9 +1358,9 @@ async function _loadDashMetaWidget(sucursal) {
     var diasRestantes = diasEnMes - diaHoy;
     var pctTiempo = Math.round(diaHoy / diasEnMes * 100);
 
-    // Map sucursal name to key
+    // Map sucursal name to key (v504: Vittoria incluida \u2014 estaba fuera del widget por lista hardcodeada de 3)
     var sucKey = (sucursal || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (sucKey !== 'americas' && sucKey !== 'pinocelli' && sucKey !== 'magnolia') return;
+    if (sucKey !== 'americas' && sucKey !== 'pinocelli' && sucKey !== 'magnolia' && sucKey !== 'plaza via vittoria') return;
 
     // Load metas config
     var { data: cfgData } = await db.from('app_config').select('id,value').in('id', ['metas_mensuales']);
@@ -1728,6 +1728,14 @@ async function _loadDashMetaWidget(sucursal) {
     }
 
     h += '</div>';
+    // Anti-parpadeo (v504): si el HTML no cambió desde el último render, NO repintar —
+    // reescribir innerHTML idéntico recreaba la mascota Lottie (reinicio visible cada refresh).
+    // Usa el caché global de index.html (se invalida cuando loadDash repinta el body completo).
+    var _cacheOK = typeof _dashSectionCache !== 'undefined';
+    if (_cacheOK && _dashSectionCache['dash-meta-widget'] === h && el.innerHTML.length > 0) {
+      return; // sin cambios → la mascota sigue animando sin reiniciarse
+    }
+    if (_cacheOK) _dashSectionCache['dash-meta-widget'] = h;
     el.innerHTML = h;
 
     // ── Render Lottie animations after DOM is ready ──
