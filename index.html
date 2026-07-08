@@ -2157,7 +2157,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div class="topbar-right" style="display:flex;gap:8px;align-items:center">
             <select id="lab-suc-filtro" onchange="loadLabTablero()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
               <option value="">Todas sucursales</option>
-              <option>Am&eacute;ricas</option><option>Pinocelli</option><option>Magnolia</option><option>Plaza V&iacute;a Vittoria</option>
+              <option>Am&eacute;ricas</option><option>Pinocelli</option><option>Magnolia</option><option value="Plaza V&iacute;a Vittoria">V&iacute;a Vittoria</option>
             </select>
             <button class="btn btn-p btn-sm" onclick="abrirRecibirPedidos()" title="Recibir pedidos" style="font-size:12px">&#128230; Recibir</button>
             <button class="btn btn-g btn-sm" onclick="abrirScanOrden()" title="Escanear código">&#128247;</button>
@@ -2834,7 +2834,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 </div>
                 <div class="fg"><label>Sucursal</label>
                   <select class="ord-input" id="cfg-suc">
-                    <option>Américas</option><option>Pinocelli</option><option>Magnolia</option><option>Plaza Vía Vittoria</option><option>Todas</option>
+                    <option>Américas</option><option>Pinocelli</option><option>Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option><option>Todas</option>
                   </select>
                 </div>
               </div>
@@ -2913,7 +2913,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:end">
                   <div class="fg" style="margin-bottom:0;flex:1;min-width:120px"><label style="font-size:10px;color:var(--muted)">Nombre</label><input class="ord-input" id="cfg-asesor-nombre" placeholder="Nombre completo"></div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Sucursal</label>
-                    <select class="ord-input" id="cfg-asesor-suc"><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option><option value="_global">Global (todas)</option></select>
+                    <select class="ord-input" id="cfg-asesor-suc"><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option><option value="_global">Global (todas)</option></select>
                   </div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Comisi&oacute;n %</label><input class="ord-input" id="cfg-asesor-com" type="number" value="1" min="0" max="10" step="0.5" style="width:60px"></div>
                   <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Inicio (opc.)</label><input class="ord-input" id="cfg-asesor-inicio" type="date" style="width:130px" title="Fecha en que empezó (para pro-rateo de su primera quincena)"></div>
@@ -3210,7 +3210,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="Am&eacute;ricas">Am&eacute;ricas</option>
                 <option value="Pinocelli">Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
-                <option value="Plaza V&iacute;a Vittoria">Plaza V&iacute;a Vittoria</option>
+                <option value="Plaza V&iacute;a Vittoria">V&iacute;a Vittoria</option>
               </select>
               <select class="ord-input" id="wcrm-filtro-campana" onchange="filtrarWaCrm()" style="font-size:12px;padding:8px 12px;min-width:130px">
                 <option value="">Todas las campa&ntilde;as</option>
@@ -3575,7 +3575,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                       </div>
                       <div class="fg" style="margin-bottom:0"><label style="font-size:10px">🏪 Entrega en</label>
                         <select id="vta-sucursal-entrega" style="width:100%;padding:7px 8px;font-size:11px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
-                          <option value="">— Sucursal —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+                          <option value="">— Sucursal —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option>
                         </select>
                       </div>
                     </div>
@@ -3635,7 +3635,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   </div>
                   <input type="checkbox" id="vta-recoger-otra" style="display:none">
                   <select id="vta-recoger-suc" style="display:none;width:100%;margin-top:6px;padding:8px;font-size:12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white);font-family:'Outfit',sans-serif">
-                    <option value="">— Sucursal de recogida —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+                    <option value="">— Sucursal de recogida —</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option>
                   </select>
                   <div id="hint-vs-pos-wrap"></div>
                   <div id="hint-recoger-pos-wrap"></div>
@@ -3932,7 +3932,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               <option value="Américas">Américas</option>
               <option value="Pinocelli">Pinocelli</option>
               <option value="Magnolia">Magnolia</option>
-              <option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+              <option value="Plaza Vía Vittoria">Vía Vittoria</option>
             </select>
             <button class="btn btn-g btn-sm" onclick="initCaja()">🔄</button>
           </div>
@@ -4079,7 +4079,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <option value="Américas">Américas</option>
                 <option value="Pinocelli">Pinocelli</option>
                 <option value="Magnolia">Magnolia</option>
-                <option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+                <option value="Plaza Vía Vittoria">Vía Vittoria</option>
               </select>
             </div>
             <div id="caja-hist-resumen" style="margin-bottom:12px"></div>
@@ -4098,7 +4098,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div id="cred-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px"></div>
           <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
             <div style="position:relative;flex:1;min-width:150px"><input class="ord-input" id="cred-search" oninput="renderCreditos()" placeholder="Buscar por nombre o telefono..." style="padding-left:32px;font-size:12px"><span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;opacity:.4">&#128269;</span></div>
-            <select id="cred-suc-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todas</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option></select>
+            <select id="cred-suc-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todas</option><option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option></select>
             <select id="cred-estado-filter" onchange="renderCreditos()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:7px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none"><option value="">Todos</option><option value="pendiente">Pendientes</option><option value="pagado">Pagados</option></select>
           </div>
           <div id="cred-list" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -4119,7 +4119,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:end">
             <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Sucursal</label>
               <select id="com-sucursal" onchange="calcularComisiones()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 11px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
-                <option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza Vía Vittoria</option>
+                <option value="Américas">Américas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Vía Vittoria</option>
               </select>
             </div>
             <div class="fg" style="margin-bottom:0"><label style="font-size:10px;color:var(--muted)">Quincena</label>
@@ -4193,7 +4193,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
               </select>
               <select id="lc-filtro-suc" onchange="filtrarLcCrm()" style="background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:9px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
                 <option value="">Todas las sucursales</option>
-                <option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">Plaza V&iacute;a Vittoria</option><option value="Online">Online</option>
+                <option value="Américas">Am&eacute;ricas</option><option value="Pinocelli">Pinocelli</option><option value="Magnolia">Magnolia</option><option value="Plaza Vía Vittoria">V&iacute;a Vittoria</option><option value="Online">Online</option>
               </select>
             </div>
             <div id="lc-list" style="display:grid;gap:6px"></div>
@@ -6657,7 +6657,7 @@ function renderLabCard(o, esOptica) {
   }
   const revisadoTag = revisadoPor ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(114,196,126,0.12);border-radius:10px;font-size:10px;color:#72c47e">\ud83d\udc41 ${revisadoPor}</span>` : '';
   const sucTag = o.sucursal && currentUser?.rol !== 'sucursal'
-    ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(226,198,166,0.12);border-radius:10px;font-size:10px;color:var(--beige)">${o.sucursal}</span>` : '';
+    ? `<span style="margin-left:6px;padding:2px 7px;background:rgba(226,198,166,0.12);border-radius:10px;font-size:10px;color:var(--beige)">${_sucDisplay(o.sucursal)}</span>` : '';
   // Pedido tra\u00eddo de OTRA sucursal (traslado) \u2192 distintivo visible para todos (incl. rol sucursal)
   const trasMatch = notas.match(/TRASLADO desde\s*([^|]+)/i);
   const trasladoTag = trasMatch
@@ -7366,7 +7366,7 @@ async function _renderEntregaResultados(ordenes, ventaData) {
       _entHayOtra = true;
       h += '<div style="padding:10px 12px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);border-radius:8px;margin-bottom:6px">';
       h += '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + desc + '</div>';
-      h += '<div style="font-size:10px;color:#38bdf8;font-weight:600">📍 Pedido de ' + o.sucursal + ' · ' + fechaO + '</div></div>';
+      h += '<div style="font-size:10px;color:#38bdf8;font-weight:600">📍 Pedido de ' + _sucDisplay(o.sucursal) + ' · ' + fechaO + '</div></div>';
       h += '<span style="font-size:10px;font-weight:700;color:' + c + ';background:' + c + '18;padding:3px 8px;border-radius:6px;white-space:nowrap">' + st + '</span></div>';
       h += '<div style="margin-top:8px;font-size:11px;color:#38bdf8;background:rgba(56,189,248,0.08);border-radius:6px;padding:7px 9px">Este pedido es de otra sucursal. Recíbelo primero en <strong>Bitácora de Pedidos → 📥 Recibir de otra sucursal</strong> y luego entrégalo aquí.</div>';
       h += '</div>';
@@ -7571,7 +7571,7 @@ function _recOtraRender(ordenes, query) {
     var fecha = new Date(o.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
     h += '<div style="padding:10px 12px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.25);border-radius:8px;margin-bottom:8px">';
     h += '<div style="font-size:13px;color:var(--white);font-weight:600">' + nom + '</div>';
-    h += '<div style="font-size:11px;color:#38bdf8">📍 Folio ' + fb + ' · de ' + o.sucursal + ' · ' + fecha + '</div>';
+    h += '<div style="font-size:11px;color:#38bdf8">📍 Folio ' + fb + ' · de ' + _sucDisplay(o.sucursal) + ' · ' + fecha + '</div>';
     h += '<button onclick="_recOtraRecibir(\'' + o.id + '\')" style="width:100%;margin-top:8px;padding:9px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);border-radius:8px;color:#38bdf8;font-size:12px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">📥 Recibir en mi sucursal</button>';
     h += '</div>';
   });
@@ -8820,7 +8820,7 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
   section = { set innerHTML(h) { _setDashSection('dash-caja-section', h); } };
   try {
     var [{data:pagosHoy},{data:abonosHoy}] = await Promise.all([
-      db.from('venta_pagos').select('monto,metodo_pago,recibido_por,created_at,ventas(folio,sucursal,estado,pacientes(nombre,apellidos))').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(30),
+      db.from('venta_pagos').select('monto,metodo_pago,recibido_por,created_at,ventas(folio,sucursal,estado,created_at,pacientes(nombre,apellidos))').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(30),
       db.from('creditos_abonos').select('monto,metodo_pago,registrado_por,sucursal,created_at').gte('created_at',utcStart).lte('created_at',utcEnd).order('created_at',{ascending:false}).limit(15)
     ]);
     // Excluir pagos de ventas canceladas (el efectivo se devolvió, no debe contar como ingreso)
@@ -8846,7 +8846,9 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
     var movimientos = [];
     pagosHoy.forEach(function(p) {
       var pac = p.ventas?.pacientes ? (p.ventas.pacientes.nombre+' '+(p.ventas.pacientes.apellidos||'')).trim() : '';
-      movimientos.push({ hora: new Date(p.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}), tipo: 'Venta', folio: p.ventas?.folio||'', pac: pac, suc: p.ventas?.sucursal||'', metodo: p.metodo_pago, monto: Number(p.monto), t: new Date(p.created_at).getTime() });
+      // Venta vs Abono (v505): pago >15 min después de creada la venta = abono a venta existente
+      var esAbono = p.ventas?.created_at && (new Date(p.created_at).getTime() - new Date(p.ventas.created_at).getTime()) > 15 * 60 * 1000;
+      movimientos.push({ hora: new Date(p.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}), tipo: esAbono ? 'Abono' : 'Venta', folio: p.ventas?.folio||'', pac: pac, suc: p.ventas?.sucursal||'', metodo: p.metodo_pago, monto: Number(p.monto), t: new Date(p.created_at).getTime() });
     });
     abonosHoy.forEach(function(a) {
       movimientos.push({ hora: new Date(a.created_at).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}), tipo: 'Abono', folio: '', pac: '', suc: a.sucursal||'', metodo: a.metodo_pago||'efectivo', monto: Number(a.monto), t: new Date(a.created_at).getTime() });
@@ -8859,8 +8861,8 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
     movimientos.slice(0,25).forEach(function(m) {
       ch += '<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:11px">';
       ch += '<span style="color:var(--muted);min-width:36px">'+m.hora+'</span>';
-      ch += '<span style="color:'+(sucC2[m.suc]||'#888')+';min-width:28px;font-weight:600">'+(m.suc||'—').slice(0,3)+'</span>';
-      ch += '<span style="color:var(--muted);min-width:40px">'+m.tipo+'</span>';
+      ch += '<span style="color:'+(sucC2[m.suc]||'#888')+';min-width:28px;font-weight:600">'+({'Plaza Vía Vittoria':'Vit'}[m.suc] || (m.suc||'—').slice(0,3))+'</span>';
+      ch += '<span style="color:'+(m.tipo==='Abono'?'#8ab0e8':'var(--muted)')+';min-width:40px">'+m.tipo+'</span>';
       if (m.folio) ch += '<span style="color:var(--beige);font-weight:600;min-width:55px">'+m.folio+'</span>';
       if (m.pac) ch += '<span style="flex:1;color:var(--white);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.pac+'</span>';
       else ch += '<span style="flex:1"></span>';
@@ -8993,7 +8995,7 @@ function abrirConteoFisico() {
             '<option value="Américas"'+(suc==='Américas'?' selected':'')+'>Américas</option>' +
             '<option value="Pinocelli"'+(suc==='Pinocelli'?' selected':'')+'>Pinocelli</option>' +
             '<option value="Magnolia"'+(suc==='Magnolia'?' selected':'')+'>Magnolia</option>' +
-            '<option value="Plaza Vía Vittoria"'+(suc==='Plaza Vía Vittoria'?' selected':'')+'>Plaza Vía Vittoria</option>' +
+            '<option value="Plaza Vía Vittoria"'+(suc==='Plaza Vía Vittoria'?' selected':'')+'>Vía Vittoria</option>' +
           '</select>' +
         '</div>') +
       '<div style="display:flex;gap:8px;margin-bottom:16px">' +
@@ -9764,7 +9766,7 @@ async function _audRenderResumen() {
         var pac = ((o.pacientes?.nombre||'')+ ' '+(o.pacientes?.apellidos||'')).trim() || '—';
         var dias = Math.floor((now.getTime() - new Date(o.created_at).getTime()) / 86400000);
         var color = dias > 3 ? '#e08080' : dias > 1 ? '#d4b84a' : '#72c47e';
-        h += '<tr><td style="font-weight:600">'+folio+'</td><td>'+pac+'</td><td>'+o.sucursal+'</td>';
+        h += '<tr><td style="font-weight:600">'+folio+'</td><td>'+pac+'</td><td>'+_sucDisplay(o.sucursal)+'</td>';
         h += '<td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:'+(o.estado_lab==='Listo para entrega'?'rgba(114,196,126,0.1)':'rgba(180,138,212,0.1)')+';color:'+(o.estado_lab==='Listo para entrega'?'#72c47e':'#b48ad4')+'">'+o.estado_lab+'</span></td>';
         h += '<td style="color:'+color+';font-weight:600">'+dias+'d</td></tr>';
       });
@@ -9819,19 +9821,19 @@ async function _audRenderAnomalias() {
       if (sinCobrar.length) {
         h += '<div style="font-size:11px;font-weight:600;color:#e08080;margin:8px 0 4px">⚠️ Entregados sin cobrar</div>';
         sinCobrar.forEach(function(a) {
-          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — Saldo: $'+(a.saldo||0).toLocaleString('es-MX')+' ('+a.sucursal+')</div>';
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — Saldo: $'+(a.saldo||0).toLocaleString('es-MX')+' ('+_sucDisplay(a.sucursal)+')</div>';
         });
       }
       if (sinQC.length) {
         h += '<div style="font-size:11px;font-weight:600;color:#d4b84a;margin:8px 0 4px">🔍 Sin revisión de calidad</div>';
         sinQC.forEach(function(a) {
-          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' ('+a.sucursal+')</div>';
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' ('+_sucDisplay(a.sucursal)+')</div>';
         });
       }
       if (espera.length) {
         h += '<div style="font-size:11px;font-weight:600;color:#8ab0e8;margin:8px 0 4px">⏰ Esperando >3 días</div>';
         espera.forEach(function(a) {
-          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — '+a.dias+'d en "'+a.estado_lab+'" ('+a.sucursal+')</div>';
+          h += '<div style="font-size:12px;color:var(--muted);padding:3px 0">• '+a.folio+' — '+(a.paciente||'')+' — '+a.dias+'d en "'+a.estado_lab+'" ('+_sucDisplay(a.sucursal)+')</div>';
         });
       }
       h += '</div></details>';
@@ -9875,7 +9877,7 @@ async function _audRenderConteos() {
       h += '<details style="margin-bottom:10px;background:var(--surface2);border-radius:10px;overflow:hidden">';
       h += '<summary style="padding:12px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
       h += '<span style="font-weight:600;color:var(--white)">'+fecha+'</span>';
-      h += '<span style="font-size:11px;color:var(--muted)">'+c.sucursal+' · '+c.realizado_por+'</span>';
+      h += '<span style="font-size:11px;color:var(--muted)">'+_sucDisplay(c.sucursal)+' · '+c.realizado_por+'</span>';
       var sinCobrar = d.entregados_sin_cobrar?.length || d.sin_cobrar_count || 0;
       h += '<span style="margin-left:auto;display:flex;gap:6px">';
       h += '<span style="font-size:10px;color:#72c47e">✅'+ok+'</span>';
@@ -14651,7 +14653,7 @@ function prodRow(o, actions, extra) {
       <div class="lp-row-top">
         <span class="lp-row-folio">${folio||'S/F'}</span>
         <span class="lp-row-name">${primerNombre}</span>
-        ${o.sucursal?`<span class="lp-row-suc">${o.sucursal}</span>`:''}
+        ${o.sucursal?`<span class="lp-row-suc">${_sucDisplay(o.sucursal)}</span>`:''}
         ${esUrgente?'<span class="lp-row-urg">⚡ URGENTE</span>':''}
       </div>
       <div class="lp-row-sub">${o.tipo_lente||''} · ${o.material||''}${o.tratamiento?' · '+o.tratamiento:''}${extra||''}</div>
@@ -15152,7 +15154,7 @@ async function _buscarFolioParaLigar(orderId, folioActual) {
   if (ventaEncontrada) {
     var isSicar = ventaEncontrada.tipo === 'sicar';
     infoEl.innerHTML = '<div style="color:var(--white);font-weight:600">' + ventaEncontrada.folio + ' — ' + ventaEncontrada.nombre + '</div>'
-      + '<div style="color:var(--muted);font-size:11px">' + ventaEncontrada.sucursal + ' · Total: $' + Number(ventaEncontrada.total).toFixed(2) + (isSicar ? ' · <span style="color:#8ab0e8">SICAR (sin comparación de precios)</span>' : '') + '</div>'
+      + '<div style="color:var(--muted);font-size:11px">' + _sucDisplay(ventaEncontrada.sucursal) + ' · Total: $' + Number(ventaEncontrada.total).toFixed(2) + (isSicar ? ' · <span style="color:#8ab0e8">SICAR (sin comparación de precios)</span>' : '') + '</div>'
       + (ventaEncontrada.maxArm > 0 ? '<div style="color:var(--muted);font-size:10px;margin-top:4px">Precio máx armazón: $' + ventaEncontrada.maxArm.toFixed(2) + ' · Material: $' + ventaEncontrada.maxMat.toFixed(2) + '</div>' : '')
       + '<div style="color:var(--beige);font-size:11px;margin-top:4px">Nuevo folio: <b>' + nuevoFolio + '</b></div>';
   } else {
@@ -18706,7 +18708,7 @@ function renderWaCrm() {
       if (c.hasReviewSent && !c.reviewOK && !c.needsAttention) badges += '<span class="wcrm-badge" style="background:#d4b84a22;color:#d4b84a;border:1px solid #d4b84a33">\ud83d\udce9 Encuesta</span>';
       if (c.needsAttention) badges += '<span class="wcrm-badge" style="background:#e0808022;color:#e08080;border:1px solid #e0808033">\u26a0\ufe0f Atenci\u00f3n</span>';
       if (c.lc && c.lc.length) badges += '<span class="wcrm-badge" style="background:#8ab0e822;color:#8ab0e8;border:1px solid #8ab0e833">\ud83d\udc41 LC</span>';
-      if (c.sucursal) badges += '<span class="wcrm-badge" style="background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid rgba(255,255,255,0.08)">' + c.sucursal + '</span>';
+      if (c.sucursal) badges += '<span class="wcrm-badge" style="background:rgba(255,255,255,0.05);color:var(--muted);border:1px solid rgba(255,255,255,0.08)">' + _sucDisplay(c.sucursal) + '</span>';
       if (badges) html += '<div style="margin-top:4px">' + badges + '</div>';
 
       html += '</div>';
@@ -20305,7 +20307,7 @@ async function buscarOrdenGarantia() {
       var nombre = pac ? (pac.nombre + ' ' + (pac.apellidos||'')).trim() : '—';
       html += '<div onclick="iniciarGarantiaSicar(\'' + sc.id + '\')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04)" onmouseover="this.style.background=\'rgba(138,176,232,0.06)\'" onmouseout="this.style.background=\'\'">';
       html += '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--white)">SICAR-' + (sc.folio_sicar||'') + ' — ' + nombre + '</div>';
-      html += '<div style="font-size:11px;color:var(--muted)">' + sc.sucursal + ' · $' + Number(sc.total).toFixed(2) + '</div></div>';
+      html += '<div style="font-size:11px;color:var(--muted)">' + _sucDisplay(sc.sucursal) + ' · $' + Number(sc.total).toFixed(2) + '</div></div>';
       html += '<span style="font-size:10px;padding:2px 6px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:6px">SICAR</span>';
       html += '</div>';
     });
@@ -20481,7 +20483,7 @@ async function iniciarGarantiaSicar(creditoId) {
   ov.innerHTML = '<div class="modal" style="max-width:440px;padding:24px">'
     + '<div style="text-align:center;font-size:24px;margin-bottom:8px">🛡️</div>'
     + '<div style="text-align:center;font-size:15px;font-weight:700;color:var(--white);margin-bottom:4px">Garantía SICAR — ' + (cc.folio_sicar||'') + '</div>'
-    + '<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">' + nombre + ' · ' + cc.sucursal + '</div>'
+    + '<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">' + nombre + ' · ' + _sucDisplay(cc.sucursal) + '</div>'
     + '<div style="background:rgba(138,176,232,0.06);border:1px solid rgba(138,176,232,0.15);border-radius:10px;padding:12px;margin-bottom:16px;font-size:12px;color:#8ab0e8">⚠️ Los folios SICAR no tienen historia clínica en el sistema. Para procesar la garantía se requiere actualizar los datos del paciente.</div>'
     + '<div style="margin-bottom:12px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Teléfono del paciente *</label>'
     + '<input id="gta-sicar-tel" value="' + tel + '" placeholder="10 dígitos" style="width:100%;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:10px;color:var(--white);font-family:Outfit,sans-serif;font-size:14px;outline:none;box-sizing:border-box"></div>'
@@ -20546,7 +20548,7 @@ async function _confirmarGarantiaSicar(creditoId, overlay) {
     + '<span style="font-size:11px;padding:2px 8px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:8px">SICAR</span>'
     + '</div><div style="font-size:13px;color:var(--white);font-weight:600">' + nombre + '</div>'
     + '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + tel + '</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">Fecha compra: ' + fecha + ' · ' + cc.sucursal + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">Fecha compra: ' + fecha + ' · ' + _sucDisplay(cc.sucursal) + '</div>'
     + (hcVal==='si'?'<div style="font-size:10px;color:#72c47e;margin-top:4px">✅ HC actualizada</div>':'<div style="font-size:10px;color:#e08080;margin-top:4px">⚠️ HC no actualizada</div>');
 
   document.getElementById('gta-rx-anterior').innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px">Sin Rx anterior (folio SICAR). Ingresa la Rx nueva en el formulario de garantía.</div>';
@@ -22894,12 +22896,12 @@ function filtrarHistVentas() {
     const canalTag = isOnline && v.canal_venta ? '<span style="font-size:8px;padding:1px 5px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px;margin-left:2px">'+v.canal_venta+'</span>' : '';
     const clickAction = isSicar ? "verDetalleSicar('"+v._credito_id+"')" : "verDetalleVenta('"+v.id+"')";
     const borderColor = isSicar?'rgba(138,176,232,0.12)':isOnline?'rgba(56,189,248,0.12)':sp?'rgba(212,184,74,0.12)':'rgba(255,255,255,0.04)';
-    const onlineEntrega = isOnline && v.sucursal_entrega ? ' · 🏪 '+v.sucursal_entrega : '';
+    const onlineEntrega = isOnline && v.sucursal_entrega ? ' · 🏪 '+_sucDisplay(v.sucursal_entrega) : '';
     return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid ${borderColor};border-radius:10px;cursor:pointer;transition:border-color .12s" onmouseover="this.style.borderColor='rgba(226,198,166,0.2)'" onmouseout="this.style.borderColor='${borderColor}'" onclick="${clickAction}">
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:13px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">${v.folio}</span><span style="font-size:9px;padding:2px 6px;background:${c}15;color:${c};border-radius:5px;font-weight:600">${v.estado}</span>${sucTag}${sicarTag}${onlineTag}${canalTag}${Number(v.monedero_usado)>0?'<span style="font-size:9px;padding:2px 5px;background:rgba(114,196,126,0.1);color:#72c47e;border-radius:5px">🪙</span>':''}</div>
         <div style="font-size:11px;color:var(--white);margin-top:1px">${pac}</div>
-        <div style="font-size:10px;color:var(--muted)">${fecha}${isSicar?' · '+v.sucursal:' · '+(v.asesor||'—')}${onlineEntrega}</div>
+        <div style="font-size:10px;color:var(--muted)">${fecha}${isSicar?' · '+_sucDisplay(v.sucursal):' · '+(v.asesor||'—')}${onlineEntrega}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:15px;font-weight:700;color:${isSicar?'#8ab0e8':isOnline?'#38bdf8':'var(--beige)'}">$${Number(v.total).toFixed(2)}</div>
@@ -22950,7 +22952,7 @@ function renderDetalleVenta() {
   const c=EC[v.estado]||'#888';
   document.getElementById('mvta-title').textContent=v.folio;
   const entregaStr = v.fecha_entrega ? new Date(v.fecha_entrega+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'long'}) : '';
-  const onlineInfo = v.sucursal === 'Online' ? `<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.12);color:#38bdf8;border-radius:4px;font-weight:700">🌐 Venta Online</span>${v.canal_venta?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">'+v.canal_venta+'</span>':''}${v.sucursal_entrega?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">🏪 Recoger: '+v.sucursal_entrega+'</span>':''}</div>` : '';
+  const onlineInfo = v.sucursal === 'Online' ? `<div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.12);color:#38bdf8;border-radius:4px;font-weight:700">🌐 Venta Online</span>${v.canal_venta?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">'+v.canal_venta+'</span>':''}${v.sucursal_entrega?'<span style="font-size:9px;padding:2px 6px;background:rgba(56,189,248,0.08);color:#38bdf8;border-radius:4px">🏪 Recoger: '+_sucDisplay(v.sucursal_entrega)+'</span>':''}</div>` : '';
   // Extraer motivo de cancelación de notas si existe
   let cancelInfo = '';
   if (v.estado === 'Cancelada' && v.notas) {
@@ -23072,7 +23074,7 @@ async function abrirAsignarPromoRetroactiva(ventaId) {
     sel.innerHTML = _asgPromosActivas.map(p => `<option value="${p.id}">${p.nombre} (${p.folios_lab} pares)</option>`).join('');
 
     document.getElementById('asg-promo-venta-info').innerHTML =
-      `📋 Folio <strong>${v.folio}</strong> · ${v.sucursal} · Total $${Number(v.total).toFixed(2)} (descuento $${Number(v.descuento || 0).toFixed(2)})<br>` +
+      `📋 Folio <strong>${v.folio}</strong> · ${_sucDisplay(v.sucursal)} · Total $${Number(v.total).toFixed(2)} (descuento $${Number(v.descuento || 0).toFixed(2)})<br>` +
       `Paciente titular: <strong>${(v.pacientes?.nombre || '') + ' ' + (v.pacientes?.apellidos || '')}</strong>`;
 
     renderAsignarPromoSlots();
@@ -23590,7 +23592,7 @@ function renderDetalleVentaSicar() {
   var pct = total > 0 ? Math.min(100, Math.round((pagado / total) * 100)) : 0;
   var c = saldo > 0 ? '#d4b84a' : '#72c47e';
   document.getElementById('mvta-title').textContent = v.folio;
-  document.getElementById('mvta-info').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div><div style="font-size:14px;font-weight:600;color:var(--white)">' + pac + '</div><div style="font-size:11px;color:var(--muted)">' + fecha + ' · ' + v.sucursal + '</div></div><span style="font-size:10px;padding:3px 8px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:5px;font-weight:600">CRÉDITO SICAR</span></div>';
+  document.getElementById('mvta-info').innerHTML = '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px"><div><div style="font-size:14px;font-weight:600;color:var(--white)">' + pac + '</div><div style="font-size:11px;color:var(--muted)">' + fecha + ' · ' + _sucDisplay(v.sucursal) + '</div></div><span style="font-size:10px;padding:3px 8px;background:rgba(138,176,232,0.15);color:#8ab0e8;border-radius:5px;font-weight:600">CRÉDITO SICAR</span></div>';
   document.getElementById('mvta-pagado').textContent = '$' + pagado.toFixed(2);
   document.getElementById('mvta-saldo').textContent = '$' + saldo.toFixed(2);
   document.getElementById('mvta-total-bar').textContent = '$' + total.toFixed(2);
@@ -23771,7 +23773,7 @@ function imprimirComprobanteAbono() {
 <div class="r sm"><span>Folio:</span><span class="b">${ab.folio}</span></div>
 <div class="r sm"><span>Fecha:</span><span>${fechaStr}</span></div>
 <div class="r sm"><span>Cliente:</span><span>${pac}</span></div>
-${v.sucursal ? `<div class="r sm"><span>Sucursal:</span><span>${v.sucursal}</span></div>` : ''}
+${v.sucursal ? `<div class="r sm"><span>Sucursal:</span><span>${_sucDisplay(v.sucursal)}</span></div>` : ''}
 <div class="r sm"><span>Recibió:</span><span>${currentUser?.nombre || '—'}</span></div>
 <div class="sep thick"></div>
 <div class="r big"><span>ABONO</span><span>$${ab.monto.toFixed(2)}</span></div>
@@ -23821,7 +23823,7 @@ function reimprimirAbono(idx) {
     + '<div class="r sm"><span>Folio:</span><span class="b">' + (v.folio||'—') + '</span></div>'
     + '<div class="r sm"><span>Fecha:</span><span>' + fechaStr + '</span></div>'
     + '<div class="r sm"><span>Cliente:</span><span>' + pac + '</span></div>'
-    + (v.sucursal ? '<div class="r sm"><span>Sucursal:</span><span>' + v.sucursal + '</span></div>' : '')
+    + (v.sucursal ? '<div class="r sm"><span>Sucursal:</span><span>' + _sucDisplay(v.sucursal) + '</span></div>' : '')
     + '<div class="r sm"><span>Recibió:</span><span>' + (p.recibido_por || '—') + '</span></div>'
     + '<div class="sep thick"></div>'
     + '<div class="r big"><span>' + lbl + '</span><span>$' + Number(p.monto).toFixed(2) + '</span></div>'
@@ -24752,7 +24754,7 @@ function _renderCortesCards(cortes, showSucName, sucColors) {
     h += '<div style="display:flex;align-items:center;gap:6px">';
     h += '<span style="font-size:12px">'+dIcon+'</span>';
     h += '<div><div style="font-size:12px;font-weight:600;color:var(--white)">'+diaNombre+' '+c.fecha.slice(5)+'</div>';
-    h += '<div style="font-size:10px;color:var(--muted)">'+(showSucName?'<span style="color:'+sucColor+'">'+c.sucursal+'</span> · ':'')+(c.cortado_por||'')+' · '+hc+' · '+c.num_ventas+' vtas · $'+tvta.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>';
+    h += '<div style="font-size:10px;color:var(--muted)">'+(showSucName?'<span style="color:'+sucColor+'">'+_sucDisplay(c.sucursal)+'</span> · ':'')+(c.cortado_por||'')+' · '+hc+' · '+c.num_ventas+' vtas · $'+tvta.toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:0})+'</div></div>';
     h += '</div>';
     h += '<div style="text-align:right">';
     h += '<div style="font-size:13px;font-weight:700;color:'+dColor+'">$'+Math.abs(d).toFixed(2)+'</div>';
@@ -24812,7 +24814,7 @@ async function verDetalleCorte(corteId) {
     var suc = c.sucursal;
     var [mvVentas, mvPagos, mvCreditos, mvRetiros] = await Promise.all([
       db.from('ventas').select('folio,total,pagado,saldo,estado,created_at,pacientes(nombre,apellidos)').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
-      db.from('venta_pagos').select('venta_folio,metodo_pago,monto,referencia,created_at').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
+      db.from('venta_pagos').select('metodo_pago,monto,referencia,created_at,ventas(folio,created_at)').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
       db.from('creditos_abonos').select('monto,metodo_pago,referencia,created_at,creditos_clientes(folio_sicar,pacientes(nombre,apellidos))').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at'),
       db.from('retiros_caja').select('monto,observaciones,registrado_por,created_at').gte('created_at',utcS).lte('created_at',utcE).eq('sucursal',suc).order('created_at')
     ]);
@@ -24829,7 +24831,7 @@ async function verDetalleCorte(corteId) {
     var h = '';
     h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
     h += '<div><div style="font-size:16px;font-weight:700;color:var(--white)">Corte de Caja</div>';
-    h += '<div style="font-size:11px;color:var(--muted)">' + c.sucursal + ' · ' + c.fecha + ' · ' + hc + '</div>';
+    h += '<div style="font-size:11px;color:var(--muted)">' + _sucDisplay(c.sucursal) + ' · ' + c.fecha + ' · ' + hc + '</div>';
     h += '<div style="font-size:11px;color:var(--muted)">Realizó: ' + (c.cortado_por||'') + '</div></div>';
     h += '<div style="text-align:right"><div style="font-size:18px;font-weight:700;color:'+dNetaColor+'">'+diffNetaTxt+'</div></div>';
     h += '</div>';
@@ -24952,7 +24954,11 @@ async function verDetalleCorte(corteId) {
     }
     // -- Sub: Pagos recibidos (venta_pagos + creditos_abonos merged) --
     var allPagos = [];
-    pagos.forEach(function(p) { allPagos.push({hora:p.created_at, folio:p.venta_folio, metodo:p.metodo_pago, monto:p.monto, ref:p.referencia||'', tipo:'venta'}); });
+    pagos.forEach(function(p) {
+      // Venta vs Abono (v505): pago >15 min después de creada la venta = abono a venta existente
+      var esAbono = p.ventas?.created_at && (new Date(p.created_at).getTime() - new Date(p.ventas.created_at).getTime()) > 15 * 60 * 1000;
+      allPagos.push({hora:p.created_at, folio:p.ventas?.folio || '—', metodo:p.metodo_pago, monto:p.monto, ref:p.referencia||'', tipo: esAbono ? 'abono' : 'venta'});
+    });
     creditos.forEach(function(cr) {
       var folioSicar = cr.creditos_clientes ? cr.creditos_clientes.folio_sicar : '';
       var pacCr = cr.creditos_clientes && cr.creditos_clientes.pacientes ? (cr.creditos_clientes.pacientes.nombre||'')+' '+(cr.creditos_clientes.pacientes.apellidos||'') : '';
@@ -24966,6 +24972,9 @@ async function verDetalleCorte(corteId) {
       h += '<tr style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.05em"><th style="text-align:left;padding:4px">Hora</th><th style="text-align:left;padding:4px">Folio</th><th style="text-align:center;padding:4px">Método</th><th style="text-align:right;padding:4px">Monto</th><th style="text-align:left;padding:4px">Ref</th></tr>';
       allPagos.forEach(function(p) {
         var badge = p.tipo === 'sicar' ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(251,146,60,0.15);color:#fb923c;margin-left:3px">SICAR</span>' : '';
+        // Badge Venta/Abono (v505) — abono = pago posterior a la venta (o abono a crédito SICAR)
+        if (p.tipo === 'abono' || p.tipo === 'sicar') badge += '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(138,176,232,0.15);color:#8ab0e8;margin-left:3px">ABONO</span>';
+        else badge += '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:rgba(114,196,126,0.12);color:#72c47e;margin-left:3px">VENTA</span>';
         h += '<tr style="color:var(--white);border-bottom:1px solid rgba(255,255,255,0.02)">';
         h += '<td style="padding:3px 4px;white-space:nowrap">'+_fmtHora(p.hora)+'</td>';
         h += '<td style="padding:3px 4px;font-weight:600">'+p.folio+badge+'</td>';
@@ -25060,7 +25069,7 @@ async function reenviarCorte(corteId) {
 
   var hc = c.hora_corte ? new Date(c.hora_corte).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false}) : '';
   var msg = '💰 ' + (c.sucursal||'').toUpperCase() + ' - CORTE\n📍 ' + c.fecha + ' · ' + hc + ' ' + (c.cortado_por||'') + '\n📋 Ventas: ' + (c.num_ventas||0) + ' por $' + Number(c.total_ventas).toFixed(2) + ' (' + desgloseTxt + ')\n💵 Abonos: $' + Number(c.total_abonos).toFixed(2) + '\n💸 Retiros: $' + totalRet.toFixed(2) + '\n📊 ' + diffTxt + '\nCar & Era';
-  if (!confirm('¿Reenviar corte de ' + c.sucursal + ' (' + c.fecha + ') por WhatsApp?')) return;
+  if (!confirm('¿Reenviar corte de ' + _sucDisplay(c.sucursal) + ' (' + c.fecha + ') por WhatsApp?')) return;
   if (_actionBusy['reenviarCorte']) { toast('Ya se está reenviando...', true); return; }
   _actionBusy['reenviarCorte'] = true;
   toast('📲 Reenviando corte...');
@@ -25468,7 +25477,7 @@ function _abrirEntregaPendModal() {
       + '<div style="min-width:32px;text-align:center;font-size:14px;font-weight:800;color:' + diasColor + '">' + diasLabel + '</div>'
       + '<div style="flex:1;min-width:0">'
       + '<div style="font-size:13px;font-weight:600;color:var(--beige);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + o.nombre + '</div>'
-      + '<div style="font-size:11px;color:var(--muted)">Folio ' + o.folio + (isAdmin ? ' · ' + o.sucursal : '') + ' · Prometido: ' + o.fecha_entrega + '</div>'
+      + '<div style="font-size:11px;color:var(--muted)">Folio ' + o.folio + (isAdmin ? ' · ' + _sucDisplay(o.sucursal) : '') + ' · Prometido: ' + o.fecha_entrega + '</div>'
       + '</div>'
       + '<div style="display:flex;gap:4px;flex-shrink:0">'
       + '<button onclick="_marcarEntregadoPend(\'' + o.id + '\',this)" style="padding:5px 10px;background:rgba(114,196,126,0.15);color:#72c47e;border:1px solid rgba(114,196,126,0.3);border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Outfit,sans-serif;white-space:nowrap" title="Ya se entregó al cliente">🤝 Entregado</button>'
