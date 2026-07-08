@@ -6071,6 +6071,7 @@ function initRealtimeSubscriptions() {
           (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia')) {
         console.log('[🪙] Venta nueva vía Realtime:', payload?.new?.folio || payload?.new?.id || '');
         _playCoinSound();
+        _ventaLiveUpdate(payload?.new); // ⚡ card de ventas actualizado AL INSTANTE desde el payload (odómetro+barras+chispas)
       }
       // Recalcular alerta de efectivo en tiempo real
       if (_rtCashTables[t]) {
@@ -7939,7 +7940,183 @@ function _setDashSection(id, h) {
   if (!el) return;
   if (_dashSectionCache[id] === h) return; // sin cambios → no repintar
   _dashSectionCache[id] = h;
+  // Preservar los <details> abiertos a través del re-render (v507: que "Últimos movimientos" no se cierre solo)
+  var abiertos = Array.prototype.map.call(el.querySelectorAll('details'), function(d) { return d.open; });
   el.innerHTML = h;
+  Array.prototype.forEach.call(el.querySelectorAll('details'), function(d, i) { if (abiertos[i]) d.open = true; });
+}
+
+// ── ✨ ANIMACIÓN EN VIVO de "Ventas por sucursal hoy" (v506) ──
+// Al entrar una venta: la barra crece con transición, el monto sube tipo odómetro,
+// y la sucursal que vendió suelta CHISPAS + glow (también al instante de la moneda 🪙).
+var _vsucPrev = {}; // { sucursal: { monto, pct } } — valores del render anterior
+var _vsucReduced = function() { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; };
+
+function _vsucCountUp(el, from, to, dur) {
+  if (!el) return;
+  var t0 = performance.now();
+  function step(t) {
+    var k = Math.min(1, (t - t0) / dur);
+    k = 1 - Math.pow(1 - k, 3); // easeOutCubic
+    el.textContent = Math.round(from + (to - from) * k).toLocaleString('es-MX');
+    if (k < 1) requestAnimationFrame(step);
+    else el.textContent = Math.round(to).toLocaleString('es-MX');
+  }
+  requestAnimationFrame(step);
+}
+
+function _vsucSpark(row, barEl) {
+  try {
+    if (!row || _vsucReduced()) return;
+    // Glow del renglón (identifica la sucursal que acaba de vender)
+    var color = (barEl && barEl.getAttribute('data-color')) || '#d4b84a';
+    row.style.background = 'rgba(212,184,74,0.10)';
+    row.style.boxShadow = 'inset 0 0 0 1px ' + color + '55';
+    setTimeout(function() { row.style.background = ''; row.style.boxShadow = ''; }, 1400);
+    // Pop de la cifra
+    var cifra = row.querySelector('.vsuc-cifra');
+    if (cifra) { cifra.style.animation = 'none'; void cifra.offsetWidth; cifra.style.animation = 'vsucPop .6s cubic-bezier(.34,1.56,.64,1)'; }
+    // Chispas ✦ en la punta de la barra
+    var pct = parseFloat(barEl && barEl.getAttribute('data-pct')) || 0;
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:absolute;left:' + Math.min(Math.max(pct, 3), 96) + '%;bottom:16px;width:0;height:0;pointer-events:none;z-index:5';
+    for (var i = 0; i < 9; i++) {
+      var p = document.createElement('span');
+      var ang = (-15 - Math.random() * 150) * Math.PI / 180; // abanico hacia arriba
+      var dist = 14 + Math.random() * 24;
+      var dx = Math.cos(ang) * dist, dy = Math.sin(ang) * dist;
+      p.textContent = '✦';
+      p.style.cssText = 'position:absolute;left:0;top:0;font-size:' + (7 + Math.random() * 5).toFixed(0) + 'px;color:' + color + ';opacity:1;transform:translate(0,0) scale(.5);transition:transform .75s cubic-bezier(.17,.67,.35,1),opacity .8s ease-out;text-shadow:0 0 6px ' + color + '88';
+      wrap.appendChild(p);
+      (function(p, dx, dy) {
+        requestAnimationFrame(function() { requestAnimationFrame(function() {
+          p.style.transform = 'translate(' + dx.toFixed(0) + 'px,' + dy.toFixed(0) + 'px) scale(1.2)';
+          p.style.opacity = '0';
+        }); });
+      })(p, dx, dy);
+    }
+    row.appendChild(wrap);
+    setTimeout(function() { try { wrap.remove(); } catch(e) {} }, 1000);
+    // Keyframe del pop (una sola vez)
+    if (!document.getElementById('vsuc-css')) {
+      var st = document.createElement('style');
+      st.id = 'vsuc-css';
+      st.textContent = '@keyframes vsucPop{0%{transform:scale(1)}35%{transform:scale(1.16)}100%{transform:scale(1)}}';
+      document.head.appendChild(st);
+    }
+  } catch(e) {}
+}
+
+// ⚡ ACTUALIZACIÓN 100% EN TIEMPO REAL (v507): el payload del INSERT trae la venta completa
+// (sucursal, total, pagado) → se actualiza el card EN EL INSTANTE, sin esperar ningún refresh.
+// Odómetro + barras de TODAS las sucursales reacomodadas + chispas + cobrado/saldo, todo del evento.
+function _ventaLiveUpdate(v) {
+  try {
+    if (!v || !v.sucursal || v.estado === 'Cancelada') return;
+    var rows = document.querySelectorAll('.vsuc-row');
+    if (!rows.length) return; // dashboard no visible → el próximo loadDash lo trae
+    var suc = v.sucursal;
+    var seller = _vsucPrev[suc];
+    if (!seller) { _vsucSparkSolo(suc); return; } // sin snapshot aún → al menos la chispa
+    var nuevoMonto = seller.monto + (Number(v.total) || 0);
+    var nuevoCobrado = (seller.cobrado || 0) + (Number(v.pagado) || 0);
+    var nuevaN = (seller.n || 0) + 1;
+    // Total del día con la venta nueva → % de TODAS las barras se reacomoda
+    var totalDia = 0;
+    rows.forEach(function(r) { var s = r.getAttribute('data-vsuc'); totalDia += (s === suc ? nuevoMonto : ((_vsucPrev[s] || {}).monto || 0)); });
+    var fmt = function(n) { return Math.round(n).toLocaleString('es-MX'); };
+    rows.forEach(function(row) {
+      var s = row.getAttribute('data-vsuc');
+      var monto = s === suc ? nuevoMonto : ((_vsucPrev[s] || {}).monto || 0);
+      var pct = totalDia > 0 ? Math.round(monto / totalDia * 100) : 0;
+      var barEl = row.querySelector('.vsuc-bar');
+      if (barEl) { barEl.style.width = pct + '%'; barEl.setAttribute('data-pct', pct); } // transition inline anima sola
+      if (s === suc) {
+        var montoEl = row.querySelector('.vsuc-monto');
+        if (montoEl) {
+          if (_vsucReduced()) montoEl.textContent = fmt(nuevoMonto);
+          else _vsucCountUp(montoEl, seller.monto, nuevoMonto, 900);
+          montoEl.setAttribute('data-monto', nuevoMonto);
+        }
+        var nEl = row.querySelector('.vsuc-nventas');
+        if (nEl) { nEl.textContent = '(' + nuevaN + ' ventas)'; nEl.setAttribute('data-n', nuevaN); }
+        var cobEl = row.querySelector('.vsuc-cobrado');
+        if (cobEl) { cobEl.textContent = fmt(nuevoCobrado); cobEl.setAttribute('data-cobrado', nuevoCobrado); }
+        var salEl = row.querySelector('.vsuc-saldo');
+        if (salEl) salEl.textContent = fmt(nuevoMonto - nuevoCobrado);
+        _vsucSpark(row, barEl);
+        _vsucPrev[s] = { monto: nuevoMonto, pct: pct, cobrado: nuevoCobrado, n: nuevaN };
+      } else if (_vsucPrev[s]) {
+        _vsucPrev[s].pct = pct;
+      }
+    });
+  } catch(e) { console.warn('[VentaLive]', e); }
+}
+function _vsucSparkSolo(sucursal) {
+  try {
+    var row = document.querySelector('.vsuc-row[data-vsuc="' + (sucursal || '') + '"]');
+    if (row) _vsucSpark(row, row.querySelector('.vsuc-bar'));
+  } catch(e) {}
+}
+
+// 🧩 SWAP SUAVE del dashboard (v507): en vez de reemplazar TODO el body (parpadeo, se pierde
+// el estado de <details> abiertos), compara tarjeta por tarjeta y reemplaza SOLO las que cambiaron.
+// Los extras insertados fuera del render (checador, cumpleaños) y las secciones diferidas se saltan.
+function _softSwapDash(body, newHTML) {
+  try {
+    var EXTRAS = { 'dash-checador': 1, 'dash-cumple-emp': 1 };
+    var MANAGED = { 'dash-caja-section': 1, 'dash-audit-section': 1 }; // las llena su loader (con caché propia)
+    var tpl = document.createElement('template');
+    tpl.innerHTML = newHTML;
+    var nuevos = Array.prototype.slice.call(tpl.content.children);
+    var viejos = Array.prototype.filter.call(body.children, function(el) { return !EXTRAS[el.id]; });
+    if (viejos.length !== nuevos.length) { body.innerHTML = newHTML; return 'full'; }
+    var cambiados = 0;
+    for (var i = 0; i < nuevos.length; i++) {
+      if (MANAGED[viejos[i].id] || MANAGED[nuevos[i].id]) continue; // su loader las mantiene al día
+      if (viejos[i].outerHTML !== nuevos[i].outerHTML) { viejos[i].replaceWith(nuevos[i]); cambiados++; }
+    }
+    return 'soft:' + cambiados;
+  } catch(e) { body.innerHTML = newHTML; return 'full-err'; }
+}
+
+// Pasada post-render: compara contra el render anterior y anima solo lo que cambió
+function _animarVentasSucursal() {
+  try {
+    var rows = document.querySelectorAll('.vsuc-row');
+    if (!rows.length) return;
+    var reduced = _vsucReduced();
+    rows.forEach(function(row) {
+      var suc = row.getAttribute('data-vsuc');
+      var montoEl = row.querySelector('.vsuc-monto');
+      var barEl = row.querySelector('.vsuc-bar');
+      var monto = parseFloat(montoEl && montoEl.getAttribute('data-monto')) || 0;
+      var pct = parseFloat(barEl && barEl.getAttribute('data-pct')) || 0;
+      var prev = _vsucPrev[suc];
+      if (prev && !reduced) {
+        // Barra: arrancar desde el ancho anterior y transicionar al nuevo (el repintado la deja ya en el final)
+        if (barEl && prev.pct !== pct) {
+          barEl.style.transition = 'none';
+          barEl.style.width = prev.pct + '%';
+          void barEl.offsetWidth; // reflow para que la transición aplique
+          barEl.style.transition = 'width .9s cubic-bezier(.22,1,.36,1)';
+          barEl.style.width = pct + '%';
+        }
+        // Monto: odómetro + chispas solo si SUBIÓ
+        if (monto !== prev.monto) {
+          _vsucCountUp(montoEl, prev.monto, monto, 900);
+          if (monto > prev.monto) _vsucSpark(row, barEl);
+        }
+      }
+      var nEl = row.querySelector('.vsuc-nventas');
+      var cobEl = row.querySelector('.vsuc-cobrado');
+      _vsucPrev[suc] = {
+        monto: monto, pct: pct,
+        n: parseInt(nEl && nEl.getAttribute('data-n')) || 0,
+        cobrado: parseFloat(cobEl && cobEl.getAttribute('data-cobrado')) || 0
+      };
+    });
+  } catch(e) {}
 }
 async function loadDash() {
   var rol = currentUser?.rol || 'sucursal';
@@ -7989,8 +8166,12 @@ async function loadDash() {
   // el refresco de 2 min y los eventos Realtime solo redibujan cuando hay datos nuevos
   if (_dashHTML !== _dashLastHTML) {
     _dashLastHTML = _dashHTML;
-    body.innerHTML = _dashHTML;
-    _dashSectionCache = {}; // el repintado deja las secciones diferidas en cascarón → deben re-escribirse
+    // v507: swap SUAVE tarjeta por tarjeta — solo se reemplaza lo que cambió (adiós parpadeo,
+    // los <details> abiertos y las secciones diferidas sobreviven). Full repaint solo si la
+    // estructura cambió (número de tarjetas distinto).
+    var _swapModo = _softSwapDash(body, _dashHTML);
+    if (_swapModo === 'full' || _swapModo === 'full-err') _dashSectionCache = {}; // secciones renacen en cascarón
+    _animarVentasSucursal(); // ✨ barra + odómetro + chispas en lo que cambió (v506)
   }
   // 🕐 Reloj checador en el dashboard — admin y gerencia, SOLO ventana de apertura 10:00–10:45
   if (rol === 'admin' || rol === 'gerencia') {
@@ -8752,10 +8933,11 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     var sp = sv.reduce(function(a,v){return a+Number(v.pagado)},0);
     var c = sucColors[s]||'#888';
     var pct = totalVentas > 0 ? Math.round(st/totalVentas*100) : 0;
-    h += '<div style="margin-bottom:12px">';
-    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:'+c+'">'+(s==='Online'?'🌐 ':'')+_sucDisplay(s)+'</span><span style="font-size:14px;font-weight:800;color:var(--white)">$'+st.toLocaleString('es-MX',{minimumFractionDigits:0})+' <span style="font-size:10px;color:var(--muted)">('+sv.length+' ventas)</span></span></div>';
-    h += '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+c+';border-radius:3px;transition:width .5s"></div></div>';
-    h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Cobrado: $'+sp.toLocaleString('es-MX',{minimumFractionDigits:0})+' · Saldo: $'+(st-sp).toLocaleString('es-MX',{minimumFractionDigits:0})+'</div>';
+    // v506: renglón con data-attrs estables para animación en tiempo real (barra + odómetro + chispas)
+    h += '<div class="vsuc-row" data-vsuc="'+s+'" style="margin-bottom:12px;position:relative;border-radius:10px;padding:2px 4px;transition:background .5s ease">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:13px;font-weight:600;color:'+c+'">'+(s==='Online'?'🌐 ':'')+_sucDisplay(s)+'</span><span class="vsuc-cifra" style="font-size:14px;font-weight:800;color:var(--white);display:inline-block">$<span class="vsuc-monto" data-monto="'+st+'">'+st.toLocaleString('es-MX',{minimumFractionDigits:0})+'</span> <span class="vsuc-nventas" data-n="'+sv.length+'" style="font-size:10px;color:var(--muted)">('+sv.length+' ventas)</span></span></div>';
+    h += '<div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div class="vsuc-bar" data-pct="'+pct+'" data-color="'+c+'" style="height:100%;width:'+pct+'%;background:'+c+';border-radius:3px;transition:width .9s cubic-bezier(.22,1,.36,1)"></div></div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Cobrado: $<span class="vsuc-cobrado" data-cobrado="'+sp+'">'+sp.toLocaleString('es-MX',{minimumFractionDigits:0})+'</span> · Saldo: $<span class="vsuc-saldo">'+(st-sp).toLocaleString('es-MX',{minimumFractionDigits:0})+'</span></div>';
     h += '</div>';
   });
   h += '</div></div>';
