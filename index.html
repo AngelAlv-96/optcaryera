@@ -16973,6 +16973,7 @@ async function editarAliasTratamiento(origTrat) {
 function imprimirReporteMateriales() {
   const el = document.getElementById('rep-mat-print');
   if (!el) { toast('Genera el reporte primero', true); return; }
+  _clbLogEstimado('imprimir'); // bitácora del estimado al imprimir (momento real de la compra) — no bloquea
 
   const css = `
     @page { margin: 0; size: 68mm auto; }
@@ -29581,9 +29582,12 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
       prefProveedor = typeof prefRes.data.value === 'string' ? JSON.parse(prefRes.data.value) : prefRes.data.value;
     }
 
-    var precioMap = {};
+    // v501-A: filtrar FECHAS FUTURAS (captura/OCR erróneo — pisaban a los precios reales al "ganar" por fecha)
+    var _hoyEst = hoyLocal();
+    precios = precios.filter(function(p) { return p.fecha && p.fecha <= _hoyEst; });
+    var precioMap = {}; // key → { precio, fecha } (el más reciente NO-futuro gana)
     precios.sort(function(a,b){ return a.fecha > b.fecha ? 1 : -1; });
-    precios.forEach(function(p) { precioMap[p.material.toUpperCase().trim()] = parseFloat(p.precio) || 0; });
+    precios.forEach(function(p) { precioMap[p.material.toUpperCase().trim()] = { precio: parseFloat(p.precio) || 0, fecha: p.fecha }; });
 
     function serieFromCil(cilStr) {
       if (!cilStr || cilStr === '—' || cilStr === '0' || cilStr === '+0.00' || cilStr === '-0.00') return 1;
@@ -29601,7 +29605,7 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
       var serie = serieFromCil(o.cil);
       var tipo = o.tipo || 'Visión Sencilla';
       var groupKey = matKey + '|S' + serie;
-      if (!matGroups[groupKey]) matGroups[groupKey] = { mat: matKey, serie: serie, tipo: tipo, count: 0 };
+      if (!matGroups[groupKey]) matGroups[groupKey] = { mat: matKey, serie: serie, tipo: tipo, count: 0, origTrat: o.origTrat || '' };
       // Heredar tipo más restrictivo (si hay mezcla, Bifocal/Prog gana)
       if (tipo === 'Bifocal F/T' || tipo === 'Bifocal Blended' || tipo === 'Progresivo') matGroups[groupKey].tipo = tipo;
       matGroups[groupKey].count += 0.5;
@@ -29629,8 +29633,27 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
       var paresCompra = esVS ? rawPares : Math.ceil(rawPares);
       var tienesMedio = esVS && (rawPares % 1 !== 0);
 
-      // Buscar en TODOS los proveedores
-      var allMatches = clbFindAllPrecioProducts(mat);
+      // v501-B: candidatos de búsqueda = nombre del reporte + variantes con los ALIAS APRENDIDOS
+      // (si "Anti Blue AR" se conoce como "optiblue" en las listas del proveedor, también se busca así)
+      var _candidatos = [mat];
+      var _ot = (g.origTrat || '').trim();
+      if (_ot) {
+        var _matBase = mat.split('·')[0].trim();
+        _candidatos.push((_matBase + ' · ' + _ot).toUpperCase()); // variante con el tratamiento original (por si el display trae alias de sesión)
+        var _aprendidos = (typeof _tratAliasHist !== 'undefined' && _tratAliasHist[_ot.toLowerCase()]) || [];
+        _aprendidos.forEach(function(a) {
+          if (a.alias) _candidatos.push((_matBase + ' · ' + a.alias).toUpperCase());
+        });
+      }
+      // Buscar en TODOS los proveedores (dedup entre candidatos)
+      var allMatches = [];
+      var _seenAM = {};
+      _candidatos.forEach(function(cand) {
+        clbFindAllPrecioProducts(cand).forEach(function(mm) {
+          var k = mm.lab + ':' + mm.material;
+          if (!_seenAM[k]) { _seenAM[k] = true; allMatches.push(mm); }
+        });
+      });
       var opciones = []; // {lab, precio, productoLista}
 
       allMatches.forEach(function(m) {
@@ -29671,28 +29694,34 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
         provSeleccionado = best.lab;
       }
 
-      // Fallback historial
+      // Fallback historial: junta TODOS los matches de los candidatos (nombre del reporte +
+      // variantes con alias aprendidos, exactos y parciales) y usa el de fecha MÁS RECIENTE.
+      // Así un precio fresco bajo el nombre del proveedor ("OPTIBLU" jun) le gana a uno viejo
+      // bajo el nombre del sistema ("ANTI BLUE AR" ene).
+      var histFecha = '';
       if (!precio) {
-        precio = precioMap[mat];
-        if (precio) fuente = 'Historial';
-        if (!precio) {
-          var matKeys = Object.keys(precioMap);
-          for (var k = 0; k < matKeys.length; k++) {
-            if (mat.includes(matKeys[k]) || matKeys[k].includes(mat)) {
-              precio = precioMap[matKeys[k]]; fuente = 'Historial'; break;
+        var hits = [];
+        var matKeys = Object.keys(precioMap);
+        _candidatos.forEach(function(candStr) {
+          if (precioMap[candStr]) hits.push(precioMap[candStr]); // exacto
+          for (var k = 0; k < matKeys.length; k++) {            // parcial (keys cortas fuera: evita basura tipo "1"/"BCR")
+            if (matKeys[k].length >= 5 && (candStr.includes(matKeys[k]) || matKeys[k].includes(candStr))) hits.push(precioMap[matKeys[k]]);
+          }
+        });
+        if (!hits.length) { // último recurso: primera palabra
+          var firstWord = mat.split(' ')[0].split('·')[0].trim();
+          if (firstWord.length >= 3) {
+            for (var k2 = 0; k2 < matKeys.length; k2++) {
+              if (matKeys[k2].includes(firstWord)) { hits.push(precioMap[matKeys[k2]]); break; }
             }
           }
         }
-        if (!precio) {
-          var firstWord = mat.split(' ')[0].split('·')[0].trim();
-          if (firstWord.length >= 3) {
-            var matKeys2 = Object.keys(precioMap);
-            for (var k2 = 0; k2 < matKeys2.length; k2++) {
-              if (matKeys2[k2].includes(firstWord)) {
-                precio = precioMap[matKeys2[k2]]; fuente = 'Historial'; break;
-              }
-            }
-          }
+        hits = hits.filter(function(h) { return h && h.precio > 0; });
+        if (hits.length) {
+          var histHit = hits.reduce(function(a, b) { return (b.fecha || '') > (a.fecha || '') ? b : a; });
+          precio = histHit.precio;
+          histFecha = histHit.fecha || '';
+          fuente = 'Historial' + (histFecha ? ' ' + histFecha : '');
         }
       }
 
@@ -29719,6 +29748,12 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
         paresDisplay = paresCompra + ' par' + (paresCompra > 1 ? 'es' : '');
       }
 
+      // Antigüedad del precio de historial (para marcar precios viejos en la tabla)
+      var histDias = null;
+      if (histFecha) {
+        try { histDias = Math.floor((new Date(_hoyEst) - new Date(histFecha)) / 86400000); } catch(e) {}
+      }
+
       estimaciones.push({
         material: mat + (serie > 1 ? ' (S' + serie + ')' : ''),
         matKey: mat, serie: serie, tipo: g.tipo,
@@ -29726,6 +29761,7 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
         tienesMedio: tienesMedio,
         precio: precio || 0, subtotal: subtotal,
         fuente: fuente, provSeleccionado: provSeleccionado,
+        histFecha: histFecha, histDias: histDias,
         provOpciones: opciones, // todas las opciones disponibles
         labsDisponibles: labsDisponibles
       });
@@ -29774,8 +29810,15 @@ async function clbEstimarCostosSurtido(ojos, lcItems) {
       var tipoAbrev = {'Visión Sencilla':'VS','Bifocal F/T':'BIF','Bifocal Blended':'BIF-B','Progresivo':'PROG'}[e.tipo] || e.tipo;
       var tipoColor = {'VS':'#8ab0e8','BIF':'#d4b84a','BIF-B':'#d4b84a','PROG':'#c47ed4'}[tipoAbrev] || 'var(--muted)';
 
+      // Badge de precio de historial con su antigüedad (ámbar si tiene >60 días)
+      var histBadge = '';
+      if (e.histFecha) {
+        var esViejo = e.histDias !== null && e.histDias > 60;
+        var histColor = esViejo ? '#e8a84a' : 'var(--muted)';
+        histBadge = ' <span style="font-size:8px;padding:1px 4px;border:1px solid ' + (esViejo ? 'rgba(232,168,74,.35)' : 'rgba(255,255,255,.12)') + ';border-radius:4px;color:' + histColor + ';white-space:nowrap" title="Precio tomado del historial (' + e.histFecha + (e.histDias !== null ? ', hace ' + e.histDias + ' días' : '') + ')' + (esViejo ? ' — VIEJO, verifica con el proveedor' : '') + '">' + (esViejo ? '⚠️ ' : '📅 ') + e.histFecha.slice(5) + '</span>';
+      }
       html += '<tr style="border-bottom:1px solid rgba(255,255,255,.04);' + (i%2?'background:rgba(255,255,255,.02)':'') + '">' +
-        '<td style="padding:5px 8px;font-size:11px">' + e.material + '</td>' +
+        '<td style="padding:5px 8px;font-size:11px">' + e.material + histBadge + '</td>' +
         '<td style="padding:5px 4px"><span style="font-size:9px;padding:1px 5px;background:' + tipoColor + '18;color:' + tipoColor + ';border-radius:3px;font-weight:600">' + tipoAbrev + '</span></td>' +
         '<td style="padding:5px 8px;text-align:center;font-size:11px">' + e.paresDisplay + '</td>' +
         '<td style="padding:5px 4px">' + provSelectHtml + '</td>' +
@@ -29892,7 +29935,44 @@ async function clbGuardarEstimaciones() {
       });
     } catch(err) { console.warn('save pref:', err); }
   }
+  _clbLogEstimado('guardar'); // bitácora del estimado (best-effort, en segundo plano)
   toast('✓ ' + saved + ' precios y preferencias guardados');
+}
+
+// ── Bitácora de estimados de compra (v501-C) ──
+// Guarda un snapshot del estimado del día en app_config id='estimados_compra_log' (últimos 60,
+// 1 por día+rango — el último gana). Sirve para medir después qué tan atinado es el estimado
+// contra las compras reales, con la fecha correcta (el comparativo v216 falló por desfase temporal).
+async function _clbLogEstimado(origen) {
+  try {
+    if (!window._clbEstimaciones || !window._clbEstimaciones.length) return;
+    var ini = document.getElementById('rep-fecha-ini')?.value || '';
+    var fin = document.getElementById('rep-fecha-fin')?.value || '';
+    var items = window._clbEstimaciones.map(function(e, i) {
+      var el = document.getElementById('clb-est-precio-' + i);
+      var precio = el ? (parseFloat(el.value) || 0) : (e.precio || 0);
+      var paresFact = e.tienesMedio ? (Math.floor(e.pares) + 0.5) : e.paresCompra;
+      return { material: e.material, tipo: e.tipo, pares: paresFact, precio: precio,
+               proveedor: e.provSeleccionado || '', fuente: e.fuente || '',
+               subtotal: Math.round(precio * paresFact * 100) / 100 };
+    });
+    var total = Math.round(items.reduce(function(s, it) { return s + it.subtotal; }, 0) * 100) / 100;
+    var { data: cur } = await db.from('app_config').select('value').eq('id', 'estimados_compra_log').maybeSingle();
+    var log = [];
+    if (cur?.value) { try { log = JSON.parse(cur.value) || []; } catch(e) { log = []; } }
+    var entry = { fecha: hoyLocal(), ini: ini, fin: fin, origen: origen || '', por: currentUser?.nombre || currentUser?.id || '', total: total, items: items };
+    log = log.filter(function(l) { return !(l.fecha === entry.fecha && l.ini === ini && l.fin === fin); });
+    log.push(entry);
+    if (log.length > 60) log = log.slice(log.length - 60);
+    await fetch('/.netlify/functions/dbwrite', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'upsert', table: 'app_config',
+        auth: { id: currentUser?.id, pass: currentUser?.pass },
+        data: { id: 'estimados_compra_log', value: JSON.stringify(log) }
+      })
+    });
+  } catch(e) { console.warn('[EstimadoLog]', e); }
 }
 
 // ── COMPARATIVO ESTIMADO VS COMPRAS REALES ──
