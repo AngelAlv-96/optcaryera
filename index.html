@@ -16495,22 +16495,23 @@ function mostrarFoliosSurtido(el) {
   }, 50);
 }
 
-var _tratAliasMap = {}; // { "anti blue": "Blue Free", ... } — alias display para el tratamiento (no afecta DB de órdenes)
-// Aprendizaje de renombres (NO se aplica solo, es memoria): { "anti blue ar": [{alias:"Opti Blue", veces:3, ultimo:"2026-07-07", por:"Angel"}] }
-// Sobrevive al ↩ Revertir — el alias activo se quita pero el aprendizaje queda (badge "?" con tooltip)
+// Alias de tratamiento (v499): los renombres son DE SESIÓN — el reporte de cada día abre con los
+// nombres ORIGINALES del sistema. El aprendizaje (historial) persiste en DB y se ofrece como chip
+// de sugerencia de UN CLICK ("→ optiblue"). Decisión de Angel: un alias permanente renombraba TODO
+// para siempre (caso "COLOR CAFE" en Foto Colors); mejor original por default + sugerencia al click.
+var _tratAliasMap = {}; // SESIÓN (en memoria, se limpia al recargar la página) — NO se persiste
+// Aprendizaje de renombres (persistente en DB): { "anti blue ar": [{alias:"optiblue", veces:3, ultimo:"2026-07-07", por:"Angel"}] }
 var _tratAliasHist = {};
 
 async function _loadTratAliases() {
+  // Solo carga el APRENDIZAJE. _tratAliasMap (renombres aplicados) es de sesión y no se toca aquí
+  // (así navegar fuera y volver al reporte no pierde los renombres del día; recargar la página sí los limpia).
   try {
-    var { data } = await db.from('app_config').select('id,value').in('id', ['tratamiento_print_aliases', 'tratamiento_alias_historial']);
-    _tratAliasMap = {}; _tratAliasHist = {};
-    (data || []).forEach(function(row) {
-      var v = null;
-      try { v = typeof row.value === 'string' ? JSON.parse(row.value) : row.value; } catch(e) {}
-      if (row.id === 'tratamiento_print_aliases') _tratAliasMap = v || {};
-      else if (row.id === 'tratamiento_alias_historial') _tratAliasHist = v || {};
-    });
-  } catch(e) { _tratAliasMap = {}; _tratAliasHist = {}; }
+    var { data } = await db.from('app_config').select('value').eq('id', 'tratamiento_alias_historial').single();
+    var v = null;
+    try { v = data?.value ? (typeof data.value === 'string' ? JSON.parse(data.value) : data.value) : null; } catch(e) {}
+    _tratAliasHist = v || {};
+  } catch(e) { _tratAliasHist = {}; }
 }
 
 function _aplicarTratAlias(normTrat) {
@@ -16733,33 +16734,32 @@ async function loadReporteMateriales() {
       var _aliasIndicator = '';
       var _editBtn = '';
       if (_hasAlias) {
-        // Indicador "editado" + tooltip con original Y el historial de aprendizaje (visible para todos)
+        // Renombre APLICADO (solo esta sesión — el reporte de mañana vuelve al original)
         var _histAct = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
         var _histActTxt = _histAct.length
           ? ' — Aprendizaje: ' + _histAct.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ')
           : '';
-        var _tipEditado = ('Original: ' + _origTratForBtn + _histActTxt).replace(/"/g, '&quot;');
+        var _tipEditado = ('Renombrado SOLO en este reporte (mañana vuelve al original). Original: ' + _origTratForBtn + _histActTxt).replace(/"/g, '&quot;');
         _aliasIndicator = `<span style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(232,168,74,0.18);color:#e8a84a;border-radius:8px;font-weight:600;letter-spacing:0.05em" title="${_tipEditado}">EDITADO</span>`;
+        // Revertir disponible para TODOS (el renombre es de sesión, inofensivo)
+        _editBtn = `<span onclick="event.stopPropagation();revertirAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#e08080;font-size:11px;margin-left:4px;padding:1px 5px;border:1px solid rgba(224,128,128,0.3);border-radius:4px" title="Volver al nombre original (la sugerencia queda guardada)">↩</span>`;
       } else {
-        // Sin alias activo pero CON aprendizaje de renombres → badge de SUGERENCIA visible
-        // (no requiere haber revertido: si el nombre es el del sistema y ya se aprendió un renombre, aquí se sugiere)
+        // Nombre original del sistema + CON aprendizaje → chip de sugerencia de UN CLICK (para todos)
         var _histArr = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
         if (_histArr.length) {
           var _histTxt = _histArr.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ');
-          var _tipTxt = ('Aprendizaje de renombre: ' + _histTxt + (_canEditAlias ? ' — click para aplicar' : '')).replace(/"/g, '&quot;');
+          var _tipTxt = ('Sugerencia aprendida — click para renombrar SOLO en este reporte. Historial: ' + _histTxt).replace(/"/g, '&quot;');
           var _topAliasRaw = String(_histArr[0].alias || '');
           var _topAliasEsc = _topAliasRaw.replace(/\\/g, '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-          var _topAliasHTML = _topAliasRaw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          var _clickApply = _canEditAlias ? ` onclick="event.stopPropagation();aplicarAliasAprendido('${_origTratEsc}','${_topAliasEsc}')"` : '';
-          _aliasIndicator = `<span${_clickApply} style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(138,176,232,0.16);color:#8ab0e8;border-radius:8px;font-weight:700;white-space:nowrap;${_canEditAlias ? 'cursor:pointer;' : ''}" title="${_tipTxt}">? ${_topAliasHTML}</span>`;
+          // El chip muestra el nombre EFECTIVO: si el original lleva "Foto", el prefijo se conserva SIEMPRE
+          // (regla v288 de _aplicarTratAlias — "Foto" nunca se elimina ni se reemplaza al renombrar)
+          var _topAliasFx = (/foto/i.test(_origTratForBtn) && !/foto/i.test(_topAliasRaw)) ? 'Foto ' + _topAliasRaw : _topAliasRaw;
+          var _topAliasHTML = _topAliasFx.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          _aliasIndicator = `<span onclick="event.stopPropagation();aplicarAliasAprendido('${_origTratEsc}','${_topAliasEsc}')" style="margin-left:6px;font-size:9px;padding:1px 6px;background:rgba(138,176,232,0.16);color:#8ab0e8;border-radius:8px;font-weight:700;white-space:nowrap;cursor:pointer" title="${_tipTxt}">→ ${_topAliasHTML}</span>`;
         }
       }
       if (_canEditAlias) {
-        _editBtn = `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Editar nombre para impresión (alias)">✏</span>`;
-        if (_hasAlias) {
-          // Botón de revertir rápido (solo si hay alias activo)
-          _editBtn += `<span onclick="event.stopPropagation();revertirAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#e08080;font-size:11px;margin-left:4px;padding:1px 5px;border:1px solid rgba(224,128,128,0.3);border-radius:4px" title="Revertir al nombre original">↩ Revertir</span>`;
-        }
+        _editBtn += `<span class="edit-alias-btn" onclick="event.stopPropagation();editarAliasTratamiento('${_origTratEsc}')" style="cursor:pointer;color:#ccc;font-size:11px;margin-left:6px;padding:1px 5px;border:1px solid rgba(255,255,255,0.15);border-radius:4px" title="Renombrar para este reporte (queda como sugerencia para el futuro)">✏</span>`;
       }
       tipoContent += `<div style="margin-bottom:12px;margin-left:12px" data-mat-group="${mat}">
         <div style="background:#000;border-radius:6px;padding:6px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
@@ -16875,47 +16875,24 @@ async function loadReporteMateriales() {
 }
 
 async function revertirAliasTratamiento(origTrat) {
-  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
-    toast('Solo admin/gerencia pueden revertir alias', true);
-    return;
-  }
-  if (!confirm('¿Revertir "' + origTrat + '" al nombre original? El alias actual se borrará.')) return;
+  // Sin gate de rol ni confirm: el renombre es de sesión (inofensivo) y la sugerencia queda guardada
   await _guardarTratAliasMap(origTrat, '', true);
 }
 
+// v499: el renombre YA NO SE PERSISTE (era el bug del "COLOR CAFE" pegado para siempre) —
+// solo vive en _tratAliasMap (sesión). Lo único que se guarda en DB es el APRENDIZAJE.
 async function _guardarTratAliasMap(origTrat, nuevoAlias, esReset) {
   var key = origTrat.trim().toLowerCase();
   try {
-    var { data: cur } = await db.from('app_config').select('value').eq('id', 'tratamiento_print_aliases').single();
-    var mapDB = {};
-    if (cur?.value) {
-      try { mapDB = typeof cur.value === 'string' ? JSON.parse(cur.value) : cur.value; } catch(e) { mapDB = {}; }
-    }
     if (esReset || !nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase()) {
-      delete mapDB[key];
+      delete _tratAliasMap[key];
+      toast('↩ "' + origTrat + '" con su nombre original (la sugerencia queda guardada)');
     } else {
-      mapDB[key] = nuevoAlias;
-    }
-    var saveAction = cur ? 'update' : 'insert';
-    var res = await fetch('/.netlify/functions/dbwrite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        table: 'app_config',
-        action: saveAction,
-        data: saveAction === 'insert' ? { id: 'tratamiento_print_aliases', value: JSON.stringify(mapDB) } : { value: JSON.stringify(mapDB) },
-        filters: saveAction === 'update' ? [{ col: 'id', op: 'eq', val: 'tratamiento_print_aliases' }] : undefined,
-        auth: { id: currentUser?.id, pass: currentUser?.pass }
-      })
-    });
-    var resJson = await res.json();
-    if (!res.ok || resJson.error) throw new Error(resJson.error || ('HTTP ' + res.status));
-    _tratAliasMap = mapDB;
-    // Registrar el APRENDIZAJE del renombre (memoria permanente, sobrevive al Revertir) — best-effort
-    if (!esReset && nuevoAlias && nuevoAlias.toLowerCase() !== origTrat.toLowerCase()) {
+      _tratAliasMap[key] = nuevoAlias;
+      toast('✓ Renombrado en este reporte: ' + origTrat + ' → ' + nuevoAlias);
+      // Registrar el APRENDIZAJE del renombre (memoria permanente en DB) — best-effort
       await _registrarAliasAprendizaje(key, nuevoAlias);
     }
-    toast(esReset || !nuevoAlias ? '↩ Revertido a "' + origTrat + '" (el aprendizaje queda guardado)' : '✓ Alias guardado: ' + origTrat + ' → ' + nuevoAlias);
     await loadReporteMateriales();
   } catch(e) {
     toast('Error: ' + e.message, true);
@@ -16954,13 +16931,8 @@ async function _registrarAliasAprendizaje(key, alias) {
   } catch(e) { console.warn('[AliasAprendizaje]', e); } // no bloquea el guardado del alias
 }
 
-// Click en el badge "?" → aplicar el alias más usado del aprendizaje (con confirmación, nunca automático)
+// Click en el chip "→ alias" → aplicar la sugerencia en UN click (solo esta sesión, cualquier rol, sin confirm)
 async function aplicarAliasAprendido(origTrat, alias) {
-  if (currentUser?.rol !== 'admin' && currentUser?.rol !== 'gerencia') {
-    toast('Solo admin/gerencia pueden aplicar alias', true);
-    return;
-  }
-  if (!confirm('Aprendizaje guardado: "' + origTrat + '" se ha renombrado antes como "' + alias + '".\n\n¿Aplicar ese alias ahora?')) return;
   await _guardarTratAliasMap(origTrat, alias, false);
 }
 
@@ -16970,9 +16942,10 @@ async function editarAliasTratamiento(origTrat) {
     return;
   }
   var key = origTrat.trim().toLowerCase();
-  var currentAlias = _tratAliasMap[key] || '';
+  // Pre-llenar con el renombre de sesión, o con la sugerencia más usada del aprendizaje
+  var currentAlias = _tratAliasMap[key] || ((_tratAliasHist[key] || [])[0]?.alias) || '';
   var nuevoAlias = prompt(
-    'Editar nombre para impresión:\n\nTratamiento original: ' + origTrat + '\n\nNombre para impresión (deja en blanco para usar el original):',
+    'Renombrar para ESTE reporte (mañana vuelve al original; el nombre queda como sugerencia para el futuro):\n\nTratamiento original: ' + origTrat + '\n\nNombre para impresión (deja en blanco para usar el original):',
     currentAlias
   );
   if (nuevoAlias === null) return; // cancelado
