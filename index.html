@@ -16535,26 +16535,35 @@ function initReporteMateriales() {
   _loadTratAliases().then(loadReporteMateriales);
 }
 
-async function loadReporteMateriales() {
+var _repMatCache = null; // { ini, fin, data } — re-render instantáneo (ej. al aplicar un alias) sin re-consultar ni "Cargando..."
+async function loadReporteMateriales(usarCache) {
   const ini = document.getElementById('rep-fecha-ini').value;
   const fin = document.getElementById('rep-fecha-fin').value;
   const content = document.getElementById('rep-mat-content');
   if (!ini || !fin) { content.innerHTML = '<p style="color:var(--muted);padding:20px">Selecciona un rango de fechas</p>'; return; }
 
-  content.innerHTML = '<p style="color:var(--muted);padding:20px">Cargando...</p>';
+  let data;
+  if (usarCache && _repMatCache && _repMatCache.ini === ini && _repMatCache.fin === fin) {
+    // Re-render desde caché (mismo rango): sin wipe de "Cargando..." ni query → sin parpadeo
+    data = _repMatCache.data;
+  } else {
+    content.innerHTML = '<p style="color:var(--muted);padding:20px">Cargando...</p>';
 
-  const rangoIni = localDateToUTC(ini);
-  const rangoFin = localDateToUTC(fin);
+    const rangoIni = localDateToUTC(ini);
+    const rangoFin = localDateToUTC(fin);
 
-  const { data, error } = await db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos)')
-    .gte('created_at', rangoIni.start)
-    .lte('created_at', rangoFin.end)
-    .neq('estado_lab', 'Entregado')
-    .order('material');
+    const res = await db.from('ordenes_laboratorio')
+      .select('*, pacientes(nombre, apellidos)')
+      .gte('created_at', rangoIni.start)
+      .lte('created_at', rangoFin.end)
+      .neq('estado_lab', 'Entregado')
+      .order('material');
 
-  if (error) { content.innerHTML = `<p style="color:#e08080;padding:20px">Error: ${error.message}</p>`; return; }
-  if (!data || data.length === 0) { content.innerHTML = '<p style="color:var(--muted);padding:20px">Sin órdenes en ese rango</p>'; return; }
+    if (res.error) { content.innerHTML = `<p style="color:#e08080;padding:20px">Error: ${res.error.message}</p>`; return; }
+    data = res.data;
+    if (!data || data.length === 0) { content.innerHTML = '<p style="color:var(--muted);padding:20px">Sin órdenes en ese rango</p>'; return; }
+    _repMatCache = { ini: ini, fin: fin, data: data };
+  }
 
   const NEEDS_SUPPLY = ['Enviado al lab','Recibido en lab','Recibido','Pendiente de surtir','Devuelto al lab','Faltante'];
   const pendientes = data.filter(o => NEEDS_SUPPLY.includes(o.estado_lab));
@@ -16746,6 +16755,12 @@ async function loadReporteMateriales() {
       } else {
         // Nombre original del sistema + CON aprendizaje → chip de sugerencia de UN CLICK (para todos)
         var _histArr = (_origTratForBtn && _tratAliasHist[_origTratForBtn.trim().toLowerCase()]) || [];
+        // Filtrar sugerencias INÚTILES: si el nombre efectivo (con regla "Foto") es igual al original
+        // salvo mayúsculas/minúsculas, no es un renombre real (ej. "Foto AR" → "Foto ar")
+        _histArr = _histArr.filter(function(a) {
+          var _fx = (/foto/i.test(_origTratForBtn) && !/foto/i.test(a.alias || '')) ? 'Foto ' + a.alias : String(a.alias || '');
+          return _fx.trim().toLowerCase() !== _origTratForBtn.trim().toLowerCase();
+        });
         if (_histArr.length) {
           var _histTxt = _histArr.map(function(a) { return '«' + a.alias + '» ×' + (a.veces || 1) + (a.ultimo ? ' (últ. ' + a.ultimo + ')' : ''); }).join(' · ');
           var _tipTxt = ('Sugerencia aprendida — click para renombrar SOLO en este reporte. Historial: ' + _histTxt).replace(/"/g, '&quot;');
@@ -16881,19 +16896,22 @@ async function revertirAliasTratamiento(origTrat) {
 
 // v499: el renombre YA NO SE PERSISTE (era el bug del "COLOR CAFE" pegado para siempre) —
 // solo vive en _tratAliasMap (sesión). Lo único que se guarda en DB es el APRENDIZAJE.
+var _aliasHistQueue = Promise.resolve(); // serializa los registros de aprendizaje (clicks rápidos no se pisan)
 async function _guardarTratAliasMap(origTrat, nuevoAlias, esReset) {
   var key = origTrat.trim().toLowerCase();
   try {
-    if (esReset || !nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase()) {
+    // Si el nombre EFECTIVO (con regla "Foto") es igual al original salvo mayúsculas, no es renombre real → reset
+    var _fxNuevo = nuevoAlias ? ((/foto/i.test(origTrat) && !/foto/i.test(nuevoAlias)) ? 'Foto ' + nuevoAlias : nuevoAlias) : '';
+    if (esReset || !nuevoAlias || nuevoAlias.toLowerCase() === origTrat.toLowerCase() || _fxNuevo.trim().toLowerCase() === key) {
       delete _tratAliasMap[key];
       toast('↩ "' + origTrat + '" con su nombre original (la sugerencia queda guardada)');
     } else {
       _tratAliasMap[key] = nuevoAlias;
       toast('✓ Renombrado en este reporte: ' + origTrat + ' → ' + nuevoAlias);
-      // Registrar el APRENDIZAJE del renombre (memoria permanente en DB) — best-effort
-      await _registrarAliasAprendizaje(key, nuevoAlias);
+      // Registrar el APRENDIZAJE en segundo plano (no bloquea el re-render; encolado para no pisarse entre clicks)
+      _aliasHistQueue = _aliasHistQueue.then(function() { return _registrarAliasAprendizaje(key, nuevoAlias); }).catch(function() {});
     }
-    await loadReporteMateriales();
+    await loadReporteMateriales(true); // re-render instantáneo desde caché (sin "Cargando..." ni parpadeo)
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
