@@ -8954,17 +8954,8 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   if (demorados.length) alerts += '<div style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:rgba(224,128,128,0.1);border:1px solid rgba(224,128,128,0.25);border-radius:8px;font-size:12px;color:#e08080;font-weight:600">🕐 '+demorados.length+' demorado'+(demorados.length>1?'s':'')+'</div>';
   if (alerts) h += '<div style="margin-bottom:16px">'+alerts+'</div>';
 
-  // Quick actions
-  h += '<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">';
-  if (rol === 'admin') {
-    h += '<button class="btn btn-p" onclick="go(\'ventas\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">🛒 Nueva Venta</button>';
-    h += '<button class="btn btn-g" onclick="go(\'caja\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">💰 Caja</button>';
-  }
-  h += '<button class="btn btn-g" onclick="abrirEntregaLentes()" style="flex:1;min-width:120px;padding:12px;font-size:13px">📦 Entregar</button>';
-  h += '<button class="btn btn-g" onclick="go(\'comisiones\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">📊 Comisiones</button>';
-  h += '<button class="btn btn-g" onclick="go(\'laboratorio\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">🔧 Lab</button>';
-  h += '<button class="btn btn-g" onclick="go(\'historial-ventas\')" style="flex:1;min-width:120px;padding:12px;font-size:13px">📋 Historial</button>';
-  h += '</div>';
+  // Quick actions — OCULTAS para admin/gerencia (pedido de Angel v510: no le sirven, navega por el sidebar).
+  // Se prioriza "Movimientos de caja" más abajo. Reactivar quitando el guard si se quisieran de vuelta.
 
   // Citas
   if (citasH?.length) {
@@ -8986,9 +8977,9 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   Object.entries(ec).forEach(function(e){var c=eColors[e[0]]||'#888';h+='<div style="background:'+c+'11;border:1px solid '+c+'22;border-radius:8px;padding:6px;text-align:center"><div style="font-size:16px;font-weight:700;color:'+c+'">'+e[1]+'</div><div style="font-size:9px;color:var(--muted)">'+e[0].replace('En proceso ','')+'</div></div>';});
   h += '</div></div>';
 
-  // Auditoría pedidos — placeholder, se carga deferred
-  h += '<div id="dash-audit-section" class="card" style="margin-top:16px"><div class="card-head"><h3>📋 Auditoría Pedidos</h3><a onclick="go(\'auditoria-pedidos\')">Ver reporte →</a></div>';
-  h += '<div style="padding:12px 16px"><div style="text-align:center;padding:12px;color:var(--muted);font-size:12px"><span class="spinner-sm"></span> Cargando auditoría...</div></div></div>';
+  // Auditoría pedidos — OCULTA para admin/gerencia (pedido de Angel v510: no le sirve en el dashboard).
+  // La vista completa sigue disponible en el sidebar (Reportes → Auditoría Pedidos). El loader
+  // _loadDashAuditoria hace no-op solo si falta el placeholder #dash-audit-section (guard interno).
 
   // Movimientos de caja hoy — placeholder, se carga async después del render
   h += '<div id="dash-caja-section" class="card" style="margin-top:16px"><div class="card-head"><h3>💰 Movimientos de caja hoy</h3><a onclick="go(\'caja\')">Ir a caja →</a></div>';
