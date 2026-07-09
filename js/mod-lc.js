@@ -529,11 +529,28 @@ function renderLcList() {
         '<div style="font-size:10px;margin-top:2px">'+diasLbl+'</div>' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">' +
-        (r.estado === 'activo' && tel ? '<button onclick="lcEnviarWA(\''+r.id+'\',\''+tel.replace(/'/g,"\\'")+'\')" class="btn btn-g" style="font-size:10px;padding:4px 8px;white-space:nowrap">📱 WA</button>' : '') +
+        (tel ? '<button onclick="lcVerChat(\''+tel.replace(/'/g,"\\'")+'\')" class="btn btn-g" style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#25d366">💬 Chat</button>' : '') +
         (r.estado === 'activo' ? '<button onclick="lcMarcarRecomprado(\''+r.id+'\')" class="btn btn-g" style="font-size:10px;padding:4px 8px;white-space:nowrap;color:#72c47e">✅ Recompró</button>' : '') +
       '</div>' +
     '</div>';
   }).join('');
+}
+
+// Ver la conversación de Clari (WhatsApp) de este teléfono, SIN enviar mensaje (pedido de Angel v513).
+// Navega al panel Clari → pestaña Conversaciones → filtra por el teléfono normalizado a 10 dígitos.
+function lcVerChat(tel) {
+  var n = (typeof _wcrmNorm10 === 'function') ? _wcrmNorm10(tel || '') : (tel || '').replace(/\D/g, '').slice(-10);
+  if (!n) { toast('Este registro no tiene teléfono', true); return; }
+  go('clari');
+  try { clariTab('conv'); } catch(e) {}
+  var s = document.getElementById('clari-search');
+  if (s) s.value = n;
+  // Reaplica el filtro cuando terminen de cargar las conversaciones (loadClariConversations es async)
+  setTimeout(function() {
+    var s2 = document.getElementById('clari-search');
+    if (s2) s2.value = n;
+    if (typeof renderClariConversations === 'function') renderClariConversations();
+  }, 700);
 }
 
 async function lcEnviarWA(lcId, tel) {
