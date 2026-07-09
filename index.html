@@ -7072,7 +7072,9 @@ async function editarTipoCambio() {
   if (!val || isNaN(parseFloat(val))) return;
   _tipoCambio = parseFloat(val);
   await db.from('app_config').upsert({ id: 'tipo_cambio', value: { rate: _tipoCambio, updated: new Date().toISOString(), by: currentUser?.nombre || '' } }, { onConflict: 'id' });
-  renderTipoCambioDash();
+  renderTipoCambioDash(); // strip de sucursal (en admin ya no existe)
+  // v508: en admin/gerencia el TC vive como recuadro del grid de stats → refrescar el dashboard (swap suave, sin parpadeo)
+  if (document.getElementById('view-dashboard')?.classList.contains('active') && typeof loadDash === 'function') loadDash();
   toast('✓ Tipo de cambio actualizado: $' + _tipoCambio.toFixed(2));
 }
 
@@ -7938,7 +7940,7 @@ var _dashSectionCache = {};
 function _setDashSection(id, h) {
   var el = document.getElementById(id);
   if (!el) return;
-  if (_dashSectionCache[id] === h) return; // sin cambios → no repintar
+  if (_dashSectionCache[id] === h && el.innerHTML !== '') return; // sin cambios → no repintar (si el swap dejó el cascarón VACÍO, re-escribir aunque la caché coincida — fix del TC que desaparecía)
   _dashSectionCache[id] = h;
   // Preservar los <details> abiertos a través del re-render (v507: que "Últimos movimientos" no se cierre solo)
   var abiertos = Array.prototype.map.call(el.querySelectorAll('details'), function(d) { return d.open; });
@@ -8065,7 +8067,7 @@ function _vsucSparkSolo(sucursal) {
 function _softSwapDash(body, newHTML) {
   try {
     var EXTRAS = { 'dash-checador': 1, 'dash-cumple-emp': 1 };
-    var MANAGED = { 'dash-caja-section': 1, 'dash-audit-section': 1 }; // las llena su loader (con caché propia)
+    var MANAGED = { 'dash-caja-section': 1, 'dash-audit-section': 1, 'dash-tipo-cambio': 1 }; // las llena su loader (con caché propia)
     var tpl = document.createElement('template');
     tpl.innerHTML = newHTML;
     var nuevos = Array.prototype.slice.call(tpl.content.children);
@@ -8912,16 +8914,20 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     return _renderResumenDia(cortesHoy, ventasHoy, garantiasHoy, ordenesLab||0, today, orders, urgentes, demorados, rol);
   }
 
+  // 💵 Tipo de cambio como RECUADRO junto a Pedidos lab (v508, pedido de Angel) —
+  // el strip aparte desaparecía (se vaciaba tras el swap suave) y ocupaba un renglón entero
+  if (!(_tipoCambio > 0)) { try { await cargarTipoCambio(); } catch(e) {} }
+  var _tcVal = _tipoCambio > 0 ? '$' + _tipoCambio.toFixed(2) : '…';
+  var _tcEditable = rol === 'admin';
+
   var h = '<div class="stats">';
   h += _miniStat('Ventas hoy', ventasHoy.length, '#72c47e', '🛒');
   h += _miniStat('Total vendido', '$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}), '#d4b84a', '💰');
   h += _miniStat('Cobrado', '$'+totalCobradoHoy.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
   h += _miniStat('Consultas', nHC||0, '#8ab0e8', '👁');
   h += _miniStat('Pedidos lab', ordenesLab||0, '#d4b84a', '🔧');
+  h += '<div class="stat"' + (_tcEditable ? ' onclick="editarTipoCambio()" style="cursor:pointer" title="Click para editar el tipo de cambio"' : '') + '><div class="stat-val" style="color:#72c47e">' + _tcVal + '</div><div class="stat-lbl">💵 Tipo cambio' + (_tcEditable ? ' ✏' : '') + '</div></div>';
   h += '</div>';
-
-  // TC
-  h += '<div id="dash-tipo-cambio" style="padding:12px 16px;background:rgba(114,196,126,0.04);border:1px solid rgba(114,196,126,0.12);border-radius:10px;margin-bottom:16px"></div>';
 
   // Ventas por sucursal
   h += '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>🏪 Ventas por sucursal hoy</h3></div>';
