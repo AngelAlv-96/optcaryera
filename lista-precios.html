@@ -893,7 +893,7 @@ body.pb-swap .cat-nav,body.pb-swap .serie-sub{opacity:0}
         <div class="co-name" id="coName">Gris</div>
         <div class="demo-hint">👆 Toca para ver los colores</div>
       </div>
-      <div class="demo-foot"><div class="demo-meta"><b>Fotocromático de color</b><span>Gris → Rosa → Café → Azul → Morado → Verde</span></div>
+      <div class="demo-foot"><div class="demo-meta"><b>Fotocromático de color</b><span>Gris → Rosa → Café → Azul cristal → Morado → Verde</span></div>
         <button class="demo-replay" onclick="colorsPlay()">↻ Repetir</button></div>
     </div>
 
@@ -1031,7 +1031,7 @@ const DATA = {
       {mat:'Anti-blue AR', ben:'Fotocromático con filtro de luz azul', p:2799},
       {mat:'Blue Light', ben:'Fotocromático con mayor claridad y control de luz azul', p:3199},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:3599, star:true},
-      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2199},
+      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul cristal, morado, verde)', p:2199},
     ], note:'Foto Colors +$700 en policarbonato'},
     {id:'s1-polar', tipo:'sencilla', icon:'polar', title:'Polarizados', desc:'Elimina reflejos del sol · manejo, playa, montaña.', rows:[
       {mat:'Polarizado 1.56', ben:'Reduce reflejos del sol y deslumbramientos', p:2699},
@@ -1055,7 +1055,7 @@ const DATA = {
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3549],['Fotocromático',4599]]},
       {h:'Fotocromáticos', s:'Se oscurecen al sol automáticamente', lines:[['Hi-Index',3799],['Policarbonato',4799]]},
       {h:'★ Panoramic 360 · Hi-Index', s:'Visión más amplia y natural', lines:[['Filtro Azul',3549],['Fotocromático',4599],['Fotocromático de colores',5699]]},
-    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul, morado, verde'},
+    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul cristal, morado, verde'},
   ]},
 
   2:{ sub:'<b>Serie 2</b> — graduaciones altas o especiales · consulta disponibilidad', range:'A partir de ESF ±5.75 · CIL −2.25', cats:[
@@ -1075,7 +1075,7 @@ const DATA = {
       {mat:'Anti-blue AR · Hi-Index', ben:'Fotocromático con filtro de luz azul', p:3099},
       {mat:'Blue Light · Hi-Index', ben:'Fotocromático con mayor claridad y control de luz azul', p:3699},
       {mat:'Blue Light — Generación 9', ben:'Última generación: transición más rápida y durable', p:4099, star:true},
-      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul, morado, verde)', p:2499},
+      {mat:'Foto Colors · Hi-Index AR', ben:'Fotocromático CON color (gris, rosa, café, azul cristal, morado, verde)', p:2499},
     ], note:'Foto Colors +$700 en policarbonato'},
     {id:'s2-ultra', tipo:'sencilla', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
       {h:'Ultra-thin 1.67', s:'', lines:[
@@ -1110,7 +1110,7 @@ const DATA = {
       {h:'Filtro Azul · Hi-Index', s:'Descansa la vista con luz artificial', lines:[['Filtro Azul',3949],['Fotocromático',5699]]},
       {h:'Fotocromáticos', s:'Se oscurecen al sol automáticamente', lines:[['Hi-Index',4299],['Policarbonato',5499]]},
       {h:'★ Panoramic 360 · Hi-Index', s:'Visión más amplia y natural', lines:[['Filtro Azul',3949],['Fotocromático',5699],['Fotocromático de colores',5699]]},
-    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul, morado, verde · Poli con AR: 15 días hábiles'},
+    ], note:'Tinte solar +$150 · Foto colores: rosa, café, azul cristal, morado, verde · Poli con AR: 15 días hábiles'},
   ]}
 };
 
@@ -1704,8 +1704,8 @@ function arSet(v){
 }
 
 /* Fotocromático de color (nombre + puntos sincronizados) */
-const COSEQ=['Gris','Rosa','Café','Azul','Morado','Verde'];
-const COHEX={'Gris':'#8a8a8a','Rosa':'#c96fa8','Café':'#8a5a2a','Azul':'#3556c0','Morado':'#6a3fa0','Verde':'#2e8b57'};
+const COSEQ=['Gris','Rosa','Café','Azul cristal','Morado','Verde'];
+const COHEX={'Gris':'#8a8a8a','Rosa':'#c96fa8','Café':'#8a5a2a','Azul cristal':'#3556c0','Morado':'#6a3fa0','Verde':'#2e8b57'};
 (function(){ const d=document.getElementById('coDots'); if(d) d.innerHTML=COSEQ.map(c=>'<span style="background:'+COHEX[c]+'"></span>').join(''); })();
 function coSync(i){
   const el=document.getElementById('coName');
