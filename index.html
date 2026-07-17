@@ -21106,7 +21106,10 @@ var GUIAS_ENTRENAMIENTO = {
       { key: 'garantias', icon: '🔄', label: 'Garantías', desc: 'Procesar garantías' },
       { key: 'creditos', icon: '💳', label: 'Créditos', desc: 'Abonos y créditos SICAR' },
       { key: 'entrega', icon: '📦', label: 'Entrega de Lentes', desc: 'Entregar pedidos al cliente' },
-      { key: 'ventaLC', icon: '👁', label: 'Venta de LC', desc: 'Vender lentes de contacto paso a paso' }
+      { key: 'ventaLC', icon: '👁', label: 'Venta de LC', desc: 'Vender lentes de contacto paso a paso' },
+      { key: 'beneficios', icon: '🎁', label: 'Descuentos y cupones', desc: 'Cupón, cumpleaños, rescate y convenio' },
+      { key: 'visionSegura', icon: '🛡️', label: 'Visión Segura', desc: 'Vender la protección de armazón' },
+      { key: 'otraSucursal', icon: '📍', label: 'Entre sucursales', desc: 'Vender, recibir y entregar en otra sucursal' }
     ]
   },
   ventas: { titulo: '🛒 Ventas', pasos: [
@@ -21114,6 +21117,8 @@ var GUIAS_ENTRENAMIENTO = {
     { texto: '💡 Si es venta rápida sin cliente, marca "Venta rápida" debajo del buscador.', highlight: 'vta-rapida' },
     { texto: '🔍 Busca productos por nombre o código de barras. También puedes agregar manual con "✏ Manual".', highlight: 'vta-prod-search' },
     { texto: '🎁 Si hay promos activas, aparece "Aplicar promo" — selecciona la que corresponda.', highlight: null },
+    { texto: '🕶 En el 2x1, el sistema ofrece agregar el lente solar graduado: va GRATIS si la compra llega a $3,000, o cuesta $499 si es menor. El precio se ajusta solo al agregar o quitar productos.', highlight: null },
+    { texto: '🎯 Debajo del carrito está la fila de beneficios: Visión Segura, Otra sucursal, Convenio, Rescate y Cupón. Cada una tiene su propia guía en el menú de entrenamiento.', highlight: 'vta-extras-wrap' },
     { texto: '💰 Ingresa el monto. "💰 Liquidar" = pago total. Monto parcial = Apartado.', highlight: 'vta-monto-cobro' },
     { texto: '🔐 Si no da anticipo, usa "🔐 Sin anticipo" (requiere autorización admin).', highlight: 'vta-sin-anticipo-btn' },
     { texto: '📅 Fecha/hora de entrega y asesor son obligatorios. Luego presiona "💰 Cobrar".', highlight: 'vta-fecha-entrega' },
@@ -21155,8 +21160,9 @@ var GUIAS_ENTRENAMIENTO = {
   ]},
   garantias: { titulo: '🔄 Garantías', pasos: [
     { texto: '🔍 Busca al paciente o folio de la orden que necesita garantía.', highlight: 'gta-search', accion: 'garantias' },
-    { texto: '👆 Selecciona la orden (debe ser estado Entregado).', highlight: null },
-    { texto: '🔲 Elige tipo: Armazón, Lentes o Rx. Selecciona responsable y motivo.', highlight: null },
+    { texto: '👆 Selecciona la orden (debe ser estado Entregado). Si ya tiene una garantía, aparece el badge "🔄 Ya tiene garantía · crear otra" — sí puedes crear otra sobre la misma orden.', highlight: null },
+    { texto: '🔲 Elige tipo: Armazón, Lentes o Rx. "Rx realizada por" solo es obligatorio en garantías de Rx; responsable y causa son opcionales.', highlight: null },
+    { texto: '📄 Si el pedido no está cargado en el sistema (muy viejo o de SICAR), usa el link "➕ Garantía sin orden" y captura los datos a mano.', highlight: null },
     { texto: '✅ "Procesar garantía" crea orden GTA- y notifica al cliente.', highlight: null }
   ]},
   creditos: { titulo: '💳 Créditos', pasos: [
@@ -21174,10 +21180,31 @@ var GUIAS_ENTRENAMIENTO = {
   entrega: { titulo: '📦 Entrega de Lentes', pasos: [
     { texto: '📦 Desde el Panel General, presiona el botón "Entregar Lentes" en los accesos rápidos.', accion: 'dashboard', highlight: null },
     { texto: '📷 Escanea el QR del ticket impreso del cliente, el QR de la orden de lab, o el QR del portal de monedero. También puedes escribir el folio o el nombre del paciente.', highlight: null },
-    { texto: '📋 Aparecen todas las órdenes del folio, incluyendo folios de promo 3x1 (ej: 10538, 10538-2, 10538-3). Las que están en "Listo para entrega" se marcan automáticamente.', highlight: null },
+    { texto: '📋 Aparecen todas las órdenes del folio, incluyendo folios de promo 3x1 (ej: 10538, 10538-2, 10538-3). Cada fila muestra el folio, el ARMAZÓN real y para quién es cada par. Las que están en "Listo para entrega" se marcan automáticamente.', highlight: null },
+    { texto: '🔎 Si es pedido de promoción, un banner te dice cuántos pares son en total. Si te falta alguno físicamente, sale en rojo — confirma con la sucursal que los envió ANTES de entregar.', highlight: null },
     { texto: '💰 Si el cliente tiene saldo pendiente, puedes cobrar ahí mismo: selecciona método de pago, ingresa monto y presiona "Cobrar y entregar". Si ya está liquidada, solo marca "Entregar".', highlight: null },
     { texto: '👤 Verifica que tu nombre aparece como asesor que entrega. Esto queda registrado en la bitácora de cada orden.', highlight: null },
     { texto: '✅ Presiona el botón para confirmar. Las órdenes se marcan como "Entregado" y el dashboard se actualiza.', highlight: null }
+  ]},
+  beneficios: { titulo: '🎁 Descuentos y cupones', pasos: [
+    { texto: '🎯 En el carrito del POS, debajo de los totales, está la fila de beneficios: Visión Segura, Otra sucursal, Convenio, Rescate y Cupón. Aquí aprenderás los descuentos.', highlight: 'vta-extras-wrap', accion: 'ventas' },
+    { texto: '🎟️ CUPÓN: cuando un cliente recibió por WhatsApp un cupón con código (ej: MX-A1B2), presiona "🎟️ Cupón", teclea o escanea el código y el sistema valida que exista, no esté usado ni vencido, y aplica el beneficio solo. Se marca como usado al cerrar la venta.', highlight: 'vta-extras-wrap' },
+    { texto: '🎂 CUPÓN DE CUMPLEAÑOS: se valida en Pacientes con el botón "🎂 Cupón cumple". Busca por TELÉFONO (el mismo que recibió el mensaje), pide credencial INE, y el cliente elige: 30% en lentes completos nuevos O KIT gratis (solución + microfibra). Te lleva al POS con todo precargado. Vale todo su mes de cumpleaños, 1 vez por año.', highlight: null },
+    { texto: '🎯 RESCATE: descuento pre-autorizado para cerrar una venta que se está cayendo, SIN pedir autorización: 5% o 10% en cualquier venta, 15% solo si supera $5,000. Cada uso queda registrado con tu nombre y lo revisa gerencia — úsalo solo para rescatar ventas dudosas.', highlight: 'vta-extras-wrap' },
+    { texto: '🏢 CONVENIO EMPRESARIAL: el empleado de una empresa afiliada presenta su código CE-XXXXX + gafete. Beneficios: 15% en lentes completos (acumulable con la promo vigente, aplica también a esposa e hijos) + $500 de regalo 1 vez al año en compras desde $2,000. El sistema valida el código y el teléfono.', highlight: 'vta-extras-wrap' },
+    { texto: '⚠️ REGLA DE ORO: Cupón, Cumpleaños, Convenio y Rescate NO se combinan entre sí (solo uno por venta). La promo de temporada (2x1) SÍ se acumula con ellos.', highlight: null }
+  ]},
+  visionSegura: { titulo: '🛡️ Visión Segura', pasos: [
+    { texto: '🛡️ Visión Segura es la protección OPCIONAL del armazón contra roturas, rayones y accidentes. No es la garantía de fábrica (esa es gratis y va aparte).', accion: 'ventas', highlight: 'vta-extras-wrap' },
+    { texto: '➕ Con el paciente y sus lentes en el carrito, presiona "🛡️ Visión Segura". Elige plan: BÁSICO $499, PLUS $999 (el más elegido) o PREMIUM $1,999, y el armazón a proteger. Se agrega como artículo y suma al ticket.', highlight: 'vta-extras-wrap' },
+    { texto: '📅 La protección dura 12 meses y es UN seguro por armazón — en un 2x1/3x1 puedes ofrecer uno por cada par.', highlight: null },
+    { texto: '💬 ¿Cuándo ofrecerla? Cuando pregunten "¿y si se me rompen?", cuando sean lentes para niños, o al cerrar la compra. Una línea basta: "Por $999 tu armazón queda protegido un año contra accidentes".', highlight: null }
+  ]},
+  otraSucursal: { titulo: '📍 Pedidos entre sucursales', pasos: [
+    { texto: '🛒 AL VENDER: si el cliente quiere recoger en OTRA sucursal, presiona "📍 Otra sucursal" en el carrito y elige dónde recoge. El pedido de lab sale directo a esa sucursal y el saldo se cobra allá al recoger.', highlight: 'vta-recoger-otra-btn', accion: 'ventas' },
+    { texto: '📥 AL RECIBIR: si te llega físicamente un pedido vendido en otra sucursal, ve a Bitácora de Pedidos y usa el botón "📥 De otra sucursal": escanea el QR o busca por folio/nombre y presiona "Recibir en mi sucursal".', highlight: null, accion: 'laboratorio' },
+    { texto: '✅ Al recibirlo, el pedido pasa a TUS pendientes: lo revisas (QC), avisas al cliente por WhatsApp y lo entregas aquí. El saldo que cobres entra a TU caja; la venta y la comisión se quedan en la sucursal que vendió.', highlight: null },
+    { texto: '⚠️ En Entrega de Lentes: si escaneas un pedido que es de otra sucursal, el sistema te pide recibirlo PRIMERO en Bitácora — no se puede entregar sin ese paso.', highlight: null }
   ]}
 };
 
