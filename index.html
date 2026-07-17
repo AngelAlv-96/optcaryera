@@ -21238,9 +21238,10 @@ function mostrarPasoGuia() {
   var paso = guia.pasos[_guiaPaso];
   var old = document.getElementById('guia-paso-overlay'); if (old) old.remove();
   quitarHighlightGuia();
+  var hlEl = null;
   if (paso.highlight) {
-    var el = document.getElementById(paso.highlight);
-    if (el) { el.style.outline = '3px solid #3b82f6'; el.style.outlineOffset = '3px'; el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    hlEl = document.getElementById(paso.highlight);
+    if (hlEl) { hlEl.style.outline = '3px solid #3b82f6'; hlEl.style.outlineOffset = '3px'; hlEl.scrollIntoView({ behavior: 'auto', block: 'center' }); }
   }
   var total = guia.pasos.length;
   var pct = Math.round((_guiaPaso + 1) / total * 100);
@@ -21258,6 +21259,29 @@ function mostrarPasoGuia() {
     + '<button onclick="guiaPasoSig()" class="btn btn-p btn-sm" style="font-size:11px;padding:6px 14px">' + (_guiaPaso < total - 1 ? 'Siguiente →' : '✅ Finalizar') + '</button>'
     + '</div></div>';
   document.body.appendChild(ov);
+  _guiaColocarCard(ov, hlEl);
+}
+
+// Coloca la tarjeta de instrucciones pegada al elemento resaltado (debajo si cabe, si no arriba);
+// sin elemento resaltado (o si no cabe junto a él) se queda en su posición default abajo-centro.
+function _guiaColocarCard(ov, hlEl) {
+  if (!hlEl) return;
+  var r = hlEl.getBoundingClientRect();
+  if (!r || (r.width === 0 && r.height === 0)) return;
+  var vw = window.innerWidth, vh = window.innerHeight;
+  var cw = ov.offsetWidth || Math.min(440, vw * 0.9);
+  var ch = ov.offsetHeight || 170;
+  var margin = 14;
+  var left = Math.round(r.left + r.width / 2 - cw / 2);
+  left = Math.max(8, Math.min(left, vw - cw - 8));
+  var top;
+  if (vh - r.bottom >= ch + margin + 8) top = Math.round(r.bottom + margin);
+  else if (r.top >= ch + margin + 8) top = Math.round(r.top - ch - margin);
+  else return;
+  ov.style.bottom = 'auto';
+  ov.style.transform = 'none';
+  ov.style.left = left + 'px';
+  ov.style.top = top + 'px';
 }
 
 function guiaPasoSig() {
