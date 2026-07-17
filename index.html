@@ -21115,8 +21115,10 @@ var GUIAS_ENTRENAMIENTO = {
   ventas: { titulo: '🛒 Ventas', pasos: [
     { texto: '👤 Busca un paciente en el campo de búsqueda. Escribe nombre, teléfono o escanea QR.', highlight: 'vta-pac-search', accion: 'ventas' },
     { texto: '💡 Si es venta rápida sin cliente, marca "Venta rápida" debajo del buscador.', highlight: 'vta-rapida' },
-    { texto: '🔍 Busca productos por nombre o código de barras. También puedes agregar manual con "✏ Manual".', highlight: 'vta-prod-search' },
-    { texto: '🎁 Si hay promos activas, aparece "Aplicar promo" — selecciona la que corresponda.', highlight: null },
+    { texto: '🔍 Busca el ARMAZÓN por nombre o escanea su código de barras. También puedes agregar manual con "✏ Manual".', highlight: 'vta-prod-search' },
+    { texto: '🔬 Para las MICAS usa el botón "Configurar Material Óptico": elige Tipo (VS, Bifocal F/T, Semi-invisible o Progresivo) → Material → Tratamiento → Serie. El precio aparece solo, de la lista oficial.', highlight: 'vta-mat-big-btn' },
+    { texto: '🎨 Según el material salen opciones extra: tinte (color y tono) o el color de Foto Colors. Si el cliente trae su PROPIO armazón, marca "ARO PX". Al final presiona "+ Agregar a venta".', highlight: 'vta-mat-big-btn' },
+    { texto: '🎁 Si hay promos activas, aparece "Aplicar promo" — selecciona la que corresponda. En promos 2x1/3x1 asigna los folios a cada par de lentes.', highlight: null },
     { texto: '🕶 En el 2x1, el sistema ofrece agregar el lente solar graduado: va GRATIS si la compra llega a $3,000, o cuesta $499 si es menor. El precio se ajusta solo al agregar o quitar productos.', highlight: null },
     { texto: '🎯 Debajo del carrito está la fila de beneficios: Visión Segura, Otra sucursal, Convenio, Rescate y Cupón. Cada una tiene su propia guía en el menú de entrenamiento.', highlight: 'vta-extras-wrap' },
     { texto: '💰 Ingresa el monto. "💰 Liquidar" = pago total. Monto parcial = Apartado.', highlight: 'vta-monto-cobro' },
@@ -21262,8 +21264,9 @@ function mostrarPasoGuia() {
   _guiaColocarCard(ov, hlEl);
 }
 
-// Coloca la tarjeta de instrucciones pegada al elemento resaltado (debajo si cabe, si no arriba);
-// sin elemento resaltado (o si no cabe junto a él) se queda en su posición default abajo-centro.
+// Coloca la tarjeta de instrucciones junto al elemento resaltado SIN taparlo ni tapar lo que
+// se abre debajo de él (dropdowns de búsqueda): primero a un LADO (derecha/izquierda, escritorio),
+// luego ARRIBA, y solo al último debajo. Sin elemento (o sin espacio) → default abajo-centro.
 function _guiaColocarCard(ov, hlEl) {
   if (!hlEl) return;
   var r = hlEl.getBoundingClientRect();
@@ -21272,12 +21275,21 @@ function _guiaColocarCard(ov, hlEl) {
   var cw = ov.offsetWidth || Math.min(440, vw * 0.9);
   var ch = ov.offsetHeight || 170;
   var margin = 14;
-  var left = Math.round(r.left + r.width / 2 - cw / 2);
-  left = Math.max(8, Math.min(left, vw - cw - 8));
-  var top;
-  if (vh - r.bottom >= ch + margin + 8) top = Math.round(r.bottom + margin);
-  else if (r.top >= ch + margin + 8) top = Math.round(r.top - ch - margin);
-  else return;
+  var top = null, left = null;
+  var clampV = function(t){ return Math.max(8, Math.min(t, vh - ch - 8)); };
+  if (vw - r.right >= cw + margin + 8) {            // 1) lado derecho
+    left = Math.round(r.right + margin);
+    top = clampV(Math.round(r.top + r.height / 2 - ch / 2));
+  } else if (r.left >= cw + margin + 8) {           // 2) lado izquierdo
+    left = Math.round(r.left - cw - margin);
+    top = clampV(Math.round(r.top + r.height / 2 - ch / 2));
+  } else if (r.top >= ch + margin + 8) {            // 3) arriba (no tapa dropdowns)
+    top = Math.round(r.top - ch - margin);
+    left = Math.max(8, Math.min(Math.round(r.left + r.width / 2 - cw / 2), vw - cw - 8));
+  } else if (vh - r.bottom >= ch + margin + 8) {    // 4) abajo (último recurso)
+    top = Math.round(r.bottom + margin);
+    left = Math.max(8, Math.min(Math.round(r.left + r.width / 2 - cw / 2), vw - cw - 8));
+  } else return;                                    // no cabe pegado → default abajo-centro
   ov.style.bottom = 'auto';
   ov.style.transform = 'none';
   ov.style.left = left + 'px';
