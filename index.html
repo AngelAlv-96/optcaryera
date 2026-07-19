@@ -7897,7 +7897,7 @@ async function _loadDashCumpleEmpleados() {
     ];
     var cumpleMsg = cumpleMsgs[new Date().getDate() % cumpleMsgs.length];
     body.insertAdjacentHTML('afterbegin',
-      '<div id="dash-cumple-emp" style="border:1px solid rgba(212,184,74,.35);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px">' +
+      '<div id="dash-cumple-emp" onclick="_confetiTap()" title="🎉 ¡Toca para lanzar confeti!" style="border:1px solid rgba(212,184,74,.35);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px;cursor:pointer">' +
         '<span class="cumple-emoji" style="font-size:34px;flex-shrink:0">🎂</span>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:15px;font-weight:800;color:var(--beige)">¡Hoy es cumpleaños de ' + nombres + '! 🎉</div>' +
@@ -7913,6 +7913,12 @@ async function _loadDashCumpleEmpleados() {
       _lanzarConfeti();
     }
   } catch(e) { console.warn('[CumpleEmp]', e); }
+}
+
+// Tap en el banner de cumpleaños: relanza el confeti aunque ya esté cayendo (quita la lluvia anterior)
+function _confetiTap() {
+  try { var w = document.getElementById('confeti-wrap'); if (w) w.remove(); } catch(e) {}
+  _lanzarConfeti();
 }
 
 // Lluvia de confeti ligera (sin librerías) — se limpia sola a los 7s

@@ -32,6 +32,9 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 ## Historial completo (más reciente primero)
 
 
+Cambios v521: **El banner de cumpleaños del Dashboard ahora lanza confeti CADA VEZ que se toca** (pedido de Angel). El banner #dash-cumple-emp recibe onclick=_confetiTap() + cursor:pointer + tooltip "🎉 ¡Toca para lanzar confeti!". _confetiTap remueve el #confeti-wrap activo (si la lluvia anterior sigue cayendo) y llama a _lanzarConfeti() — así cada tap responde al instante en vez de ser ignorado por el guard de wrap-existente. La lluvia automática (1 vez al día por dispositivo) se conserva igual, y sigue respetando prefers-reduced-motion. sw.js v521, 5 bloques JS 0 errores.
+
+
 Cambios v520: **Ajuste a los mensajes de cumpleaños v519 (feedback de Angel: los mensajes 3, 4 y 6 no parecían de cumpleaños y "a lo más valioso de esta familia" sonaba raro).** Los 6 mensajes del pool ahora dicen explícitamente "¡Feliz cumpleaños!" / "¡Muchas felicidades en este cumpleaños!" — se reescribieron el 3 ("Que este nuevo año de vida venga cargado de salud, alegría y éxitos 🥂🎂"), el 4 ("Que sea un día lleno de sorpresas, pastel y buenos momentos 🎈") y el 6 ("Que todos los deseos que se pidan hoy se hagan realidad ✨🎂"), y a 1 y 2 se les antepuso el saludo. Siguen sin pronombres de género/número. sw.js v520. **Lección**: en mensajes festivos rotativos, cada variante debe poder leerse SOLA y decir la ocasión explícita (feliz cumpleaños) — frases "bonitas" sin la palabra clave se sienten fuera de lugar.
 
 
