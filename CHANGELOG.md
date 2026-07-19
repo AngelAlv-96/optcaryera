@@ -32,6 +32,9 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 ## Historial completo (más reciente primero)
 
 
+Cambios v520: **Ajuste a los mensajes de cumpleaños v519 (feedback de Angel: los mensajes 3, 4 y 6 no parecían de cumpleaños y "a lo más valioso de esta familia" sonaba raro).** Los 6 mensajes del pool ahora dicen explícitamente "¡Feliz cumpleaños!" / "¡Muchas felicidades en este cumpleaños!" — se reescribieron el 3 ("Que este nuevo año de vida venga cargado de salud, alegría y éxitos 🥂🎂"), el 4 ("Que sea un día lleno de sorpresas, pastel y buenos momentos 🎈") y el 6 ("Que todos los deseos que se pidan hoy se hagan realidad ✨🎂"), y a 1 y 2 se les antepuso el saludo. Siguen sin pronombres de género/número. sw.js v520. **Lección**: en mensajes festivos rotativos, cada variante debe poder leerse SOLA y decir la ocasión explícita (feliz cumpleaños) — frases "bonitas" sin la palabra clave se sienten fuera de lugar.
+
+
 Cambios v519: **Mensaje de la tarjeta de cumpleaños de empleados mejorado (pedido de Angel: "cambia el no olviden felicitarla, pon algo mejor y déjalo para los futuros").** La tarjeta 🎂 del Dashboard (v502) decía siempre el mismo subtítulo plano "No olviden felicitar de parte de todo el equipo Car & Era 💛". Ahora hay un pool de 6 mensajes cálidos (cumpleMsgs en _loadDashCumpleEmp/insertAdjacentHTML de index.html) que ROTA por día del mes (getDate() % 6) — determinista: el mismo mensaje todo el día en todos los dispositivos, y varía entre cumpleaños futuros. Los 6 mensajes están redactados SIN pronombres de género/número para que sirvan igual con 1 o varios cumpleañeros (la tarjeta une nombres con " y "). sw.js v519, 5 bloques JS 0 errores.
 
 

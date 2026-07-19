@@ -7888,12 +7888,12 @@ async function _loadDashCumpleEmpleados() {
     var nombres = lista.join(' y ');
     // Mensaje festivo que rota por día (sin pronombres de género/número: sirve para 1 o varios cumpleañeros)
     var cumpleMsgs = [
-      '¡Que este día venga con pastel, apapachos y muchas bendiciones! Con cariño, toda la familia Car & Era 💛',
-      'Un año más de vida y de compartir talento con este equipo. ¡A celebrar en grande! 🎁✨',
-      'Hoy el festejo es en Car & Era: salud, alegría y muchos éxitos en este nuevo año de vida 🥂',
-      'Lo mejor del equipo hoy está de fiesta. ¡Muchas felicidades y que vengan muchos años más! 🎈',
+      '¡Feliz cumpleaños! Que este día venga con pastel, apapachos y muchas bendiciones. Con cariño, toda la familia Car & Era 💛',
+      '¡Feliz cumpleaños! Un año más de vida y de compartirlo con este equipo. ¡A celebrar en grande! 🎁✨',
+      '¡Feliz cumpleaños! Que este nuevo año de vida venga cargado de salud, alegría y éxitos 🥂🎂',
+      '¡Muchas felicidades en este cumpleaños! Que sea un día lleno de sorpresas, pastel y buenos momentos 🎈',
       'Gracias por la buena vibra y el gran trabajo de todos los días. ¡Feliz cumpleaños de parte de todo el equipo! 🎊',
-      'Hoy celebramos a lo más valioso de esta familia. ¡Que sea un día inolvidable! ✨🎂'
+      '¡Feliz cumpleaños! Que todos los deseos que se pidan hoy se hagan realidad. Con cariño, el equipo Car & Era ✨🎂'
     ];
     var cumpleMsg = cumpleMsgs[new Date().getDate() % cumpleMsgs.length];
     body.insertAdjacentHTML('afterbegin',
