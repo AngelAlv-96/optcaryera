@@ -7886,12 +7886,22 @@ async function _loadDashCumpleEmpleados() {
       document.head.appendChild(st);
     }
     var nombres = lista.join(' y ');
+    // Mensaje festivo que rota por día (sin pronombres de género/número: sirve para 1 o varios cumpleañeros)
+    var cumpleMsgs = [
+      '¡Que este día venga con pastel, apapachos y muchas bendiciones! Con cariño, toda la familia Car & Era 💛',
+      'Un año más de vida y de compartir talento con este equipo. ¡A celebrar en grande! 🎁✨',
+      'Hoy el festejo es en Car & Era: salud, alegría y muchos éxitos en este nuevo año de vida 🥂',
+      'Lo mejor del equipo hoy está de fiesta. ¡Muchas felicidades y que vengan muchos años más! 🎈',
+      'Gracias por la buena vibra y el gran trabajo de todos los días. ¡Feliz cumpleaños de parte de todo el equipo! 🎊',
+      'Hoy celebramos a lo más valioso de esta familia. ¡Que sea un día inolvidable! ✨🎂'
+    ];
+    var cumpleMsg = cumpleMsgs[new Date().getDate() % cumpleMsgs.length];
     body.insertAdjacentHTML('afterbegin',
       '<div id="dash-cumple-emp" style="border:1px solid rgba(212,184,74,.35);border-radius:14px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:14px">' +
         '<span class="cumple-emoji" style="font-size:34px;flex-shrink:0">🎂</span>' +
         '<div style="flex:1;min-width:0">' +
           '<div style="font-size:15px;font-weight:800;color:var(--beige)">¡Hoy es cumpleaños de ' + nombres + '! 🎉</div>' +
-          '<div style="font-size:12px;color:var(--muted);margin-top:2px">No olviden felicitar de parte de todo el equipo Car & Era 💛</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-top:2px">' + cumpleMsg + '</div>' +
         '</div>' +
         '<span style="font-size:22px;flex-shrink:0">🥳</span>' +
       '</div>');
