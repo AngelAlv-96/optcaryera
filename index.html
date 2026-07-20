@@ -7862,8 +7862,10 @@ async function _loadDashCumpleEmpleados() {
       lista = [];
       Object.keys(exp || {}).forEach(function(uid) {
         if (/prueba/i.test(uid)) return;   // empleados de prueba fuera
-        if (!activos[uid]) return;          // dado de baja (sin teléfono en el checador) → no felicitar
         var e = exp[uid] || {};
+        // Activo = con teléfono en el checador. Excepción: solo_cumple = personal fuera del
+        // checador (ej. Nancy de contabilidad) que SÍ recibe la felicitación del banner.
+        if (!activos[uid] && !e.solo_cumple) return;
         if (e.fecha_nacimiento && String(e.fecha_nacimiento).slice(5, 10) === mmdd) {
           var nombre = (e.nombre_completo || uid.replace(/^(asesor_|extra_)/, '').replace(/_/g, ' ')).trim();
           nombre = nombre.toLowerCase().replace(/(^|[\s.])\S/g, function(c) { return c.toUpperCase(); });
