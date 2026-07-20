@@ -32,6 +32,9 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 ## Historial completo (más reciente primero)
 
 
+Cambios v522 (SOLO DATOS — sin código ni deploy): **Alta del cumpleaños de Nancy Flores (Contabilidad) para el banner del Dashboard** (pedido de Angel: "hoy es el cumpleaños de Nancy Flores, no está registrado, genera el banner"). Nancy no existía en expedientes_empleados ni empleados_telefono. Se agregó uid extra_nancy_flores al expediente con nombre_completo, puesto Contabilidad y fecha_nacimiento 1990-07-20 (⚠️ AÑO PLACEHOLDER — el banner solo compara mes-día; Angel no pasó el año real) + entrada placeholder en empleados_telefono: "0000000000" → extra_nancy_flores (el banner v502 exige teléfono en el checador para considerarla activa; ese número nunca colisiona con un sender real de WA y es inofensivo en la exclusión de blasts). Verificado simulando la lógica exacta del banner: hoy muestra Nancy Flores. El banner ahora saldrá CADA 20 de julio automáticamente. PENDIENTE opcional: teléfono y año de nacimiento reales de Nancy si Angel los pasa.
+
+
 Cambios v521: **El banner de cumpleaños del Dashboard ahora lanza confeti CADA VEZ que se toca** (pedido de Angel). El banner #dash-cumple-emp recibe onclick=_confetiTap() + cursor:pointer + tooltip "🎉 ¡Toca para lanzar confeti!". _confetiTap remueve el #confeti-wrap activo (si la lluvia anterior sigue cayendo) y llama a _lanzarConfeti() — así cada tap responde al instante en vez de ser ignorado por el guard de wrap-existente. La lluvia automática (1 vez al día por dispositivo) se conserva igual, y sigue respetando prefers-reduced-motion. sw.js v521, 5 bloques JS 0 errores.
 
 
