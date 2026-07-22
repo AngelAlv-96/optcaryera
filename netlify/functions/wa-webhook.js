@@ -1151,9 +1151,40 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
 
   await saveMessage(phone, 'user', greeting + userMessage, userName, viaPhoneId);
   await saveMessage(phone, 'assistant', reply, null, viaPhoneId);
+  // 📣 Si Clari prometió pasar el caso a gerencia, mandar la alerta REAL (v525 — antes la promesa quedaba en el aire)
+  try { await notifyGerenciaIfPromised(phone, userName, userMessage, reply); } catch (eGA) { console.warn('[GerenciaAlert]', eGA.message); }
   if (Math.random() < 0.05) cleanOldMessages();
 
   return reply;
+}
+
+// ── 📣 ALERTA REAL A GERENCIA CUANDO CLARI LO PROMETE (v525) ──
+// El modelo a veces responde "ya se notificó a gerencia" / "¿quieres que notifique a gerencia?" pero NO
+// existía ningún mecanismo que lo hiciera (caso Karen, folio 11947: la clienta quedó esperando un contacto
+// que nunca llegó). Si la respuesta enviada promete/ofrece pasar el caso a gerencia, se manda una alerta
+// REAL por WhatsApp a los admin_phones con el contexto. Dedup 12h por teléfono (tag [Gerencia-Alerta]).
+var GERENCIA_PROMISE_RE = /(notifi|avis|report|pas[oaé])\w*[^.\n]{0,50}\bgerencia\b|\bgerencia\b[^.\n]{0,50}(se comunicar|te contactar|lo revis|dar[áa]n? seguimiento)/i;
+async function notifyGerenciaIfPromised(phone, userName, userMessage, reply) {
+  if (!GERENCIA_PROMISE_RE.test(reply || '')) return;
+  try {
+    var since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    var dup = await supaFetch('clari_conversations?phone=eq.' + phone + '&content=ilike.*%5BGerencia-Alerta%5D*&created_at=gte.' + since + '&select=id&limit=1');
+    if (dup && dup.length) return; // ya alertado por esta conversación hace poco
+  } catch (e) { /* si el check falla, alertar de más es mejor que de menos */ }
+  var admins = [];
+  try {
+    var cfgGA = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+    if (cfgGA && cfgGA[0]) {
+      var wGA = typeof cfgGA[0].value === 'string' ? JSON.parse(cfgGA[0].value) : cfgGA[0].value;
+      admins = (wGA.admin_phones || []).slice();
+    }
+  } catch (e) {}
+  if (!admins.length) admins = ['5216564269961'];
+  var txt = '📣 Caso para GERENCIA (Clari lo prometió al cliente — requiere seguimiento HUMANO)\n\n👤 ' + (userName || phone) + '\n📱 ' + phone + '\n💬 Cliente: "' + String(userMessage || '').substring(0, 220) + '"\n🤖 Clari: "' + String(reply || '').substring(0, 180) + '"\n\nContactar al cliente para dar seguimiento.';
+  for (var i = 0; i < admins.length; i++) {
+    try { await sendWhatsAppTemplate(admins[i], 'HXa076da6bd95ae70ece9545df84036f56', { '1': txt }, txt); } catch (e) { console.warn('[GerenciaAlert send]', e.message); }
+  }
+  try { await saveMessage(phone, 'assistant', '[Gerencia-Alerta] Aviso real enviado a gerencia/admin para seguimiento.'); } catch (e) {}
 }
 
 // ── SEND REPLY VIA TWILIO ──

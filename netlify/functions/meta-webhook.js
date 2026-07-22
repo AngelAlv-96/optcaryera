@@ -343,6 +343,43 @@ REGLAS IMPORTANTES:
 5. RECOGIDA POR OTRA PERSONA: Si preguntan si alguien más puede recoger los lentes en su lugar, la respuesta es SÍ. Solo necesita mostrar el ticket de compra o decir el folio del pedido. NO pidas INE, carta poder, ni ningún otro documento — eso NO es necesario. Es un trámite simple.`;
 
 // ── SUPABASE HELPERS ──
+// ── 📣 ALERTA REAL A GERENCIA CUANDO CLARI LO PROMETE (v525, espejo de wa-webhook) ──
+// Si la respuesta enviada promete/ofrece pasar el caso a gerencia, se manda la alerta REAL por WhatsApp
+// a los admin_phones (vía Twilio). Dedup 12h por conversación (tag [Gerencia-Alerta] en el historial).
+var GERENCIA_PROMISE_RE = /(notifi|avis|report|pas[oaé])\w*[^.\n]{0,50}\bgerencia\b|\bgerencia\b[^.\n]{0,50}(se comunicar|te contactar|lo revis|dar[áa]n? seguimiento)/i;
+async function notifyGerenciaIfPromisedMeta(senderId, senderName, userMessage, reply, channel) {
+  if (!GERENCIA_PROMISE_RE.test(reply || '')) return;
+  try {
+    var since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    var dup = await supaFetch('clari_conversations?phone=eq.' + senderId + '&content=ilike.*%5BGerencia-Alerta%5D*&created_at=gte.' + since + '&select=id&limit=1');
+    if (dup && dup.length) return;
+  } catch (e) {}
+  var admins = [];
+  try {
+    var cfgGA = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
+    if (cfgGA && cfgGA[0]) { var wGA = typeof cfgGA[0].value === 'string' ? JSON.parse(cfgGA[0].value) : cfgGA[0].value; admins = (wGA.admin_phones || []).slice(); }
+  } catch (e) {}
+  if (!admins.length) admins = ['5216564269961'];
+  var sidGA = process.env.TWILIO_ACCOUNT_SID, tokGA = process.env.TWILIO_AUTH_TOKEN;
+  if (!sidGA || !tokGA) return;
+  var fromGA = process.env.TWILIO_FROM_NUMBER || 'whatsapp:+5216563110094';
+  var urlGA = 'https://api.twilio.com/2010-04-01/Accounts/' + sidGA + '/Messages.json';
+  var authGA = 'Basic ' + Buffer.from(sidGA + ':' + tokGA).toString('base64');
+  var txt = '📣 Caso para GERENCIA (' + channel.toUpperCase() + ') — Clari lo prometió al cliente, requiere seguimiento HUMANO\n\n👤 ' + (senderName || senderId) + '\n🆔 ' + senderId + ' (vía ' + channel + ')\n💬 Cliente: "' + String(userMessage || '').substring(0, 220) + '"\n🤖 Clari: "' + String(reply || '').substring(0, 180) + '"';
+  for (var i = 0; i < admins.length; i++) {
+    var toGA = encodeURIComponent('whatsapp:+' + admins[i]);
+    try {
+      var rGA = await fetch(urlGA, { method: 'POST', headers: { 'Authorization': authGA, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'From=' + encodeURIComponent(fromGA) + '&To=' + toGA + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': txt })) });
+      if (!rGA.ok) {
+        await fetch(urlGA, { method: 'POST', headers: { 'Authorization': authGA, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'From=' + encodeURIComponent(fromGA) + '&To=' + toGA + '&Body=' + encodeURIComponent(txt) });
+      }
+    } catch (e) { console.warn('[GerenciaAlert meta]', e.message); }
+  }
+  try { await saveMessage(senderId, 'assistant', '[Gerencia-Alerta] Aviso real enviado a gerencia/admin para seguimiento.', null, channel); } catch (e) {}
+}
+
 async function supaFetch(path, opts) {
   if (!SERVICE_KEY) return null;
   opts = opts || {};
@@ -1344,6 +1381,9 @@ exports.handler = async function(event) {
 
         // Send reply
         await sendMetaReply(senderId, reply, channel);
+
+        // 📣 Si Clari prometió pasar el caso a gerencia, mandar la alerta REAL (v525)
+        try { await notifyGerenciaIfPromisedMeta(senderId, senderName, messageText, reply, channel); } catch (eGA) { console.warn('[GerenciaAlert]', eGA.message); }
 
         // ── COMPLAINT DETECTION — notify admin + auto-disable bot ──
         if (isComplaintMessage(messageText)) {
