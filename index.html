@@ -10887,6 +10887,8 @@ async function _validarCupon() {
     if (!c) { err('❌ Código no encontrado'); return; }
     if (c.usado) { err('❌ Este cupón ya fue usado' + (c.usado_at ? ' (' + new Date(c.usado_at).toLocaleDateString('es-MX') + ')' : '')); return; }
     if (c.vigencia && c.vigencia < new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' })) { err('❌ Cupón vencido (' + c.vigencia + ')'); return; }
+    // Cupones restringidos a UNA sucursal (ej. VIT- solo Plaza Vía Vittoria); admin/gerencia exentos
+    if (c.sucursal_restringida && !['admin','gerencia'].includes(currentUser?.rol) && currentUser?.sucursal !== c.sucursal_restringida) { err('❌ Este cupón solo se canjea en ' + c.sucursal_restringida); return; }
     _cuponVtaContext = { id: c.id, codigo: c.codigo, tipo: c.beneficio_tipo, valor: Number(c.beneficio_valor) || 0, descripcion: c.descripcion || '', nombre: c.nombre || '', _fresh: true };
     setTimeout(function(){ if (_cuponVtaContext) _cuponVtaContext._fresh = false; }, 500);
     var ov = document.querySelector('.m-overlay.open'); if (ov && ov.querySelector('#cupon-codigo')) ov.remove();

@@ -102,8 +102,8 @@ function getActivePromos() {
   var cuponVittoria30 = (now <= new Date('2026-07-31T23:59:59-06:00')) ?
     '🎟️ CUPÓN 30% NUEVA SUCURSAL (vigente hasta el 31 de JULIO de 2026, SOLO en Plaza Vía Vittoria):\n' +
     '• Es un cupón de 30% de descuento ADICIONAL sobre el TOTAL de cualquiera de nuestras promociones (se aplica ENCIMA de la promo vigente). ⛔ SOLO se canjea en la sucursal Plaza Vía Vittoria (Av. Ejército Nacional 12946, esq. Neptuno) — en las demás sucursales NO aplica (es el festejo de la nueva sucursal).\n' +
-    '• Se envió por WhatsApp (imagen del cupón); se presenta al pagar en Vittoria. Examen de la vista incluido como siempre.\n' +
-    '• Si preguntan por él o quieren reclamarlo: confírmalo con entusiasmo — presentando el cupón al pagar en Plaza Vía Vittoria antes del 31 de julio aplica el 30% adicional. NO pidas ningún código.\n' +
+    '• Se envió por WHATSAPP (imagen del cupón con botón "Reclamar cupon"): al tocar el botón, el sistema le genera su CÓDIGO PERSONAL (VIT-XXXX) de un solo uso, que presenta al pagar en Vittoria. ⛔ TÚ (Clari) NUNCA inventes ni generes códigos.\n' +
+    '• Si preguntan por él aquí (Messenger/Instagram): explica que el cupón llega por WhatsApp y que el código se reclama tocando el botón del mensaje del cupón en WhatsApp. Examen de la vista incluido como siempre.\n' +
     '• Si pregunta si aplica a LENTES DE CONTACTO: no — los lentes de contacto no entran en este cupón (menciónalo SOLO si pregunta).\n' +
     '• Si pregunta si aplica en otra sucursal: solo en Plaza Vía Vittoria.\n\n'
     : '';

@@ -106,8 +106,9 @@ function getActivePromos() {
   var cuponVittoria30 = (now <= new Date('2026-07-31T23:59:59-06:00')) ?
     '🎟️ CUPÓN 30% NUEVA SUCURSAL (vigente hasta el 31 de JULIO de 2026, SOLO en Plaza Vía Vittoria):\n' +
     '• Es un cupón de 30% de descuento ADICIONAL sobre el TOTAL de cualquiera de nuestras promociones (se aplica ENCIMA de la promo vigente). ⛔ SOLO se canjea en la sucursal Plaza Vía Vittoria (Av. Ejército Nacional 12946, esq. Neptuno) — en las demás sucursales NO aplica (es el festejo de la nueva sucursal).\n' +
-    '• El cliente lo recibió por WhatsApp (imagen del cupón). Lo presenta al pagar en Vittoria (la imagen o este chat). Examen de la vista incluido como siempre.\n' +
-    '• Si el cliente responde "Reclamar cupon" (tocó el botón del mensaje) o dice que quiere reclamar el cupón: confírmale con entusiasmo que su cupón queda RECLAMADO — solo debe presentarlo al pagar en Plaza Vía Vittoria antes del 31 de julio. 1-2 líneas + la dirección. NO pidas ningún código.\n' +
+    '• El cliente lo recibió por WhatsApp (imagen del cupón con botón "Reclamar cupon"). Al tocar el botón, el SISTEMA le genera automáticamente su CÓDIGO PERSONAL (formato VIT-XXXX) y se lo manda — ⛔ TÚ (Clari) NUNCA inventes ni generes códigos; eso lo hace el sistema solo.\n' +
+    '• El código es de UN solo uso y se presenta al pagar en Vittoria (el mensaje con su código). Examen de la vista incluido como siempre.\n' +
+    '• Si el cliente pregunta "¿cuál es mi código?" o dice que no lo encuentra: dile que busque en este chat el mensaje con su código VIT-XXXX, o que toque de nuevo el botón "Reclamar cupon" del mensaje del cupón (o escriba "Reclamar cupon") y el sistema se lo reenvía al instante.\n' +
     '• Si pregunta si aplica a LENTES DE CONTACTO: no — los lentes de contacto no entran en este cupón (menciónalo SOLO si pregunta).\n' +
     '• Si pregunta si aplica en otra sucursal: solo en Plaza Vía Vittoria.\n\n'
     : '';
@@ -1195,6 +1196,35 @@ async function notifyGerenciaIfPromised(phone, userName, userMessage, reply) {
     try { await sendWhatsAppTemplate(admins[i], 'HXa076da6bd95ae70ece9545df84036f56', { '1': txt }, txt); } catch (e) { console.warn('[GerenciaAlert send]', e.message); }
   }
   try { await saveMessage(phone, 'assistant', '[Gerencia-Alerta] Aviso real enviado a gerencia/admin para seguimiento.'); } catch (e) {}
+}
+
+// ── 🎟️ CUPÓN 30% VITTORIA: reclamo por botón → código personal VIT-XXXX (v528) ──
+// Idempotente: re-taps reenvían el MISMO código (no duplican); si ya lo canjeó, se le dice.
+// El canje es en el POS (botón 🎟️ Cupón) y está restringido a Plaza Vía Vittoria (sucursal_restringida).
+var CUPON_VIT_CAMPANA = 'Cupon-Vittoria-30';
+async function reclamarCuponVittoria(phone, userName) {
+  if (new Date() > new Date('2026-07-31T23:59:59-06:00')) {
+    return 'Este cupón venció el 31 de julio 🙁 Pero pregúntame por las promociones vigentes y con gusto te cuento 👓';
+  }
+  var prev = await supaFetch('cupones?campana=eq.' + CUPON_VIT_CAMPANA + '&telefono=eq.' + phone + '&select=codigo,usado&limit=1');
+  if (prev && prev[0] && prev[0].usado) {
+    return 'Tu cupón ' + prev[0].codigo + ' ya fue canjeado 😊 ¡Gracias por tu compra! Si necesitas algo más, aquí estoy 👓';
+  }
+  var codigo = prev && prev[0] ? prev[0].codigo : null;
+  if (!codigo) {
+    for (var intento = 0; intento < 3 && !codigo; intento++) {
+      var cand = 'VIT-' + require('crypto').randomBytes(2).toString('hex').toUpperCase();
+      var ins = await supaFetch('cupones', { method: 'POST', body: JSON.stringify({
+        codigo: cand, campana: CUPON_VIT_CAMPANA, beneficio_tipo: 'desc_pct', beneficio_valor: 30,
+        descripcion: '30% adicional sobre el total con promoción — SOLO Plaza Vía Vittoria',
+        telefono: phone, nombre: userName || null, vigencia: '2026-07-31',
+        sucursal_restringida: 'Plaza Vía Vittoria', enviado_at: new Date().toISOString()
+      }) });
+      if (ins && ins[0] && ins[0].codigo) codigo = ins[0].codigo; // choque de UNIQUE → supaFetch null → reintenta
+    }
+  }
+  if (!codigo) throw new Error('No se pudo generar el código');
+  return '🎟️ ¡Listo! Tu cupón queda reclamado.\n\nTu código personal: *' + codigo + '*\n\n✅ 30% de descuento ADICIONAL sobre el total de cualquiera de nuestras promociones\n📍 Solo en Plaza Vía Vittoria — Av. Ejército Nacional 12946, esq. Neptuno\n📅 Válido hasta el 31 de julio (un solo uso)\n\nPreséntalo al pagar (este mensaje con tu código) 👓 ¡Te esperamos!';
 }
 
 // ── SEND REPLY VIA TWILIO ──
@@ -2889,6 +2919,21 @@ exports.handler = async function(event) {
         await saveMessage(from, 'user', '[Promo-2x1-Button:' + buttonPayload + '] ' + btnLabel, userName);
         await sendWhatsAppReply(from, btnReply);
         await saveMessage(from, 'assistant', btnReply);
+        return { statusCode: 200, headers: H, body: '<Response></Response>' };
+      }
+
+      // ── 🎟️ CUPÓN 30% VITTORIA — botón "Reclamar cupon" → genera y manda el código personal (v528) ──
+      var _txtNormVit = userText.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+      if (from && (buttonPayload === 'reclamar_cupon_vittoria' || _txtNormVit === 'reclamar cupon')) {
+        await saveMessage(from, 'user', '[Cupon-Vittoria-Reclamo] Reclamar cupon', userName);
+        var vitReply;
+        try { vitReply = await reclamarCuponVittoria(from, userName); }
+        catch (eVit) {
+          console.error('[CuponVittoria]', eVit.message);
+          vitReply = 'Recibí tu solicitud del cupón 🎟️ Tuve un detalle técnico generando tu código — tócale de nuevo al botón en un momento, o pasa a Plaza Vía Vittoria y con gusto te lo aplican.';
+        }
+        await sendWhatsAppReply(from, vitReply);
+        await saveMessage(from, 'assistant', vitReply);
         return { statusCode: 200, headers: H, body: '<Response></Response>' };
       }
 
