@@ -98,9 +98,19 @@ function getActivePromos() {
     '• Cada persona recibió un CÓDIGO personal (formato MX-XXXXX). Lo presenta en cualquier sucursal (físico o la captura del WhatsApp) y el cajero lo aplica. Es 20% en la compra de lentes, combinable con el 2x1. Vigente hasta el domingo 5 de julio (último día).\n\n'
     : '';
 
+  // 🎟️ CUPÓN 30% NUEVA SUCURSAL VITTORIA — se envía por WhatsApp, pero pueden preguntar por él en Messenger/IG. Vigente hasta el 31-jul-2026.
+  var cuponVittoria30 = (now <= new Date('2026-07-31T23:59:59-06:00')) ?
+    '🎟️ CUPÓN 30% NUEVA SUCURSAL (vigente hasta el 31 de JULIO de 2026, SOLO en Plaza Vía Vittoria):\n' +
+    '• Es un cupón de 30% de descuento ADICIONAL sobre el TOTAL de cualquiera de nuestras promociones (se aplica ENCIMA de la promo vigente). ⛔ SOLO se canjea en la sucursal Plaza Vía Vittoria (Av. Ejército Nacional 12946, esq. Neptuno) — en las demás sucursales NO aplica (es el festejo de la nueva sucursal).\n' +
+    '• Se envió por WhatsApp (imagen del cupón); se presenta al pagar en Vittoria. Examen de la vista incluido como siempre.\n' +
+    '• Si preguntan por él o quieren reclamarlo: confírmalo con entusiasmo — presentando el cupón al pagar en Plaza Vía Vittoria antes del 31 de julio aplica el 30% adicional. NO pidas ningún código.\n' +
+    '• Si pregunta si aplica a LENTES DE CONTACTO: no — los lentes de contacto no entran en este cupón (menciónalo SOLO si pregunta).\n' +
+    '• Si pregunta si aplica en otra sucursal: solo en Plaza Vía Vittoria.\n\n'
+    : '';
+
   // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").
   if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7)) {
-    return cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+    return cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
       '🏷️ NOMBRE DE LA PROMO — ANÚNCIALA SIEMPRE COMO "3x1" (ya NO la llames "2x1" con el cliente): di "tenemos 3x1 en lentes". El 3x1 = te llevas 3 LENTES por el precio de 1: los 2 del 2x1 (compras 2 y pagas 1) + un 3er lente solar graduado. ⚠️ EN LAS CONDICIONES aclara SIEMPRE: el 3er lente (solar graduado) va GRATIS en COMPRAS MAYORES DE $3,000 (ahí es 3x1 completo); si la compra es menor a $3,000, es 2x1 + el solar a $499. Ejemplo de anuncio: "¡Tenemos 3x1 en lentes! 👓 Te llevas 3 lentes: 2 graduados + un tercer lente solar graduado, y el solar va GRATIS en compras mayores de $3,000. Examen de la vista incluido. ¿Para quién serían?" El mecanismo interno sigue siendo 2x1 + solar, pero al cliente se le ANUNCIA como 3x1.\n\n' +
       '⛔ ALCANCE DE LA PROMO (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
