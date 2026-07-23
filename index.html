@@ -6067,7 +6067,15 @@ function initRealtimeSubscriptions() {
       // 🪙 Venta nueva → moneda para admin/gerencia con sesión abierta
       if (t === 'ventas' && payload?.eventType === 'INSERT' &&
           (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia')) {
-        console.log('[🪙] Venta nueva vía Realtime:', payload?.new?.folio || payload?.new?.id || '');
+        var _cnFolio = payload?.new?.folio || payload?.new?.id || '?';
+        var _cnSuc = payload?.new?.sucursal || '?';
+        var _cnTotal = payload?.new?.total != null ? '$' + Number(payload.new.total).toFixed(2) : '?';
+        var _cnCanal = payload?.new?.canal_venta ? ' · ' + payload.new.canal_venta : '';
+        console.log('[🪙] Venta nueva vía Realtime:', _cnFolio, '·', _cnSuc, '·', _cnTotal, _cnCanal, payload?.new);
+        // Toast visible SIN abrir la consola — diagnóstico de "suena sin venta" (pedido Angel, jul-2026).
+        // Si el toast dice folio real pero no aparece en el dashboard, es un problema de visualización;
+        // si NUNCA aparece ningún toast al oír la moneda, es el navegador reproduciendo un sonido viejo/caché.
+        toast('🪙 ' + _cnFolio + ' · ' + _cnSuc + ' · ' + _cnTotal + _cnCanal);
         _playCoinSound();
         _ventaLiveUpdate(payload?.new); // ⚡ card de ventas actualizado AL INSTANTE desde el payload (odómetro+barras+chispas)
       }
