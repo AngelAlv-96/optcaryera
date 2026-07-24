@@ -6063,24 +6063,27 @@ function initRealtimeSubscriptions() {
   _rtSubs = db.channel('app-realtime');
   allTables.forEach(function(t) {
     _rtSubs = _rtSubs.on('postgres_changes', { event: '*', schema: 'public', table: t }, function(payload) {
-      _rtHandleChange(t);
+      // ⚠️ v532: NO confiar en el closure `t` — supabase-js 2.38.4 rutea eventos por IDs internos de
+      // binding (no por tabla) y cuando se desincronizan (ej. re-suscripción del retry v504) entrega
+      // eventos de UNA tabla al callback de OTRA. Caso real (23-jul): pagos de venta_pagos y órdenes
+      // de ordenes_laboratorio llegaban al callback de `ventas` → la moneda 🪙 sonaba "sin venta".
+      // `payload.table` viene del SERVIDOR con cada evento y es autoritativo.
+      var realTable = payload?.table || t;
+      _rtHandleChange(realTable);
       // 🪙 Venta nueva → moneda para admin/gerencia con sesión abierta
-      if (t === 'ventas' && payload?.eventType === 'INSERT' &&
+      if (realTable === 'ventas' && payload?.eventType === 'INSERT' &&
           (currentUser?.rol === 'admin' || currentUser?.rol === 'gerencia')) {
         var _cnFolio = payload?.new?.folio || payload?.new?.id || '?';
         var _cnSuc = payload?.new?.sucursal || '?';
         var _cnTotal = payload?.new?.total != null ? '$' + Number(payload.new.total).toFixed(2) : '?';
         var _cnCanal = payload?.new?.canal_venta ? ' · ' + payload.new.canal_venta : '';
         console.log('[🪙] Venta nueva vía Realtime:', _cnFolio, '·', _cnSuc, '·', _cnTotal, _cnCanal, payload?.new);
-        // Toast visible SIN abrir la consola — diagnóstico de "suena sin venta" (pedido Angel, jul-2026).
-        // Si el toast dice folio real pero no aparece en el dashboard, es un problema de visualización;
-        // si NUNCA aparece ningún toast al oír la moneda, es el navegador reproduciendo un sonido viejo/caché.
         toast('🪙 ' + _cnFolio + ' · ' + _cnSuc + ' · ' + _cnTotal + _cnCanal);
         _playCoinSound();
         _ventaLiveUpdate(payload?.new); // ⚡ card de ventas actualizado AL INSTANTE desde el payload (odómetro+barras+chispas)
       }
       // Recalcular alerta de efectivo en tiempo real
-      if (_rtCashTables[t]) {
+      if (_rtCashTables[realTable]) {
         if (_rtCashDebounce) clearTimeout(_rtCashDebounce);
         _rtCashDebounce = setTimeout(function() { _rtCashDebounce = null; try { _initAlertaEfectivoGlobal(); } catch(e){} }, 2000);
       }
