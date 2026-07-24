@@ -870,6 +870,10 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
 }
 .toast.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 .toast.err  { border-color: rgba(158,92,92,0.4); color: #d49090; }
+/* Variante BAJA (v533): para avisos informativos que no deben tapar el contenido central
+   (ej. el toast 🪙 de venta nueva, que tapaba la animación del card "Ventas por sucursal hoy"). */
+.toast.low { top: auto; bottom: 90px; transform: translate(-50%, 14px) scale(0.9); }
+.toast.low.show { transform: translate(-50%, 0) scale(1); }
 
 /* ── LOADING ── */
 .ld { display: flex; align-items: center; justify-content: center; padding: 32px; color: var(--muted); font-size: 12px; gap: 8px; }
@@ -5769,7 +5773,7 @@ function calcularEdad(fechaNac) {
   return edad;
 }
 
-function toast(msg, err=false) {
+function toast(msg, err=false, low=false) {
   if (err) {
     let overlay = document.getElementById('error-overlay');
     if (!overlay) {
@@ -5790,7 +5794,7 @@ function toast(msg, err=false) {
   }
   const el = document.getElementById('toast');
   el.textContent = msg;
-  el.className = 'toast show';
+  el.className = 'toast show' + (low ? ' low' : '');
   setTimeout(() => el.className = 'toast', 3200);
 }
 
@@ -6078,7 +6082,7 @@ function initRealtimeSubscriptions() {
         var _cnTotal = payload?.new?.total != null ? '$' + Number(payload.new.total).toFixed(2) : '?';
         var _cnCanal = payload?.new?.canal_venta ? ' · ' + payload.new.canal_venta : '';
         console.log('[🪙] Venta nueva vía Realtime:', _cnFolio, '·', _cnSuc, '·', _cnTotal, _cnCanal, payload?.new);
-        toast('🪙 ' + _cnFolio + ' · ' + _cnSuc + ' · ' + _cnTotal + _cnCanal);
+        toast('🪙 ' + _cnFolio + ' · ' + _cnSuc + ' · ' + _cnTotal + _cnCanal, false, true); // toast BAJO: no tapa la animación del card de ventas
         _playCoinSound();
         _ventaLiveUpdate(payload?.new); // ⚡ card de ventas actualizado AL INSTANTE desde el payload (odómetro+barras+chispas)
       }
