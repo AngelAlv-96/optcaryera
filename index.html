@@ -18064,6 +18064,24 @@ function getLineLbl(pid) {
   return { tag: '', color: '#888', key: '' };
 }
 
+// Detecta adjuntos NO-imagen guardados por el webhook: [AUD:url] (nota de voz) y [FILE:url] (video/documento).
+// Devuelve {kind,url,rest} donde rest es el texto sin el tag, o null si no hay adjunto.
+function _clariMediaTag(txt) {
+  var m = (txt || '').match(/\[(AUD|FILE):(https?:\/\/[^\]]+)\]/);
+  if (!m) return null;
+  return { kind: m[1], url: m[2], rest: txt.replace(/\n?\[(AUD|FILE):[^\]]+\]/, '').trim() };
+}
+function _clariMediaHTML(media) {
+  if (media.kind === 'AUD') {
+    return '<audio controls preload="none" src="' + media.url + '" style="width:100%;max-width:260px;height:32px;margin-bottom:6px;display:block"></audio>';
+  }
+  var esVideo = /\.(mp4|3gp|mov|webm)(\?|$)/i.test(media.url);
+  if (esVideo) {
+    return '<video controls preload="none" src="' + media.url + '" style="max-width:100%;max-height:220px;border-radius:8px;margin-bottom:6px;display:block"></video>';
+  }
+  return '<a href="' + media.url + '" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:6px;color:var(--gold);text-decoration:underline">📎 Abrir archivo</a>';
+}
+
 // HTML de una burbuja de mensaje (compartido por render de lista, historial completo y Realtime incremental)
 function _clariMsgHTML(m) {
   var isBot = m.role === 'assistant';
@@ -18076,11 +18094,15 @@ function _clariMsgHTML(m) {
   var label = isBot ? (isSistema ? '📢 Sistema' : isAdmin ? '👤 Admin' : isCorte ? '📊 Corte' : '🤖 Clari') : '👤 ' + escH(m.user_name || 'Cliente');
   var displayContent = m.content.replace(/^\[(Sistema|Admin|Corte)\]\s*/, '');
   var chatImg = null;
+  // (helpers definidos abajo: _clariMediaTag / _clariMediaHTML)
   var imgMatch = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
   if (imgMatch) { chatImg = imgMatch[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
+  var chatMedia = _clariMediaTag(displayContent);
+  if (chatMedia) displayContent = chatMedia.rest;
   var html = '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
   html += '<div style="max-width:80%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
   if (chatImg) html += '<img src="' + chatImg + '" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
+  if (chatMedia) html += _clariMediaHTML(chatMedia);
   html += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
   html += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' · ' + d + ' ' + t + '</div>';
   html += '</div></div>';
@@ -18977,9 +18999,12 @@ function abrirWaCrmDetalle(phone) {
     var chatImg2 = null;
     var imgMatch2 = displayContent.match(/\[IMG:(https?:\/\/[^\]]+)\]/);
     if (imgMatch2) { chatImg2 = imgMatch2[1]; displayContent = displayContent.replace(/\n?\[IMG:[^\]]+\]/, '').trim(); }
+    var chatMedia2 = _clariMediaTag(displayContent);
+    if (chatMedia2) displayContent = chatMedia2.rest;
     mhtml += '<div style="display:flex;justify-content:' + (isBot ? 'flex-end' : 'flex-start') + ';margin-bottom:6px">';
     mhtml += '<div style="max-width:85%;padding:8px 12px;border-radius:' + (isBot ? '12px 4px 12px 12px' : '4px 12px 12px 12px') + ';background:' + bgColor + ';font-size:12px;line-height:1.4;color:var(--white)">';
     if (chatImg2) mhtml += '<img src="' + chatImg2 + '" style="max-width:100%;max-height:250px;border-radius:8px;margin-bottom:6px;cursor:pointer;display:block" onclick="window.open(this.src,\'_blank\')" loading="lazy">';
+    if (chatMedia2) mhtml += _clariMediaHTML(chatMedia2);
     mhtml += '<div style="white-space:pre-wrap;word-break:break-word">' + escH(displayContent) + '</div>';
     mhtml += '<div style="font-size:9px;color:var(--muted);text-align:right;margin-top:4px">' + label + ' \u00b7 ' + d + ' ' + t + '</div>';
     mhtml += '</div></div>';

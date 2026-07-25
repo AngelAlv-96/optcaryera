@@ -859,8 +859,16 @@ async function uploadChatMedia(twilioUrl, contentType, phone) {
     });
     if (!imgRes.ok) { console.error('[UploadMedia] Twilio download failed:', imgRes.status); return null; }
     var imgBuf = Buffer.from(await imgRes.arrayBuffer());
-    // Generate filename
-    var ext = (contentType || 'image/jpeg').includes('png') ? 'png' : 'jpg';
+    // Generate filename — extensión por tipo (imagen, audio, video, documento)
+    var ct = (contentType || 'image/jpeg').toLowerCase();
+    var EXT_MAP = {
+      'image/png':'png', 'image/jpeg':'jpg', 'image/webp':'webp', 'image/gif':'gif',
+      'audio/ogg':'ogg', 'audio/opus':'ogg', 'audio/mpeg':'mp3', 'audio/mp4':'m4a',
+      'audio/amr':'amr', 'audio/aac':'aac', 'audio/wav':'wav',
+      'video/mp4':'mp4', 'video/3gpp':'3gp', 'video/quicktime':'mov',
+      'application/pdf':'pdf'
+    };
+    var ext = EXT_MAP[ct.split(';')[0].trim()] || (ct.indexOf('/') > 0 ? ct.split('/')[1].split(';')[0].replace(/[^a-z0-9]/g,'') : 'bin') || 'bin';
     var fname = phone.replace(/\D/g,'') + '_' + Date.now() + '.' + ext;
     await ensureChatBucket();
     // Upload to Supabase Storage
@@ -876,6 +884,37 @@ async function uploadChatMedia(twilioUrl, contentType, phone) {
     if (!upRes.ok) { console.error('[UploadMedia] Storage upload failed:', upRes.status); return null; }
     return SUPA_URL + '/storage/v1/object/public/' + CHAT_BUCKET + '/' + fname;
   } catch(e) { console.error('[UploadMedia]', e.message); return null; }
+}
+
+// 🎤 Transcribe una nota de voz de WhatsApp (audio/ogg de Twilio) a texto.
+// ⚠️ Los modelos Claude NO aceptan audio (solo texto/imagen/PDF) → se usa un servicio de voz-a-texto.
+// Si no hay OPENAI_API_KEY configurada, devuelve null y el flujo sigue como antes (fail-soft).
+async function transcribeAudio(twilioUrl, contentType) {
+  var key = process.env.OPENAI_API_KEY;
+  if (!key || !twilioUrl) return null;
+  try {
+    var res = await fetch(twilioUrl, { headers: { 'Authorization': twilioAuth() } });
+    if (!res.ok) { console.error('[Transcribe] descarga Twilio falló:', res.status); return null; }
+    var buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 24 * 1024 * 1024) { console.warn('[Transcribe] audio muy grande, se omite'); return null; }
+    var ct = (contentType || 'audio/ogg').split(';')[0].trim();
+    var ext = ct.indexOf('mpeg') >= 0 ? 'mp3' : ct.indexOf('mp4') >= 0 ? 'm4a' : ct.indexOf('wav') >= 0 ? 'wav' : ct.indexOf('amr') >= 0 ? 'amr' : 'ogg';
+    var form = new FormData();
+    form.append('file', new Blob([buf], { type: ct }), 'nota.' + ext);
+    form.append('model', 'whisper-1');
+    form.append('language', 'es');
+    var tr = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + key },
+      body: form
+    });
+    var txt = await tr.text();
+    if (!tr.ok) { console.error('[Transcribe] API error', tr.status, txt.slice(0, 200)); return null; }
+    var data = JSON.parse(txt);
+    var out = (data && data.text || '').trim();
+    console.log('[Transcribe] OK (' + out.length + ' chars)');
+    return out || null;
+  } catch (e) { console.error('[Transcribe]', e.message); return null; }
 }
 
 async function saveMessage(phone, role, content, userName, viaPhoneId) {
@@ -3008,9 +3047,39 @@ exports.handler = async function(event) {
             }
             return { statusCode: 200, headers: H, body: '<Response></Response>' };
           }
-          // Non-image media (audio, video, etc.)
-          await saveMessage(from, 'user', '📎 Media recibida', userName);
-          var mediaReply = '¡Gracias por tu mensaje! 😊 Por el momento puedo leer fotos de cajas de lentes de contacto o recetas. Si tienes alguna pregunta, escríbela y con gusto te ayudo 👓✨';
+          // Non-image media (audio, video, documentos) — se GUARDA igual que las fotos
+          var otherType = (custMediaType || '').toLowerCase();
+          var esAudio = otherType.indexOf('audio/') === 0;
+          var otherUrl = custMediaUrl ? await uploadChatMedia(custMediaUrl, custMediaType, from) : null;
+          var otherLabel = esAudio ? '🎤 Nota de voz recibida'
+            : otherType.indexOf('video/') === 0 ? '🎬 Video recibido'
+            : '📎 Archivo recibido';
+          var otherTag = otherUrl ? ('\n[' + (esAudio ? 'AUD' : 'FILE') + ':' + otherUrl + ']') : '';
+
+          // 🎤 Nota de voz: intentar transcribirla y contestar lo que el cliente DIJO
+          if (esAudio) {
+            var transcripcion = await transcribeAudio(custMediaUrl, custMediaType);
+            if (transcripcion) {
+              await saveMessage(from, 'user', '🎤 Nota de voz: "' + transcripcion + '"' + otherTag, userName);
+              try {
+                var voiceReply = await getAIResponse(transcripcion, userName, from);
+                await sendWhatsAppReply(from, voiceReply);
+                await saveMessage(from, 'assistant', voiceReply);
+              } catch (vErr) {
+                console.error('[Voz] error respondiendo:', vErr.message);
+                await sendWhatsAppReply(from, 'Recibí tu nota de voz 🎤 pero tuve un problema. ¿Me escribes tu pregunta? 😊');
+              }
+              return { statusCode: 200, headers: H, body: '<Response></Response>' };
+            }
+          }
+
+          await saveMessage(from, 'user', otherLabel + otherTag, userName);
+          // La respuesta al cliente depende de QUÉ mandó (antes decía "puedo leer fotos" hasta a una nota de voz)
+          var mediaReply = esAudio
+            ? 'Recibí tu nota de voz 🎤 Por aquí no puedo escucharla — ¿me escribes tu pregunta y con gusto te ayudo? 😊'
+            : otherType.indexOf('video/') === 0
+              ? 'Recibí tu video 🎬 Por aquí no puedo verlo — ¿me cuentas por escrito en qué te ayudo? 😊'
+              : '¡Gracias por tu mensaje! 😊 Por el momento puedo leer fotos de cajas de lentes de contacto o recetas. Si tienes alguna pregunta, escríbela y con gusto te ayudo 👓✨';
           await sendWhatsAppReply(from, mediaReply);
           await saveMessage(from, 'assistant', mediaReply);
           return { statusCode: 200, headers: H, body: '<Response></Response>' };
