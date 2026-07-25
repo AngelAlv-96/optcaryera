@@ -2144,7 +2144,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         </div>
         <div class="body">
           <div style="padding:10px 16px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <input id="lab-search" type="text" placeholder="&#128274; Escanear código o buscar nombre/folio..." oninput="debounceLabSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();scanLabInput(this.value);}" style="flex:1;min-width:160px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
+            <input id="lab-search" type="text" placeholder="&#128274; Escanear código o buscar folio / nombre / teléfono..." oninput="debounceLabSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();clearTimeout(labSearchTimer);loadLab();}" style="flex:1;min-width:160px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px 12px;color:var(--white);font-family:'Outfit',sans-serif;font-size:12px;outline:none">
             <span id="lab-count" style="font-size:11px;color:var(--muted)"></span>
           </div>
           <div id="lab-list" class="lab-list"></div>
@@ -2171,7 +2171,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
           <!-- SEARCH -->
           <div style="padding:10px 16px 0">
             <div style="position:relative">
-              <input id="lp-search" type="text" placeholder="&#128274; Escanear código o buscar..." oninput="filtrarProduccion()" onkeydown="if(event.key==='Enter'){event.preventDefault();scanLabInput(this.value);}" style="width:100%;box-sizing:border-box;padding:9px 14px 9px 36px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none">
+              <input id="lp-search" type="text" placeholder="&#128274; Escanear código o buscar folio / nombre..." oninput="filtrarProduccion()" onkeydown="if(event.key==='Enter'){event.preventDefault();filtrarProduccion();}" style="width:100%;box-sizing:border-box;padding:9px 14px 9px 36px;background:var(--surface2);border:1px solid rgba(255,255,255,0.09);border-radius:8px;color:var(--white);font-family:'Outfit',sans-serif;font-size:13px;outline:none">
               <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:0.4" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <button id="lp-search-clear" onclick="document.getElementById('lp-search').value='';filtrarProduccion()" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px">&times;</button>
             </div>
@@ -5816,7 +5816,11 @@ function guardAction(name, fn) {
 }
 
 (function(){
-  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','recotra-input','entrega-search','conteo-input','am-rq-modelo','cupon-codigo'];
+  // v540: lista ÚNICA de campos escaneables (antes había otra distinta en mod-scanner.js para
+  // el botón de cámara: 'ord-search' y 'gta-search' tenían cámara pero no remap de pistola, y
+  // 5 campos tenían remap pero no cámara). mod-scanner.js consume window.SCAN_IDS.
+  const SCAN_IDS = ['manos-input','lp-search','vta-pac-search','vta-prod-search','lab-search','surt-input','recibir-input','recotra-input','entrega-search','conteo-input','am-rq-modelo','cupon-codigo','ord-search','gta-search'];
+  window.SCAN_IDS = SCAN_IDS;
   const REMAP = {"'":"-","Ñ":":","ñ":";"}; // US minus key → ES apostrophe
   let charTimes = [], remapTimer = null, _remapping = false;
 
@@ -6361,48 +6365,36 @@ async function loadLab() {
 
   if (currentUser?.rol === 'sucursal') query = query.eq('sucursal', currentUser.sucursal);
 
+  // ═══ BÚSQUEDA (v540) — un solo motor, clasificador único, folio por columna real ═══
+  var _labChip = '';
   if (q.length >= 2) {
-    // Si hay búsqueda, incluir entregados también
-    if (!filtro) query = db.from('ordenes_laboratorio')
+    // Buscar SIEMPRE ignora el filtro de estado: antes, buscar con "Listos para entrega"
+    // activo silenciaba el resultado sin explicar por qué.
+    query = db.from('ordenes_laboratorio')
       .select('*, pacientes(nombre, apellidos, telefono)', { count: 'exact' })
       .order('created_at', { ascending: false });
     if (currentUser?.rol === 'sucursal') query = query.eq('sucursal', currentUser.sucursal);
+    if (filtro) _labChip = '<span style="font-size:11px;color:#f0b429;margin-left:8px">&middot; buscando en todos los estados</span>';
 
-    // Folio-like: pure digits ("11683"), digits+sufijo ("11683-3"), o ONL/AME prefijos ("ONL-1234")
-    const _isFolioLike = /\d/.test(q) && /^[A-Z0-9-]+$/i.test(q);
-    if (_isFolioLike) {
-      if (/^\d+$/.test(q)) {
-        // Solo dígitos puros — buscar también por teléfono
-        const { data: pacTel } = await db.from('pacientes')
-          .select('id').ilike('telefono', `%${q}%`).limit(200);
-        const telIds = (pacTel || []).map(p => p.id);
-        if (telIds.length > 0) {
-          query = query.or(`notas_laboratorio.ilike.%Folio: ${q}%,paciente_id.in.(${telIds.join(',')})`);
-        } else {
-          query = query.ilike('notas_laboratorio', `%Folio: ${q}%`);
-        }
-      } else {
-        // Folio con guión o prefijo (11683-3, ONL-1234) — solo buscar por folio
-        query = query.ilike('notas_laboratorio', `%Folio: ${q}%`);
-      }
+    var _cls = clasificarBusqueda(q);
+    if (_cls.tipo === 'uuid') {
+      query = query.eq('id', _cls.id);
+    } else if (_cls.tipo === 'folio') {
+      // Trae el folio Y sus hermanos -2/-3; en la Bitácora además su garantía relacionada.
+      var _bases = [_cls.base];
+      if (!_folioEsGarantia(_cls.base)) _bases.push('GTA-' + _cls.base);
+      query = query.in('folio_base', _bases);
     } else {
-      const words = q.split(/\s+/).filter(w => w.length >= 2);
-      if (words.length === 0) { /* query unchanged, show all */ }
-      else {
-        let pacQuery = db.from('pacientes').select('id').limit(200);
-        const orFilters = words.map(w => `nombre.ilike.%${w}%,apellidos.ilike.%${w}%`).join(',');
-        pacQuery = pacQuery.or(orFilters);
-        const { data: pacMatches } = await pacQuery;
-        const matchIds = (pacMatches || []).map(p => p.id);
-        if (matchIds.length > 0) {
-          query = query.in('paciente_id', matchIds);
-        } else {
-          lista.innerHTML = '<div class="lab-empty">Sin resultados para "' + q + '"</div>';
-          document.getElementById('lab-count').textContent = '0 resultados';
-          document.getElementById('lab-pagination').innerHTML = '';
-          return;
-        }
+      // Teléfono o nombre → misma rama de paciente para todos (acentos, s↔z, teléfono)
+      var _pacs = await _pacientesQueMatchean(q, 200);
+      var _ids = _pacs.map(function (p) { return p.id; });
+      if (!_ids.length) {
+        lista.innerHTML = '<div class="lab-empty">Sin resultados para "' + q + '"</div>';
+        document.getElementById('lab-count').innerHTML = '0 resultados' + _labChip;
+        document.getElementById('lab-pagination').innerHTML = '';
+        return;
       }
+      query = query.in('paciente_id', _ids);
     }
     query = query.limit(200);
   } else {
@@ -6415,16 +6407,6 @@ async function loadLab() {
   labTotalCount = count || 0;
   let filtered = data || [];
 
-  if (q && /^\d[\d-]*$/.test(q) && filtered.length > 1) {
-    // Matchear folio exacto + folios de promo (-2, -3): buscar por folio base
-    var folioBase = q.replace(/-\d+$/, '');
-    var strictFiltered = filtered.filter(function(o){
-      var f = getFolioFromOrder(o);
-      return f === q || f === folioBase || f.replace(/-\d+$/, '') === folioBase;
-    });
-    if (strictFiltered.length > 0) { filtered = strictFiltered; labTotalCount = strictFiltered.length; }
-  }
-
   labDataCache = filtered;
 
   const listos = (data||[]).filter(o => o.estado_lab === 'Listo para entrega').length;
@@ -6432,8 +6414,8 @@ async function loadLab() {
   if (listos > 0) { badge.textContent = listos; badge.style.display = 'inline-flex'; }
   else badge.style.display = 'none';
 
-  document.getElementById('lab-count').textContent = q
-    ? `${labTotalCount} resultado${labTotalCount!==1?'s':''}`
+  document.getElementById('lab-count').innerHTML = q
+    ? `${labTotalCount} resultado${labTotalCount!==1?'s':''}` + _labChip
     : `${filtered.length} pedidos activos`;
 
   renderLabGrouped(filtered, esOptica);
@@ -7214,43 +7196,36 @@ async function buscarParaEntrega(query) {
       var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('token_portal', token).single();
       if (venta) {
         ventaData = venta;
-        var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%');
-        ordenes = ords || [];
-        // Fallback: buscar por paciente_id si no hay match por texto en notas
+        ordenes = await buscarOrdenesPorFolio(venta.folio, { incluirEntregadas: true, select: _entregaSelectOrd });
+        // Fallback: buscar por paciente_id si no hay match por folio
         if (!ordenes.length && venta.paciente_id) ordenes = await _fallbackByPaciente(venta.paciente_id);
       }
     }
 
-    // 2. Buscar por folio: numérico (10538) o prefijado (V0001) — incluye folios promo (10538-2, V0001-3)
-    var _esFolio = !tokenMatch && /^[A-Za-z]{0,4}\d{2,}(?:-\d+)?$/.test(query);
-    if (!ordenes.length && _esFolio) {
-      var _folioBase = query.toUpperCase().replace(/-\d+$/, '');
-      // ilike '%Folio: 10538%' matchea "Folio: 10538", "10538-2", "10538-3" (igual con V0001, V0001-2...)
-      var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).ilike('notas_laboratorio', '%Folio: ' + _folioBase + '%');
-      ordenes = ords || [];
+    // 2. Buscar por folio: numérico (10538), prefijado (V0001), ONL-/GTA- — trae los hermanos -2/-3
+    // ⚠️ nombres locales _hayFolio/_fBase: NO usar _esFolio/_folioBase, que son helpers GLOBALES (v540)
+    var _hayFolio = !tokenMatch && _esFolio(query);
+    if (!ordenes.length && _hayFolio) {
+      var _fBase = _folioBase(query);
+      ordenes = await buscarOrdenesPorFolio(_fBase, { incluirEntregadas: true, select: _entregaSelectOrd });
       // Buscar la venta asociada por folio base (string — soporta numérico y prefijado V; folio es TEXT)
-      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', _folioBase).single();
+      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', _fBase).maybeSingle();
       if (venta) ventaData = venta;
-      // Fallback: si encontramos la venta pero no órdenes por texto, buscar por paciente_id
+      // Fallback: si encontramos la venta pero no órdenes, buscar por paciente_id
       if (!ordenes.length && ventaData && ventaData.paciente_id) ordenes = await _fallbackByPaciente(ventaData.paciente_id);
     }
 
-    // 3. Buscar por texto (nombre)
-    if (!ordenes.length && !_esFolio && !tokenMatch) {
-      var words = query.toLowerCase().split(/\s+/);
-      var { data: pacs } = await db.from('pacientes').select('id,nombre,apellidos,telefono').or(words.map(function(w){return 'nombre.ilike.%'+w+'%,apellidos.ilike.%'+w+'%'}).join(',')).limit(10);
+    // 3. Buscar por nombre O TELÉFONO (v540: antes un tel de 10 dígitos matcheaba el regex de
+    //    folio y cortaba esta rama → "no se encontraron órdenes")
+    if (!ordenes.length && !_hayFolio && !tokenMatch) {
+      var pacs = await _pacientesQueMatchean(query, 10);
       if (pacs && pacs.length) {
         var pacIds = pacs.map(function(p){return p.id});
         var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).in('paciente_id', pacIds).neq('estado_lab','Entregado').neq('estado_lab','Cancelado').order('created_at',{ascending:false}).limit(30);
         ordenes = ords || [];
         // Si hay órdenes, buscar ventas asociadas por folio
         if (ordenes.length) {
-          var folios = [];
-          ordenes.forEach(function(o) {
-            // folio base como string — soporta numérico (10538) y prefijado (V0001)
-            var m = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/);
-            if (m) folios.push(m[1].replace(/-\d+$/, ''));
-          });
+          var folios = ordenes.map(function(o){ return _folioBase(getFolioFromOrder(o)); }).filter(Boolean);
           if (folios.length) {
             var uniqueFolios = [...new Set(folios)];
             var { data: ventas } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id').in('folio', uniqueFolios);
@@ -7277,7 +7252,7 @@ async function buscarParaEntrega(query) {
       if (ventaData && ventaData.id) {
         var { data: _vps } = await db.from('venta_promociones').select('folios_detalle').eq('venta_id', ventaData.id);
         var _det = [];
-        (_vps || []).forEach(function(vp){ var fd = vp.folios_detalle; if (typeof fd === 'string') { try { fd = JSON.parse(fd); } catch(e){} } if (Array.isArray(fd)) _det = _det.concat(fd); });
+        (_vps || []).forEach(function(vp){ _det = _det.concat(_fdParse(vp.folios_detalle)); });
         var _expF = _det.map(function(d){ return d.folio; }).filter(Boolean);
         var _expU = _expF.filter(function(f,i){ return _expF.indexOf(f) === i; }); // únicos
         if (_expU.length > 1) {
@@ -7463,16 +7438,17 @@ async function _trasladarPedidoAMiSuc(ordenId) {
     var origen = o.sucursal;
     if (origen === destino) return { ok: false, error: 'Este pedido ya es de tu sucursal' };
     var folio = getFolioFromOrder(o);
-    var folioBase = (folio || '').replace(/-\d+$/, '');
+    // ⚠️ v540: _folioBase NO parte por el guion de ONL-/GTA- (antes 'GTA-15926'→'GTA' y el
+    // ilike '%Folio: GTA%' arrastraba TODAS las garantías de la sucursal en un solo traslado).
+    var folioBase = _folioBase(folio);
     if (!folioBase) return { ok: false, error: 'No se pudo leer el folio del pedido' };
 
     // Mover TODAS las órdenes de ese folio (incluye hermanas de promo: V0001, V0001-2...)
-    var { data: hermanas } = await db.from('ordenes_laboratorio').select('id,notas_laboratorio,sucursal,estado_lab').ilike('notas_laboratorio', '%Folio: ' + folioBase + '%');
+    var hermanas = await buscarOrdenesPorFolio(folioBase, { incluirEntregadas: true, select: 'id,folio,folio_base,notas_laboratorio,sucursal,estado_lab' });
+    _rtSuppressUntil = Date.now() + 10000;
     var movidas = 0;
     for (var i = 0; i < (hermanas || []).length; i++) {
       var hh = hermanas[i];
-      var hf = (getFolioFromOrder(hh) || '').replace(/-\d+$/, '');
-      if (hf !== folioBase) continue; // evita matches parciales (ej. 105 vs 1050)
       if (hh.estado_lab === 'Entregado' || hh.estado_lab === 'Cancelado') continue;
       if (hh.sucursal === destino) { movidas++; continue; }
       var nota = hh.notas_laboratorio || '';
@@ -7544,19 +7520,17 @@ async function _recOtraBuscar(query) {
     var tokenMatch = query.match(/[?&]t=([a-z0-9]+)/i);
     if (tokenMatch) {
       var { data: venta } = await db.from('ventas').select('folio').eq('token_portal', tokenMatch[1]).single();
-      if (venta) { var { data: o1 } = await db.from('ordenes_laboratorio').select(sel).ilike('notas_laboratorio', '%Folio: ' + venta.folio + '%'); ordenes = o1 || []; }
+      if (venta) ordenes = await buscarOrdenesPorFolio(venta.folio, { incluirEntregadas: true, select: sel });
     }
-    // 2. Folio (numérico o prefijado V0001)
-    var _esFolio = !tokenMatch && /^[A-Za-z]{0,4}\d{2,}(?:-\d+)?$/.test(query);
-    if (!ordenes.length && _esFolio) {
-      var fb = query.toUpperCase().replace(/-\d+$/, '');
-      var { data: o2 } = await db.from('ordenes_laboratorio').select(sel).ilike('notas_laboratorio', '%Folio: ' + fb + '%');
-      ordenes = o2 || [];
+    // 2. Folio (numérico, prefijado V0001, ONL-/GTA-) — trae los hermanos -2/-3
+    // ⚠️ local _hayFolio: NO usar _esFolio, que es helper GLOBAL (v540)
+    var _hayFolio = !tokenMatch && _esFolio(query);
+    if (!ordenes.length && _hayFolio) {
+      ordenes = await buscarOrdenesPorFolio(query, { incluirEntregadas: true, select: sel });
     }
-    // 3. Nombre
-    if (!ordenes.length && !_esFolio && !tokenMatch) {
-      var words = query.toLowerCase().split(/\s+/);
-      var { data: pacs } = await db.from('pacientes').select('id').or(words.map(function(w){ return 'nombre.ilike.%' + w + '%,apellidos.ilike.%' + w + '%'; }).join(',')).limit(10);
+    // 3. Nombre o TELÉFONO (v540: un tel de 10 dígitos ya no se confunde con folio)
+    if (!ordenes.length && !_hayFolio && !tokenMatch) {
+      var pacs = await _pacientesQueMatchean(query, 10);
       if (pacs && pacs.length) {
         var { data: o3 } = await db.from('ordenes_laboratorio').select(sel).in('paciente_id', pacs.map(function(p){ return p.id; })).neq('estado_lab', 'Entregado').neq('estado_lab', 'Cancelado').order('created_at', { ascending: false }).limit(30);
         ordenes = o3 || [];
@@ -7566,7 +7540,7 @@ async function _recOtraBuscar(query) {
     ordenes = (ordenes || []).filter(function(o){ return o.sucursal !== mi && o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
     // Dedup por folio base (una tarjeta por pedido)
     var seen = {}; var unicas = [];
-    ordenes.forEach(function(o){ var fb = (getFolioFromOrder(o) || '').replace(/-\d+$/, ''); if (fb && !seen[fb]) { seen[fb] = true; unicas.push(o); } });
+    ordenes.forEach(function(o){ var fb = _folioBase(getFolioFromOrder(o)); if (fb && !seen[fb]) { seen[fb] = true; unicas.push(o); } });
     _recOtraRender(unicas, query);
   } catch (e) {
     if (results) results.innerHTML = '<div style="color:#e08080;font-size:12px">Error: ' + (e.message || e) + '</div>';
@@ -7806,10 +7780,10 @@ async function _marcarEntregados(ids, asesor) {
 async function _promptEntregaLentes(folio) {
   // Check if all ordenes for this folio are "Listo para entrega" in current sucursal
   try {
-    var folioBase = String(folio).replace(/-\d+$/, '');
+    var folioBase = _folioBase(folio);
     var { data: ords } = await db.from('ordenes_laboratorio')
-      .select('id,estado_lab,sucursal,notas_laboratorio')
-      .ilike('notas_laboratorio', '%Folio: ' + folioBase + '%')
+      .select('id,estado_lab,sucursal,notas_laboratorio,folio,folio_base')
+      .eq('folio_base', folioBase)
       .neq('estado_lab', 'Entregado')
       .neq('estado_lab', 'Cancelado');
     if (!ords || !ords.length) return;
@@ -8522,6 +8496,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
     h += '<div id="dash-suc-pendientes-cobro"></div>';
     h += '<div id="dash-traslados-entrantes"></div>';
     h += '<div id="dash-entregas-vencidas"></div>';
+    h += '<div id="dash-folios-sin-orden"></div>';
     h += '<div id="dash-precio-cambios"></div>';
     h += '</div></div>';
   } else {
@@ -8532,6 +8507,7 @@ async function renderDashSucursal(orders, urgentes, suc, today, utcStart, utcEnd
   setTimeout(function(){ _loadDashSucPendientes(suc, porRevisar > 0 || listos > 0); }, 50);
   setTimeout(function(){ _loadDashEntregasVencidas(porRevisar > 0 || listos > 0); }, 80);
   setTimeout(function(){ _loadDashTrasladosEntrantes(suc, porRevisar > 0 || listos > 0); }, 90);
+  setTimeout(function(){ _loadDashFoliosSinOrden(suc, porRevisar > 0 || listos > 0); }, 95);
   setTimeout(function(){ _loadDashMetaWidget(suc); }, 100);
   setTimeout(function(){ _loadDashPrecioCambios(porRevisar > 0 || listos > 0); }, 110);
   setTimeout(function(){ _loadDashMiSobre(suc); }, 130);
@@ -8606,6 +8582,110 @@ async function _loadDashEntregasVencidas(cardExists) {
       }
     }
   } catch(e) { console.warn('Entregas vencidas load:', e); }
+}
+
+/* 🧾 Folios vendidos SIN orden de laboratorio (v540)
+   Antes solo se sabía de los folios de promo (y con un flag frágil); las ventas normales
+   no tenían ningún rastreo. Ahora se deriva de la existencia REAL de la orden. */
+var _foliosSinOrdenData = [];
+async function _loadDashFoliosSinOrden(suc, cardExists) {
+  try {
+    var desde = new Date(Date.now() - 45 * 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+    var { data: vtas } = await db.from('ventas')
+      .select('id,folio,created_at,paciente_id,estado,pacientes(nombre,apellidos),venta_items(descripcion,producto_id),venta_promociones(folios_detalle)')
+      .eq('sucursal', suc)
+      .gte('created_at', localDateToUTC(desde))
+      .neq('estado', 'Cancelada')
+      .order('created_at', { ascending: false })
+      .limit(300);
+    if (!vtas || !vtas.length) return;
+
+    // Folios esperados por venta (promo → un folio por slot; sin promo → el folio de la venta)
+    var esperados = [];
+    vtas.forEach(function (v) {
+      if (!v.paciente_id) return;                       // venta libre (accesorio/solución)
+      var pac = v.pacientes ? ((v.pacientes.nombre || '') + ' ' + (v.pacientes.apellidos || '')).trim() : '';
+      var slots = [];
+      (v.venta_promociones || []).forEach(function (vp) {
+        _fdParse(vp.folios_detalle).forEach(function (d) {
+          if (d && d.folio) slots.push({ folio: _folioNorm(d.folio), addon: !!d.es_addon });
+        });
+      });
+      if (!slots.length) {
+        // Sin promo: solo requiere orden si se vendió material graduado "... (S1) VS"
+        if (!(v.venta_items || []).some(_itemEsMaterial)) return;
+        slots.push({ folio: _folioNorm(v.folio), addon: false });
+      }
+      slots.forEach(function (s) {
+        esperados.push({ folio: s.folio, addon: s.addon, venta_id: v.id, venta_folio: v.folio, paciente: pac, created_at: v.created_at });
+      });
+    });
+    if (!esperados.length) return;
+
+    // Órdenes existentes (en lotes de 150 para no reventar la URL del .in)
+    var bases = [...new Set(esperados.map(function (e) { return _folioBase(e.folio); }))];
+    var existentes = {};
+    for (var i = 0; i < bases.length; i += 150) {
+      var { data: ords } = await db.from('ordenes_laboratorio').select('folio').in('folio_base', bases.slice(i, i + 150));
+      (ords || []).forEach(function (o) { existentes[_folioNorm(o.folio)] = true; });
+    }
+
+    var faltan = esperados.filter(function (e) { return !existentes[e.folio]; });
+    if (!faltan.length) return;
+    faltan.sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    _foliosSinOrdenData = faltan;
+
+    var dias = Math.floor((Date.now() - new Date(faltan[0].created_at)) / 864e5);
+    var row = '<div id="dash-folios-sin-orden" style="display:flex;align-items:center;gap:8px;padding:8px 0;cursor:pointer" onclick="_abrirFoliosSinOrdenModal()">'
+      + '<span style="font-size:16px">🧾</span>'
+      + '<span style="flex:1;font-size:13px;color:#f59e0b;font-weight:600">' + faltan.length + ' folio' + (faltan.length > 1 ? 's' : '') + ' sin orden de lab '
+      + '<span style="font-size:11px;font-weight:400;color:var(--muted)">(más antiguo: ' + dias + 'd)</span></span>'
+      + '<span style="font-size:11px;color:var(--beige)">Ver →</span></div>';
+    var el = document.getElementById('dash-folios-sin-orden');
+    if (el) { el.outerHTML = row; return; }
+    var wrap = document.getElementById('dash-suc-pendientes-cobro-wrap');
+    if (wrap) {
+      if (wrap.innerHTML.includes('Tareas pendientes')) {
+        var inner = wrap.querySelector('div[style*="padding:8px 16px"]');
+        if (inner) inner.insertAdjacentHTML('beforeend', row);
+      } else {
+        wrap.innerHTML = '<div class="card" style="margin-bottom:16px"><div class="card-head"><h3>📋 Tareas pendientes</h3></div><div style="padding:8px 16px">' + row + '</div></div>';
+      }
+    }
+  } catch (e) { console.warn('Folios sin orden load:', e); }
+}
+
+function _abrirFoliosSinOrdenModal() {
+  var rows = _foliosSinOrdenData || [];
+  if (!rows.length) return;
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.style.zIndex = 9998;
+  var body = rows.map(function (f) {
+    var d = Math.floor((Date.now() - new Date(f.created_at)) / 864e5);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--white)">' + f.folio +
+          (f.addon ? ' <span style="font-size:10px;color:var(--muted);font-weight:400">🕶 solar de promo — se captura a mano</span>' : '') + '</div>' +
+        '<div style="font-size:11px;color:var(--muted)">👤 ' + (f.paciente || '—') + ' · vendido hace ' + d + 'd</div>' +
+      '</div>' +
+      '<button class="btn btn-p" style="padding:6px 10px;font-size:11px" onclick="_irACapturarFolio(\'' + f.venta_id + '\',\'' + f.folio + '\')">Capturar →</button>' +
+    '</div>';
+  }).join('');
+  ov.innerHTML = '<div class="modal" style="max-width:520px">' +
+    '<h3 style="margin-top:0">🧾 Folios vendidos sin orden de laboratorio</h3>' +
+    '<p style="font-size:12px;color:var(--muted);margin-top:0">Estas ventas ya se cobraron pero su orden de lab todavía no se captura.</p>' +
+    '<div style="max-height:52vh;overflow:auto">' + body + '</div>' +
+    '<div class="m-actions"><button class="btn btn-g" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div></div>';
+  document.body.appendChild(ov);
+}
+
+function _irACapturarFolio(ventaId, folio) {
+  var ov = document.querySelector('.m-overlay.open');
+  if (ov) ov.remove();
+  go('orden');
+  limpiarOrden();
+  setTimeout(function () { selSubFolioEnOrden(ventaId, folio, null); }, 250);
 }
 
 // 📦 Tarea "vas a recibir / por entregar" — pedidos traídos de OTRA sucursal a la mía (TRASLADO).
@@ -8918,7 +8998,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
     db.from('pacientes').select('*',{count:'exact',head:true}).eq('estado','pre-registro').gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('citas').select('*,pacientes(nombre,apellidos)').eq('fecha',today).order('hora'),
     db.from('cortes_caja').select('*, creditos_abonos:desglose_metodos').eq('fecha', today).eq('estado','cortada'),
-    db.from('ordenes_laboratorio').select('id,sucursal').gte('created_at',utcStart).lte('created_at',utcEnd).ilike('notas_laboratorio','%Folio: GTA-%'),
+    db.from('ordenes_laboratorio').select('id,sucursal').gte('created_at',utcStart).lte('created_at',utcEnd).like('folio','GTA-%'),
     db.from('ordenes_laboratorio').select('*',{count:'exact',head:true}).gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('venta_pagos').select('monto,ventas(estado)').gte('created_at',utcStart).lte('created_at',utcEnd),
     db.from('creditos_abonos').select('monto').gte('created_at',utcStart).lte('created_at',utcEnd),
@@ -10342,7 +10422,9 @@ function dashLabBuscar() {
   if (!v) return;
   document.getElementById('lab-search').value = v;
   go('laboratorio');
-  setTimeout(function(){ document.getElementById('lab-search')?.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'})); }, 200);
+  // v540: llamar a la búsqueda directo (antes disparaba un KeyboardEvent sintético que caía
+  // en el OTRO motor de búsqueda, el de escaneo exacto)
+  setTimeout(function(){ clearTimeout(labSearchTimer); loadLab(); }, 200);
 }
 
 // Auto-refresh dashboard every 2 minutes
@@ -12763,10 +12845,12 @@ async function buscarPacienteOrden() {
   if (q.length < 2) { res.style.display='none'; return; }
   clearTimeout(ordSearchTimer);
   ordSearchTimer = setTimeout(async () => {
-    // Check if query looks like a folio (numérico o prefijado tipo V0004, incl. sub-folios -2, -3)
-    if (/^[A-Za-z]{0,4}\d{2,}(-\d+)?$/.test(q)) {
-      var folioBase = q.replace(/-\d+$/, '');
-      var isSubFolio = q !== folioBase;
+    // ¿El término es un folio? (numérico, prefijado V0004, ONL-/GTA-, incl. sub-folios -2/-3)
+    // v540: _esFolio descarta los teléfonos de 10 dígitos, que antes caían aquí y mataban
+    // la búsqueda por nombre/teléfono de más abajo.
+    if (_esFolio(q)) {
+      var folioBase = _folioBase(q);
+      var isSubFolio = _folioNorm(q) !== folioBase;
       // Search ventas by folio base
       const { data: ventas } = await db.from('ventas')
         .select('id, folio, paciente_id, fecha_entrega, total, estado, pacientes(id, nombre, apellidos, telefono), venta_promociones(id, nombre_promo, folios_detalle)')
@@ -12778,18 +12862,14 @@ async function buscarPacienteOrden() {
         for (var vt of ventas) {
           var promos = vt.venta_promociones || [];
           var allFds = [];
-          for (var vp of promos) {
-            var fdArr = vp.folios_detalle;
-            if (typeof fdArr === 'string') { try { fdArr = JSON.parse(fdArr); } catch(e){} }
-            if (Array.isArray(fdArr)) allFds = allFds.concat(fdArr);
-          }
+          for (var vp of promos) { allFds = allFds.concat(_fdParse(vp.folios_detalle)); }
           if (isSubFolio) {
             // Sub-folio: buscar slot exacto y mostrar con su paciente real
-            var hit = allFds.find(function(fd){ return fd.folio === q; });
+            var hit = allFds.find(function(fd){ return _folioNorm(fd.folio) === _folioNorm(q); });
             if (hit) {
               var hitNom = hit.paciente_nombre || '—';
               var pacId = hit.paciente_id || vt.paciente_id;
-              rows.push({ vt: vt, sub: q, nom: hitNom, pacId: pacId, fd: hit });
+              rows.push({ vt: vt, sub: _folioNorm(q), nom: hitNom, pacId: pacId, fd: hit });
             }
           } else {
             // Folio base: mostrar venta con sus folios disponibles
@@ -14014,7 +14094,7 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
       if (allVP?.length) {
         for (const vp of allVP) {
           if (!vp.folios_detalle || !vp.ventas) continue;
-          var fdArr = Array.isArray(vp.folios_detalle) ? vp.folios_detalle : (typeof vp.folios_detalle === 'string' ? JSON.parse(vp.folios_detalle) : []);
+          var fdArr = _fdParse(vp.folios_detalle);   // v540: antes JSON.parse sin try → podía tirar la función
           for (const fd of fdArr) {
             if (fd.usado) continue;
             if (fd.paciente_id !== pacienteId) continue;
@@ -14068,11 +14148,20 @@ async function mostrarFoliosPendientesVenta(ventaId, fallbackNombre) {
       .eq('venta_id', ventaId);
     vps = data || [];
   } catch(e) { console.warn('[FoliosVenta]', e.message); }
+  // v540: la verdad es la EXISTENCIA de la orden, no el flag fd.usado (que se desincroniza
+  // cuando marcarFolioUsado falla). Se consulta una vez y se cruza por folio.
+  var _yaCreados = {};
+  try {
+    var _vf = vps[0]?.ventas?.folio;
+    if (_vf) (await buscarOrdenesPorFolio(_vf, { incluirEntregadas: true, select: 'id,folio,folio_base,estado_lab' }))
+      .forEach(function (o) { _yaCreados[getFolioFromOrder(o)] = o; });
+  } catch (e) { console.warn('[FoliosVenta] órdenes:', e.message); }
+
   const avail = [], usados = [];
   for (const vp of vps) {
-    const fdArr = Array.isArray(vp.folios_detalle) ? vp.folios_detalle : (typeof vp.folios_detalle === 'string' ? JSON.parse(vp.folios_detalle || '[]') : []);
+    const fdArr = _fdParse(vp.folios_detalle);   // v540: antes JSON.parse sin try → podía tirar la función
     for (const fd of fdArr) {
-      if (fd.usado) { usados.push(fd.folio); continue; }
+      if (_yaCreados[_folioNorm(fd.folio)] || fd.usado) { usados.push(fd.folio); continue; }
       avail.push({
         folio: fd.folio, venta_id: ventaId, venta_folio: vp.ventas?.folio, promo_id: vp.id,
         promo_nombre: vp.nombre_promo, slot_label: fd.slot_label, item_desc: fd.item_desc,
@@ -14183,17 +14272,33 @@ async function selPromoFolio(idx) {
   toast(`✓ Folio ${f.folio} asignado · ${f.promo_nombre}${f.armazon ? ' · '+f.armazon : ''}${f.material ? ' · '+f.material : ''}`);
 }
 
+/* folios_detalle a veces viene como array y a veces como string JSON. Antes había 5 lecturas
+   con 3 manejos distintos (try/catch mudo, sin try, y sin parse) — v540 lo centraliza. */
+function _fdParse(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') { try { var p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch (e) { return []; } }
+  return [];
+}
+
 async function marcarFolioUsado(folioStr) {
-  if (!folioStr) return;
+  if (!folioStr) return false;
   try {
-    const {data: promos} = await db.from('venta_promociones').select('id, folios_detalle').not('folios_detalle', 'is', null);
-    if (!promos?.length) return;
+    var f = _folioNorm(folioStr);
+    var base = _folioBase(f);
+    // v540: acotado a la venta del folio. Antes escaneaba TODAS las venta_promociones sin
+    // filtro ni limit → PostgREST corta en 1000 filas y el folio dejaba de marcarse en silencio.
+    var { data: vta } = await db.from('ventas').select('id').eq('folio', base).maybeSingle();
+    var pq = db.from('venta_promociones').select('id, folios_detalle').not('folios_detalle', 'is', null);
+    pq = vta ? pq.eq('venta_id', vta.id) : pq.limit(500);
+    var { data: promos } = await pq;
+    if (!promos?.length) return false;
     for (const vp of promos) {
-      if (!vp.folios_detalle?.length) continue;
-      const idx = vp.folios_detalle.findIndex(fd => fd.folio === folioStr && !fd.usado);
+      var arr = _fdParse(vp.folios_detalle);              // ← el JSON.parse que faltaba
+      if (!arr.length) continue;
+      const idx = arr.findIndex(fd => _folioNorm(fd.folio) === f && !fd.usado);
       if (idx >= 0) {
-        const updated = [...vp.folios_detalle];
-        updated[idx] = { ...updated[idx], usado: true };
+        const updated = arr.slice();
+        updated[idx] = Object.assign({}, updated[idx], { usado: true });
         await db.from('venta_promociones').update({ folios_detalle: updated }).eq('id', vp.id);
         return true;
       }
@@ -14201,6 +14306,93 @@ async function marcarFolioUsado(folioStr) {
   } catch(e) { console.warn('[MarcarFolio]', e.message); }
   return false;
 }
+
+/* ═══ RELACIÓN FOLIO ↔ ORDEN DE LAB (v540) ═══════════════════════════════════
+   Responde "de esta venta, qué folios ya tienen orden y cuáles no", derivándolo de la
+   EXISTENCIA REAL de la orden (columna folio), no del flag frágil folios_detalle[].usado
+   —que se sigue escribiendo como caché pero ya no es la verdad—.
+   Antes esto solo existía para ventas CON promo; para ventas normales no había ningún rastreo. */
+
+// Categorías que NO generan orden de laboratorio.
+var LAB_CATS_SIN_ORDEN = ['Accesorio', 'Solución', 'Solucion', 'Servicio', 'Cobertura'];
+// Un ítem es "material graduado" si su descripción trae la serie: "... (S1) VS"
+function _itemEsMaterial(it) { return /\(S\d\)/.test(it?.descripcion || ''); }
+
+async function labFoliosDeVenta(ventaIdOrFolio) {
+  if (!ventaIdOrFolio) return null;
+  var sel = 'id,folio,sucursal,sucursal_entrega,paciente_id,estado,fecha_entrega,hora_entrega,' +
+            'pacientes(nombre,apellidos,telefono),' +
+            'venta_items(id,descripcion,producto_id,folio_asignado),' +
+            'venta_promociones(id,nombre_promo,folios_detalle)';
+  var qy = db.from('ventas').select(sel);
+  qy = _esUUID(ventaIdOrFolio) ? qy.eq('id', ventaIdOrFolio) : qy.eq('folio', _folioBase(ventaIdOrFolio));
+  var r = await qy.maybeSingle();
+  if (r.error || !r.data) return null;
+  var vt = r.data;
+  var items = vt.venta_items || [];
+  var hayMaterial = items.some(_itemEsMaterial);
+
+  // 1) Folios esperados
+  var esperados = [];
+  (vt.venta_promociones || []).forEach(function (vp) {
+    _fdParse(vp.folios_detalle).forEach(function (d) {
+      if (!d || !d.folio) return;
+      esperados.push({
+        folio: _folioNorm(d.folio), origen: 'promo', slot: d.slot_label || '',
+        es_addon: !!d.es_addon, armazon: d.armazon || '', material: d.material || '',
+        material_meta: d.material_meta || null,
+        paciente_nombre: d.paciente_nombre || '', paciente_id: d.paciente_id || vt.paciente_id,
+        usado_flag: !!d.usado, requiere: true
+      });
+    });
+  });
+  if (!esperados.length) {
+    // Venta SIN promo: hoy no existía ningún rastreo. Se deriva del propio folio de la venta.
+    var pacNom = vt.pacientes ? ((vt.pacientes.nombre || '') + ' ' + (vt.pacientes.apellidos || '')).trim() : '';
+    var arm = (items.find(function (i) { return i.producto_id && !_itemEsMaterial(i); }) || {}).descripcion || '';
+    var mat = (items.find(_itemEsMaterial) || {}).descripcion || '';
+    esperados.push({
+      folio: _folioNorm(vt.folio), origen: 'venta', slot: '', es_addon: false,
+      armazon: arm.replace(/\s*\[ARO PX\]\s*$/, ''), material: mat, material_meta: null,
+      paciente_nombre: pacNom, paciente_id: vt.paciente_id, usado_flag: false,
+      // Solo requiere orden si se vendió material graduado (no accesorios/soluciones sueltos)
+      requiere: hayMaterial && !!vt.paciente_id,
+      motivo: hayMaterial ? '' : 'sin material graduado'
+    });
+  }
+
+  // 2) Cruce con las órdenes REALES — una sola consulta para toda la venta
+  var ords = await buscarOrdenesPorFolio(vt.folio, {
+    incluirEntregadas: true,
+    select: 'id,folio,folio_base,estado_lab,armazon,tipo_lente,created_at,sucursal'
+  });
+  var porFolio = {};
+  ords.forEach(function (o) { var f = getFolioFromOrder(o); (porFolio[f] = porFolio[f] || []).push(o); });
+
+  esperados.forEach(function (e) {
+    var hit = porFolio[e.folio] || [];
+    e.orden = hit[0] || null;
+    e.duplicadas = hit.length > 1 ? hit.length : 0;
+    e.es_lc = !!hit.find(function (o) { return o.tipo_lente === 'Lente de Contacto'; });
+    if (!e.requiere) e.estado = 'no_aplica';
+    else if (e.orden) e.estado = e.es_lc ? 'auto_lc' : 'creada';
+    else e.estado = 'pendiente';
+    // El flag usado quedó desincronizado con la realidad
+    e.desincronizado = e.requiere && (e.usado_flag !== !!e.orden);
+  });
+
+  var reqs = esperados.filter(function (e) { return e.requiere; });
+  return {
+    venta: vt,
+    folios: esperados,
+    resumen: {
+      total: reqs.length,
+      creadas: reqs.filter(function (e) { return e.orden; }).length,
+      pendientes: reqs.filter(function (e) { return !e.orden; }).length
+    }
+  };
+}
+window.labFoliosDeVenta = labFoliosDeVenta; window._fdParse = _fdParse;
 
 // Precarga armazón + material + tinte en orden lab desde venta o sub-folio promo
 async function _prefillOrderFromVenta(folio) {
@@ -14221,10 +14413,9 @@ async function _prefillOrderFromVenta(folio) {
     var slotMeta = null, slotArmazon = null, slotMaterialDesc = null;
     var promos = venta.venta_promociones || [];
     for (var p of promos) {
-      var fdArr = p.folios_detalle;
-      if (typeof fdArr === 'string') { try { fdArr = JSON.parse(fdArr); } catch(e){} }
-      if (!Array.isArray(fdArr)) continue;
-      var hit = fdArr.find(function(fd){ return fd.folio === folio; });
+      var fdArr = _fdParse(p.folios_detalle);
+      if (!fdArr.length) continue;
+      var hit = fdArr.find(function(fd){ return _folioNorm(fd.folio) === _folioNorm(folio); });
       if (hit) {
         slotMeta = hit.material_meta || null;
         slotArmazon = hit.armazon || null;
@@ -14352,15 +14543,11 @@ async function verificarFolio() {
   const folio = folioInput.value.trim();
   if (!folio) { banner.style.display = 'none'; return; }
 
-  // 1. Check if EXACT folio already has an order
-  const { data: exact } = await db.from('ordenes_laboratorio')
-    .select('id, estado_lab, notas_laboratorio, created_at, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', `%Folio: ${folio}%`);
-  const matched = (exact||[]).filter(o => {
-    const m = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/);
-    return m && m[1] === folio;
-  });
-  if (matched.length > 0) {
+  // 1. ¿El folio EXACTO ya tiene orden? (v540: columna real, sin filtro posterior en JS)
+  const { data: matched } = await db.from('ordenes_laboratorio')
+    .select('id, folio, estado_lab, notas_laboratorio, created_at, pacientes(nombre, apellidos)')
+    .eq('folio', _folioNorm(folio));
+  if ((matched || []).length > 0) {
     const o = matched[0];
     const nom = o.pacientes ? `${o.pacientes.nombre} ${o.pacientes.apellidos||''}`.trim() : '—';
     const fecha = new Date(o.created_at).toLocaleDateString('es-MX', {day:'2-digit',month:'short',year:'numeric'});
@@ -14381,10 +14568,10 @@ async function verificarFolio() {
   await _prefillOrderFromVenta(folio);
 
   // 3. Check base folio for promo sequence
-  const folioBase = folio.replace(/-\d+$/, '');
+  const folioBase = _folioBase(folio);
   const { data } = await db.from('ordenes_laboratorio')
-    .select('id, notas_laboratorio, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', `%Folio: ${folioBase}%`);
+    .select('id, folio, folio_base, notas_laboratorio, pacientes(nombre, apellidos)')
+    .eq('folio_base', folioBase);
 
   if (!data || data.length === 0) {
     banner.style.display = 'none';
@@ -14445,7 +14632,12 @@ function aplicarFolioConsecutivo(folio) {
 async function selSubFolioEnOrden(ventaId, subFolio, pacienteId) {
   document.getElementById('ord-search-res').style.display = 'none';
   document.getElementById('ord-search').value = '';
-  if (!pacienteId) { toast('Sin paciente para este sub-folio', true); return; }
+  // v540: si el folio no trae paciente propio (venta sin promo), usar el titular de la venta
+  if (!pacienteId) {
+    var { data: _v0 } = await db.from('ventas').select('paciente_id').eq('id', ventaId).maybeSingle();
+    pacienteId = _v0?.paciente_id || null;
+  }
+  if (!pacienteId) { toast('Sin paciente para este folio', true); return; }
   // Cargar paciente real del slot
   var { data: p } = await db.from('pacientes').select('id, nombre, apellidos, telefono').eq('id', pacienteId).single();
   if (!p) { toast('Paciente no encontrado', true); return; }
@@ -14553,15 +14745,10 @@ async function guardarEImprimir() {
   let folioFinal = folioRaw;
 
   if (folioRaw) {
-    const folioBase = folioRaw.replace(/-\d+$/, '');
-    // Search for EXACT folio match (with word boundary via ' |' or end of notes)
-    const { data: existentes } = await db.from('ordenes_laboratorio')
-      .select('id, notas_laboratorio').ilike('notas_laboratorio', `%Folio: ${folioRaw}%`);
-    // Filter to exact matches only (avoid 10548 matching 10548-2)
-    const exactas = (existentes||[]).filter(e => {
-      const m = e.notas_laboratorio?.match(/Folio:\s*(\S+)/);
-      return m && m[1] === folioRaw;
-    });
+    const folioBase = _folioBase(folioRaw);
+    // v540: folio EXACTO por columna real (antes: ilike sobre el texto + filtro en JS)
+    const { data: exactas } = await db.from('ordenes_laboratorio')
+      .select('id, folio, notas_laboratorio').eq('folio', _folioNorm(folioRaw));
 
     if (exactas.length > 0) {
       const accion = confirm(
@@ -14608,6 +14795,7 @@ async function guardarEImprimir() {
       paciente_id:  pid,
       estado_lab:   'Enviado al lab',
       sucursal:     _ordSuc,
+      folio:        _folioNorm(folioFinal) || null,   // v540: columna real (el texto en notas se conserva)
       armazon:      '',
       tipo_lente:   'Lente de Contacto',
       material:     v('lc-od-marca') + (v('lc-od-modelo') ? ' ' + v('lc-od-modelo') : ''),
@@ -14633,6 +14821,7 @@ async function guardarEImprimir() {
     paciente_id:  pid,
     estado_lab:   'Enviado al lab',
     sucursal:     _ordSuc,
+    folio:        _folioNorm(folioFinal) || null,   // v540: columna real (el texto en notas se conserva)
     armazon:      document.getElementById('o-armazon').value,
     tipo_lente:   document.getElementById('o-tip')?.value || '',
     material:     document.getElementById('o-mat').value,
@@ -14663,13 +14852,11 @@ async function guardarEImprimir() {
   if (folioFinal) {
     try {
       const { data: _dupChk } = await db.from('ordenes_laboratorio')
-        .select('id, armazon, created_at, notas_laboratorio')
-        .ilike('notas_laboratorio', '%Folio: ' + folioFinal + '%')
+        .select('id, folio, armazon, created_at, notas_laboratorio')
+        .eq('folio', _folioNorm(folioFinal))
         .limit(25);
       const _mismaPieza = (_dupChk || []).find(function(o) {
-        var fm = (o.notas_laboratorio || '').match(/Folio:\s*([^|]+)/);
-        var fExact = fm ? fm[1].trim() : '';
-        return fExact === String(folioFinal).trim() && (o.armazon || '') === (orderPayload.armazon || '');
+        return (o.armazon || '') === (orderPayload.armazon || '');
       });
       if (_mismaPieza) {
         var _hace = Math.max(0, Math.round((Date.now() - new Date(_mismaPieza.created_at).getTime()) / 60000));
@@ -14716,9 +14903,176 @@ async function loadLabTablero() {
   startLabTimers();
 }
 
-function getFolioFromOrder(o) {
-  return (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1] || '';
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOLIO DE ORDEN DE LABORATORIO — FUENTE ÚNICA DE VERDAD (v540)
+   Desde v540 `ordenes_laboratorio` tiene columnas REALES `folio` y `folio_base`
+   (generada). El texto " | Folio: X" se SIGUE escribiendo en notas_laboratorio
+   (respaldo, ticket impreso y contexto de Clari) pero YA NO se busca por ahí.
+
+   Formas reales de folio en la base (medidas, cobertura 100%):
+     16075 / 0001      numérico (Américas, Pinocelli, Magnolia)
+     V0001             sucursal prefijada, SIN guion (Vittoria)
+     ONL-0001          venta online, CON guion   ← NUNCA partir por el guion
+     GTA-16075         garantía                  ← NUNCA partir por el guion
+     16075-2 / V0001-3 / GTA-16075-2   hermanos (promo NxM / 2a garantía)
+
+   SEMÁNTICA ÚNICA:
+   1. Buscar un folio devuelve el folio Y sus hermanos -2/-3 (el usuario escanea
+      el folio del ticket y espera el pedido completo)  → .in('folio_base', …)
+   2. Las estaciones de escaneo necesitan UNA orden: si el grupo trae >1 se abre
+      un PICKER, nunca se toma data[0] en silencio.
+   3. GTA- es namespace aparte: buscar 16075 NO trae sus garantías.
+   4. Case-insensitive de punta a punta (trigger en escritura, helper en lectura).
+   5. Un teléfono NUNCA es folio.
+   ⚠️ `folio_base` es columna GENERADA: nunca enviarla en un insert/update
+      (usar _ordPayloadSafe) o PostgREST responde 400.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function _folioNorm(q) {
+  return String(q == null ? '' : q).trim().replace(/\s+/g, '').toUpperCase();
 }
+// Quita "-N" SOLO si lo que queda antes del guion termina en dígito.
+// 16075-2→16075 · V0001-3→V0001 · ONL-0001→ONL-0001 · GTA-15926-2→GTA-15926
+// (grupo de captura, no lookbehind: lookbehind rompe el parseo en navegadores viejos)
+function _folioBase(f) {
+  return _folioNorm(f).replace(/^(.*[0-9])-[0-9]{1,2}$/, '$1');
+}
+function _folioEsHermano(f) { return _folioNorm(f) !== _folioBase(f); }
+function _folioEsGarantia(f) { return /^GTA-/.test(_folioNorm(f)); }
+
+// Teléfono: 10 dígitos, o 52/521 + 10. Nunca se trata como folio.
+function _esTelefono(q) {
+  var d = String(q == null ? '' : q).replace(/[\s\-().+]/g, '');
+  return /^\d{10}$/.test(d) || /^(?:52|521)\d{10}$/.test(d);
+}
+var _RE_FOLIO = /^(?:GTA-)?(?:(?:ONL|SICAR)-\d{1,6}|[A-Z]{0,2}\d{1,6})(?:-\d{1,2})?$/;
+function _esFolio(q) {
+  var s = _folioNorm(q);
+  if (!s || _esTelefono(q)) return false;
+  return _RE_FOLIO.test(s);
+}
+function _esUUID(q) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(q == null ? '' : q).trim());
+}
+// folio_base es GENERADA en la DB: jamás debe ir en un payload de escritura.
+function _ordPayloadSafe(p) { var q = Object.assign({}, p); delete q.folio_base; return q; }
+
+// Lector canónico: columna real, con fallback al texto legacy de las notas.
+function getFolioFromOrder(o) {
+  if (!o) return '';
+  if (o.folio) return _folioNorm(o.folio);
+  return _folioNorm((o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1] || '');
+}
+
+var _ORD_SELECT_BASICO = 'id,folio,folio_base,estado_lab,tipo_lente,material,tratamiento,tinte,armazon,' +
+  'notas_laboratorio,sucursal,created_at,fecha_entrega,hora_entrega,paciente_id,pacientes(nombre,apellidos,telefono)';
+
+/* Devuelve TODAS las órdenes de un folio y sus hermanos de promo.
+   opts: {incluirEntregadas, incluirGarantias, sucursal, excluirSucursal, select, limit} */
+async function buscarOrdenesPorFolio(q, opts) {
+  opts = opts || {};
+  var base = _folioBase(q);
+  if (!base) return [];
+  var bases = [base];
+  if (opts.incluirGarantias && !_folioEsGarantia(base)) bases.push('GTA-' + base);
+  var query = db.from('ordenes_laboratorio').select(opts.select || _ORD_SELECT_BASICO)
+                .in('folio_base', bases)
+                .order('created_at', { ascending: true })
+                .limit(opts.limit || 50);
+  if (opts.sucursal) query = query.eq('sucursal', opts.sucursal);
+  if (opts.excluirSucursal) query = query.neq('sucursal', opts.excluirSucursal);
+  var r = await query;
+  if (r.error) { console.warn('[folio] buscarOrdenesPorFolio:', r.error.message); return []; }
+  var rows = r.data || [];
+  if (!opts.incluirEntregadas) rows = rows.filter(function (o) { return o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
+  return rows;
+}
+
+/* Resolver para ESTACIONES de escaneo (surtido, recibir, manos, cámara).
+   Devuelve {orden} | {opciones:[...]} | {error}. Nunca elige data[0] en silencio. */
+async function resolverOrdenEscaneada(codigo, opts) {
+  var v = String(codigo == null ? '' : codigo).trim();
+  if (!v) return { error: 'Escribe o escanea un folio' };
+  if (_esUUID(v)) {
+    var r = await db.from('ordenes_laboratorio').select('*, pacientes(nombre,apellidos,telefono)').eq('id', v).limit(1);
+    if (r.data && r.data.length) return { orden: r.data[0] };
+  }
+  var rows = await buscarOrdenesPorFolio(v, Object.assign(
+    { incluirEntregadas: true, select: '*, pacientes(nombre,apellidos,telefono)' }, opts || {}));
+  if (!rows.length) return { error: 'No se encontró ninguna orden con el folio ' + _folioNorm(v) };
+  var exacto = rows.filter(function (o) { return getFolioFromOrder(o) === _folioNorm(v); });
+  if (exacto.length === 1) return { orden: exacto[0] };
+  if (rows.length === 1) return { orden: rows[0] };
+  return { opciones: rows };
+}
+
+/* Picker cuando un folio base tiene varias órdenes (pares de promo). Promise<orden|null> */
+function _pickOrdenModal(rows, titulo) {
+  return new Promise(function (resolve) {
+    var ov = document.createElement('div');
+    ov.className = 'm-overlay open';
+    ov.style.zIndex = 9999;
+    var filas = rows.map(function (o, i) {
+      var pac = o.pacientes ? ((o.pacientes.nombre || '') + ' ' + (o.pacientes.apellidos || '')).trim() : '';
+      var desc = [o.armazon, o.material, o.tratamiento].filter(Boolean).join(' · ') || (o.tipo_lente || '');
+      return '<button class="btn" data-i="' + i + '" style="width:100%;text-align:left;margin-bottom:8px;padding:12px">' +
+        '<b style="font-size:15px">' + getFolioFromOrder(o) + '</b>' +
+        '<span style="opacity:.7;margin-left:8px">' + (o.estado_lab || '') + '</span>' +
+        (pac ? '<br><span style="font-size:12px">👤 ' + pac + '</span>' : '') +
+        (desc ? '<br><span style="font-size:12px;opacity:.75">' + desc + '</span>' : '') +
+        '</button>';
+    }).join('');
+    ov.innerHTML = '<div class="modal" style="max-width:460px">' +
+      '<h3 style="margin-top:0">' + (titulo || 'Este folio tiene varios pares') + '</h3>' +
+      '<p style="font-size:13px;opacity:.75;margin-top:0">Elige cuál estás procesando:</p>' +
+      filas + '<button class="btn btn-sec" data-cancel="1" style="width:100%;margin-top:4px">Cancelar</button></div>';
+    ov.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      ov.remove();
+      resolve(b.dataset.cancel ? null : rows[+b.dataset.i]);
+    });
+    document.body.appendChild(ov);
+  });
+}
+
+/* Resuelve una orden única para una estación, abriendo el picker si hace falta. */
+async function resolverOrdenUnica(codigo, opts) {
+  var r = await resolverOrdenEscaneada(codigo, opts);
+  if (r.orden) return r.orden;
+  if (r.opciones) return await _pickOrdenModal(r.opciones);
+  toast(r.error || 'Orden no encontrada', true);
+  return null;
+}
+
+/* Clasificador ÚNICO de término de búsqueda. */
+function clasificarBusqueda(q) {
+  var s = String(q == null ? '' : q).trim();
+  if (!s) return { tipo: 'vacio' };
+  var tok = s.match(/[?&]t=([a-z0-9]+)/i);
+  if (tok) return { tipo: 'token', token: tok[1] };
+  if (_esUUID(s)) return { tipo: 'uuid', id: s };
+  if (_esTelefono(s)) return { tipo: 'telefono', tel: s.replace(/[\s\-().+]/g, '') };
+  if (_esFolio(s)) return { tipo: 'folio', folio: _folioNorm(s), base: _folioBase(s) };
+  return { tipo: 'nombre', q: s };
+}
+
+/* Rama de paciente ÚNICA para todos los buscadores (acentos, s↔z, teléfono). */
+async function _pacientesQueMatchean(q, limit) {
+  var sf = buildSmartFilter(q);
+  var pq = db.from('pacientes').select('id,nombre,apellidos,telefono');
+  if (sf) pq = applySmartFilter(pq, sf, q);
+  var r = await pq.limit(limit || 30);
+  return (r.data || []);
+}
+
+window._folioNorm = _folioNorm; window._folioBase = _folioBase;
+window._folioEsGarantia = _folioEsGarantia; window._folioEsHermano = _folioEsHermano;
+window._esFolio = _esFolio; window._esTelefono = _esTelefono; window._esUUID = _esUUID;
+window._ordPayloadSafe = _ordPayloadSafe; window.getFolioFromOrder = getFolioFromOrder;
+window.buscarOrdenesPorFolio = buscarOrdenesPorFolio;
+window.resolverOrdenEscaneada = resolverOrdenEscaneada;
+window.resolverOrdenUnica = resolverOrdenUnica;
+window.clasificarBusqueda = clasificarBusqueda;
 
 function getTiempoTag(o) {
   if (!o.fecha_entrega) return '';
@@ -14775,11 +15129,18 @@ function matchesLabSearch(o) {
   const folio = getFolioFromOrder(o) || '';
   const pac = o.pacientes;
   const nombre = pac ? `${pac.nombre||''} ${pac.apellidos||''}`.trim() : '';
+  const tel = pac ? (pac.telefono || '') : '';
   const term = labSearchTerm;
-  if (/^\d[\d-]*$/.test(term)) {
-    return folio.toLowerCase() === term || nombre.toLowerCase().includes(term);
-  }
-  return folio.toLowerCase().includes(term) || nombre.toLowerCase().includes(term);
+  // v540: mismo clasificador que el resto del sistema. Antes exigía igualdad EXACTA para
+  // términos numéricos (buscar 16075 no traía 16075-2) y no reconocía V0001 ni ONL-.
+  const cls = clasificarBusqueda(term);
+  const _nrm = function (s) {
+    s = String(s || '');
+    return (typeof _quitarAcentos === 'function' ? _quitarAcentos(s) : s).toLowerCase();
+  };
+  if (cls.tipo === 'folio') return _folioBase(folio) === cls.base;   // folio + hermanos -2/-3
+  if (cls.tipo === 'telefono') return tel.replace(/[\s\-().+]/g, '').includes(cls.tel);
+  return _nrm(nombre).includes(_nrm(term)) || folio.toLowerCase().includes(term);
 }
 
 function renderLabTablero() {
@@ -15099,9 +15460,9 @@ async function renderHistorial() {
   list.innerHTML = '<div class="lp-empty">Buscando...</div>';
   var term = labSearchTerm;
   var query = db.from('ordenes_laboratorio').select('*, pacientes(nombre, apellidos)').order('created_at', { ascending: false });
-  // Search by folio in notas or by patient name
-  if (/^\d[\d-]*$/.test(term)) {
-    query = query.ilike('notas_laboratorio', '%Folio: ' + term + '%');
+  // v540: folio por columna real (trae hermanos -2/-3); si no, por nombre de paciente
+  if (_esFolio(term)) {
+    query = query.eq('folio_base', _folioBase(term));
   } else {
     query = query.or('pacientes.nombre.ilike.*' + term + '*,pacientes.apellidos.ilike.*' + term + '*');
   }
@@ -15357,8 +15718,8 @@ async function _buscarFolioParaLigar(orderId, folioActual) {
   }
 
   // Generate sub-folio
-  var folioBase = ventaEncontrada ? ventaEncontrada.folio.replace(/-\d+$/, '') : folioInput.replace(/-\d+$/, '');
-  var { data: existentes } = await db.from('ordenes_laboratorio').select('id').ilike('notas_laboratorio', '%Folio: ' + folioBase + '%');
+  var folioBase = _folioBase(ventaEncontrada ? ventaEncontrada.folio : folioInput);
+  var { data: existentes } = await db.from('ordenes_laboratorio').select('id').eq('folio_base', folioBase);
   var nextNum = (existentes?.length || 0) + 1;
   var nuevoFolio = nextNum > 1 ? folioBase + '-' + nextNum : folioBase;
 
@@ -15654,32 +16015,18 @@ async function surtStCargar(val) {
   document.getElementById('surt-st-status').textContent = 'Buscando...';
   document.getElementById('surt-st-card').style.display = 'none';
 
-  var { data } = await db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', '%Folio: ' + val + '%')
-    .limit(20);
-
-  if (data && data.length) {
-    var exact = data.filter(function(o){ return getFolioFromOrder(o) === val; });
-    data = exact.length ? exact : null;
-  }
-
-  if (!data || !data.length) {
-    var { data: d2 } = await db.from('ordenes_laboratorio')
-      .select('*, pacientes(nombre, apellidos)')
-      .ilike('id', val + '%').limit(1);
-    data = d2;
-  }
-
-  if (!data || !data.length) {
+  // v540: motor único. Antes exigía igualdad EXACTA case-sensitive (escribir "v0001" o el folio
+  // base de un pedido con hermanos no encontraba nada) y caía a un ilike('id') sobre UUID que
+  // Postgres no soporta — el error se descartaba en silencio.
+  var _o = await resolverOrdenUnica(val);
+  if (!_o) {
     document.getElementById('surt-st-status').innerHTML = '<span style="color:#e08080;font-size:18px;font-weight:700">&#10060; No encontrada: ' + val + '</span>';
-    toast('Orden no encontrada', true);
     input.value = '';
     input.focus();
     return;
   }
 
-  _surtStOrden = data[0];
+  _surtStOrden = _o;
   surtStRenderCard();
   input.value = '';
 }
@@ -16024,34 +16371,17 @@ async function recibirScanear(val) {
   var status = document.getElementById('recibir-scan-status');
   status.innerHTML = '<span style="color:var(--beige)">Buscando...</span>';
 
-  var { data } = await db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', '%Folio: ' + val + '%')
-    .limit(20);
-
-  if (data && data.length) {
-    var exact = data.filter(function(o){ return getFolioFromOrder(o) === val; });
-    data = exact.length ? exact : null;
-  }
-
-  if (!data || !data.length) {
-    var { data: d2 } = await db.from('ordenes_laboratorio')
-      .select('*, pacientes(nombre, apellidos)')
-      .ilike('id', val + '%').limit(1);
-    data = d2;
-  }
-
-  if (!data || !data.length) {
+  // v540: motor único con picker cuando el folio base tiene varios pares (ver surtStCargar)
+  var o = await resolverOrdenUnica(val);
+  if (!o) {
     status.innerHTML = '<span style="color:#e08080;font-weight:700">&#10060; No encontrada: ' + val + '</span>';
-    toast('Orden no encontrada', true);
     input.value = '';
     input.focus();
     return;
   }
 
-  var o = data[0];
   var notasRaw = o.notas_laboratorio || '';
-  var folio = notasRaw.match(/Folio: ([^\s|]+)/)?.[1] || o.id.slice(0,8).toUpperCase();
+  var folio = getFolioFromOrder(o) || o.id.slice(0,8).toUpperCase();
   var pac = o.pacientes;
   var nombre = pac ? (pac.nombre || '') + ' ' + (pac.apellidos || '') : '—';
 
@@ -16326,7 +16656,7 @@ async function buscarFolioTablero() {
   if (!found) {
     const { data } = await db.from('ordenes_laboratorio')
       .select('*, pacientes(nombre, apellidos)')
-      .ilike('notas_laboratorio', `%Folio: ${folio}%`)
+      .eq('folio', _folioNorm(folio))
       .limit(1);
     if (!data || data.length === 0) {
       container.style.display = 'block';
@@ -20520,12 +20850,11 @@ async function buscarOrdenGarantia() {
   pQuery = pQuery.limit(8);
   const { data: pacs } = await pQuery;
 
-  const folioQuery = db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos, telefono)')
-    .ilike('notas_laboratorio', `%Folio: ${q}%`)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  const { data: folioResults } = await folioQuery;
+  // v540: folio por columna real (incluye la garantía GTA- del mismo folio). Antes el ilike
+  // sin anclaje hacía que buscar "1607" trajera 16075, 16070, 160712…
+  const folioResults = _esFolio(q)
+    ? await buscarOrdenesPorFolio(q, { incluirEntregadas: true, incluirGarantias: true, limit: 8, select: '*, pacientes(nombre, apellidos, telefono)' })
+    : [];
 
   if ((!pacs || !pacs.length) && (!folioResults || !folioResults.length)) {
     dropdown.style.display = 'block';
@@ -20899,8 +21228,9 @@ async function procesarGarantia() {
   const o = gtaOrdenOriginal;
   const folio = (o.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1] || '';
   const gtaBase = 'GTA-' + (folio || Date.now().toString().slice(-6));
-  const { data: existingGtas } = await db.from('ordenes_laboratorio').select('notas_laboratorio').ilike('notas_laboratorio', `%Folio: ${gtaBase}%`);
-  const gtaCount = (existingGtas||[]).filter(g => { const f=(g.notas_laboratorio||'').match(/Folio: ([^\s|]+)/)?.[1]||''; return f===gtaBase||f.startsWith(gtaBase+'-'); }).length;
+  // v540: prefijo ANCLADO sobre la columna real (antes '%Folio: GTA-X%' sin anclaje)
+  const { data: existingGtas } = await db.from('ordenes_laboratorio').select('folio,notas_laboratorio').like('folio', gtaBase + '%');
+  const gtaCount = (existingGtas||[]).filter(g => { const f = getFolioFromOrder(g); return f===gtaBase||f.startsWith(gtaBase+'-'); }).length;
   const nuevoFolio = gtaCount === 0 ? gtaBase : gtaBase + '-' + (gtaCount + 1);
   const pac = o.pacientes;
   const nombre = pac ? `${pac.nombre||''} ${pac.apellidos||''}`.trim() : '';
@@ -21020,7 +21350,7 @@ async function cargarHistorialGarantias() {
 
   let query = db.from('ordenes_laboratorio')
     .select('*, pacientes(nombre, apellidos, telefono)')
-    .ilike('notas_laboratorio', '%Folio: GTA-%')
+    .like('folio', 'GTA-%')
     .not('notas_laboratorio', 'ilike', '%GTA_FOLIO:%')
     .order('created_at', { ascending: false })
     .limit(100);
@@ -21120,12 +21450,9 @@ async function _ejecutarEliminarGarantia(ordenId, folio) {
     // Limpiar marcadores GTA_FOLIO y GARANTÍA de la orden original
     if (folioOriginal) {
       const { data: origenes } = await db.from('ordenes_laboratorio')
-        .select('id, notas_laboratorio')
-        .ilike('notas_laboratorio', '%Folio: ' + folioOriginal + '%');
-      const orig = (origenes || []).find(o => {
-        const f = (o.notas_laboratorio || '').match(/Folio: ([^\s|]+)/)?.[1];
-        return f === folioOriginal;
-      });
+        .select('id, folio, notas_laboratorio')
+        .eq('folio', _folioNorm(folioOriginal));
+      const orig = (origenes || [])[0];
       if (orig && (orig.notas_laboratorio || '').includes('GTA_FOLIO: ' + folio)) {
         const notasLimpias = (orig.notas_laboratorio || '')
           .replace(/ \| GARANTÍA:[^|]*\| GTA_FOLIO: [^\s|]+/, '')
@@ -23811,7 +24138,7 @@ async function _procesarCompletarPar() {
 
     // Check for duplicate before creating
     var { data: dupCheck } = await db.from('ordenes_laboratorio')
-      .select('id').ilike('notas_laboratorio', '%Folio: ' + subFolio + '%');
+      .select('id').eq('folio', _folioNorm(subFolio));
     var dupExact = (dupCheck||[]).length > 0;
     if (dupExact) { toast('⚠️ Folio ' + subFolio + ' ya existe — saltando duplicado'); continue; }
 
@@ -28292,11 +28619,11 @@ async function _loadRescateAudit(suc, utcStart, utcEnd) {
 
 <!-- Extracted JS modules -->
 <script src="js/mod-auth.js?v=126"></script>
-<script src="js/mod-scanner.js?v=125"></script>
+<script src="js/mod-scanner.js?v=126"></script>
 <script src="js/mod-tickets.js?v=126"></script>
 <script src="js/mod-clari.js?v=126"></script>
 <script src="js/mod-catalogo.js?v=125"></script>
-<script src="js/mod-produccion.js?v=125"></script>
+<script src="js/mod-produccion.js?v=126"></script>
 <script src="js/mod-landings.js?v=125"></script>
 <script src="js/mod-creditos.js?v=125"></script>
 <script src="js/mod-lc.js?v=167"></script>

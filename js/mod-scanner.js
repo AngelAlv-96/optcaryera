@@ -105,40 +105,11 @@ async function buscarOrdenPorCodigo(code) {
   if (!code) return;
   toast('Buscando orden: ' + code + '...');
 
-  var { data, error } = await db.from('ordenes_laboratorio')
-    .select('id, notas_laboratorio, estado_lab, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', '%Folio: ' + code + '%')
-    .limit(20);
-
-  if (data && data.length > 0) {
-    var exact = data.filter(function(o){ return getFolioFromOrder(o) === code; });
-    if (exact.length > 0) {
-      verResumenOrden(exact[0].id);
-      return;
-    }
-  }
-
-  var { data: d2 } = await db.from('ordenes_laboratorio')
-    .select('id, notas_laboratorio, estado_lab')
-    .ilike('id', code + '%')
-    .limit(1);
-
-  if (d2 && d2.length > 0) {
-    verResumenOrden(d2[0].id);
-    return;
-  }
-
-  var { data: d3 } = await db.from('ordenes_laboratorio')
-    .select('id')
-    .eq('id', code)
-    .limit(1);
-
-  if (d3 && d3.length > 0) {
-    verResumenOrden(d3[0].id);
-    return;
-  }
-
-  toast('No se encontró orden con código: ' + code, true);
+  // v540: motor único (columna folio real, hermanos -2/-3, picker si hay varios pares).
+  // Antes: ilike sobre el texto de notas + igualdad exacta case-sensitive, y dos fallbacks
+  // sobre `id` (uno de ellos ilike sobre UUID, que Postgres no soporta).
+  var _o = await resolverOrdenUnica(code);
+  if (_o) verResumenOrden(_o.id);
 }
 
 function scanLabInput(val) {
@@ -353,10 +324,10 @@ function cerrarCamaraMobile() {
 // Inject camera buttons on mobile
 document.addEventListener('DOMContentLoaded', function() {
   if (!esMobile()) return;
-  var scanFields = [
-    { id: 'ord-search' }, { id: 'lab-search' }, { id: 'lp-search' },
-    { id: 'surt-input' }, { id: 'vta-pac-search' }, { id: 'vta-prod-search' }, { id: 'gta-search' }
-  ];
+  // v540: una sola lista (window.SCAN_IDS, definida en index.html). Los campos que se
+  // renderizan dinámicamente (entrega-search, recotra-input, conteo-input) no existen en
+  // DOMContentLoaded y simplemente se saltan.
+  var scanFields = (window.SCAN_IDS || ['ord-search','lab-search','lp-search','surt-input','vta-pac-search','vta-prod-search','gta-search']).map(function(id){ return { id: id }; });
   scanFields.forEach(function(sf) {
     var el = document.getElementById(sf.id);
     if (!el) return;

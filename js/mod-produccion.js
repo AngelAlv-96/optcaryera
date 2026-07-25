@@ -11,32 +11,17 @@ async function manosCargar(val) {
   document.getElementById('manos-status').textContent = 'Buscando...';
   document.getElementById('manos-card').style.display = 'none';
 
-  var { data } = await db.from('ordenes_laboratorio')
-    .select('*, pacientes(nombre, apellidos)')
-    .ilike('notas_laboratorio', '%Folio: ' + val + '%')
-    .limit(20);
-
-  if (data && data.length) {
-    var exact = data.filter(function(o){ return getFolioFromOrder(o) === val; });
-    data = exact.length ? exact : null;
-  }
-
-  if (!data || !data.length) {
-    var { data: d2 } = await db.from('ordenes_laboratorio')
-      .select('*, pacientes(nombre, apellidos)')
-      .ilike('id', val + '%').limit(1);
-    data = d2;
-  }
-
-  if (!data || !data.length) {
+  // v540: motor único (folio real + hermanos + picker). Antes exigía igualdad exacta
+  // case-sensitive y caía a un ilike('id') sobre UUID que Postgres no soporta.
+  var _o = await resolverOrdenUnica(val);
+  if (!_o) {
     document.getElementById('manos-status').textContent = 'No encontrada: ' + val;
-    toast('Orden no encontrada', true);
     input.value = '';
     input.focus();
     return;
   }
 
-  _manosOrden = data[0];
+  _manosOrden = _o;
 
   if (_manosOrden.estado_lab === 'Enviado al lab') {
     var now = new Date().toLocaleString('es-MX', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
