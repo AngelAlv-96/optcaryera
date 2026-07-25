@@ -14187,6 +14187,206 @@ async function mostrarFoliosPendientesVenta(ventaId, fallbackNombre) {
     + (usados.length ? `<div style="font-size:10px;color:var(--muted);margin-top:6px">Ya capturadas: ${usados.join(', ')}</div>` : '');
 }
 
+/* ═══ PRECARGA DE LA ORDEN DESDE LA VENTA (v541) ═════════════════════════════
+   Un solo aplicador para los dos caminos (folio de promo y folio de venta normal).
+   ⚠️ CAUSA RAÍZ que arregla: el bloque de material estaba protegido por
+   `if (tipSel && !tipSel.value)`, pero el <select id="o-tip"> NO tiene opción vacía
+   (siempre vale "VS") y además `selPacienteOrden` lo escribe desde la historia
+   clínica ANTES → la condición nunca se cumplía y la precarga de material,
+   tratamiento, serie y tinte NUNCA corría. Por eso desde una venta normal solo se
+   precargaba el armazón y el resto se capturaba a mano (el "retraso"), mientras que
+   los folios de promo sí precargaban (ese camino no tenía el guard).
+   Ahora manda `force`: lo que el cliente PAGÓ gana sobre el default de la HC.  */
+
+function _optValues(id) {
+  var el = document.getElementById(id);
+  return el ? [].slice.call(el.options).map(function (o) { return o.value; }).filter(Boolean) : [];
+}
+function _ordNorm(s) {
+  return String(s || '')
+    .replace(/\s*\[ARO PX\]\s*/ig, ' ')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toUpperCase();
+}
+// Selecciona un valor; si no está en el catálogo vigente lo inyecta MARCADO y avisa,
+// en vez de dejar el select vacío en silencio.
+function _setSelectSeguro(sel, valor) {
+  if (!sel || valor === null || valor === undefined || valor === '') return false;
+  var v = String(valor);
+  var existe = [].slice.call(sel.options).some(function (o) { return o.value === v; });
+  if (!existe) {
+    var op = document.createElement('option');
+    op.value = v; op.textContent = v; op.dataset.injected = '1';
+    sel.appendChild(op);
+    sel.style.borderColor = '#f0b429';
+    sel.title = 'Este valor viene de la venta pero ya no está en el catálogo vigente';
+  } else {
+    sel.style.removeProperty('border-color');
+    sel.removeAttribute('title');
+  }
+  sel.value = v;
+  return true;
+}
+// "… + Tinte DE TEMPORADA 50%" → antes /(\S+)(\S+)?/ partía los colores de 2 palabras
+// en color="DE" / tono="TEMPORADA". Ahora hace longest-match contra el catálogo real.
+function _parseTinteDesc(desc) {
+  var m = String(desc || '').match(/\+\s*Tinte\s+(.+)$/i);
+  if (!m) return null;
+  var resto = m[1].trim().toUpperCase();
+  var porLargo = function (a, b) { return b.length - a.length; };
+  var color = _optValues('o-tin-color').sort(porLargo).find(function (c) { return resto.indexOf(c.toUpperCase()) === 0; });
+  if (!color) return null;
+  var tonoStr = resto.slice(color.length).trim();
+  var tono = _optValues('o-tin-tono').sort(porLargo).find(function (t) { return tonoStr.indexOf(t.toUpperCase()) === 0; }) || null;
+  return { color: color, tono: tono };
+}
+// El color de Foto Colors se serializa como " (Verde)" al final de la descripción y
+// ANTES NUNCA se reparseaba → o-fcolor quedaba vacío y guardarEImprimir BLOQUEABA
+// el guardado pidiendo el color. "(S1)" no matchea porque se valida contra el catálogo.
+function _parseFotoColorDesc(desc, tratamiento) {
+  if (!/foto\s*colors/i.test(tratamiento || '')) return null;
+  var opts = _optValues('o-fcolor');
+  var found = null;
+  String(desc || '').replace(/\(([^()]+)\)/g, function (full, g) {
+    if (!found) {
+      var hit = opts.find(function (o) { return o.toUpperCase() === g.trim().toUpperCase(); });
+      if (hit) found = hit;
+    }
+    return full;
+  });
+  return found;
+}
+// Resuelve la ficha del material desde la descripción de venta (ventas viejas sin
+// material_meta). Normaliza acentos/espacios/[ARO PX] en AMBOS lados.
+async function _metaDesdeDescripcion(desc) {
+  if (!desc) return null;
+  var reglas = await cargarReglasMateriales();
+  if (!reglas || !reglas.length) return { _sinCatalogo: true };
+  var base = String(desc).replace(/\+\s*Tinte\s+.+$/i, '');
+  var n = _ordNorm(base);
+  var match = null, bestLen = 0;
+  for (var i = 0; i < reglas.length; i++) {
+    var r = reglas[i];
+    var prefix = _ordNorm(r.material + ' ' + r.tratamiento + ' (S' + r.serie + ') ' + r.tipo_vision);
+    if (prefix && n.indexOf(prefix) === 0 && prefix.length > bestLen) { match = r; bestLen = prefix.length; }
+  }
+  if (!match) return { _noResuelto: true, texto: String(desc) };
+  var t = _parseTinteDesc(desc);
+  return {
+    tipo_vision: match.tipo_vision, material: match.material,
+    tratamiento: match.tratamiento, serie: match.serie,
+    tinte_color: t ? t.color : null, tinte_tono: t ? t.tono : null,
+    foto_color: _parseFotoColorDesc(desc, match.tratamiento)
+  };
+}
+// Aviso NO bloqueante (⚠️ toast(msg, true) abre un modal que frena al cajero — lección v493)
+function _ordAvisoPrecarga(msg) {
+  var b = document.getElementById('folio-promo-banner');
+  if (b) {
+    b.style.display = 'block';
+    b.innerHTML = '<div style="background:rgba(240,180,41,0.10);border:1px solid rgba(240,180,41,0.28);border-radius:8px;padding:10px 14px">' +
+      '<div style="font-weight:600;color:#f0b429">⚠️ ' + String(msg).replace(/</g, '&lt;') + '</div></div>';
+  }
+  toast('⚠️ ' + msg);
+}
+
+/* ctx: {armazon, aro_px, material, material_meta, sucursal_venta}  ·  opts: {force} */
+async function _ordAplicarPrecarga(ctx, opts) {
+  opts = opts || {};
+  var force = !!opts.force;
+  if (!ctx) return false;
+  var algo = false;
+
+  // ── Armazón / ARO PX
+  // ⚠️ toggleAroPx() REEMPLAZA o-armazon por el texto "ARO PX" y lo bloquea (en ARO PX el
+  // paciente trae su propio armazón, no hay modelo). Por eso son excluyentes: si es ARO PX
+  // NO se escribe descripción de armazón — el toggle es dueño del campo.
+  var armEl = document.getElementById('o-armazon');
+  var aroEl = document.getElementById('o-aro-px');
+  var armTxt = String(ctx.armazon || '');
+  var tieneAro = ctx.aro_px === true || /\[ARO PX\]/i.test(armTxt);
+  if (tieneAro) {
+    if (aroEl && !aroEl.checked) {
+      aroEl.checked = true;
+      if (typeof toggleAroPx === 'function') toggleAroPx();
+      algo = true;
+    }
+  } else {
+    if (force && aroEl && aroEl.checked) {          // el folio nuevo no es ARO PX: liberar el campo
+      aroEl.checked = false;
+      if (typeof toggleAroPx === 'function') toggleAroPx();
+    }
+    if (armTxt && armEl && (force || !armEl.value.trim())) {
+      armEl.value = armTxt.trim();
+      algo = true;
+    }
+  }
+
+  // ── Material
+  var meta = ctx.material_meta || null;
+  if (!meta && ctx.material) meta = await _metaDesdeDescripcion(ctx.material);
+  if (meta && meta._sinCatalogo) {
+    _ordAvisoPrecarga('No se pudo cargar el catálogo de materiales — captura material y tratamiento a mano');
+    return algo;
+  }
+  if (meta && meta._noResuelto) {
+    _ordAvisoPrecarga('Material vendido: «' + meta.texto + '» — selecciónalo a mano (no coincide con el catálogo vigente)');
+    return algo;
+  }
+  if (!meta) return algo;
+
+  var tipSel = document.getElementById('o-tip');
+  var REV_MAP = { 'VS': 'VS', 'Bif F/T': 'Bifocal F/T', 'Bif Semi-invisible': 'Bifocal Blended', 'Progresivo': 'Progresivo' };
+  var labTipo = REV_MAP[meta.tipo_vision] || meta.tipo_vision || '';
+  if (!tipSel || !labTipo) return algo;
+  // ⛔ La sonda de "todavía no han capturado material" es o-mat, NO o-tip: o-tip no tiene
+  // opción vacía (siempre vale "VS") y selPacienteOrden lo escribe desde la HC, así que
+  // `!o-tip.value` era SIEMPRE falso y la precarga nunca corría. o-mat sí arranca vacío.
+  var matSonda = document.getElementById('o-mat');
+  if (!force && matSonda && matSonda.value) return algo;
+
+  var tipoPrevio = tipSel.value;
+  tipSel.value = labTipo;
+  // Que no salte el banner de "cambios vs historia clínica": manda lo que se vendió
+  if (originalHCValues && Object.prototype.hasOwnProperty.call(originalHCValues, 'o-tip')) originalHCValues['o-tip'] = labTipo;
+  if (tipoPrevio && tipoPrevio !== labTipo) toast('ℹ️ Tipo de lente ajustado a lo vendido: ' + labTipo);
+
+  // Cascadas: se AWAITEAN de verdad (antes 8 × setTimeout(50) — si reglas_materiales
+  // tardaba, la opción aún no existía y se inyectaba una huérfana)
+  await cascadeMaterial();
+  _setSelectSeguro(document.getElementById('o-mat'), meta.material);
+  await cascadeTratamiento();
+  _setSelectSeguro(document.getElementById('o-tra'), meta.tratamiento);
+  if (typeof syncTinte === 'function') syncTinte();   // muestra/oculta el wrap de Foto Colors
+  await cascadeSerie();
+  if (meta.serie) _setSelectSeguro(document.getElementById('o-serie'), String(meta.serie));
+  await mostrarPrecioMaterial();
+  algo = true;
+
+  // ── Foto Colors
+  var fcEl = document.getElementById('o-fcolor');
+  if (fcEl) {
+    if (meta.foto_color) _setSelectSeguro(fcEl, meta.foto_color);
+    else if (force) fcEl.value = '';
+    if (/foto\s*colors/i.test(meta.tratamiento || '') && !meta.foto_color) {
+      _ordAvisoPrecarga('Este material es Foto Colors — elige el color antes de guardar');
+    }
+  }
+  // ── Tinte solar
+  var tinCol = document.getElementById('o-tin-color'), tinTon = document.getElementById('o-tin-tono');
+  if (tinCol) {
+    if (meta.tinte_color) {
+      _setSelectSeguro(tinCol, meta.tinte_color);
+      if (typeof syncTinte === 'function') syncTinte();
+      if (meta.tinte_tono) _setSelectSeguro(tinTon, meta.tinte_tono);
+    } else if (force) { tinCol.value = ''; if (tinTon) tinTon.value = ''; }
+  }
+  if (typeof syncTinte === 'function') syncTinte();
+  if (typeof validarTipoAdd === 'function') validarTipoAdd();
+  if (typeof syncTicket === 'function') syncTicket();
+  return algo;
+}
+
 async function selPromoFolio(idx) {
   const f = _pendingPromoFolios[idx];
   if (!f) return;
@@ -14208,57 +14408,11 @@ async function selPromoFolio(idx) {
   document.getElementById('ord-folio').value = f.folio;
   if (f.fecha_entrega) document.getElementById('ord-entrega').value = f.fecha_entrega;
   if (f.hora_entrega) document.getElementById('ord-hora-entrega').value = f.hora_entrega;
-  if (f.armazon) document.getElementById('o-armazon').value = f.armazon;
-  if (f.material_meta) {
-    const m = f.material_meta;
-    const REV_MAP = {'VS':'VS','Bif F/T':'Bifocal F/T','Bif Semi-invisible':'Bifocal Blended','Progresivo':'Progresivo'};
-    const labTipo = REV_MAP[m.tipo_vision] || m.tipo_vision || '';
-    if (labTipo) {
-      const tipSel = document.getElementById('o-tip');
-      tipSel.value = labTipo;
-      await cascadeMaterial();
-      await new Promise(r => setTimeout(r, 50));
-      if (m.material) {
-        const matSel = document.getElementById('o-mat');
-        const matOpt = [...matSel.options].find(o => o.value === m.material);
-        if (matOpt) {
-          matSel.value = m.material;
-        } else {
-          matSel.innerHTML += '<option value="'+m.material+'">'+m.material+'</option>';
-          matSel.value = m.material;
-        }
-        await cascadeTratamiento();
-        await new Promise(r => setTimeout(r, 50));
-        if (m.tratamiento) {
-          const traSel = document.getElementById('o-tra');
-          const traOpt = [...traSel.options].find(o => o.value === m.tratamiento);
-          if (traOpt) {
-            traSel.value = m.tratamiento;
-          } else {
-            traSel.innerHTML += '<option value="'+m.tratamiento+'">'+m.tratamiento+'</option>';
-            traSel.value = m.tratamiento;
-          }
-          await cascadeSerie();
-          await new Promise(r => setTimeout(r, 50));
-          if (m.serie) {
-            const serieSel = document.getElementById('o-serie');
-            if (serieSel) serieSel.value = String(m.serie);
-          }
-          await mostrarPrecioMaterial();
-        }
-      }
-    }
-    if (m.tinte_color) {
-      await new Promise(r => setTimeout(r, 50));
-      document.getElementById('o-tin-color').value = m.tinte_color;
-      syncTinte();
-      await new Promise(r => setTimeout(r, 30));
-      if (m.tinte_tono) {
-        document.getElementById('o-tin-tono').value = m.tinte_tono;
-        syncTinte();
-      }
-    }
-  }
+  // v541: aplicador único (antes este bloque estaba duplicado con _prefillOrderFromVenta,
+  // con setTimeout(50) entre cascadas y sin manejar Foto Colors ni tinte multi-palabra)
+  await _ordAplicarPrecarga({
+    armazon: f.armazon, aro_px: f.aro_px, material: f.material, material_meta: f.material_meta
+  }, { force: true });
   const extraInfo = [f.promo_nombre, f.slot_label, f.armazon ? '🔲 '+f.armazon : '', f.material ? '🔬 '+f.material : '', f.fecha_entrega ? 'Entrega: '+f.fecha_entrega : ''].filter(Boolean).join(' · ');
   document.getElementById('folio-promo-banner').innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between">
@@ -14395,148 +14549,76 @@ async function labFoliosDeVenta(ventaIdOrFolio) {
 window.labFoliosDeVenta = labFoliosDeVenta; window._fdParse = _fdParse;
 
 // Precarga armazón + material + tinte en orden lab desde venta o sub-folio promo
-async function _prefillOrderFromVenta(folio) {
+async function _prefillOrderFromVenta(folio, opts) {
   if (!folio) return;
+  opts = opts || {};
   try {
-    // Soportar sub-folios (-2, -3): busca por folio base
-    var folioBase = folio.replace(/-\d+$/, '');
-    var query = db.from('ventas')
-      .select('id, sucursal, venta_promociones(folios_detalle)')
-      .eq('folio', folioBase);
-    var suc = currentUser?.sucursal;
-    if (suc && suc !== 'Todas' && suc !== 'Laboratorio') query = query.eq('sucursal', suc);
-    var { data: ventas } = await query;
-    if (!ventas?.length) return;
+    var folioBase = _folioBase(folio);
+    // v541: ya NO se filtra por sucursal. Antes, si la venta era de otra sucursal esta
+    // funcion hacia `return` en SILENCIO y el empleado veia la orden vacia sin ninguna
+    // explicacion. Ahora precarga igual y avisa; el ruteo de la orden ya lo resuelve
+    // guardarEImprimir con sucursal_entrega.
+    var { data: ventas } = await db.from('ventas')
+      .select('id, folio, sucursal, sucursal_entrega, venta_promociones(folios_detalle)')
+      .eq('folio', folioBase).limit(1);
+    if (!ventas || !ventas.length) return;
     var venta = ventas[0];
-
-    // Buscar entrada en folios_detalle del sub-folio (tiene meta estructurada)
-    var slotMeta = null, slotArmazon = null, slotMaterialDesc = null;
-    var promos = venta.venta_promociones || [];
-    for (var p of promos) {
-      var fdArr = _fdParse(p.folios_detalle);
-      if (!fdArr.length) continue;
-      var hit = fdArr.find(function(fd){ return _folioNorm(fd.folio) === _folioNorm(folio); });
-      if (hit) {
-        slotMeta = hit.material_meta || null;
-        slotArmazon = hit.armazon || null;
-        slotMaterialDesc = hit.material || null;
-        break;
-      }
+    var miSuc = currentUser && currentUser.sucursal;
+    if (miSuc && miSuc !== 'Todas' && miSuc !== 'Laboratorio' && venta.sucursal !== miSuc) {
+      toast(venta.sucursal_entrega === miSuc
+        ? 'ℹ️ Venta de ' + venta.sucursal + ' — se recoge aqui (traslado)'
+        : 'ℹ️ Ojo: esta venta es de ' + venta.sucursal + ', no de tu sucursal');
     }
 
-    // Si no es sub-folio, usar venta_items por descripcion/folio_asignado
-    var armazonDesc = slotArmazon, materialDesc = slotMaterialDesc;
-    if (!armazonDesc && !materialDesc) {
-      var { data: items } = await db.from('venta_items').select('descripcion, producto_id, folio_asignado').eq('venta_id', venta.id);
-      if (!items?.length) return;
-      // Si folio == folioBase (no sub-folio), usar items sin folio_asignado o con folio_asignado=folio
-      var relevant = items.filter(function(it){
-        if (folio !== folioBase) return it.folio_asignado === folio;
-        return !it.folio_asignado || it.folio_asignado === folio;
+    // 1) Slot de promo (trae la ficha estructurada del material)
+    var slot = null;
+    (venta.venta_promociones || []).forEach(function (p) {
+      if (slot) return;
+      var hit = _fdParse(p.folios_detalle).find(function (fd) { return _folioNorm(fd.folio) === _folioNorm(folio); });
+      if (hit) slot = hit;
+    });
+
+    var ctx = null;
+    if (slot) {
+      ctx = {
+        armazon: slot.armazon || '', aro_px: !!slot.aro_px,
+        material: slot.material || '', material_meta: slot.material_meta || null
+      };
+    } else {
+      // 2) Venta sin promo -> venta_items (desde v541 ya traen material_meta/categoria/aro_px)
+      var { data: items } = await db.from('venta_items')
+        .select('id, descripcion, producto_id, folio_asignado, material_meta, categoria, aro_px')
+        .eq('venta_id', venta.id);
+      if (!items || !items.length) return;
+      var esSub = _folioNorm(folio) !== folioBase;
+      var relevantes = items.filter(function (it) {
+        var fa = it.folio_asignado ? _folioNorm(it.folio_asignado) : '';
+        return esSub ? fa === _folioNorm(folio) : (!fa || fa === _folioNorm(folio));
       });
-      if (!relevant.length) relevant = items; // fallback
-      for (var i = 0; i < relevant.length; i++) {
-        var it = relevant[i];
-        if (/\(S\d\)/.test(it.descripcion || '')) materialDesc = it.descripcion;
-        else if (it.producto_id) armazonDesc = it.descripcion;
-      }
+      // ⛔ v541: se elimino el fallback `relevant = items`, que tomaba el ULTIMO item que
+      // pasara el filtro y en ventas de varios pares precargaba el par EQUIVOCADO.
+      if (!relevantes.length && !esSub) relevantes = items;
+
+      var esMaterial = function (it) {
+        return !!it.material_meta || it.categoria === 'Material' || /\(S\d\)/.test(it.descripcion || '');
+      };
+      var mats = relevantes.filter(esMaterial);
+      var arms = relevantes.filter(function (it) { return !esMaterial(it) && it.producto_id; });
+      if (mats.length > 1) _ordAvisoPrecarga('Esta venta tiene ' + mats.length + ' materiales — verifica cual corresponde a este folio antes de guardar');
+      var mat = mats[0] || null, arm = arms[0] || null;
+      if (!mat && !arm) return;
+      ctx = {
+        armazon: (arm && arm.descripcion) || '',
+        aro_px: !!((arm && arm.aro_px) || (mat && mat.aro_px)),
+        material: (mat && mat.descripcion) || '',
+        material_meta: (mat && mat.material_meta) || null
+      };
     }
 
-    var prefilled = false;
-
-    // Armazón
-    var armEl = document.getElementById('o-armazon');
-    if (armazonDesc && armEl && !armEl.value.trim()) {
-      armEl.value = armazonDesc;
-      prefilled = true;
-    }
-
-    // Material: usar slotMeta si existe (estructurado), si no parsear descripción
-    var tipSel = document.getElementById('o-tip');
-    if (tipSel && !tipSel.value) {
-      var meta = slotMeta;
-      if (!meta && materialDesc) {
-        // Parse descripción contra reglas_materiales
-        var { data: reglas } = await db.from('reglas_materiales').select('*').eq('activo', true);
-        if (reglas?.length) {
-          var match = null, bestLen = 0;
-          for (var r of reglas) {
-            var prefix = r.material + ' ' + r.tratamiento + ' (S' + r.serie + ') ' + r.tipo_vision;
-            if (materialDesc.startsWith(prefix) && prefix.length > bestLen) {
-              match = r;
-              bestLen = prefix.length;
-            }
-          }
-          if (match) {
-            // Detectar tinte en sufijo "+ Tinte Color Tono"
-            var tinteColor = null, tinteTono = null;
-            var tinteMatch = materialDesc.match(/\+\s*Tinte\s+(\S+)(?:\s+(\S+))?/i);
-            if (tinteMatch) { tinteColor = tinteMatch[1]; tinteTono = tinteMatch[2] || null; }
-            meta = {
-              tipo_vision: match.tipo_vision,
-              material: match.material,
-              tratamiento: match.tratamiento,
-              serie: match.serie,
-              tinte_color: tinteColor,
-              tinte_tono: tinteTono
-            };
-          }
-        }
-      }
-
-      if (meta) {
-        var REV_MAP = {'VS':'VS','Bif F/T':'Bifocal F/T','Bif Semi-invisible':'Bifocal Blended','Progresivo':'Progresivo'};
-        var labTipo = REV_MAP[meta.tipo_vision] || meta.tipo_vision || '';
-        if (labTipo) {
-          tipSel.value = labTipo;
-          await cascadeMaterial();
-          await new Promise(r => setTimeout(r, 50));
-          var matSel = document.getElementById('o-mat');
-          if (matSel && meta.material) {
-            var matOpt = [...matSel.options].find(o => o.value === meta.material);
-            if (matOpt) matSel.value = meta.material;
-            else { matSel.innerHTML += '<option value="'+meta.material+'">'+meta.material+'</option>'; matSel.value = meta.material; }
-            await cascadeTratamiento();
-            await new Promise(r => setTimeout(r, 50));
-            var traSel = document.getElementById('o-tra');
-            if (traSel && meta.tratamiento) {
-              var traOpt = [...traSel.options].find(o => o.value === meta.tratamiento);
-              if (traOpt) traSel.value = meta.tratamiento;
-              else { traSel.innerHTML += '<option value="'+meta.tratamiento+'">'+meta.tratamiento+'</option>'; traSel.value = meta.tratamiento; }
-              await cascadeSerie();
-              await new Promise(r => setTimeout(r, 50));
-              var serieSel = document.getElementById('o-serie');
-              if (serieSel && meta.serie) serieSel.value = String(meta.serie);
-              await mostrarPrecioMaterial();
-              prefilled = true;
-            }
-          }
-          // Tinte (solar)
-          if (meta.tinte_color) {
-            await new Promise(r => setTimeout(r, 50));
-            var tinColEl = document.getElementById('o-tin-color');
-            if (tinColEl && !tinColEl.value) {
-              tinColEl.value = meta.tinte_color;
-              if (typeof syncTinte === 'function') syncTinte();
-              await new Promise(r => setTimeout(r, 30));
-              if (meta.tinte_tono) {
-                var tinTonoEl = document.getElementById('o-tin-tono');
-                if (tinTonoEl) { tinTonoEl.value = meta.tinte_tono; if (typeof syncTinte === 'function') syncTinte(); }
-              }
-              prefilled = true;
-            }
-          }
-        }
-      }
-    }
-
-    if (prefilled) {
-      if (typeof syncTicket === 'function') syncTicket();
-      toast('✓ Datos de venta ' + folio + ' precargados');
-    }
-  } catch(e) { console.warn('[PrefillFolio]', e.message); }
+    var algo = await _ordAplicarPrecarga(ctx, { force: !!opts.force });
+    if (algo) toast('✓ Datos de la venta ' + _folioNorm(folio) + ' precargados');
+  } catch (e) { console.warn('[PrefillFolio]', e.message); }
 }
-
 async function verificarFolio() {
   const folioInput = document.getElementById('ord-folio');
   const banner = document.getElementById('folio-promo-banner');
@@ -14649,7 +14731,8 @@ async function selSubFolioEnOrden(ventaId, subFolio, pacienteId) {
   if (vt?.fecha_entrega) document.getElementById('ord-entrega').value = vt.fecha_entrega;
   if (vt?.hora_entrega) document.getElementById('ord-hora-entrega').value = vt.hora_entrega;
   syncTicket();
-  await _prefillOrderFromVenta(subFolio);
+  // force: selección explícita de un folio → manda lo que se vendió sobre el default de la HC
+  await _prefillOrderFromVenta(subFolio, { force: true });
 }
 
 async function selVentaEnOrden(ventaId) {
@@ -14666,7 +14749,8 @@ async function selVentaEnOrden(ventaId) {
   if (vt.fecha_entrega) document.getElementById('ord-entrega').value = vt.fecha_entrega;
   if (vt.hora_entrega) document.getElementById('ord-hora-entrega').value = vt.hora_entrega;
   syncTicket();
-  await _prefillOrderFromVenta(vt.folio);
+  // force: selección explícita de una venta → manda lo que se vendió sobre el default de la HC
+  await _prefillOrderFromVenta(vt.folio, { force: true });
   // Mostrar TODOS los folios pendientes de esta venta (incluye 2x1 compartidos con otro paciente).
   // El empleado toca el folio que va a capturar; si es de otro paciente, se cambia solo.
   await mostrarFoliosPendientesVenta(vt.id, nom);
@@ -14869,11 +14953,22 @@ async function guardarEImprimir() {
 
   let { error } = await db.from('ordenes_laboratorio').insert(orderPayload);
 
+  // ⚠️ v541: el 23505 (violación de índice único) NUNCA debe entrar al reintento — si no,
+  // el reintento sin columnas volvería a crear justo el duplicado que la DB acaba de frenar.
+  const _esDuplicado = error && (error.code === '23505' || /idx_ol_no_dup|duplicate key/i.test(error.message || ''));
+  if (_esDuplicado) {
+    toast('Esa orden YA existe (mismo folio, armazón y material). No se creó un duplicado.', true);
+    return;
+  }
   if (error && error.message && (error.message.includes('column') || error.code === '42703')) {
     console.warn('[Orden] Reintentando sin columnas nuevas:', error.message);
     const { od_esfera, od_cilindro, od_eje, od_add, oi_esfera, oi_cilindro, oi_eje, oi_add, fecha_entrega, hora_entrega, sucursal, armazon, ...fallback } = orderPayload;
     const res2 = await db.from('ordenes_laboratorio').insert(fallback);
     error = res2.error;
+    if (error && (error.code === '23505' || /idx_ol_no_dup|duplicate key/i.test(error.message || ''))) {
+      toast('Esa orden YA existe (mismo folio, armazón y material). No se creó un duplicado.', true);
+      return;
+    }
   }
 
   if (error) { toast('Error al guardar: ' + error.message, true); return; }
@@ -17923,7 +18018,7 @@ async function limpiarDuplicadosLab() {
   var all = [], from = 0, page = 1000, guard = 0;
   while (guard++ < 40) {
     var res = await db.from('ordenes_laboratorio')
-      .select('id, armazon, estado_lab, created_at, notas_laboratorio')
+      .select('id, folio, armazon, material, tipo_lente, estado_lab, created_at, notas_laboratorio')
       .order('created_at', { ascending: true })
       .range(from, from + page - 1);
     if (res.error) { toast('Error al leer órdenes: ' + res.error.message, true); return; }
@@ -17932,13 +18027,16 @@ async function limpiarDuplicadosLab() {
     if (data.length < page) break;
     from += page;
   }
-  // Agrupar por folio EXACTO + armazón
+  // v541: agrupar por la MISMA clave que el índice único de la DB
+  // (folio + armazón + material + tipo de lente), leyendo el folio de la columna real.
+  // Las garantías YA NO se omiten: sus folios son un namespace propio (GTA-16075) y sus
+  // pares legítimos llevan sufijo distinto (GTA-16075-2), así que "mismo folio EXACTO +
+  // mismo armazón + mismo material" también es un duplicado real ahí.
   var groups = {};
   all.forEach(function(o) {
-    var fm = (o.notas_laboratorio || '').match(/Folio:\s*([^|]+)/);
-    var folio = fm ? fm[1].trim() : '';
-    if (!folio || /^GTA/i.test(folio)) return; // sin folio o garantía → omitir
-    var key = folio + '|||' + (o.armazon || '');
+    var folio = getFolioFromOrder(o);
+    if (!folio) return;
+    var key = [folio, o.armazon || '', o.material || '', o.tipo_lente || ''].join('|||');
     (groups[key] = groups[key] || []).push(o);
   });
   var PRIO = { 'Entregado':5, 'Listo para entrega':4, 'En camino a sucursal':4, 'Recibido en óptica':3, 'Recibido en lab':3, 'Biselado completado':3, 'Surtido':3, 'Tallando en lab externo':2, 'Enviado al lab':2, 'Devuelto al lab':1 };
@@ -17959,7 +18057,7 @@ async function limpiarDuplicadosLab() {
   });
   if (!aBorrar.length) { toast('No se encontraron órdenes duplicadas 🎉'); return; }
   var folios = Object.keys(foliosAfectados);
-  if (!confirm('Se encontraron ' + aBorrar.length + ' orden(es) DUPLICADA(s) (mismo folio + mismo armazón).\n\nFolios: ' + folios.join(', ') + '\n\nSe conserva una de cada par (la de estado más avanzado) y se elimina la duplicada.\n\n¿Eliminar ' + aBorrar.length + ' duplicada(s)?')) return;
+  if (!confirm('Se encontraron ' + aBorrar.length + ' orden(es) DUPLICADA(s)\n(mismo folio + mismo armazón + mismo material + mismo tipo de lente, creadas con menos de 60 min de diferencia).\n\nFolios: ' + folios.join(', ') + '\n\nSe conserva una de cada par (la de estado más avanzado) y se elimina la duplicada.\nLos pares de promoción (-2, -3) NO se tocan: son folios distintos.\n\n¿Eliminar ' + aBorrar.length + ' duplicada(s)?')) return;
   var ok = 0, fail = 0;
   for (var i = 0; i < aBorrar.length; i++) {
     var dres = await db.from('ordenes_laboratorio').delete().eq('id', aBorrar[i]);
@@ -22782,8 +22880,21 @@ async function _procesarVentaInner() {
     if (notasOnline) insertData.notas = '🌐 ' + notasOnline;
     const {data:venta,error:errV}=await db.from('ventas').insert(insertData).select().single();
     if (errV) throw errV;
+    _ensureCartCids();
     for (const item of vtaItems) {
-      await db.from('venta_items').insert({venta_id:venta.id,producto_id:item.producto_id,descripcion:item.descripcion + (item.aro_px ? ' [ARO PX]' : ''),cantidad:item.cantidad,precio_unitario:item.precio_unitario,descuento_item:item.descuento_item,subtotal:item.subtotal});
+      // v541: se persiste la ficha ESTRUCTURADA del material (material_meta/categoria/aro_px).
+      // Antes solo se guardaba `descripcion`, así que la orden de lab tenía que adivinar
+      // parseando ese texto — y para toda venta SIN promo eso era el único camino.
+      // ⚠️ El sufijo ' [ARO PX]' en la descripción SE CONSERVA: mod-tickets.js lo lee.
+      item._rowId = await _viInsert({
+        venta_id: venta.id, producto_id: item.producto_id,
+        descripcion: item.descripcion + (item.aro_px ? ' [ARO PX]' : ''),
+        cantidad: item.cantidad, precio_unitario: item.precio_unitario,
+        descuento_item: item.descuento_item, subtotal: item.subtotal,
+        material_meta: item.material_meta || null,
+        categoria: item.categoria || null,
+        aro_px: !!item.aro_px
+      });
       if (item.producto_id) { const{data:pr}=await db.from('productos').select('stock').eq('id',item.producto_id).single(); if(pr) await db.from('productos').update({stock:Math.max(0,pr.stock-item.cantidad),updated_at:new Date().toISOString()}).eq('id',item.producto_id); }
     }
     if (pagadoEfectivo>0) {
@@ -22853,7 +22964,10 @@ async function _procesarVentaInner() {
         if (vtaFolioSlots.length) {
           _reconcileSlotIndices();
           foliosDetalle = vtaFolioSlots.map((slot, s) => {
-            // Folio addon (solar) — CR-39 Bco + Tinte Solar
+            // Folio addon (solar). v541: material/tratamiento ya NO se hardcodean.
+            // La orden de este folio se captura A MANO (la autocreación se desactivó en v467
+            // justo porque salía con specs inventadas); dejarlos en null hace que la precarga
+            // pida elegir material y tratamiento en vez de precargar CR-39/Blanco falsos.
             if (slot.es_addon) {
               const tinteVal = slot.addon_color ? (slot.addon_tono ? `${slot.addon_color} ${slot.addon_tono}` : slot.addon_color) : 'Sin tinte';
               return {
@@ -22862,8 +22976,8 @@ async function _procesarVentaInner() {
                 paciente_id: slot.paciente_id || vtaPaciente?.id || null,
                 paciente_nombre: slot.paciente_nombre || (vtaPaciente ? `${vtaPaciente.nombre||''} ${vtaPaciente.apellidos||''}`.trim() : null),
                 armazon: slot.addon_armazon || 'Lente de sol (promo)',
-                material: 'CR-39',
-                tratamiento: 'Blanco',
+                material: null,
+                tratamiento: null,
                 es_addon: true,
                 addon_tinte: tinteVal,
                 addon_producto_id: slot.addon_producto_id || null,
@@ -22881,6 +22995,8 @@ async function _procesarVentaInner() {
             armazon: armIt ? armIt.descripcion : null,
             material: matIt ? matIt.descripcion : null,
             material_meta: matIt?.material_meta || null,
+            armazon_row_id: armIt ? (armIt._rowId || null) : null,   // v541: id real del renglón
+            material_row_id: matIt ? (matIt._rowId || null) : null,
             armazon_idx: slot.armazonIdx,
             material_idx: slot.materialIdx,
             aro_px: slot.aro_px || false,
@@ -22894,10 +23010,19 @@ async function _procesarVentaInner() {
               await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('venta_id', venta.id).eq('descripcion', addonName + ' (promo)');
               continue;
             }
-            if (fd.armazon) {
+            // v541: ligar por ID del renglón, no por descripción.
+            // Antes `.eq('descripcion', fd.armazon)` fallaba en 2 casos reales: (a) con ARO PX
+            // el insert guarda la descripción con el sufijo ' [ARO PX]', así que NUNCA
+            // machaba y el folio quedaba sin asignar; (b) con dos armazones IDÉNTICOS en un
+            // 2x1 el mismo folio se asignaba a los DOS renglones.
+            if (fd.armazon_row_id) {
+              await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('id', fd.armazon_row_id);
+            } else if (fd.armazon) {
               await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('venta_id', venta.id).eq('descripcion', fd.armazon);
             }
-            if (fd.material) {
+            if (fd.material_row_id) {
+              await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('id', fd.material_row_id);
+            } else if (fd.material) {
               await db.from('venta_items').update({ folio_asignado: fd.folio }).eq('venta_id', venta.id).eq('descripcion', fd.material);
             }
           }
@@ -26966,6 +27091,22 @@ function _ensureCartCids() { (vtaItems || []).forEach(it => { if (it && !it._cid
 function _vtaItemByCid(cid) { return cid == null ? null : (vtaItems || []).find(it => it && it._cid === cid) || null; }
 function _slotMatItem(slot) { let it = _vtaItemByCid(slot.materialCid); if (!it && slot.materialIdx >= 0) it = vtaItems[slot.materialIdx]; return it || null; }
 function _slotArmItem(slot) { let it = _vtaItemByCid(slot.armazonCid); if (!it && slot.armazonIdx >= 0) it = vtaItems[slot.armazonIdx]; return it || null; }
+/* Inserta un renglón de venta_items y devuelve su id (regla 6: confirmar que se guardó).
+   Si la base todavía no tiene las columnas nuevas de v541 reintenta SIN ellas — sin este
+   reintento, una DDL no aplicada tumbaría TODA venta, que es lo más crítico del sistema. */
+async function _viInsert(row) {
+  var r = await db.from('venta_items').insert(row).select('id').single();
+  var msg = r && r.error ? (r.error.message || '') : '';
+  if (r && r.error && (r.error.code === '42703' || /column/i.test(msg))) {
+    console.warn('[venta_items] columnas v541 ausentes, reintento sin ellas:', msg);
+    var base = Object.assign({}, row);
+    delete base.material_meta; delete base.categoria; delete base.aro_px;
+    r = await db.from('venta_items').insert(base).select('id').single();
+  }
+  if (r && r.error) { console.warn('[venta_items] insert:', r.error.message); return null; }
+  return r && r.data ? r.data.id : null;
+}
+
 function _reconcileSlotIndices() {
   _ensureCartCids();
   (vtaFolioSlots || []).forEach(slot => {
