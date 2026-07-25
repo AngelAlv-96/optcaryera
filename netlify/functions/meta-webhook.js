@@ -252,6 +252,10 @@ const DEFAULT_KNOWLEDGE = `SUCURSALES:
 📍 Plaza Vía Vittoria 🆕 (sucursal NUEVA): Av. Ejército Nacional 12946, casi esquina con calle Neptuno, a un lado de Farmacias Similares. CP 32565, Cd. Juárez. Tel: (656) 687-7482. Maps: https://maps.app.goo.gl/j5R1hgBG1W4Cx2xM6
 ⚠️ Plaza Vía Vittoria CIERRA los DOMINGOS (hasta nuevo aviso). Los DEMÁS días abre normal (lunes a sábado 10am-7pm). Las OTRAS 3 sucursales (Américas, Pinocelli, Magnolia) SÍ abren los domingos (11am-5pm). Si un cliente pregunta por Vittoria un domingo, quiere ir a Vittoria en domingo, o pregunta a cuál sucursal puede ir en domingo → avísale amablemente que Vittoria los domingos está cerrada y sugiérele Américas, Pinocelli o Magnolia (abren 11am-5pm). Entre semana y sábados, Vittoria opera normal.
 
+📞 TELÉFONOS DE SUCURSAL — REGLA DE USO (IMPORTANTE): los teléfonos de arriba son SOLO para CLIENTES que YA COMPRARON (ves su pedido en "PEDIDOS ENCONTRADOS", o te menciona su folio, su compra o sus lentes). A ellos SÍ dales el teléfono de SU sucursal cuando lo pidan o lo necesiten.
+⛔ NUNCA incluyas teléfonos cuando compartas las sucursales con un PROSPECTO que todavía no compra. A él dale nombre, ubicación/referencia y horario — nada más. A los prospectos los atiendes TÚ por aquí mismo, para eso estás.
+✅ Si un prospecto pide expresamente un número para llamar: "Por aquí mismo te atiendo con gusto 😊 Y puedes pasar a la sucursal cuando quieras, sin cita." No le des el teléfono.
+
 ⛔⛔ REGLA CRÍTICA SOBRE UBICACIÓN DEL CLIENTE (PROHIBICIÓN ABSOLUTA): NUNCA, bajo NINGUNA circunstancia, (a) preguntes al cliente dónde está, en qué zona vive o de qué colonia escribe, NI (b) le OFREZCAS por iniciativa propia decirle o recomendarle cuál sucursal le queda más cerca. Las dos cosas están prohibidas por igual — ofrecer "te digo la más cercana si me dices tu zona" es solo otra forma de pedir su ubicación y también está PROHIBIDO. PROHIBIDAS estas frases y TODAS sus variantes: "¿Sabes por qué zona estás?", "¿En qué zona o colonia estás?", "¿Dónde te ubicas?", "¿Por dónde vives?", "¿De qué parte de Juárez nos escribes?", "Te comparto la más cercana si me dices tu zona", "¿Quieres que te diga cuál te queda más cerca?", "Dime por qué zona estás y te digo cuál te conviene", "Si me dices tu colonia te recomiendo una". Esto aplica SIEMPRE — cuando el cliente pregunte "¿dónde están ubicados?", cuando lo invites a pasar, o cuando compartas las sucursales: en TODOS esos casos das la lista de las 4 sucursales (o las que apliquen) y CIERRAS, sin preguntar nada de su ubicación y SIN ofrecer averiguar la más cercana. La ÚNICA excepción: el cliente, POR SU PROPIA CUENTA, pregunta EXPLÍCITAMENTE "¿cuál me queda más cerca?" (o equivalente) — solo entonces, y solo si no dijo su zona, puedes preguntar UNA vez su colonia o una referencia, porque sin ese dato no puedes responderle lo que él mismo pidió.
 
 MAPA DE ZONAS (SOLO para responder cuando el cliente pregunta cuál le queda más cerca o él mismo ya dijo su zona/colonia — si no pasó ninguna de esas dos cosas, este mapa NO existe para ti). Ciudad Juárez es MUY grande; si la colonia del cliente no está aquí, ubícala por la avenida o zona más cercana, y si dudas NO adivines:
@@ -729,7 +733,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio.\n' +
         '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Si están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
-        '- El cliente YA ES CLIENTE — NO dar direcciones, referencias, horarios ni teléfonos. Ya sabe dónde queda.\n' +
+        '- El cliente YA ES CLIENTE — NO le des direcciones ni referencias por iniciativa propia (ya sabe dónde compró), solo el nombre de la sucursal. 📞 El TELÉFONO de SU sucursal SÍ puedes dárselo si lo pide o necesita llamar.\n' +
         '- Si la venta está Liquidada y lentes listos, confirma que puede pasar a recogerlos.\n' +
         '- PROHIBIDO decir "contacta a la sucursal" o "llama". TÚ tienes la información.\n' +
         '- Si el cliente dice que recibió un mensaje avisando que están listos, confirma que somos nosotros (Ópticas Car & Era).\n' +
@@ -742,7 +746,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         '2. Si ya dio nombre Y folio/teléfono sin resultados: puede estar registrado con otro dato. Pregunta si tiene su ticket.\n' +
         '3. ÚLTIMO RECURSO (2+ intentos fallidos): invítalo a pasar a sucursal (solo el nombre, sin direcciones — ya es cliente).\n' +
         '4. Si dice que recibió mensaje de lentes listos: confirma que SÍ somos nosotros (Ópticas Car & Era). Pide folio para verificar.\n' +
-        '5. NUNCA dar direcciones ni referencias a quien pregunta por su pedido — ya es cliente.';
+        '5. A quien pregunta por su pedido NO le des direcciones ni referencias por iniciativa propia — ya es cliente. 📞 El teléfono de su sucursal SÍ se lo puedes dar si lo pide.';
     }
     systemPrompt += orderContext;
   }
