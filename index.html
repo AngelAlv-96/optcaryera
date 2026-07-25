@@ -1879,6 +1879,8 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <button class="btn btn-p" onclick="guardarEImprimir()">&#x1f5a8; Guardar y enviar al laboratorio</button>
           </div>
         </div>
+        <!-- v542: barra de contexto al llegar desde una venta (folio N de M + qué falta) -->
+        <div id="ord-retorno-bar" style="display:none"></div>
         <div class="body">
 
           <!-- BUSCADOR DE PACIENTE -->
@@ -3748,6 +3750,8 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                   <div style="font-size:22px;font-weight:700;color:var(--beige);margin-top:6px" id="vta-post-total">$0.00</div>
                   <div style="font-size:11px;color:var(--muted);margin-top:2px" id="vta-post-monedero"></div>
                 </div>
+                <!-- v542: órdenes de laboratorio pendientes de esta venta (se llena async) -->
+                <div id="vta-post-lab" style="display:none"></div>
                 <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px">
                   <div style="font-size:10px;color:var(--beige);font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">Ticket para el paciente</div>
                   <button class="btn btn-p" onclick="imprimirTicketVentaTermico()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px">
@@ -5875,6 +5879,13 @@ function closeSidebar() {
 var currentView = 'dashboard';
 function go(id) {
   if (id === 'lc-crm') id = 'lentes-contacto';
+  // v542: si el usuario se va a otra parte, se corta la cadena "capturar folios de esta venta"
+  if (typeof _ordRetorno !== 'undefined' && _ordRetorno &&
+      id !== 'orden' && id !== 'ventas' && id !== 'historial-ventas') {
+    _ordRetorno = null;
+    var _rb = document.getElementById('ord-retorno-bar');
+    if (_rb) { _rb.style.display = 'none'; _rb.innerHTML = ''; }
+  }
   currentView = id;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -13271,7 +13282,10 @@ function limpiarOrden() {
   var _aroPxCb = document.getElementById('o-aro-px'); if(_aroPxCb) { _aroPxCb.checked = false; }
   var _armazonEl = document.getElementById('o-armazon'); if(_armazonEl) { _armazonEl.readOnly=false; _armazonEl.style.background=''; _armazonEl.style.color=''; }
   // Pre-fill fecha entrega con hoy + 3 días
-  var _d3 = new Date(); _d3.setDate(_d3.getDate()+3); document.getElementById('ord-entrega').value = _d3.toISOString().slice(0,10);
+  // v542: toLocaleDateString en-CA con timeZone, no toISOString — regla 10 de timezone
+  // (toISOString convierte a UTC y después de las 6pm en Chihuahua daba el día siguiente)
+  var _d3 = new Date(); _d3.setDate(_d3.getDate()+3);
+  document.getElementById('ord-entrega').value = _d3.toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
   const lcCajasOD = document.getElementById('lc-od-cajas'); if (lcCajasOD) lcCajasOD.value = '1';
   const lcCajasOI = document.getElementById('lc-oi-cajas'); if (lcCajasOI) lcCajasOI.value = '1';
   document.getElementById('lc-misma-rx').checked = true;
@@ -13916,6 +13930,8 @@ IMPORTANTE: Responde en español, conciso, formato texto plano sin markdown.`;
 function syncTicket() {
   const gv = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const isLC = gv('ord-tipo') === 'lc';
+  // v542: checklist vivo de lo que falta (las validaciones de guardarEImprimir solo avisan al final)
+  try { if (typeof _ordRefrescarFaltantes === 'function') _ordRefrescarFaltantes(); } catch (e) {}
   const row = (l,v) => v ? `<div class="t-row"><span>${l}:</span><span>${v}</span></div>` : '';
 
   document.getElementById('t-sucursal').textContent = currentUser?.sucursal || 'Car & Era';
@@ -14548,6 +14564,164 @@ async function labFoliosDeVenta(ventaIdOrFolio) {
 }
 window.labFoliosDeVenta = labFoliosDeVenta; window._fdParse = _fdParse;
 
+/* ═══ ACCESOS DIRECTOS A CAPTURAR LA ORDEN (v542) ═══════════════════════════════
+   Quita el ida y vuelta de "cerré la venta → ahora búscala otra vez en Orden de Lab".
+   Al cerrar la venta se listan los folios que necesitan orden; al guardar una, se abre
+   DIRECTO la siguiente pendiente en vez de regresar al POS.
+   ⛔ Nada se autocrea: la orden siempre la confirma una persona (lección v467).     */
+
+var _ordRetorno = null;
+
+function _ordFolioLinea(f) {
+  var det = [f.armazon, f.material].filter(Boolean).join(' · ');
+  return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:13px;font-weight:700;color:var(--white)">' + f.folio +
+        (f.es_addon ? ' <span style="font-size:10px;font-weight:400;color:var(--muted)">🕶 solar de promo</span>' : '') +
+        (f.slot ? ' <span style="font-size:10px;font-weight:400;color:var(--muted)">' + f.slot + '</span>' : '') + '</div>' +
+      (f.paciente_nombre ? '<div style="font-size:11px;color:#f0b429">👤 ' + f.paciente_nombre + '</div>' : '') +
+      (det ? '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + det + '</div>' : '') +
+    '</div></div>';
+}
+
+/* Panel en el post-venta. Async y en try/catch: si algo falla, se oculta y la venta
+   sigue perfecta (mostrarPostSale NO lo espera). */
+async function _renderPostSaleLab(ventaId) {
+  var box = document.getElementById('vta-post-lab');
+  if (!box) return;
+  box.style.display = 'none'; box.innerHTML = '';
+  try {
+    var r = await labFoliosDeVenta(ventaId);
+    if (!r) return;
+    var pend = r.folios.filter(function (f) { return f.requiere && f.estado === 'pendiente'; });
+    var auto = r.folios.filter(function (f) { return f.estado === 'auto_lc'; });
+    if (!pend.length) return;                       // nada que capturar → ni se muestra
+    var filas = pend.map(function (f) {
+      return _ordFolioLinea(f).replace('</div></div>',
+        '</div><button class="btn btn-p" style="padding:6px 10px;font-size:11px;white-space:nowrap" ' +
+        'onclick="abrirOrdenDesdeFolio(\'' + ventaId + '\',\'' + f.folio + '\',\'pos\')">Crear orden →</button></div>');
+    }).join('');
+    box.innerHTML = '<div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.06)">' +
+      '<div style="font-size:10px;color:#f0b429;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">' +
+        '🔬 Órdenes de laboratorio · ' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + '</div>' +
+      filas +
+      (auto.length ? '<div style="font-size:11px;color:#72c47e;margin-top:8px">✅ ' + auto.length + ' orden(es) de lentes de contacto creada(s) automáticamente</div>' : '') +
+      '</div>';
+    box.style.display = '';
+  } catch (e) { console.warn('[PostSaleLab]', e.message); }
+}
+
+/* Abre view-orden ya precargada para un folio concreto y recuerda a dónde volver. */
+async function abrirOrdenDesdeFolio(ventaId, folio, volverA) {
+  _ordRetorno = { ventaId: ventaId, volverA: volverA || 'pos' };
+  try { if (typeof cerrarDetalleVenta === 'function' && volverA === 'detalle-venta') cerrarDetalleVenta(); } catch (e) {}
+  go('orden');
+  limpiarOrden();
+  await new Promise(function (r) { setTimeout(r, 250); });
+  await selSubFolioEnOrden(ventaId, folio, null);
+  await _ordRenderContexto();
+  _ordEnfocarPendiente();
+}
+
+/* Lo que todavía falta para poder guardar — espeja las validaciones de guardarEImprimir,
+   que hoy solo avisan AL FINAL. Devuelve [{id, label}]. */
+function _ordCamposFaltantes() {
+  var g = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  var falta = [];
+  var esLC = (document.getElementById('ord-tipo') || {}).value === 'lc';
+  if (!g('ord-folio')) falta.push({ id: 'ord-folio', label: 'Folio' });
+  if (!g('ord-entrega')) falta.push({ id: 'ord-entrega', label: 'Fecha de entrega' });
+  if (!g('ord-hora-entrega')) falta.push({ id: 'ord-hora-entrega', label: 'Hora' });
+  if (esLC) {
+    if (!g('lc-od-marca')) falta.push({ id: 'lc-od-marca', label: 'Marca LC' });
+    if (!g('lc-od-poder')) falta.push({ id: 'lc-od-poder', label: 'Poder LC' });
+    return falta;
+  }
+  if (!g('o-od-esf') && !g('o-oi-esf')) falta.push({ id: 'o-od-esf', label: 'Graduación' });
+  if (!g('o-tip')) falta.push({ id: 'o-tip', label: 'Tipo de lente' });
+  if (!g('o-mat')) falta.push({ id: 'o-mat', label: 'Material' });
+  if (!g('o-tra')) falta.push({ id: 'o-tra', label: 'Tratamiento' });
+  if (!g('o-armazon')) falta.push({ id: 'o-armazon', label: 'Armazón' });
+  if (!g('o-dip')) falta.push({ id: 'o-dip', label: 'DIP' });
+  if ((g('o-od-add') || g('o-oi-add')) && !g('o-alt')) falta.push({ id: 'o-alt', label: 'Altura' });
+  if (g('o-tin-color') && !g('o-tin-tono')) falta.push({ id: 'o-tin-tono', label: 'Tono del tinte' });
+  if (/foto\s*colors/i.test(g('o-tra')) && !g('o-fcolor')) falta.push({ id: 'o-fcolor', label: 'Color Foto Colors' });
+  return falta;
+}
+
+function _ordEnfocarPendiente() {
+  var f = _ordCamposFaltantes()[0];
+  var el = f && document.getElementById(f.id);
+  if (!el) return;
+  try { el.scrollIntoView({ block: 'center' }); el.focus(); } catch (e) {}
+}
+
+/* Barra de contexto: de qué venta viene, qué folio es de cuántos y qué falta. */
+async function _ordRenderContexto() {
+  var bar = document.getElementById('ord-retorno-bar');
+  if (!bar) return;
+  if (!_ordRetorno) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  var faltan = _ordCamposFaltantes();
+  var pos = '', vtaFolio = '';
+  try {
+    var r = await labFoliosDeVenta(_ordRetorno.ventaId);
+    if (r) {
+      vtaFolio = r.venta.folio;
+      var reqs = r.folios.filter(function (f) { return f.requiere; });
+      var hechas = reqs.filter(function (f) { return f.estado !== 'pendiente'; }).length;
+      if (reqs.length > 1) pos = 'Folio ' + Math.min(hechas + 1, reqs.length) + ' de ' + reqs.length;
+      _ordRetorno.totalReq = reqs.length;
+    }
+  } catch (e) {}
+  bar.style.display = '';
+  bar.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 16px;background:rgba(212,184,74,0.08);border-bottom:1px solid rgba(212,184,74,0.2)">' +
+    '<button class="btn btn-g btn-sm" onclick="_ordSalirRetorno()" style="padding:4px 10px;font-size:11px">← Volver a la venta' + (vtaFolio ? ' ' + vtaFolio : '') + '</button>' +
+    (pos ? '<span style="font-size:11px;color:var(--beige);font-weight:600">' + pos + '</span>' : '') +
+    '<span id="ord-falta-txt" style="font-size:11px;color:' + (faltan.length ? '#f0b429' : '#72c47e') + '">' +
+      (faltan.length ? 'Faltan: ' + faltan.map(function (x) { return x.label; }).join(' · ') : '✓ Listo para guardar') +
+    '</span></div>';
+}
+
+/* Refresca solo el texto de "qué falta" (lo llama syncTicket en cada captura) */
+function _ordRefrescarFaltantes() {
+  var el = document.getElementById('ord-falta-txt');
+  if (!el || !_ordRetorno) return;
+  var faltan = _ordCamposFaltantes();
+  el.style.color = faltan.length ? '#f0b429' : '#72c47e';
+  el.textContent = faltan.length ? 'Faltan: ' + faltan.map(function (x) { return x.label; }).join(' · ') : '✓ Listo para guardar';
+}
+
+function _ordSalirRetorno() {
+  var ret = _ordRetorno;
+  _ordRetorno = null;
+  _ordRenderContexto();
+  if (!ret) return;
+  if (ret.volverA === 'detalle-venta') { go('historial-ventas'); setTimeout(function () { if (typeof verDetalleVenta === 'function') verDetalleVenta(ret.ventaId); }, 300); }
+  else go('ventas');
+}
+
+/* Tras guardar: si quedan folios de la misma venta, abre el siguiente ya precargado.
+   Eso convierte 3 capturas separadas en una sola sesión continua. */
+async function _ordContinuarTrasGuardar() {
+  var ret = _ordRetorno;
+  if (!ret) return;
+  try {
+    var r = await labFoliosDeVenta(ret.ventaId);
+    var pend = r ? r.folios.filter(function (f) { return f.requiere && f.estado === 'pendiente'; }) : [];
+    if (pend.length) {
+      toast('✓ Guardada · quedan ' + pend.length + ' folio(s) de esta venta');
+      await abrirOrdenDesdeFolio(ret.ventaId, pend[0].folio, ret.volverA);
+      return;
+    }
+    _ordRetorno = null;
+    await _ordRenderContexto();
+    toast('✅ Todas las órdenes de esta venta quedaron capturadas');
+    if (ret.volverA === 'detalle-venta') { go('historial-ventas'); setTimeout(function () { if (typeof verDetalleVenta === 'function') verDetalleVenta(ret.ventaId); }, 300); }
+    else { go('ventas'); _renderPostSaleLab(ret.ventaId); }
+  } catch (e) { console.warn('[OrdRetorno]', e.message); _ordRetorno = null; }
+}
+window.abrirOrdenDesdeFolio = abrirOrdenDesdeFolio;
+
 // Precarga armazón + material + tinte en orden lab desde venta o sub-folio promo
 async function _prefillOrderFromVenta(folio, opts) {
   if (!folio) return;
@@ -14975,7 +15149,9 @@ async function guardarEImprimir() {
   _rtSuppressUntil = Date.now() + 5000;
   await marcarFolioUsado(folioFinal);
   toast('✓ Orden guardada — imprimiendo ticket...');
-  setTimeout(() => { printTicket(); setTimeout(() => limpiarOrden(), 800); }, 300);
+  // v542: si venimos de una venta, tras imprimir se abre DIRECTO el siguiente folio
+  // pendiente de esa misma venta (3 capturas sueltas → una sola sesión continua)
+  setTimeout(() => { printTicket(); setTimeout(() => { limpiarOrden(); _ordContinuarTrasGuardar(); }, 800); }, 300);
   } finally { _actionBusy['guardarEImprimir'] = false; }
 }
 
@@ -23694,6 +23870,65 @@ async function verDetalleVenta(ventaId) {
   const {data:promos}=await db.from('venta_promociones').select('*').eq('venta_id',ventaId);
   vtaDetalleData={...v,items:items||[],pagos:pagos||[],promos:promos||[]};
   renderDetalleVenta();
+  // v542: estado de las órdenes de lab de esta venta. Va DESPUÉS y aparte para que
+  // renderDetalleVenta siga siendo síncrona (cero riesgo sobre el modal existente).
+  _renderDetalleVentaLab(ventaId);
+}
+
+/* Panel "🔬 Órdenes de laboratorio" dentro del detalle de venta: qué folio ya tiene
+   orden y cuál sigue pendiente, derivado de la existencia REAL de la orden. */
+async function _renderDetalleVentaLab(ventaId) {
+  var cont = document.getElementById('mvta-lab');
+  if (!cont) {
+    var host = document.getElementById('mvta-items');
+    if (!host || !host.parentNode) return;
+    cont = document.createElement('div');
+    cont.id = 'mvta-lab';
+    cont.style.marginTop = '10px';
+    host.parentNode.insertBefore(cont, host.nextSibling);
+  }
+  cont.style.display = 'none'; cont.innerHTML = '';
+  try {
+    var r = await labFoliosDeVenta(ventaId);
+    if (!r) return;
+    var reqs = r.folios.filter(function (f) { return f.requiere; });
+    if (!reqs.length) return;
+    var filas = reqs.map(function (f) {
+      var est, btn;
+      if (f.estado === 'pendiente') {
+        est = '<span style="color:#f0b429;font-weight:600">⚠️ Pendiente</span>';
+        btn = '<button class="btn btn-p" style="padding:5px 9px;font-size:11px;white-space:nowrap" onclick="abrirOrdenDesdeFolio(\'' + ventaId + '\',\'' + f.folio + '\',\'detalle-venta\')">Generar orden</button>';
+      } else {
+        var lbl = f.estado === 'auto_lc' ? '✅ Creada (LC automática)' : '✅ Creada';
+        est = '<span style="color:#72c47e">' + lbl + (f.orden ? ' · ' + f.orden.estado_lab : '') + '</span>';
+        btn = '<button class="btn btn-g" style="padding:5px 9px;font-size:11px;white-space:nowrap" onclick="_verFolioEnBitacora(\'' + f.folio + '\')">Ver en bitácora</button>';
+      }
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid rgba(255,255,255,0.05)">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:12px;font-weight:700;color:var(--white)">' + f.folio +
+            (f.es_addon ? ' <span style="font-size:10px;font-weight:400;color:var(--muted)">🕶 solar</span>' : '') + '</div>' +
+          '<div style="font-size:11px">' + est + '</div>' +
+          (f.paciente_nombre ? '<div style="font-size:10px;color:var(--muted)">👤 ' + f.paciente_nombre + '</div>' : '') +
+          (f.duplicadas ? '<div style="font-size:10px;color:#e08080">⚠ ' + f.duplicadas + ' órdenes con este folio</div>' : '') +
+        '</div>' + btn + '</div>';
+    }).join('');
+    cont.innerHTML = '<div style="border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:rgba(255,255,255,0.02)">' +
+        '<span style="font-size:11px;font-weight:600;color:var(--beige)">🔬 Órdenes de laboratorio</span>' +
+        '<span style="font-size:11px;color:' + (r.resumen.pendientes ? '#f0b429' : '#72c47e') + '">' +
+          r.resumen.creadas + ' de ' + r.resumen.total + ' creadas</span>' +
+      '</div>' + filas + '</div>';
+    cont.style.display = '';
+  } catch (e) { console.warn('[DetalleVentaLab]', e.message); }
+}
+
+function _verFolioEnBitacora(folio) {
+  try { if (typeof cerrarDetalleVenta === 'function') cerrarDetalleVenta(); } catch (e) {}
+  go('lab-proceso');
+  setTimeout(function () {
+    var el = document.getElementById('lp-search');
+    if (el) { el.value = folio; if (typeof filtrarProduccion === 'function') filtrarProduccion(); }
+  }, 250);
 }
 function renderDetalleVenta() {
   const v=vtaDetalleData; if(!v) return;
@@ -27369,8 +27604,13 @@ function mostrarPostSale(ventaId, folio, estado, total, monAplicar, pacNombre, p
     waBtn.innerHTML = waBtn.innerHTML.replace('Enviar portal por WhatsApp', 'WhatsApp (sin teléfono)');
   }
   vtaItems = []; vtaPaciente = null;
+  // v542: panel de órdenes de lab de esta venta. SIN await a propósito — no debe
+  // bloquear ni el post-venta ni el ticket; si falla, solo no se muestra.
+  try { _renderPostSaleLab(ventaId); } catch (e) { console.warn('[PostSaleLab]', e); }
 }
 function cerrarPostSale() {
+  var _lb = document.getElementById('vta-post-lab');
+  if (_lb) { _lb.style.display = 'none'; _lb.innerHTML = ''; }
   document.getElementById('vta-post-sale').style.display = 'none';
   const cartEl = document.querySelector('#vta-grid > div:last-child > div:first-child');
   if (cartEl) cartEl.style.display = '';
