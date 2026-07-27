@@ -10966,13 +10966,28 @@ function _cancelarRescateVta() {
 // Tipos de beneficio (tabla cupones.beneficio_tipo): solar_gratis | kit_gratis | desc_pct | desc_monto.
 // El cajero teclea/escanea el código → se valida (existe, no usado, no vencido) → se aplica el beneficio
 // → al CERRAR la venta se marca usado con el folio (no se reusa). NO combinable con cumple/convenio/rescate.
-var _cuponVtaContext = null; // {id, codigo, tipo, valor, descripcion, nombre, _fresh}
+// 🎓 Campaña "10% estudiantes con credencial escolar" — vigente 27-jul a 31-ago 2026
+var ESTUDIANTE_PCT = 10;
+var ESTUDIANTE_DESDE = '2026-07-27', ESTUDIANTE_HASTA = '2026-08-31';
+function _estudianteVigente() {
+  var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+  return hoy >= ESTUDIANTE_DESDE && hoy <= ESTUDIANTE_HASTA;
+}
+var _cuponVtaContext = null; // {id, codigo, tipo, valor, descripcion, nombre, esEstudiante, _fresh}
 function abrirCuponVta() {
   var ov = document.createElement('div'); ov.className = 'm-overlay open';
+  var estHTML = _estudianteVigente()
+    ? '<button onclick="_aplicarDescEstudiante()" style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:14px;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.40);border-radius:10px;color:#60a5fa;font-size:13px;font-weight:800;cursor:pointer;font-family:Outfit,sans-serif;text-align:left">'
+        + '🎓 Estudiante — ' + ESTUDIANTE_PCT + '% de descuento'
+        + '<div style="font-size:11px;font-weight:500;color:var(--muted);margin-top:3px">Verifica su credencial escolar vigente con foto · se acumula con la promo</div>'
+      + '</button>'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div><span style="font-size:10px;color:var(--muted)">o canjea un código</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.08)"></div></div>'
+    : '';
   ov.innerHTML = '<div class="modal" style="max-width:380px;padding:24px">'
     + '<div style="text-align:center;font-size:24px;margin-bottom:6px">🎟️</div>'
-    + '<div style="text-align:center;font-size:15px;font-weight:800;color:var(--white);margin-bottom:2px">Canjear cupón</div>'
+    + '<div style="text-align:center;font-size:15px;font-weight:800;color:var(--white);margin-bottom:2px">Cupones y descuentos</div>'
     + '<div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:14px">Teclea o escanea el código del cliente</div>'
+    + estHTML
     + '<input id="cupon-codigo" type="text" placeholder="Ej. SOLAR-4F9A" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();_validarCupon();}" style="width:100%;box-sizing:border-box;background:var(--surface2);border:2px solid rgba(245,158,11,0.35);border-radius:10px;padding:14px;color:var(--white);font-family:Outfit,sans-serif;font-size:18px;font-weight:800;text-align:center;letter-spacing:1px;outline:none;text-transform:uppercase">'
     + '<div id="cupon-msg" style="text-align:center;font-size:12px;margin-top:8px;min-height:16px"></div>'
     + '<div style="display:flex;gap:8px;margin-top:14px">'
@@ -10982,12 +10997,25 @@ function abrirCuponVta() {
   document.body.appendChild(ov);
   setTimeout(function(){ document.getElementById('cupon-codigo')?.focus(); }, 100);
 }
+// 🎓 Descuento de estudiante: cupón "virtual" (no existe fila en la tabla cupones).
+// Reusa todo el pipeline del cupón (recalc, banner, guards) y se registra al cerrar la venta.
+function _aplicarDescEstudiante() {
+  if (!_estudianteVigente()) { toast('La campaña de estudiantes no está vigente', true); return; }
+  if (_cumple30Active || _convVtaContext || _rescateVtaContext) { toast('Ya hay otra promo/descuento activo — no se combinan', true); return; }
+  if (_cuponVtaContext) { toast('Ya hay un cupón activo — no se combinan', true); return; }
+  if (!confirm('¿Verificaste su credencial escolar vigente (con foto)?\n\nSe aplicará ' + ESTUDIANTE_PCT + '% de descuento sobre el total.')) return;
+  _cuponVtaContext = { id: null, codigo: 'ESTUDIANTE', tipo: 'desc_pct', valor: ESTUDIANTE_PCT, descripcion: 'Descuento estudiante (credencial escolar)', nombre: '', esEstudiante: true, _fresh: true };
+  setTimeout(function(){ if (_cuponVtaContext) _cuponVtaContext._fresh = false; }, 500);
+  var ov = document.querySelector('.m-overlay.open'); if (ov && ov.querySelector('#cupon-codigo')) ov.remove();
+  _aplicarCuponPOS();
+}
 async function _validarCupon() {
   var codigo = (document.getElementById('cupon-codigo')?.value || '').trim().toUpperCase();
   var msg = document.getElementById('cupon-msg');
   function err(t){ if(msg){ msg.style.color='#e08080'; msg.textContent=t; } }
   if (!codigo) { err('Ingresa el código'); return; }
   if (_cumple30Active || _convVtaContext || _rescateVtaContext) { err('Ya hay otra promo/descuento activo — no se combinan'); return; }
+  if (_cuponVtaContext) { err(_cuponVtaContext.esEstudiante ? 'Ya hay un descuento de estudiante aplicado — quítalo primero (✕ del banner)' : 'Ya hay un cupón aplicado — quítalo primero (✕ del banner)'); return; }
   if (msg) { msg.style.color='var(--muted)'; msg.textContent='Validando...'; }
   try {
     var { data: cs } = await db.from('cupones').select('*').ilike('codigo', codigo).limit(1);
@@ -11023,7 +11051,10 @@ function _showCuponBanner() {
   var c = _cuponVtaContext;
   var benTxt = c.tipo === 'desc_pct' ? (c.valor + '% de descuento') : c.tipo === 'desc_monto' ? ('$' + c.valor + ' de descuento') : c.tipo === 'solar_gratis' ? 'Lente solar graduado GRATIS' : c.tipo === 'kit_gratis' ? 'Kit gratis' : (c.descripcion || 'beneficio');
   b.style.cssText = 'margin:10px;padding:10px 14px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.45);border-radius:10px;color:#fbbf24;font-size:12px;font-weight:600;display:flex;align-items:center;gap:10px;justify-content:space-between';
-  b.innerHTML = '<span>🎟️ Cupón <b>' + c.codigo + '</b>' + (c.nombre ? ' (' + c.nombre + ')' : '') + ': <b>' + benTxt + '</b> aplicado. Se marca usado al cerrar la venta.</span><button onclick="_cancelarCuponVta()" title="Quitar cupón de esta venta" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0">✕</button>';
+  b.innerHTML = (c.esEstudiante
+      ? '<span>🎓 <b>Descuento estudiante</b>: <b>' + benTxt + '</b> aplicado (credencial verificada). Queda registrado al cerrar la venta.</span>'
+      : '<span>🎟️ Cupón <b>' + c.codigo + '</b>' + (c.nombre ? ' (' + c.nombre + ')' : '') + ': <b>' + benTxt + '</b> aplicado. Se marca usado al cerrar la venta.</span>')
+    + '<button onclick="_cancelarCuponVta()" title="Quitar el descuento de esta venta" style="background:none;border:none;color:#e08080;cursor:pointer;font-size:16px;font-weight:700;padding:0 4px;flex-shrink:0">✕</button>';
   b.style.display = 'flex';
 }
 function _cancelarCuponVta() {
@@ -23333,6 +23364,25 @@ async function _procesarVentaInner() {
       _rescateVtaContext = null;
       var _rbn2=document.getElementById('vta-rescate-banner'); if(_rbn2) _rbn2.style.display='none';
     }
+    // 🎓 Descuento de estudiante: no hay fila en `cupones` que marcar — se registra para auditoría
+    if (_cuponVtaContext && _cuponVtaContext.esEstudiante) {
+      try {
+        const _estSub = vtaItems.reduce(function(s,i){ return s + (Number(i.subtotal)||0); }, 0);
+        const _estIns = await db.from('descuentos_rescate').insert({
+          folio: folio, sucursal: ventaSucursal,
+          cajero: currentUser?.nombre || currentUser?.id || null,
+          asesor: asesorVal||null,
+          subtotal: _estSub, pct: ESTUDIANTE_PCT,
+          monto_descuento: Math.round(_estSub * (ESTUDIANTE_PCT/100) * 100) / 100,
+          motivo: '🎓 Estudiante (credencial escolar)',
+          paciente_nombre: vtaPaciente?.nombre||null
+        }).select('id').single();
+        if (_estIns.error) throw new Error(_estIns.error.message);
+        toast('🎓 Descuento estudiante registrado');
+      } catch(e) { console.warn('[Estudiante]', e); }
+      _cuponVtaContext = null;
+      var _cbn4=document.getElementById('vta-cupon-banner'); if(_cbn4) _cbn4.style.display='none';
+    }
     // 🎟️ Marcar el cupón como USADO (con folio) — así queda canjeado y no se puede reusar
     if (_cuponVtaContext) {
       try {
@@ -28950,6 +29000,40 @@ async function _loadCuponesReport() {
   } catch(e) { console.warn('[Cupones report]', e); el.innerHTML=''; }
 }
 
+// Bloque <details> de auditoría de descuentos (compartido por rescate y estudiante).
+// vacioTxt = '' → si no hay filas, no se pinta nada (para no mostrar campañas sin uso).
+function _descAuditBlock(titulo, color, borde, rows, vacioTxt) {
+  if (!rows.length) {
+    if (!vacioTxt) return '';
+    return '<details style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden;margin-bottom:10px"><summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:'+color+'">'+titulo+'</summary><div style="padding:12px 14px;color:var(--muted);font-size:12px">'+vacioTxt+'</div></details>';
+  }
+  var byCajero = {};
+  rows.forEach(function(r){
+    var k = r.cajero || '—';
+    if (!byCajero[k]) byCajero[k] = { n:0, total:0 };
+    byCajero[k].n++; byCajero[k].total += Number(r.monto_descuento)||0;
+  });
+  var totalN = rows.length, totalMonto = rows.reduce(function(s,r){return s+(Number(r.monto_descuento)||0)},0);
+  var resumen = Object.keys(byCajero).sort(function(a,b){return byCajero[b].n-byCajero[a].n}).map(function(k){
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:8px;margin-bottom:5px">'
+      + '<span style="font-size:12px;color:var(--white);font-weight:600">'+k+'</span>'
+      + '<span style="font-size:12px;color:'+color+';font-weight:700">'+byCajero[k].n+' usos · -$'+byCajero[k].total.toFixed(2)+'</span></div>';
+  }).join('');
+  var detalle = rows.map(function(r){
+    var f = new Date(r.created_at).toLocaleString('es-MX',{timeZone:'America/Chihuahua',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    return '<div style="padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px">'
+      + '<div style="display:flex;justify-content:space-between"><span style="color:var(--white);font-weight:600">'+(r.cajero||'—')+' · <span style="color:'+color+'">'+r.pct+'%</span> (-$'+(Number(r.monto_descuento)||0).toFixed(2)+')</span><span style="color:var(--muted)">'+f+'</span></div>'
+      + '<div style="color:var(--muted);margin-top:2px">Folio '+(r.folio||'—')+(r.paciente_nombre?' · '+r.paciente_nombre:'')+(r.motivo?' · "'+r.motivo+'"':'')+'</div></div>';
+  }).join('');
+  return '<details style="background:var(--surface);border:1px solid '+borde+';border-radius:12px;overflow:hidden;margin-bottom:10px">'
+    + '<summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:'+color+'">'+titulo+' — '+totalN+' usos · -$'+totalMonto.toFixed(2)+'</summary>'
+    + '<div style="padding:12px 14px">'
+    + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">Por cajero:</div>'+resumen
+    + '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px;font-weight:600">Detalle:</div>'
+    + '<div style="max-height:300px;overflow-y:auto;border:1px solid rgba(255,255,255,0.05);border-radius:8px">'+detalle+'</div>'
+    + '</div></details>';
+}
+
 // ═══ Panel auditoría: descuentos de rescate del período/sucursal (cuántas veces y quién) ═══
 async function _loadRescateAudit(suc, utcStart, utcEnd) {
   var el = document.getElementById('com-rescate');
@@ -28963,36 +29047,10 @@ async function _loadRescateAudit(suc, utcStart, utcEnd) {
       .order('created_at', { ascending: false });
     if (error) throw error;
     data = data || [];
-    if (!data.length) {
-      el.innerHTML = '<details style="background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden"><summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:#fbbf24">🎯 Descuentos de rescate</summary><div style="padding:12px 14px;color:var(--muted);font-size:12px">Sin descuentos de rescate en este período.</div></details>';
-      return;
-    }
-    // Agrupar por cajero
-    var byCajero = {};
-    data.forEach(function(r){
-      var k = r.cajero || '—';
-      if (!byCajero[k]) byCajero[k] = { n:0, total:0 };
-      byCajero[k].n++; byCajero[k].total += Number(r.monto_descuento)||0;
-    });
-    var totalN = data.length, totalMonto = data.reduce(function(s,r){return s+(Number(r.monto_descuento)||0)},0);
-    var resumen = Object.keys(byCajero).sort(function(a,b){return byCajero[b].n-byCajero[a].n}).map(function(k){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--surface2);border-radius:8px;margin-bottom:5px">'
-        + '<span style="font-size:12px;color:var(--white);font-weight:600">'+k+'</span>'
-        + '<span style="font-size:12px;color:#fbbf24;font-weight:700">'+byCajero[k].n+' usos · -$'+byCajero[k].total.toFixed(2)+'</span></div>';
-    }).join('');
-    var detalle = data.map(function(r){
-      var f = new Date(r.created_at).toLocaleString('es-MX',{timeZone:'America/Chihuahua',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-      return '<div style="padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px">'
-        + '<div style="display:flex;justify-content:space-between"><span style="color:var(--white);font-weight:600">'+(r.cajero||'—')+' · <span style="color:#fbbf24">'+r.pct+'%</span> (-$'+(Number(r.monto_descuento)||0).toFixed(2)+')</span><span style="color:var(--muted)">'+f+'</span></div>'
-        + '<div style="color:var(--muted);margin-top:2px">Folio '+(r.folio||'—')+(r.paciente_nombre?' · '+r.paciente_nombre:'')+(r.motivo?' · "'+r.motivo+'"':'')+'</div></div>';
-    }).join('');
-    el.innerHTML = '<details style="background:var(--surface);border:1px solid rgba(245,158,11,0.18);border-radius:12px;overflow:hidden">'
-      + '<summary style="padding:12px 14px;cursor:pointer;font-size:13px;font-weight:700;color:#fbbf24">🎯 Descuentos de rescate — '+totalN+' usos · -$'+totalMonto.toFixed(2)+'</summary>'
-      + '<div style="padding:12px 14px">'
-      + '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600">Por cajero:</div>'+resumen
-      + '<div style="font-size:11px;color:var(--muted);margin:10px 0 4px;font-weight:600">Detalle:</div>'
-      + '<div style="max-height:300px;overflow-y:auto;border:1px solid rgba(255,255,255,0.05);border-radius:8px">'+detalle+'</div>'
-      + '</div></details>';
+    // Los descuentos de estudiante viven en la misma tabla pero son otra campaña → panel aparte
+    var esEst = function(r){ return (r.motivo||'').indexOf('🎓') === 0; };
+    el.innerHTML = _descAuditBlock('🎯 Descuentos de rescate', '#fbbf24', 'rgba(245,158,11,0.18)', data.filter(function(r){ return !esEst(r); }), 'Sin descuentos de rescate en este período.')
+      + _descAuditBlock('🎓 Descuento estudiante', '#60a5fa', 'rgba(59,130,246,0.18)', data.filter(esEst), '');
   } catch(e) { console.warn('[Rescate audit]', e); el.innerHTML=''; }
 }
 

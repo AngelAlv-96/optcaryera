@@ -108,9 +108,21 @@ function getActivePromos() {
     '• Si pregunta si aplica en otra sucursal: solo en Plaza Vía Vittoria.\n\n'
     : '';
 
+  // 🎓 10% ESTUDIANTES (regreso a clases) — vigente 27-jul a 31-ago-2026. Clari la OFRECE ella misma.
+  var descEstudiante = (now >= new Date('2026-07-27T00:00:00-06:00') && now <= new Date('2026-08-31T23:59:59-06:00')) ?
+    '🎓 DESCUENTO ESTUDIANTES 10% (vigente del 27 de julio al 31 de AGOSTO de 2026 — regreso a clases):\n' +
+    '• 10% de descuento presentando CREDENCIAL ESCOLAR VIGENTE CON FOTO. Aplica desde primaria hasta universidad.\n' +
+    '• Se ACUMULA con la promoción vigente: el 10% se aplica ENCIMA del total que ya quedó con el 3x1. Aplica a TODO lo que compre (lentes completos, lentes de contacto, accesorios).\n' +
+    '• El descuento es para el ESTUDIANTE (el titular de la credencial), no para acompañantes. Válido en las 4 sucursales.\n' +
+    '✅ OFRÉCELA TÚ, sin esperar a que pregunten. Hazlo UNA sola vez, en cuanto se dé CUALQUIERA de estas señales: (a) el cliente dice que los lentes son PARA ÉL, para un hijo, hermano o sobrino; (b) pregunta precio de lentes graduados; (c) ya le explicaste la promo y sigue interesado (te contesta, pregunta algo más, dice que le interesa). En ese momento AGREGA al final de tu respuesta, como último renglón: "¿Eres estudiante? Tienes un 10% de descuento extra presentando tu credencial de la escuela 🎓". Va aparte de la pregunta que ya ibas a hacer — no la sustituye. Si dice que no, o si no contesta, NO insistas ni lo vuelvas a mencionar.\n' +
+    '✅ Si dice que SÍ es estudiante: dile que lleve su credencial escolar y que MUESTRE ESTA CONVERSACIÓN en la sucursal para que le apliquen su descuento.\n' +
+    '⛔ NO la ofrezcas si el cliente pregunta por lentes BIFOCALES o PROGRESIVOS (o menciona vista cansada / que necesita ver de cerca y de lejos) — casi seguro ya no es estudiante y ofrecérselo es incómodo. Si en ese caso ÉL MISMO dice que es estudiante, entonces sí aplica normal.\n' +
+    '⛔ NUNCA la ofrezcas dos veces en la misma conversación ni la metas en cada mensaje.\n\n'
+    : '';
+
   // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").
   if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7)) {
-    return cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+    return descEstudiante + cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
       '🏷️ NOMBRE DE LA PROMO — ANÚNCIALA SIEMPRE COMO "3x1" (ya NO la llames "2x1" con el cliente): di "tenemos 3x1 en lentes". El 3x1 = te llevas 3 LENTES por el precio de 1: los 2 del 2x1 (compras 2 y pagas 1) + un 3er lente solar graduado. ⚠️ EN LAS CONDICIONES aclara SIEMPRE: el 3er lente (solar graduado) va GRATIS en COMPRAS MAYORES DE $3,000 (ahí es 3x1 completo); si la compra es menor a $3,000, es 2x1 + el solar a $499. Ejemplo de anuncio: "¡Tenemos 3x1 en lentes! 👓 Te llevas 3 lentes: 2 graduados + un tercer lente solar graduado, y el solar va GRATIS en compras mayores de $3,000. Examen de la vista incluido. ¿Para quién serían?" El mecanismo interno sigue siendo 2x1 + solar, pero al cliente se le ANUNCIA como 3x1.\n\n' +
       '⛔ ALCANCE DE LA PROMO (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
@@ -144,7 +156,8 @@ function getActivePromos() {
       'REGLA CUANDO PREGUNTEN POR 3x1: la promo ACTUAL SÍ es 3x1 — confírmalo con entusiasmo. NO menciones promociones pasadas ni fechas de promos que ya terminaron. Preséntala así: "¡Sí! Tenemos 3x1: te llevas 3 lentes (2 graduados + un tercer lente solar graduado), el examen va incluido y listos desde 35 min. El 3er lente solar va GRATIS en compras mayores de $3,000." Hazlo sonar como una gran oportunidad. No inventes otras promos.' + hotSaleAplazo;
   }
 
-  return cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+  // ⚠️ descEstudiante TAMBIÉN aquí: el gate de arriba es abril-julio, en AGOSTO la campaña solo llega por este return.
+  return descEstudiante + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional: GRATIS en compras de $3,000 o más, o por solo $499 si la compra es menor (par extra dentro de la promo).\n' +
