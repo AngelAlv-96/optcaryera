@@ -80,6 +80,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
+        thinking: { type: 'disabled' }, // v545: Sonnet 5 piensa por default y el thinking consume max_tokens -> respuestas vacias/truncadas
         max_tokens: Math.min(max_tokens || 1024, 4096),
         system,
         messages: messages.slice(-10)

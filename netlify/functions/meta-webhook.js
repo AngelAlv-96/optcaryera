@@ -794,6 +794,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-5',
+      thinking: { type: 'disabled' }, // v545: Sonnet 5 piensa por default y el thinking consume max_tokens -> respuestas vacias/truncadas
       max_tokens: 350,
       system: systemPrompt,
       messages: messages
