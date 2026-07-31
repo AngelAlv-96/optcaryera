@@ -34,6 +34,12 @@ const STATUS_MAP = {
 };
 
 // ── PROMOS POR FECHA (America/Chihuahua) ──
+// ═══ FUENTE ÚNICA de las reglas de ALCANCE de la promo (v547).
+// ⚠️ Este bloque debe ser IDÉNTICO en wa-webhook.js y meta-webhook.js. Se inyecta en getActivePromos()
+// (mensajes directos) y, en meta-webhook, también en generatePublicReply() (comentarios públicos).
+// Antes vivían solo en los prompts de DM y el canal público improvisaba (bug del bifocal blender, v546).
+const REGLAS_ALCANCE = "⛔ REGLAS DE ALCANCE DE LA PROMO — QUÉ NO SE PUEDE (fuente única, idéntica en wa-webhook.js y meta-webhook.js; se inyecta a los mensajes directos Y a los comentarios públicos):\n• El 2x1/3x1 aplica SOLO a lentes oftálmicos completos (armazón + micas graduadas). NO aplica a lentes de contacto, NI a accesorios o soluciones, NI a armazones sueltos sin graduación.\n• Solo UNO de los 2 pares puede ser BIFOCAL, BLENDER o PROGRESIVO; el otro par va de VISIÓN SENCILLA. El tercer lente (el solar graduado) es SIEMPRE visión sencilla.\n• Marcas de diseñador (Ray-Ban, Oakley, Vogue…): se puede llevar UNO de diseñador, pero NO los dos.\n• La promo se comparte entre MÁXIMO 2 PERSONAS. ⛔ NO existe \"2 personas por visita\" ni repartirla en varias visitas para incluir a un tercero — NUNCA inventes esa salida. Si son 3 o más, di con claridad que la promo cubre a 2 y que en sucursal les arman la mejor opción para el resto.\n• El precio NO es solo el armazón: los lentes se cotizan como PAQUETE (armazón + material + tipo de graduación + tratamientos) en sucursal.\n⛔ Si te preguntan por una combinación que NO está en esta lista y no la sabes de cierto: NO digas ni sí ni no. Di que depende de la graduación y el material, e invita a sucursal o a mensaje directo.";
+
 function getActivePromos() {
   var now = new Date();
   var mx = new Date(now.toLocaleString('en-US', { timeZone: 'America/Chihuahua' }));
@@ -122,7 +128,7 @@ function getActivePromos() {
 
   // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").
   if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7)) {
-    return descEstudiante + cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+    return REGLAS_ALCANCE + String.fromCharCode(10,10) + descEstudiante + cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
       '🏷️ NOMBRE DE LA PROMO — ANÚNCIALA SIEMPRE COMO "3x1" (ya NO la llames "2x1" con el cliente): di "tenemos 3x1 en lentes". El 3x1 = te llevas 3 LENTES por el precio de 1: los 2 del 2x1 (compras 2 y pagas 1) + un 3er lente solar graduado. ⚠️ EN LAS CONDICIONES aclara SIEMPRE: el 3er lente (solar graduado) va GRATIS en COMPRAS MAYORES DE $3,000 (ahí es 3x1 completo); si la compra es menor a $3,000, es 2x1 + el solar a $499. Ejemplo de anuncio: "¡Tenemos 3x1 en lentes! 👓 Te llevas 3 lentes: 2 graduados + un tercer lente solar graduado, y el solar va GRATIS en compras mayores de $3,000. Examen de la vista incluido. ¿Para quién serían?" El mecanismo interno sigue siendo 2x1 + solar, pero al cliente se le ANUNCIA como 3x1.\n\n' +
       '⛔ ALCANCE DE LA PROMO (LÉELO ANTES DE RESPONDER):\n' +
       '• El 2x1 aplica SOLO a LENTES OFTÁLMICOS COMPLETOS = armazón + micas graduadas.\n' +
@@ -157,7 +163,7 @@ function getActivePromos() {
   }
 
   // ⚠️ descEstudiante TAMBIÉN aquí: el gate de arriba es abril-julio, en AGOSTO la campaña solo llega por este return.
-  return descEstudiante + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
+  return REGLAS_ALCANCE + String.fromCharCode(10,10) + descEstudiante + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
     '⛔ El 2x1 aplica SOLO a lentes oftálmicos (armazón + micas graduadas). NUNCA aplica a lentes de contacto — los LC se venden por caja a precio individual.\n' +
     '🎁 2x1 en lentes completos: compras 2, pagas 1. El precio depende del armazón, graduación y material que elijas en sucursal — no hay precio fijo de promo.\n' +
     '☀️ Lente solar graduado adicional: GRATIS en compras de $3,000 o más, o por solo $499 si la compra es menor (par extra dentro de la promo).\n' +
@@ -952,10 +958,9 @@ REGLAS ESTRICTAS:
 - Tono amigable y profesional
 - NO des PRECIOS ni la mecánica exacta de las promos en público (eso va en el DM) — PERO sí puedes confirmar que una promoción SIGUE VIGENTE / es la promo de verano si preguntan hasta cuándo o si todavía aplica.
 
-⛔⛔ NUNCA AFIRMES QUÉ SE PUEDE COMBINAR EN LA PROMO (regla crítica — ya causó un problema real):
-- Si preguntan si se puede tal material, tratamiento o tipo de lente (bifocal, blender, progresivo, policarbonato, antirreflejante, fotocromático, transitions, blue light...), ⛔ NO inventes un "sí, se puede". NO TIENES el detalle de qué combina con qué.
-- 🚨 CASO ESPECÍFICO — BIFOCAL / BLENDER / PROGRESIVO: en la promo solo UNO de los dos pares puede ser bifocal o progresivo; el otro par va de VISIÓN SENCILLA, y el lente solar SIEMPRE es visión sencilla. Si preguntan si LOS DOS pueden ser bifocal/blender/progresivo, la respuesta es NO. Dilo amable y claro, sin sonar a regaño, e invítalos al mensaje directo para el detalle. (Bug real: se le contestó a una clienta en un reel que sí podían ser los dos con bifocal blender — es falso y provoca un problema en el mostrador.)
-- Para cualquier otra combinación que no sepas de cierto: NO digas ni sí ni no — responde que depende de la graduación y el material que necesite, e invítalos a escribir por mensaje directo o pasar a sucursal para que les armen la cotización.
+${REGLAS_ALCANCE}
+
+⛔ En PÚBLICO nunca des precios ni la mecánica de venta — las reglas de arriba están para que NO afirmes de más; el detalle va por mensaje directo o en sucursal.
 
 DATOS BÁSICOS:
 Horario: Lun-Sáb 10am-7pm, Dom 11am-5pm
