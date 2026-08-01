@@ -13154,6 +13154,51 @@ document.addEventListener('click', e => {
   }
 });
 
+/* ¿Ese folio es el slot de un PAR de la promo? Devuelve {esPar, folios, base} (v552). */
+async function _lcFolioDeParEnPromo(folio) {
+  var out = { esPar: false, folios: [], base: '' };
+  try {
+    var f = _folioNorm(String(folio || '').trim());
+    if (!f) return out;
+    var base = _folioBase(f);
+    out.base = base;
+    var vt = await db.from('ventas').select('id').eq('folio', base).limit(1);
+    var venta = vt.data && vt.data[0];
+    if (!venta) return out;
+    var vp = await db.from('venta_promociones').select('folios_generados').eq('venta_id', venta.id).limit(1);
+    var gen = (vp.data && vp.data[0] && vp.data[0].folios_generados) || [base];
+    out.folios = gen;
+    out.esPar = gen.map(_folioNorm).indexOf(f) >= 0;
+  } catch (e) { console.warn('[LC folio]', e.message); }
+  return out;
+}
+
+/* Siguiente guion libre para un LC de esa venta: después de los pares y de lo ya creado (v552). */
+async function _lcSiguienteFolio(base) {
+  var info = await _lcFolioDeParEnPromo(base);
+  var max = (info.folios && info.folios.length) ? info.folios.length : 1;
+  try {
+    var ords = await buscarOrdenesPorFolio(base, { incluirEntregadas: true, select: 'folio' });
+    (ords || []).forEach(function (o) {
+      var m = String(o.folio || '').match(/-(\d+)$/);
+      if (m && +m[1] > max) max = +m[1];
+    });
+  } catch (e) {}
+  return base + '-' + (max + 1);
+}
+
+/* Al pasar a modo LC: si el folio puesto es de un par, saltar al siguiente guion (v552). */
+async function _lcAjustarFolioEnOrden() {
+  var el = document.getElementById('ord-folio');
+  if (!el || !String(el.value || '').trim()) return;
+  var info = await _lcFolioDeParEnPromo(el.value);
+  if (!info.esPar) return;                      // folio suelto o ya con guion propio → se respeta
+  var nuevo = await _lcSiguienteFolio(info.base);
+  el.value = nuevo;
+  toast('👁 Los lentes de contacto llevan folio propio: ' + nuevo);
+  try { syncTicket(); } catch (e) {}
+}
+
 function setTipoOrden(tipo) {
   document.getElementById('ord-tipo').value = tipo;
   const isLC = tipo === 'lc';
@@ -13162,6 +13207,8 @@ function setTipoOrden(tipo) {
   document.querySelectorAll('.ord-armazon-only').forEach(el => el.style.display = isLC ? 'none' : '');
   document.querySelectorAll('.ord-lc-only').forEach(el => el.style.display = isLC ? '' : 'none');
 
+  // v552: un LC nunca debe quedarse con el folio de un par de la promo
+  if (isLC) { _lcAjustarFolioEnOrden().catch(function (e) { console.warn('[LC folio]', e); }); }
   if (isLC && window._hcSinLC && window._hcConRx) {
     window._hcSinLC = false; // Solo preguntar una vez
     setTimeout(() => mostrarDialogoCalcLC(), 200);
@@ -15114,6 +15161,22 @@ async function guardarEImprimir() {
     if (v('o-tra') === 'Foto Colors' && !v('o-fcolor')) { toast('Foto Colors requiere seleccionar el color', true); document.getElementById('o-fcolor').focus(); return; }
   }
 
+
+  // v552: CANDADO — un LC capturado a mano no puede llevarse el folio de un par de la promo.
+  // Fue lo que paso en la 16177: el LC se quedo con el folio del par 1, al capturar el par salio
+  // "es un duplicado, cancela" y ese par nunca se fabrico.
+  var _folioEnCampo = document.getElementById('ord-folio').value.trim();
+  if (isLC && _folioEnCampo) {
+    var _infoPar = await _lcFolioDeParEnPromo(_folioEnCampo);
+    if (_infoPar.esPar) {
+      var _sug = await _lcSiguienteFolio(_infoPar.base);
+      var _ok = confirm('El folio ' + _folioEnCampo + ' es de un PAR de lentes de esta venta.\n\n' +
+        'Los lentes de contacto llevan folio propio para no quitarle el suyo al par.\n\n' +
+        'Se usara ' + _sug + ' en su lugar. ¿Continuar?');
+      if (!_ok) return;
+      document.getElementById('ord-folio').value = _sug;
+    }
+  }
   const folioRaw = document.getElementById('ord-folio').value.trim();
   let folioFinal = folioRaw;
 
