@@ -14617,6 +14617,85 @@ function _ordFolioLinea(f) {
 
 /* Panel en el post-venta. Async y en try/catch: si algo falla, se oculta y la venta
    sigue perfecta (mostrarPostSale NO lo espera). */
+/* Órdenes de LENTES DE CONTACTO de una venta (las crea solas el POS al cobrar). */
+async function _lcOrdenesDeVenta(ventaFolio) {
+  try {
+    var ords = await buscarOrdenesPorFolio(ventaFolio, {
+      incluirEntregadas: true,
+      select: 'id,folio,tipo_lente,material,tratamiento,od_esfera,od_cilindro,od_eje,oi_esfera,oi_cilindro,oi_eje,fecha_entrega,hora_entrega'
+    });
+    return (ords || []).filter(function (o) { return o.tipo_lente === 'Lente de Contacto'; });
+  } catch (e) { console.warn('[LC ordenes]', e.message); return []; }
+}
+
+/* Fila del panel post-venta para una orden de LC ya creada: folio + Imprimir + Editar. */
+function _lcOrdenFila(o) {
+  var rx = 'OD ' + (o.od_esfera || '—') + (o.od_cilindro ? ' ' + o.od_cilindro : '') +
+           ' · OI ' + (o.oi_esfera || '—') + (o.oi_cilindro ? ' ' + o.oi_cilindro : '');
+  return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(114,196,126,0.06);border:1px solid rgba(114,196,126,0.22);border-radius:9px;margin-bottom:6px">' +
+    '<div style="flex:1;min-width:0">' +
+      '<div style="font-size:12px;color:var(--white);font-weight:700">👁 ' + escH(o.folio || '—') + ' · ' + escH(o.material || 'Lente de contacto') + '</div>' +
+      '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + escH(rx) + (o.tratamiento ? ' · ' + escH(o.tratamiento) : '') + '</div>' +
+    '</div>' +
+    '<button class="btn btn-g btn-sm" style="font-size:11px;padding:5px 9px;white-space:nowrap" onclick="reimprimirOrdenLab(\'' + o.id + '\')" title="Imprimir la orden">🖨</button>' +
+    '<button class="btn btn-g btn-sm" style="font-size:11px;padding:5px 9px;white-space:nowrap" onclick="editarOrdenLC(\'' + o.id + '\')" title="Corregir esta orden">✏️</button>' +
+  '</div>';
+}
+
+/* Corrige una orden de LC YA creada (no duplica: hace UPDATE sobre la misma). */
+async function editarOrdenLC(ordenId) {
+  var { data: os } = await db.from('ordenes_laboratorio')
+    .select('id,folio,material,tratamiento,od_esfera,od_cilindro,od_eje,oi_esfera,oi_cilindro,oi_eje,fecha_entrega,hora_entrega')
+    .eq('id', ordenId).limit(1);
+  var o = os && os[0];
+  if (!o) { toast('No se encontró la orden', true); return; }
+  var campo = function (id, lbl, val, ph) {
+    return '<div><div style="font-size:10px;color:var(--muted);margin-bottom:3px">' + lbl + '</div>' +
+      '<input id="' + id + '" value="' + escH(val == null ? '' : String(val)) + '" placeholder="' + (ph || '') + '" ' +
+      'style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:9px;color:var(--white);font-family:Outfit,sans-serif;font-size:13px"></div>';
+  };
+  var ov = document.createElement('div'); ov.className = 'm-overlay open';
+  ov.innerHTML = '<div class="modal" style="max-width:420px;padding:22px">' +
+    '<div style="font-size:15px;font-weight:800;color:var(--white);margin-bottom:2px">✏️ Corregir orden de lentes de contacto</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Folio ' + escH(o.folio || '—') + ' · se corrige esta misma orden, no se crea otra</div>' +
+    campo('elc-material', 'Marca y modelo', o.material, 'Ej. Air Optix Hydraglyde') +
+    '<div style="height:8px"></div>' +
+    campo('elc-trat', 'Reemplazo', o.tratamiento, 'Mensual / Quincenal / Diario') +
+    '<div style="height:10px"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">' +
+      campo('elc-od-esf', 'OD poder', o.od_esfera) + campo('elc-od-cil', 'OD cil', o.od_cilindro) + campo('elc-od-eje', 'OD eje', o.od_eje) +
+    '</div><div style="height:6px"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">' +
+      campo('elc-oi-esf', 'OI poder', o.oi_esfera) + campo('elc-oi-cil', 'OI cil', o.oi_cilindro) + campo('elc-oi-eje', 'OI eje', o.oi_eje) +
+    '</div><div style="height:10px"></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">' +
+      campo('elc-fecha', 'Fecha de entrega', o.fecha_entrega) + campo('elc-hora', 'Hora', o.hora_entrega) +
+    '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:16px">' +
+      '<button onclick="this.closest(\'.m-overlay\').remove()" class="btn btn-g" style="flex:1">Cancelar</button>' +
+      '<button onclick="_guardarOrdenLC(\'' + o.id + '\')" class="btn btn-p" style="flex:1">Guardar cambios</button>' +
+    '</div></div>';
+  document.body.appendChild(ov);
+}
+
+async function _guardarOrdenLC(ordenId) {
+  var g = function (id) { var e = document.getElementById(id); return e ? String(e.value || '').trim() : ''; };
+  if (!g('elc-material')) { toast('La marca no puede quedar vacía', true); return; }
+  if (!g('elc-od-esf')) { toast('El poder del OD es obligatorio', true); return; }
+  try {
+    var up = await db.from('ordenes_laboratorio').update({
+      material: g('elc-material'), tratamiento: g('elc-trat'),
+      od_esfera: g('elc-od-esf'), od_cilindro: g('elc-od-cil'), od_eje: g('elc-od-eje'),
+      oi_esfera: g('elc-oi-esf'), oi_cilindro: g('elc-oi-cil'), oi_eje: g('elc-oi-eje'),
+      fecha_entrega: g('elc-fecha') || null, hora_entrega: g('elc-hora') || null
+    }).eq('id', ordenId).select('id').single();
+    if (up.error) throw new Error(up.error.message);
+    var ov = document.querySelector('.m-overlay.open'); if (ov) ov.remove();
+    toast('✅ Orden actualizada');
+    try { if (_ordRetorno && _ordRetorno.ventaId) _renderPostSaleLab(_ordRetorno.ventaId); } catch (e) {}
+  } catch (e) { toast('No se pudo guardar: ' + e.message, true); }
+}
+
 async function _renderPostSaleLab(ventaId) {
   var box = document.getElementById('vta-post-lab');
   if (!box) return;
@@ -14625,18 +14704,23 @@ async function _renderPostSaleLab(ventaId) {
     var r = await labFoliosDeVenta(ventaId);
     if (!r) return;
     var pend = r.folios.filter(function (f) { return f.requiere && f.estado === 'pendiente'; });
-    var auto = r.folios.filter(function (f) { return f.estado === 'auto_lc'; });
-    if (!pend.length) return;                       // nada que capturar → ni se muestra
+    // v551: las órdenes de LC ya no comparten folio con un par (v550), así que se consultan aparte
+    var lcOrds = r.venta && r.venta.folio ? await _lcOrdenesDeVenta(r.venta.folio) : [];
+    if (!pend.length && !lcOrds.length) return;   // nada que mostrar
     var filas = pend.map(function (f) {
       return _ordFolioLinea(f).replace('</div></div>',
         '</div><button class="btn btn-p" style="padding:6px 10px;font-size:11px;white-space:nowrap" ' +
         'onclick="abrirOrdenDesdeFolio(\'' + ventaId + '\',\'' + f.folio + '\',\'pos\')">Crear orden →</button></div>');
     }).join('');
+    var htmlLC = lcOrds.length
+      ? '<div style="font-size:10px;color:#72c47e;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin:' + (pend.length ? '12px' : '0') + ' 0 6px">' +
+          '👁 Lentes de contacto · orden' + (lcOrds.length > 1 ? 'es' : '') + ' ya creada' + (lcOrds.length > 1 ? 's' : '') + '</div>' +
+        lcOrds.map(_lcOrdenFila).join('')
+      : '';
     box.innerHTML = '<div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.06)">' +
-      '<div style="font-size:10px;color:#f0b429;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">' +
-        '🔬 Órdenes de laboratorio · ' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + '</div>' +
-      filas +
-      (auto.length ? '<div style="font-size:11px;color:#72c47e;margin-top:8px">✅ ' + auto.length + ' orden(es) de lentes de contacto creada(s) automáticamente</div>' : '') +
+      (pend.length ? '<div style="font-size:10px;color:#f0b429;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">' +
+        '🔬 Órdenes de laboratorio · ' + pend.length + ' pendiente' + (pend.length > 1 ? 's' : '') + '</div>' + filas : '') +
+      htmlLC +
       '</div>';
     box.style.display = '';
   } catch (e) { console.warn('[PostSaleLab]', e.message); }
