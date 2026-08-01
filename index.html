@@ -23151,9 +23151,21 @@ async function _procesarVentaInner() {
     _lcAutoRegistrar(venta.id, ventaSucursal, canalVenta).catch(e => console.warn('[LC]', e));
     // Auto-create lab orders for LC items with Rx data (non-blocking)
     if (vtaPaciente?.id && typeof vtaLcCreateOrder === 'function') {
+      // v550: el LC toma el SIGUIENTE guion del folio, NO el folio base.
+      // Antes se pasaba `folio` pelon: el trigger ol_folio_sync (v540) lo copiaba a la columna y el LC
+      // se quedaba con el folio del PRIMER PAR de la promo. Al capturar ese par salia "ya existe, es un
+      // duplicado, cancela (recomendado)" y se perdia la orden del par. Caso real 16177 (1-ago): el par 1
+      // nunca se fabrico y su material termino capturado en el folio del solar.
+      var _nPromo = (vtaPromoAplicada && vtaPromoAplicada.folios_lab > 1) ? vtaPromoAplicada.folios_lab : 0;
+      // Sin promo: si la venta trae micas graduadas, ese par ya usa el folio base -> el LC arranca en -2.
+      var _hayPar = !_nPromo && vtaItems.some(function(i){ return /\(S\d\)/.test(i.descripcion || ''); });
+      var _lcNext = _nPromo ? (_nPromo + 1) : (_hayPar ? 2 : 0);
       for (const item of vtaItems) {
         if (item._lcOrderData) {
-          vtaLcCreateOrder(item._lcOrderData.prod, item._lcOrderData.rxLC, folio, vtaPaciente.id, ventaSucursal, fechaEntrega, horaEntrega).catch(e => console.warn('[LC Orden]', e));
+          var _folioLC = _lcNext ? (folio + '-' + _lcNext) : folio;
+          _lcNext = _lcNext ? _lcNext + 1 : 2;   // varios LC en la misma venta: -4, -5, ...
+          vtaLcCreateOrder(item._lcOrderData.prod, item._lcOrderData.rxLC, _folioLC, vtaPaciente.id, ventaSucursal, fechaEntrega, horaEntrega).catch(e => console.warn('[LC Orden]', e));
+          if (item._rowId) db.from('venta_items').update({ folio_asignado: _folioLC }).eq('id', item._rowId).then(function(){}, function(){});
         }
       }
     }
