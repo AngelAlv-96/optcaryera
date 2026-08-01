@@ -14570,7 +14570,7 @@ async function labFoliosDeVenta(ventaIdOrFolio) {
   if (!ventaIdOrFolio) return null;
   var sel = 'id,folio,sucursal,sucursal_entrega,paciente_id,estado,fecha_entrega,hora_entrega,' +
             'pacientes(nombre,apellidos,telefono),' +
-            'venta_items(id,descripcion,producto_id,folio_asignado),' +
+            'venta_items(id,descripcion,producto_id,folio_asignado,categoria),' +
             'venta_promociones(id,nombre_promo,folios_detalle)';
   var qy = db.from('ventas').select(sel);
   qy = _esUUID(ventaIdOrFolio) ? qy.eq('id', ventaIdOrFolio) : qy.eq('folio', _folioBase(ventaIdOrFolio));
@@ -14606,6 +14606,29 @@ async function labFoliosDeVenta(ventaIdOrFolio) {
       // Solo requiere orden si se vendió material graduado (no accesorios/soluciones sueltos)
       requiere: hayMaterial && !!vt.paciente_id,
       motivo: hayMaterial ? '' : 'sin material graduado'
+    });
+  }
+
+  // 1b) LENTES DE CONTACTO (v553): llevan folio propio con guion, después de los pares.
+  // Antes no se listaban, así que una venta con LC decía "todo capturado" y la sucursal
+  // quedaba sin forma de capturarlo (el campo de folio es readOnly en las 4 sucursales).
+  var _lcItems = items.filter(function (i) { return String(i.categoria || '').toLowerCase() === 'lente de contacto'; });
+  if (_lcItems.length && vt.paciente_id) {
+    var _pacNomLC = vt.pacientes ? ((vt.pacientes.nombre || '') + ' ' + (vt.pacientes.apellidos || '')).trim() : '';
+    var _baseLC = _folioBase(vt.folio);
+    var _nPares = esperados.filter(function (e) { return e.requiere; }).length;
+    var _sigLC = _nPares;
+    _lcItems.forEach(function (it) {
+      // v550 ya le asigna folio al renglón; para ventas anteriores se calcula el siguiente guion
+      var f = it.folio_asignado ? _folioNorm(it.folio_asignado) : (_sigLC ? _baseLC + '-' + (_sigLC + 1) : _baseLC);
+      _sigLC++;
+      if (esperados.some(function (e) { return e.folio === f; })) return;   // ya está listado
+      esperados.push({
+        folio: f, origen: 'lc', slot: 'LC', es_addon: false, es_lc: true,
+        armazon: '', material: it.descripcion || 'Lente de contacto', material_meta: null,
+        paciente_nombre: _pacNomLC, paciente_id: vt.paciente_id,
+        usado_flag: false, requiere: true
+      });
     });
   }
 
