@@ -31,6 +31,30 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v556 (Clari — promo de agosto): **la promo 3x1 se extiende a todo agosto y el cupón 30% Vittoria (vencido) se borra del knowledge.**
+
+Pedido de Angel el lunes 3 de agosto de 2026 — justo el día en que expiraba la "ampliación de fin de semana" que se había puesto el viernes 31 de julio. Textual: *"El cupón Vittoria ese ya caducó. Bórralo. La promo 3x1 déjala en agosto, síguela ofreciendo."*
+
+**Estado previo (lo que Clari decía ese día)**: 10% estudiantes (27-jul a 31-ago) + cupón 30% Vittoria + 3x1 headline con el gancho "⏰ la ampliamos por el fin de semana, el ÚLTIMO DÍA es el lunes 3 de agosto" + campaña de fotocromáticos de color. A partir del martes 4 el combo headline y el cupón se apagaban y Clari caía al texto de respaldo genérico.
+
+**(1) 3x1 extendido a agosto** (wa-webhook.js + meta-webhook.js, `getActivePromos()`):
+- `comboActive` de `2026-08-03T23:59:59-06:00` → `2026-08-31T23:59:59-06:00`.
+- Gate de mes del `if` principal: `(month === 8 && day <= 3)` → `month === 8` (agosto completo).
+- La bandera `esAmpliacionFinde` se reemplazó por **`esAgosto`** (`now >= 2026-08-01`). Su bullet dejó de ser urgencia y pasó a ser continuidad: "📣 LA PROMOCIÓN SIGUE EN AGOSTO: si preguntan hasta cuándo dura, si todavía alcanzan, si ya se acabó, **o dicen que el anuncio decía que el ÚLTIMO DÍA era el lunes 3 de agosto** → responde con SEGURIDAD que sigue vigente este mes. ⛔ NUNCA digas que ya terminó ni des una fecha de corte exacta."
+- `comboVigencia` en agosto → "durante agosto de 2026 (sigue vigente este mes)" (se quitó "AMPLIADA por el fin de semana - ULTIMO DIA lunes 3 de agosto de 2026").
+- "último día lunes 3 de agosto" agregado a la lista de fechas viejas de la **NOTA SOBRE LA PUBLICIDAD** (junto a "hasta el 30 de abril", "hasta el 31 de mayo", "Hot Sale hasta el 2 de junio", "hasta el 30 de junio"), para que Clari sepa desmentir con seguridad al cliente que cite esa fecha del flyer.
+- El resto del combo NO cambió: 3 lentes (2 graduados + solar graduado), solar GRATIS desde $3,000 o $499 si es menor, examen de la vista incluido, listos desde 35 min, precio siempre cotizado como paquete en sucursal.
+
+**(2) Cupón 30% Vittoria retirado**: el cupón venció el 31-jul-2026 pero su bloque de knowledge seguía date-gated hasta el 3-ago en AMBOS webhooks → se eliminó el bloque completo y `cuponVittoria30 = ''` con comentario explicando por qué (si alguien pregunta, Clari lo trata como cualquier promo vencida: no lo confirma y ofrece la vigente). **NO hizo falta tocar el handler del botón** "Reclamar cupon" (`reclamarCuponVittoria`, wa-webhook.js ~línea 1283): ya tiene su propio guard `if (new Date() > new Date('2026-07-31T23:59:59-06:00'))` que responde "Este cupón venció el 31 de julio 🙁 Pero pregúntame por las promociones vigentes" y **no acuña códigos VIT nuevos**; además los códigos ya emitidos tienen `vigencia: '2026-07-31'` en la tabla `cupones`, así que `_validarCupon` del POS los rechaza solos.
+
+**Verificación**: se extrajo `getActivePromos()` de ambos archivos y se ejecutó en un sandbox `vm` con `Date` stubbeada a 3-ago, 4-ago, 15-ago y 1-sep. Resultado en los 8 casos: cupón Vittoria fuera siempre; 3x1 headline activo en agosto con la vigencia correcta; bullet de agosto presente; gancho del "último día 3 de agosto" ausente; 10% estudiantes presente hasta el 31-ago; el 1-sep todo cae al fallback genérico como se espera. `node --check` OK en ambos. Functions-only → **sin bump de sw.js**.
+
+**Queda vivo en agosto**: 3x1 + 10% estudiantes (hasta 31-ago) + campaña de fotocromáticos de color.
+
+**⚠️ Pendiente con fecha**: el **1 de septiembre** se apagan solos el 3x1 y el 10% de estudiantes → Clari caería al texto de respaldo genérico (2x1 sin nombre ni urgencia). Definir con Angel la promo de septiembre antes de esa fecha.
+
+**Lección**: una promo con gancho de urgencia por fecha ("último día X") necesita **DOS** cambios al extenderse, no uno — mover la ventana de vigencia **Y** reescribir el gancho. Si solo se mueve la fecha, el bloque de urgencia sigue activo y Clari promete un "último día" que ya pasó (o peor, contradice la extensión). Y al extender conviene **agregar la fecha vieja a la lista de "fechas que menciona la publicidad"**, porque los flyers y anuncios con esa fecha siguen circulando y el cliente los cita.
+
 Cambios v542 (FASE 3 de 3 — Órdenes de Laboratorio): **accesos directos para capturar la orden desde donde nace el trabajo — al cerrar la venta y desde el detalle de venta — con captura encadenada.** Cierra el rediseño que pidió Angel ("hay un retraso para poder crear la orden después de hacer la venta").
 
 **Panel al CERRAR LA VENTA** (`vta-post-lab` dentro de `#vta-post-sale`, arriba del ticket): lista los folios de esa venta que requieren orden, con el paciente de cada par cuando difiere del titular, y un botón **"Crear orden →"** por folio. Solo aparece si hay pendientes (una venta de puro accesorio no lo muestra). Las órdenes de LC que se crean solas se reportan aparte ("✅ N creadas automáticamente") sin botón. ⚠️ `mostrarPostSale` es síncrona y limpia `vtaItems` al final, así que el panel se renderiza **sin `await` y en try/catch**: si algo falla, no se muestra y la venta sigue perfecta. No hace falta snapshot del carrito porque `labFoliosDeVenta` lee de la DB, que ya tiene todo commiteado. `cerrarPostSale` lo limpia.
