@@ -47,12 +47,12 @@ function getActivePromos() {
   var month = mx.getMonth() + 1;
   var year = mx.getFullYear();
 
-  // Combo headline (2x1 + solar $499 + armazón+micas+AR+UV): Hot Sale 25 may–2 jun, EXTENDIDO todo junio y julio 2026 (en julio con presentación nueva "de verano").
-  var comboActive = now >= new Date('2026-05-25T00:00:00-06:00') && now <= new Date('2026-08-03T23:59:59-06:00');
+  // Combo headline (2x1 + solar $499 + armazón+micas+AR+UV): Hot Sale 25 may–2 jun, EXTENDIDO junio, julio y AGOSTO 2026 (presentación "de verano" desde julio).
+  var comboActive = now >= new Date('2026-05-25T00:00:00-06:00') && now <= new Date('2026-08-31T23:59:59-06:00');
   var esEventoHotSale = comboActive && now <= new Date('2026-06-02T23:59:59-06:00'); // dentro de los 9 días del Hot Sale nombrado
-  var esJulio = comboActive && now >= new Date('2026-07-01T00:00:00-06:00'); // julio = misma promo, presentación NUEVA (verano), sin "junio" ni "Hot Sale"
-  // AMPLIACION de fin de semana (pedida el vie 31-jul): la promo se estira a sabado, domingo y LUNES 3-ago.
-  var esAmpliacionFinde = comboActive && now >= new Date('2026-08-01T00:00:00-06:00');
+  var esJulio = comboActive && now >= new Date('2026-07-01T00:00:00-06:00'); // julio en adelante = misma promo, presentación NUEVA (verano), sin "junio" ni "Hot Sale"
+  // AGOSTO: la promo CONTINÚA (decisión de Angel 3-ago). Ojo: hubo publicidad que decía "último día lunes 3 de agosto" → Clari debe decir que sigue vigente.
+  var esAgosto = comboActive && now >= new Date('2026-08-01T00:00:00-06:00');
   var hotSaleActive = esEventoHotSale; // (el Hot Sale Aplazo solo existe durante el evento)
   var comboHeader = esEventoHotSale
     ? '🔥 HOT SALE CAR & ERA (25 mayo – 2 junio 2026) — ANÚNCIALA COMO LA PROMO HEADLINE durante estos 9 días, antes que cualquier otra:\n'
@@ -61,7 +61,7 @@ function getActivePromos() {
       '• 🗣️ CÓMO NOMBRARLA: preséntala como "nuestra promoción de verano" o simplemente "la promoción que tenemos ahorita". NO la llames "Hot Sale" ni "promoción de junio" — esos nombres ya pasaron; es el MISMO combo de valor con presentación nueva para julio. Si el cliente menciona el Hot Sale o la promo de junio, confirma con seguridad que la promoción SIGUE vigente ("seguimos con la promoción"), NUNCA digas que terminó.\n'
     : '🎁 PROMOCIÓN DE JUNIO — el MISMO combo del Hot Sale, EXTENDIDO durante TODO junio 2026 — ANÚNCIALA COMO LA PROMO HEADLINE, antes que cualquier otra:\n' +
       '• 🗣️ CÓMO NOMBRARLA SEGÚN EL CONTEXTO: si el cliente menciona el Hot Sale, vio el anuncio del Hot Sale o ya lo conocía → preséntala como EXTENSIÓN ("Extendimos la promo del Hot Sale durante todo junio, sigue vigente"). Si es contexto nuevo/general (no menciona Hot Sale) → preséntala como "nuestra promoción de junio". NUNCA digas que el Hot Sale ya terminó sin aclarar de inmediato que el MISMO combo sigue vigente en junio.\n';
-  var comboVigencia = esEventoHotSale ? 'del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun)' : esAmpliacionFinde ? 'AMPLIADA por el fin de semana - ULTIMO DIA lunes 3 de agosto de 2026' : esJulio ? 'durante el verano (vigente en julio de 2026)' : 'durante todo junio de 2026 (hasta el 30 de junio)';
+  var comboVigencia = esEventoHotSale ? 'del 25 de mayo al 2 de junio de 2026 (9 días, terminando en martes 2 jun)' : esAgosto ? 'durante agosto de 2026 (sigue vigente este mes)' : esJulio ? 'durante el verano (vigente en julio de 2026)' : 'durante todo junio de 2026 (hasta el 30 de junio)';
   var hotSaleCarEra = comboActive ? (comboHeader +
     '• Es EN LENTES COMPLETOS (armazón + micas graduadas) 👓. El precio se arma como un PAQUETE en la óptica: depende del armazón, el material y los tratamientos (antirreflejante, blue light, etc.) y el tipo de graduación que elija el cliente — por eso no hay precio fijo. ⛔ NO desgloses qué va "incluido gratis" ni qué "se cobra aparte"; di que todo se cotiza JUNTO en sucursal. ⛔ NUNCA digas que el antirreflejante "es opcional con costo" NI que "va incluido sin costo extra" — ambas confunden; el antirreflejante ya viene en las micas y su precio es parte del paquete. "Lentes completos" NO significa que solo pague el armazón: el número que vea en un armazón es solo el marco; el paquete completo se cotiza en sucursal.\n' +
     '• ☀️ ADEMÁS un lente solar graduado adicional: GRATIS en compras de $3,000 o más (o por solo $499 si la compra es menor). Es un EXTRA encima del 2x1.\n' +
@@ -69,7 +69,7 @@ function getActivePromos() {
     '• El precio depende de la graduación (sencilla/bifocal/progresivo), el material (CR-39/policarbonato/alto índice) y los tratamientos (antirreflejante, blue light, transitions/fotocromático, polarizado) que elija — todo se cotiza JUNTO en sucursal como un paquete. ⛔ NO clasifiques tú qué sube el precio y qué va incluido; NO des un precio fijo de la promo.\n' +
     '• ⛔ NO se combina con otros descuentos (ni Aplazo ni ningún otro). Vigencia: ' + comboVigencia + '.\n' +
     '• 🗣️ CUÁNDO PROTAGONIZA: cuando el cliente pregunta por promos / "qué tienen" / 2x1 / 3x1 / precios → arranca con esta, ANUNCIADA COMO 3x1. Ejemplo (2-3 líneas): "¡Tenemos 3x1 en lentes! 👓 Te llevas 3 lentes: 2 graduados + un tercer lente solar graduado. El examen de la vista va incluido, y el 3er lente solar va GRATIS en compras mayores de $3,000. ¿Para quién serían y qué andas buscando?" — NO listes materiales como paquete, NO pidas receta.\n' +
-    (esAmpliacionFinde ? '• 📣 SE AMPLIÓ POR EL FIN DE SEMANA: si preguntan hasta cuándo dura, si todavía alcanzan o si ya se acabó, di que la promoción SE AMPLIÓ por el fin de semana y que el ÚLTIMO DÍA es el LUNES 3 DE AGOSTO. Úsalo como gancho para que no lo dejen pasar (ej: "¡La ampliamos por el fin de semana! El último día es el lunes 3 👓"). ⛔ NUNCA digas que ya terminó.\n' : '') +
+    (esAgosto ? '• 📣 LA PROMOCIÓN SIGUE EN AGOSTO: si preguntan hasta cuándo dura, si todavía alcanzan, si ya se acabó, o dicen que el anuncio decía que el ÚLTIMO DÍA era el lunes 3 de agosto → responde con SEGURIDAD que la promoción SIGUE VIGENTE este mes de agosto. ⛔ NUNCA digas que ya terminó ni des una fecha de corte exacta; di simplemente que sigue vigente e invítalo a pasar.\n' : '') +
     '• Si el cliente menciona el flyer / "vi tu anuncio": confirma con seguridad que la promoción sigue vigente, NO dudes ni niegues.\n' +
     '\n' ) : '';
   // Hot Sale APLAZO ELIMINADO (ya no existe): la promo de descuento HS2026 de Aplazo terminó. Aplazo SIGUE como método de pago/financiamiento (eso va en el knowledge general, no aquí).
@@ -107,15 +107,9 @@ function getActivePromos() {
     '• Cada persona recibió un CÓDIGO personal (formato MX-XXXXX). Lo presenta en cualquier sucursal (físico o la captura del WhatsApp) y el cajero lo aplica. Es 20% en la compra de lentes, combinable con el 2x1. Vigente hasta el domingo 5 de julio (último día).\n\n'
     : '';
 
-  // 🎟️ CUPÓN 30% NUEVA SUCURSAL VITTORIA — se envía por WhatsApp, pero pueden preguntar por él en Messenger/IG. Vigente hasta el 31-jul-2026.
-  var cuponVittoria30 = (now <= new Date('2026-08-03T23:59:59-06:00')) ?
-    '🎟️ CUPÓN 30% NUEVA SUCURSAL (vigente hasta el 31 de JULIO de 2026, SOLO en Plaza Vía Vittoria):\n' +
-    '• Es un cupón de 30% de descuento ADICIONAL sobre el TOTAL de cualquiera de nuestras promociones (se aplica ENCIMA de la promo vigente). ⛔ SOLO se canjea en la sucursal Plaza Vía Vittoria (Av. Ejército Nacional 12946, esq. Neptuno) — en las demás sucursales NO aplica (es el festejo de la nueva sucursal).\n' +
-    '• Se envió por WHATSAPP (imagen del cupón con botón "Reclamar cupon"): al tocar el botón, el sistema le genera su CÓDIGO PERSONAL (VIT-XXXX) de un solo uso, que presenta al pagar en Vittoria. ⛔ TÚ (Clari) NUNCA inventes ni generes códigos.\n' +
-    '• Si preguntan por él aquí (Messenger/Instagram): explica que el cupón llega por WhatsApp y que el código se reclama tocando el botón del mensaje del cupón en WhatsApp. Examen de la vista incluido como siempre.\n' +
-    '• Si pregunta si aplica a LENTES DE CONTACTO: no — los lentes de contacto no entran en este cupón (menciónalo SOLO si pregunta).\n' +
-    '• Si pregunta si aplica en otra sucursal: solo en Plaza Vía Vittoria.\n\n'
-    : '';
+  // 🎟️ CUPÓN 30% VITTORIA — VENCIDO el 31-jul-2026 y RETIRADO del knowledge (decisión de Angel, 3-ago).
+  // Si alguien pregunta por él, Clari lo trata como cualquier promo vencida: no lo confirma y ofrece la vigente.
+  var cuponVittoria30 = '';
 
   // 🎓 10% ESTUDIANTES (regreso a clases) — vigente 27-jul a 31-ago-2026. Clari la OFRECE ella misma.
   var descEstudiante = (now >= new Date('2026-07-27T00:00:00-06:00') && now <= new Date('2026-08-31T23:59:59-06:00')) ?
@@ -129,8 +123,8 @@ function getActivePromos() {
     '⛔ NUNCA la ofrezcas dos veces en la misma conversación ni la metas en cada mensaje.\n\n'
     : '';
 
-  // Abril 15 en adelante 2026 (combo extendido durante junio Y julio, en julio como "promoción de verano").
-  if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7 || (month === 8 && day <= 3))) {  // ago 1-3: ampliacion de fin de semana
+  // Abril 15 en adelante 2026 (combo extendido durante junio, julio Y agosto; desde julio como "promoción de verano").
+  if (year === 2026 && (month === 4 || month === 5 || month === 6 || month === 7 || month === 8)) {
     return REGLAS_ALCANCE + String.fromCharCode(10,10) + descEstudiante + cuponVittoria30 + cuponMexico + cuponSolar3x1 + hotSaleCarEra + campanaFotoColor + 'PROMOCIÓN VIGENTE:\n' +
       '🏷️ NOMBRE DE LA PROMO — ANÚNCIALA SIEMPRE COMO "3x1" (ya NO la llames "2x1" con el cliente): di "tenemos 3x1 en lentes". El 3x1 = te llevas 3 LENTES por el precio de 1: los 2 del 2x1 (compras 2 y pagas 1) + un 3er lente solar graduado. ⚠️ EN LAS CONDICIONES aclara SIEMPRE: el 3er lente (solar graduado) va GRATIS en COMPRAS MAYORES DE $3,000 (ahí es 3x1 completo); si la compra es menor a $3,000, es 2x1 + el solar a $499. Ejemplo de anuncio: "¡Tenemos 3x1 en lentes! 👓 Te llevas 3 lentes: 2 graduados + un tercer lente solar graduado, y el solar va GRATIS en compras mayores de $3,000. Examen de la vista incluido. ¿Para quién serían?" El mecanismo interno sigue siendo 2x1 + solar, pero al cliente se le ANUNCIA como 3x1.\n\n' +
       '⛔ ALCANCE DE LA PROMO (LÉELO ANTES DE RESPONDER):\n' +
@@ -148,7 +142,7 @@ function getActivePromos() {
       '💳 Meses sin intereses.\n' +
       'Se puede COMPARTIR entre máximo 2 personas.\n' +
       'Válida ' + comboVigencia + '.\n\n' +
-      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios dicen fechas anteriores ("hasta el 30 de abril", "hasta el 31 de mayo", "Hot Sale hasta el 2 de junio", "hasta el 30 de junio") porque la promoción se ha extendido varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
+      '⚠️ NOTA SOBRE LA PUBLICIDAD: Algunos anuncios dicen fechas anteriores ("hasta el 30 de abril", "hasta el 31 de mayo", "Hot Sale hasta el 2 de junio", "hasta el 30 de junio", "último día lunes 3 de agosto") porque la promoción se ha extendido varias veces. Si el cliente pregunta "¿pero el anuncio decía X, ya se acabó?" → responde con SEGURIDAD: "La promoción sigue vigente. ¿Te interesa pasar a sucursal?" NUNCA digas que la promo terminó.\n\n' +
       '⚠️ REGLAS CRÍTICAS AL HABLAR DE PRECIOS EN ESTA PROMO (no las rompas):\n' +
       '• ⛔ REGLA PRINCIPAL (por encima de todo lo demás sobre precios): los lentes de la promo se arman como un PAQUETE que se cotiza en la ÓPTICA. NO desgloses qué va "incluido sin costo extra" ni qué "sube el precio" por separado — no todo va incluido y ese desglose confunde. El precio depende del armazón, el material y los tratamientos (antirreflejante, blue light, fotocromático, etc.) y el tipo de graduación que elija el cliente; en sucursal le dan la cotización exacta. NUNCA sueltes frases tipo "el antirreflejante ya va incluido sin costo extra" ni "el blue light sube el precio" como afirmaciones sueltas.\n' +
       '• NUNCA menciones "desde $1,200" ni ningún precio base fijo. Esa era una promo anterior con armazones limitados — ya no está vigente.\n' +
