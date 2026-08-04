@@ -5079,8 +5079,13 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
         <div style="display:flex;gap:4px" id="mvta-abono-msi-btns"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        <div class="fg" style="margin-bottom:0"><label style="font-size:10px">Monto</label><input type="number" id="mvta-abono-monto" step="0.01" min="0" placeholder="0.00" style="padding:8px 10px;font-size:14px;font-weight:700"></div>
+        <div class="fg" style="margin-bottom:0"><label style="font-size:10px" id="mvta-abono-monto-lbl">Monto (MXN)</label><input type="number" id="mvta-abono-monto" step="0.01" min="0" placeholder="0.00" oninput="_abonoUpdateConv()" style="padding:8px 10px;font-size:14px;font-weight:700"></div>
         <div class="fg" style="margin-bottom:0"><label style="font-size:10px">Referencia</label><input type="text" id="mvta-abono-ref" placeholder="Opcional" style="padding:8px 10px;font-size:12px"></div>
+      </div>
+      <!-- 💵 Conversión USD→MXN (solo método Dólar) -->
+      <div id="mvta-abono-dolar-wrap" style="display:none;margin-bottom:8px">
+        <div style="display:flex;gap:4px;margin-bottom:6px" id="mvta-abono-dolar-btns"></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);padding:0 2px" id="mvta-abono-dolar-conv"></div>
       </div>
       <div style="display:flex;gap:4px;margin-bottom:8px">
         <button class="chip" onclick="setAbonoMonto('full')" style="font-size:10px">Liquidar todo</button>
@@ -24228,6 +24233,8 @@ function renderDetalleVenta() {
     renderPayBtns('mvta-abono-metodos','selAbonoMetodo',PAY_METHODS_ABONO,'Efectivo');
     renderMSIBtns('mvta-abono-msi-btns','selAbonoMSI',3);
     document.getElementById('mvta-abono-msi-wrap').style.display='none';
+    _abonoSyncMoneda();   // 💵 resetea etiqueta/moneda del campo (v557)
+    if (!(_tipoCambio > 0)) { try { cargarTipoCambio(); } catch(e) {} }
     if (v.paciente_id) {
       db.from('monedero').select('tipo, monto').eq('paciente_id',v.paciente_id).then(({data:md})=>{
         const bal=(md||[]).reduce((s,m)=>s+(m.tipo==='acumulado'?Number(m.monto):-Number(m.monto)),0);
@@ -24844,22 +24851,102 @@ function renderDetalleVentaSicar() {
   acts.push('<button class="btn btn-g btn-sm" onclick="cerrarDetalleVenta()">Cerrar</button>');
   document.getElementById('mvta-acciones').innerHTML = acts.join('');
 }
-function selAbonoMetodo(el,m) { document.querySelectorAll('#mvta-abono-metodos .pay-btn').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); abonoMetodo=m; document.getElementById('mvta-abono-msi-wrap').style.display=m==='MSI'?'':'none'; }
+function selAbonoMetodo(el,m) { document.querySelectorAll('#mvta-abono-metodos .pay-btn').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); abonoMetodo=m; document.getElementById('mvta-abono-msi-wrap').style.display=m==='MSI'?'':'none'; _abonoSyncMoneda(); }
 function selAbonoMSI(el,m) { document.querySelectorAll('#mvta-abono-msi-btns .pay-btn').forEach(c=>c.classList.remove('sel')); el.classList.add('sel'); abonoMSI=m; }
+
+// ── 💵 ABONO EN DÓLARES (v557) ──
+// El campo se captura en DÓLARES (igual que el POS) y se muestra la conversión a MXN.
+// Antes se capturaba en PESOS y el sistema dividía entre el TC → el cajero tecleaba
+// los dólares recibidos y el abono entraba ~16x más chico (caso folio 16189, 3-ago-2026).
+function _abonoEsDolar() { return abonoMetodo === 'Dólar'; }
+function _abonoTC() { return _tipoCambio > 0 ? _tipoCambio : 0; }
+// Monto en PESOS que representa lo capturado (en dólar: USD × TC)
+function _abonoMontoMXN() {
+  var v = parseFloat(document.getElementById('mvta-abono-monto')?.value) || 0;
+  if (!_abonoEsDolar()) return v;
+  var tc = _abonoTC();
+  return tc > 0 ? Math.round(v * tc * 100) / 100 : 0;
+}
+// Cambia etiqueta/placeholder y muestra u oculta el bloque de conversión
+function _abonoSyncMoneda() {
+  var lbl = document.getElementById('mvta-abono-monto-lbl');
+  var inp = document.getElementById('mvta-abono-monto');
+  var wrap = document.getElementById('mvta-abono-dolar-wrap');
+  if (!lbl || !inp || !wrap) return;
+  var saldo = parseFloat(document.getElementById('mvta-saldo')?.textContent?.replace('$','')) || 0;
+  if (_abonoEsDolar()) {
+    lbl.innerHTML = '💵 Dólares recibidos (USD)';
+    inp.placeholder = 'USD';
+    wrap.style.display = '';
+    var btns = document.getElementById('mvta-abono-dolar-btns');
+    if (btns && !btns.dataset.ready) {
+      btns.innerHTML = [20,50,100,200].map(function(b){
+        return '<button onclick="_abonoSetUSD(' + b + ')" style="flex:1;padding:4px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:6px;color:#34d399;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">$' + b + '</button>';
+      }).join('');
+      btns.dataset.ready = '1';
+    }
+  } else {
+    lbl.textContent = 'Monto (MXN)';
+    inp.placeholder = saldo > 0 ? 'Saldo: $' + saldo.toFixed(2) : '0.00';
+    wrap.style.display = 'none';
+  }
+  _abonoUpdateConv();
+}
+function _abonoSetUSD(usd) {
+  var inp = document.getElementById('mvta-abono-monto');
+  if (inp) { inp.value = usd; _abonoUpdateConv(); }
+}
+function _abonoUpdateConv() {
+  var el = document.getElementById('mvta-abono-dolar-conv');
+  if (!el || !_abonoEsDolar()) return;
+  var tc = _abonoTC();
+  if (tc <= 0) { el.innerHTML = '<span style="color:#e0a080">⚠ Tipo de cambio no disponible</span>'; return; }
+  var usd = parseFloat(document.getElementById('mvta-abono-monto')?.value) || 0;
+  var mxn = _abonoMontoMXN();
+  var saldo = parseFloat(document.getElementById('mvta-saldo')?.textContent?.replace('$','')) || 0;
+  var extra = '';
+  var cambio = Math.round((mxn - saldo) * 100) / 100;
+  if (saldo > 0 && cambio >= 1) {   // <$1 es redondeo, no cambio real
+    extra = '<div style="width:100%;margin-top:3px;color:#e0c080">↩ Cambio a devolver: $' + cambio.toFixed(2) + ' MXN</div>';
+  }
+  el.innerHTML = '<span>💵 TC: $' + tc.toFixed(2) + ' · ' + usd.toFixed(2) + ' USD</span>' +
+    '<span style="color:#72c47e;font-weight:700">= $' + mxn.toFixed(2) + ' MXN</span>' + extra;
+  el.style.flexWrap = 'wrap';
+}
 function setAbonoMonto(type) {
   const saldo=parseFloat(document.getElementById('mvta-saldo').textContent.replace('$',''))||0;
-  document.getElementById('mvta-abono-monto').value=type==='full'?saldo.toFixed(2):(saldo/2).toFixed(2);
+  var objetivo = type==='full' ? saldo : saldo/2;
+  // En dólar el campo va en USD → se convierte el saldo objetivo a dólares (redondeado hacia arriba)
+  if (_abonoEsDolar()) {
+    var tc = _abonoTC();
+    if (tc <= 0) { toast('No hay tipo de cambio cargado',true); return; }
+    document.getElementById('mvta-abono-monto').value = (Math.ceil(objetivo/tc*100)/100).toFixed(2);
+  } else {
+    document.getElementById('mvta-abono-monto').value = objetivo.toFixed(2);
+  }
+  _abonoUpdateConv();
 }
 async function registrarAbono() {
   if (_actionBusy['registrarAbono']) { toast('Ya se está procesando el abono...', true); return; }
-  const monto=parseFloat(document.getElementById('mvta-abono-monto').value);
-  if (!monto||monto<=0) { toast('Ingresa el monto del abono',true); return; }
+  const capturado=parseFloat(document.getElementById('mvta-abono-monto').value);
+  if (!capturado||capturado<=0) { toast(_abonoEsDolar()?'Ingresa los dólares recibidos':'Ingresa el monto del abono',true); return; }
+  // 💵 En Dólar el campo va en USD (igual que el POS) → el monto que se acredita es USD × TC
+  const _esDol=_abonoEsDolar();
+  const _tcAb=_abonoTC();
+  if (_esDol && _tcAb<=0) { toast('No hay tipo de cambio cargado. Actualízalo antes de cobrar en dólares.',true); return; }
+  const _usdRecibidos=_esDol?capturado:0;
+  const monto=_esDol?(Math.round(capturado*_tcAb*100)/100):capturado;
   // Confirmación pagos grandes en efectivo (>$2,000)
   if (abonoMetodo==='Efectivo' && monto > 2000) {
     if (!confirm('¿Confirmas que el abono de $'+monto.toLocaleString('es-MX',{minimumFractionDigits:2})+' es en EFECTIVO?\n\nSi el cliente pagó con tarjeta, cancela y selecciona el método correcto.')) return;
   }
   const v=vtaDetalleData; const saldoActual=Number(v.saldo);
-  if (monto>saldoActual&&!confirm(`Monto ($${monto.toFixed(2)}) mayor al saldo ($${saldoActual.toFixed(2)}).\n¿Registrar de todas formas?`)) return;
+  // En dólar el sobrante NO es un error: es el cambio que se le devuelve al cliente.
+  if (_esDol && monto>saldoActual) {
+    if (!confirm(_usdRecibidos.toFixed(2)+' USD × $'+_tcAb.toFixed(2)+' = $'+monto.toFixed(2)+' MXN.\n\nEl saldo es $'+saldoActual.toFixed(2)+', así que se abonan $'+saldoActual.toFixed(2)+' y se le devuelven $'+(monto-saldoActual).toFixed(2)+' MXN de cambio.\n\n¿Continuar?')) return;
+  } else if (!_esDol && monto>saldoActual) {
+    if (!confirm(`Monto ($${monto.toFixed(2)}) mayor al saldo ($${saldoActual.toFixed(2)}).\n¿Registrar de todas formas?`)) return;
+  }
   const montoReal=Math.min(monto,saldoActual);
   const btn=document.getElementById('btn-registrar-abono'); btn.disabled=true; btn.textContent='Registrando...';
   _actionBusy['registrarAbono'] = true;
@@ -24887,7 +24974,9 @@ async function registrarAbono() {
       await db.from('monedero').insert({paciente_id:v.paciente_id,tipo:'usado',monto:montoReal,venta_id:v.id,descripcion:`Abono monedero en ${v.folio}`});
     }
     var _abData = {venta_id:v.id,monto:montoReal,metodo_pago:abonoMetodo,referencia:document.getElementById('mvta-abono-ref')?.value?.trim()||null,msi_meses:abonoMetodo==='MSI'?abonoMSI:null,recibido_por:currentUser?.nombre||'', sucursal: _pagoSucursal(v)};
-    if (abonoMetodo==='Dólar') { _abData.tipo_cambio=_tipoCambio; _abData.monto_usd=Math.round(montoReal/_tipoCambio*100)/100; }
+    // monto_usd = los dólares que ENTRARON al cajón (no el equivalente de lo acreditado),
+    // para que el dólar esperado del corte cuadre con los billetes físicos.
+    if (_esDol) { _abData.tipo_cambio=_tcAb; _abData.monto_usd=_usdRecibidos; }
     const {error:ep}=await db.from('venta_pagos').insert(_abData);
     if (ep) throw ep;
     const np=Number(v.pagado)+montoReal; const ns=Math.max(0,Number(v.total)-np);
@@ -24902,10 +24991,16 @@ async function registrarAbono() {
     const {error:ev}=await db.from('ventas').update(updateData).eq('id',v.id);
     if (ev) throw ev;
     const parts=[`✓ Abono $${montoReal.toFixed(2)}`];
+    if (_esDol) parts.push(`(${_usdRecibidos.toFixed(2)} USD @ $${_tcAb.toFixed(2)})`);
     if (ns<=0) parts.push('¡LIQUIDADA!');
     else parts.push(`Saldo: $${ns.toFixed(2)}`);
     if (monGen>0) parts.push(`+$${monGen.toFixed(2)} monedero`);
     toast(parts.join(' · '));
+    // 💵 Recordatorio del cambio a devolver cuando los dólares superan el saldo
+    if (_esDol) {
+      const _camb=Math.round((monto-saldoActual)*100)/100;
+      if (_camb>=1) setTimeout(function(){ toast('↩ Devuelve $'+_camb.toFixed(2)+' MXN de cambio', false, true); }, 1200);
+    }
     window._lastAbono = { ventaId: v.id, monto: montoReal, metodo: abonoMetodo, nuevoSaldo: ns, nuevoPagado: np, total: Number(v.total), folio: v.folio, liquidada: ns <= 0, monGen, fecha: new Date() };
     await verDetalleVenta(v.id);
     const hasTel = vtaDetalleData?.pacientes?.telefono;
