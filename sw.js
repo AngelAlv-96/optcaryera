@@ -1,5 +1,5 @@
 // Service Worker — Car & Era PWA
-const CACHE_NAME = 'caryera-v561';
+const CACHE_NAME = 'caryera-v562';
 
 // Install — cache basic shell
 self.addEventListener('install', function(e) {

@@ -4282,6 +4282,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                 <button class="btn btn-g btn-sm" onclick="amAbrirOCR()" style="font-size:10px;padding:4px 10px" title="Subir foto de factura para leer automáticamente">📸 Foto factura</button>
               </div>
             </div>
+            <div id="am-precarga-badge" style="display:none;font-size:10px;background:rgba(143,209,79,.12);border:1px solid rgba(143,209,79,.3);color:#8fd14f;padding:5px 10px;border-radius:7px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
               <div class="fg" style="flex:1.2;min-width:140px"><label>Marca</label><input type="text" id="am-rq-marca" placeholder="Funky Fred" style="text-transform:uppercase" oninput="amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="1"></div>
               <div class="fg" style="flex:1.2;min-width:140px"><label>Modelo</label><input type="text" id="am-rq-modelo" placeholder="SM1515 / MA2501" style="text-transform:uppercase" oninput="amRqAutoDetect(this.value); amRqBuscarPrecio()" onkeydown="amRqKeydown(event)" tabindex="2"></div>
@@ -31709,6 +31710,51 @@ function amDetectPrefix(code) {
 // que NO choque con AM_PREFIX_MAP (2 letras) ni con modelos reales.
 var AM_CODIGO_MARCA = { 'CAF': 'CAFFDY' };
 
+// ── 📦 PRECARGA DE COMPRA (v562) ──
+// Deja listos marca/modelo/costo/precio de una compra ANTES de escanear, para que
+// el flujo sea: pistola escanea → todo se llena solo → la pistola manda Enter →
+// se guarda e imprime la etiqueta. Sin teclear nada.
+// Vive en app_config id='am_precarga' → { "CAFTC1533": {marca,modelo,costo,precio}, ... }
+// La llave es el CÓDIGO QUE TRAE EL ARMAZÓN (el del proveedor), normalizado sin
+// símbolos y en mayúsculas. Se limpia con el botón "Limpiar precarga".
+var _amPrecarga = {};
+
+async function amCargarPrecarga() {
+  try {
+    var r = await db.from('app_config').select('value').eq('id', 'am_precarga').single();
+    var v = r && r.data ? r.data.value : null;
+    if (typeof v === 'string') v = JSON.parse(v);
+    _amPrecarga = (v && typeof v === 'object') ? v : {};
+  } catch (e) { _amPrecarga = {}; }
+  amRenderPrecargaBadge();
+}
+
+function amPrecargaLookup(code) {
+  var c = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!c) return null;
+  return _amPrecarga[c] || null;
+}
+
+function amRenderPrecargaBadge() {
+  var el = document.getElementById('am-precarga-badge');
+  if (!el) return;
+  var n = Object.keys(_amPrecarga).length;
+  if (!n) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = '📦 <b>' + n + ' modelos precargados</b> — escanea y sale la etiqueta ' +
+    '<button onclick="amLimpiarPrecarga()" style="margin-left:8px;background:none;border:1px solid rgba(255,255,255,.2);border-radius:5px;color:var(--muted);font-size:9px;padding:2px 6px;cursor:pointer">Limpiar</button>';
+}
+
+async function amLimpiarPrecarga() {
+  if (!confirm('¿Quitar la precarga? Tendrás que teclear costo y precio a mano.')) return;
+  try {
+    await db.from('app_config').upsert({ id: 'am_precarga', value: {} }, { onConflict: 'id' });
+    _amPrecarga = {};
+    amRenderPrecargaBadge();
+    toast('Precarga eliminada');
+  } catch (e) { toast('No se pudo limpiar: ' + e.message, true); }
+}
+
 function amParseCodigoProveedor(code) {
   var c = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   var pref = Object.keys(AM_CODIGO_MARCA);
@@ -32176,6 +32222,7 @@ function amInit() {
   document.getElementById('am-print-status').style.display = '';
   amCheckPrinter();
   amInitMarcasInput();
+  amCargarPrecarga();   // 📦 costos/precios dejados listos de una compra (v562)
   // keyboard shortcuts
   document.addEventListener('keydown', amKeyHandler);
   // Focus entrada rápida automatically
@@ -33546,7 +33593,26 @@ function amRqAutoDetect(val) {
   var precioEl = document.getElementById('am-rq-precio');
   var st = document.getElementById('am-rq-status');
 
-  // 0. 🏷️ Código de proveedor con marca separable (caftc1533 → CAFFDY + TC1533).
+  // 0a. 📦 PRECARGA: si este código viene de una compra precargada, se llena TODO
+  //     (marca, modelo, costo y precio) para que la pistola solo tenga que dar Enter.
+  var pre = amPrecargaLookup(code);
+  if (pre) {
+    var _mEl = document.getElementById('am-rq-modelo');
+    if (_mEl && (_mEl.value || '').toUpperCase().replace(/[^A-Z0-9]/g,'') !== String(pre.modelo || '').toUpperCase().replace(/[^A-Z0-9]/g,'')) {
+      _mEl.value = pre.modelo || '';
+    }
+    if (marcaEl) { marcaEl.value = pre.marca || ''; marcaEl.dataset.userMarca = '1'; }
+    if (costoEl && pre.costo) costoEl.value = pre.costo;
+    if (precioEl && pre.precio) precioEl.value = pre.precio;
+    if (st) {
+      st.innerHTML = '📦 <b style="color:#8fd14f">Precargado</b> — ' + (pre.marca || '') + ' ' + (pre.modelo || '') +
+        ' · costo $' + (pre.costo || 0) + ' · precio $' + (pre.precio || 0) + ' — dale Enter';
+      st.style.color = '#8fd14f';
+    }
+    return;   // ya está todo, no hace falta seguir buscando
+  }
+
+  // 0b. 🏷️ Código de proveedor con marca separable (caftc1533 → CAFFDY + TC1533).
   //    Se limpia el campo modelo para que quede como lo guarda el catálogo, y así
   //    el código de barras sale por la ruta normal: CAFFDY-TC1533.
   var prov = amParseCodigoProveedor(code);
