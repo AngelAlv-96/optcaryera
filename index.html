@@ -7319,12 +7319,20 @@ async function _renderEntregaResultados(ordenes, ventaData) {
       h += '</div>';
       h += '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:10px"><span>Total: $' + total.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span><span>Pagado: $' + pagado.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span></div>';
       // Sección de cobro
+      _entSaldoMXN = saldo;   // 💵 lo usan los helpers de conversión USD (v559)
+      if (!(typeof _tipoCambio !== 'undefined' && _tipoCambio > 0)) { try { cargarTipoCambio(); } catch(e) {} }
       h += '<div id="entrega-cobro-section">';
+      h += '<div id="entrega-monto-lbl" style="font-size:10px;color:var(--muted);margin-bottom:4px">Monto (MXN)</div>';
       h += '<div style="display:flex;gap:8px;margin-bottom:8px">';
-      h += '<select id="entrega-metodo" style="flex:1;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px">';
+      h += '<select id="entrega-metodo" onchange="_entSyncMoneda()" style="flex:1;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px">';
       h += '<option value="Efectivo">Efectivo</option><option value="Tarjeta">Tarjeta</option><option value="Transferencia">Transferencia</option><option value="Dólar">Dólar</option>';
       h += '</select>';
-      h += '<input id="entrega-monto" type="number" value="' + saldo.toFixed(2) + '" step="0.01" min="0" style="width:120px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;text-align:right">';
+      h += '<input id="entrega-monto" type="number" value="' + saldo.toFixed(2) + '" step="0.01" min="0" oninput="_entUpdateConv()" style="width:120px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;text-align:right">';
+      h += '</div>';
+      // 💵 Conversión USD→MXN (solo método Dólar) — mismo patrón que el modal de abono (v557)
+      h += '<div id="entrega-dolar-wrap" style="display:none;margin-bottom:8px">';
+      h += '<div style="display:flex;gap:4px;margin-bottom:6px">' + [20,50,100,200].map(function(b){ return '<button onclick="_entSetUSD(' + b + ')" style="flex:1;padding:4px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:6px;color:#34d399;font-size:11px;font-weight:700;cursor:pointer;font-family:Outfit,sans-serif">$' + b + '</button>'; }).join('') + '</div>';
+      h += '<div id="entrega-dolar-conv" style="display:flex;flex-wrap:wrap;justify-content:space-between;font-size:10px;color:var(--muted);padding:0 2px"></div>';
       h += '</div>';
       h += '<input id="entrega-ref" type="text" placeholder="Referencia (opcional)" style="width:100%;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:8px;padding:8px;color:var(--white);font-family:Outfit,sans-serif;font-size:12px;box-sizing:border-box;margin-bottom:8px">';
       h += '</div>';
@@ -7650,6 +7658,62 @@ async function _soloEntregar() {
   }
 }
 
+// ── 💵 COBRO EN DÓLARES DESDE ENTREGA DE LENTES (v559) ──
+// Mismo patrón que el modal de abono (v557): el campo se captura en DÓLARES y se
+// muestra la conversión a pesos. Antes se capturaba en PESOS (monto_usd = monto/TC),
+// al revés que el POS → la cajera tecleaba los dólares recibidos y el cobro entraba ~16x
+// más chico (mismo bug del folio 16189, que en el modal de abono ya se corrigió).
+var _entSaldoMXN = 0;
+function _entEsDolar() { return (document.getElementById('entrega-metodo')?.value || '') === 'Dólar'; }
+function _entTC() { return (typeof _tipoCambio !== 'undefined' && _tipoCambio > 0) ? _tipoCambio : 0; }
+// Monto en PESOS que representa lo capturado (en dólar: USD × TC)
+function _entMontoMXN() {
+  var v = parseFloat(document.getElementById('entrega-monto')?.value) || 0;
+  if (!_entEsDolar()) return v;
+  var tc = _entTC();
+  return tc > 0 ? Math.round(v * tc * 100) / 100 : 0;
+}
+function _entSyncMoneda() {
+  var lbl = document.getElementById('entrega-monto-lbl');
+  var inp = document.getElementById('entrega-monto');
+  var wrap = document.getElementById('entrega-dolar-wrap');
+  if (!lbl || !inp || !wrap) return;
+  if (_entEsDolar()) {
+    var tc = _entTC();
+    if (tc <= 0) { toast('No hay tipo de cambio cargado. Actualízalo antes de cobrar en dólares.', true); }
+    lbl.innerHTML = '💵 Dólares recibidos (USD)';
+    inp.placeholder = 'USD';
+    // El saldo objetivo se convierte a dólares (redondeado hacia arriba), como "Liquidar todo"
+    if (tc > 0) inp.value = (Math.ceil(_entSaldoMXN / tc * 100) / 100).toFixed(2);
+    wrap.style.display = '';
+  } else {
+    lbl.textContent = 'Monto (MXN)';
+    inp.placeholder = '0.00';
+    inp.value = _entSaldoMXN.toFixed(2);
+    wrap.style.display = 'none';
+  }
+  _entUpdateConv();
+}
+function _entSetUSD(usd) {
+  var inp = document.getElementById('entrega-monto');
+  if (inp) { inp.value = usd; _entUpdateConv(); }
+}
+function _entUpdateConv() {
+  var el = document.getElementById('entrega-dolar-conv');
+  if (!el || !_entEsDolar()) return;
+  var tc = _entTC();
+  if (tc <= 0) { el.innerHTML = '<span style="color:#e0a080">⚠ Tipo de cambio no disponible</span>'; return; }
+  var usd = parseFloat(document.getElementById('entrega-monto')?.value) || 0;
+  var mxn = _entMontoMXN();
+  var extra = '';
+  var cambio = Math.round((mxn - _entSaldoMXN) * 100) / 100;
+  if (_entSaldoMXN > 0 && cambio >= 1) {   // <$1 es redondeo, no cambio real
+    extra = '<div style="width:100%;margin-top:3px;color:#e0c080">↩ Cambio a devolver: $' + cambio.toFixed(2) + ' MXN</div>';
+  }
+  el.innerHTML = '<span>💵 TC: $' + tc.toFixed(2) + ' · ' + usd.toFixed(2) + ' USD</span>' +
+    '<span style="color:#72c47e;font-weight:700">= $' + mxn.toFixed(2) + ' MXN</span>' + extra;
+}
+
 async function _cobrarYEntregar() {
   if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
   var checks = document.querySelectorAll('.entrega-check:checked:not(:disabled)');
@@ -7659,9 +7723,15 @@ async function _cobrarYEntregar() {
   if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
   if (!_confirmPromoCompleto()) return;
 
-  var monto = parseFloat(document.getElementById('entrega-monto')?.value);
-  if (!monto || monto <= 0) { toast('Ingresa un monto válido', true); return; }
+  var capturado = parseFloat(document.getElementById('entrega-monto')?.value);
   var metodo = document.getElementById('entrega-metodo')?.value || 'Efectivo';
+  // 💵 En Dólar el campo va en USD (igual que el POS) → lo que se cobra es USD × TC
+  var _esDol = _entEsDolar();
+  var _tcEnt = _entTC();
+  if (!capturado || capturado <= 0) { toast(_esDol ? 'Ingresa los dólares recibidos' : 'Ingresa un monto válido', true); return; }
+  if (_esDol && _tcEnt <= 0) { toast('No hay tipo de cambio cargado. Actualízalo antes de cobrar en dólares.', true); return; }
+  var _usdRecibidos = _esDol ? capturado : 0;
+  var monto = _esDol ? (Math.round(capturado * _tcEnt * 100) / 100) : capturado;
   var ref = (document.getElementById('entrega-ref')?.value || '').trim();
 
   var v = _entregaVentaData;
@@ -7681,13 +7751,20 @@ async function _cobrarYEntregar() {
     v.pagado = Number(ventaFresh.pagado);
     v.saldo = saldoActual;
 
+    // 💵 En dólar el sobrante NO es un error: es el cambio que se le devuelve al cliente.
+    if (_esDol && monto > saldoActual) {
+      if (!confirm(_usdRecibidos.toFixed(2) + ' USD × $' + _tcEnt.toFixed(2) + ' = $' + monto.toFixed(2) + ' MXN.\n\nEl saldo es $' + saldoActual.toFixed(2) + ', así que se cobran $' + saldoActual.toFixed(2) + ' y se le devuelven $' + (monto - saldoActual).toFixed(2) + ' MXN de cambio.\n\n¿Continuar?')) return;
+    }
+
     var montoReal = Math.min(monto, saldoActual);
 
     // 1. Registrar abono
     var abData = { venta_id: v.id, monto: montoReal, metodo_pago: metodo, referencia: ref || null, recibido_por: asesor, sucursal: _pagoSucursal(v) };
-    if (metodo === 'Dólar' && typeof _tipoCambio !== 'undefined' && _tipoCambio > 0) {
-      abData.tipo_cambio = _tipoCambio;
-      abData.monto_usd = Math.round(montoReal / _tipoCambio * 100) / 100;
+    // monto_usd = los dólares que ENTRARON al cajón (no el equivalente de lo cobrado),
+    // para que el dólar esperado del corte cuadre con los billetes físicos.
+    if (_esDol) {
+      abData.tipo_cambio = _tcEnt;
+      abData.monto_usd = _usdRecibidos;
     }
     var { error: ep } = await db.from('venta_pagos').insert(abData);
     if (ep) throw ep;
@@ -7699,7 +7776,11 @@ async function _cobrarYEntregar() {
     var { error: ev } = await db.from('ventas').update({ pagado: np, saldo: ns, estado: nuevoEstado, updated_at: new Date().toISOString() }).eq('id', v.id);
     if (ev) throw ev;
 
-    toast('✅ Abono $' + montoReal.toLocaleString('es-MX',{minimumFractionDigits:2}) + (ns <= 0 ? ' — ¡LIQUIDADA!' : ' · Saldo: $' + ns.toLocaleString('es-MX',{minimumFractionDigits:2})));
+    var _msgOk = '✅ Abono $' + montoReal.toLocaleString('es-MX',{minimumFractionDigits:2});
+    if (_esDol) _msgOk += ' (' + _usdRecibidos.toFixed(2) + ' USD @ $' + _tcEnt.toFixed(2) + ')';
+    _msgOk += (ns <= 0 ? ' — ¡LIQUIDADA!' : ' · Saldo: $' + ns.toLocaleString('es-MX',{minimumFractionDigits:2}));
+    if (_esDol && monto > saldoActual) _msgOk += ' · ↩ Devuelve $' + (monto - saldoActual).toFixed(2) + ' MXN de cambio';
+    toast(_msgOk);
 
     // 2.5 Enviar comprobante de abono por WhatsApp (best-effort — NO bloquea la entrega si falla)
     try {
