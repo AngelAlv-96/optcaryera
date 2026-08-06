@@ -31698,6 +31698,30 @@ function amDetectPrefix(code) {
   return AM_PREFIX_MAP[prefix] || null;
 }
 
+// ── 🏷️ CÓDIGO DE PROVEEDOR CON MARCA SEPARABLE (v561) ──
+// OJO: es DISTINTO de AM_PREFIX_MAP. Ahí el código del proveedor ES el modelo
+// (SM1515 se guarda tal cual). Aquí el prefijo solo identifica la MARCA y NO
+// forma parte del modelo: CAFFDY etiqueta sus armazones "caftc1533", pero el
+// catálogo ya tiene 32 modelos suyos guardados como TC1527, TC157, 6028…
+// (código de barras CAFFDY-TC1527). Si guardáramos "CAFTC1533" quedarían
+// duplicados que no empatan con los que ya existen.
+// Para agregar otra marca así: prefijo → nombre de marca. Debe ser un prefijo
+// que NO choque con AM_PREFIX_MAP (2 letras) ni con modelos reales.
+var AM_CODIGO_MARCA = { 'CAF': 'CAFFDY' };
+
+function amParseCodigoProveedor(code) {
+  var c = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  var pref = Object.keys(AM_CODIGO_MARCA);
+  for (var i = 0; i < pref.length; i++) {
+    var p = pref[i];
+    // se exige resto >= 3 para no transformar mientras se teclea el prefijo
+    if (c.indexOf(p) === 0 && c.length >= p.length + 3) {
+      return { marca: AM_CODIGO_MARCA[p], modelo: c.substring(p.length), prefijo: p, original: c };
+    }
+  }
+  return null;
+}
+
 // ── REFERENCIA COMPRAS SALES 09-ABR-2026 ──
 var AM_SALES_REF = {
   'FUNKY FRED': [
@@ -33521,6 +33545,27 @@ function amRqAutoDetect(val) {
   var costoEl = document.getElementById('am-rq-costo');
   var precioEl = document.getElementById('am-rq-precio');
   var st = document.getElementById('am-rq-status');
+
+  // 0. 🏷️ Código de proveedor con marca separable (caftc1533 → CAFFDY + TC1533).
+  //    Se limpia el campo modelo para que quede como lo guarda el catálogo, y así
+  //    el código de barras sale por la ruta normal: CAFFDY-TC1533.
+  var prov = amParseCodigoProveedor(code);
+  if (prov) {
+    var modEl = document.getElementById('am-rq-modelo');
+    if (modEl && (modEl.value || '').toUpperCase().replace(/[^A-Z0-9]/g,'') !== prov.modelo) {
+      modEl.value = prov.modelo;
+    }
+    if (marcaEl) { marcaEl.value = prov.marca; marcaEl.dataset.userMarca = '1'; }
+    // costo del ticket: viene indexado por el código del proveedor (CAFTC1533)
+    if (costoEl && !parseFloat(costoEl.value) && _amTicketCostos[prov.original]) {
+      costoEl.value = _amTicketCostos[prov.original];
+    }
+    if (st) {
+      st.innerHTML = '🏷️ Etiqueta de proveedor — <b style="color:#4ac8f0">' + prov.marca + '</b> · modelo <b>' + prov.modelo + '</b>';
+      st.style.color = '#4ac8f0';
+    }
+    code = prov.modelo;   // el resto del flujo sigue con el modelo ya limpio
+  }
 
   // 1. Prefijo proveedor (SM→SEIMA, ZB→ZABDI, etc.)
   var marca = amDetectPrefix(code);
