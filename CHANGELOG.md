@@ -31,6 +31,47 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v561 + v562 (Alta Masiva — escanear la etiqueta del proveedor e imprimir sin teclear): **compra de armazones CAFFDY al proveedor SALES.**
+
+Angel mandó por Telegram 9 fotos: el ticket de SALES (45 piezas, $2,105 MXN, 6 modelos) y la etiqueta de un armazón con el código de barras del proveedor (`caftc1533`). Pidió escanear ESE código y que salga la etiqueta nuestra "marca + modelo".
+
+**v561 — código de proveedor con marca separable.**
+`amDetectPrefix` solo mira las DOS primeras letras (`SM`→SEIMA, `ZB`→ZABDI, `HA`→HASHTAG, `HP`→HP) y "CAF" son tres, así que no reconocía nada.
+
+⚠️ Pero CAFFDY **no podía entrar a `AM_PREFIX_MAP`**: ahí el código del proveedor **ES** el modelo (SM1515 se guarda tal cual como modelo y como código de barras). El catálogo ya tenía **32 modelos CAFFDY** guardados **sin** el prefijo (`TC1527`, `TC157`, `6028`, `8028`) con código `CAFFDY-TC1527`. Meterlo en ese mapa habría creado `CAFTC1533` — duplicado que no empata con los existentes.
+
+Se agregó un mecanismo APARTE, **sin tocar** `AM_PREFIX_MAP` ni `amDetectPrefix`:
+- `AM_CODIGO_MARCA = { 'CAF': 'CAFFDY' }` — el prefijo identifica la MARCA y NO forma parte del modelo.
+- `amParseCodigoProveedor(code)` → `{marca, modelo, prefijo, original}`, exigiendo resto ≥3 caracteres para no transformar a media captura manual.
+- `amRqAutoDetect`: limpia el campo modelo (`TC1533`), pone la marca, jala el costo del OCR del ticket (indexado por el código del proveedor) y avisa en pantalla. El código de barras sale por la ruta normal → `CAFFDY-TC1533`.
+
+**v562 — precarga de compra (el pedido real: "que no teclee nada").**
+Dos caminos que NO servían y por qué:
+- `_amTicketCostos` (el OCR del ticket) es una variable **en memoria de esa pantalla**: lo que Angel manda por Telegram no llega ahí, y además se pierde al recargar.
+- Crear los 6 productos por adelantado tampoco: Alta Masiva trata distinto al producto **nuevo** (lo inserta con stock) que al **existente** (solo actualiza precio/costo, sin tocar stock, `index.html:32595+`) → los 45 escaneos habrían caído por la rama equivocada.
+
+Solución: **precarga PERSISTENTE** en `app_config` id=`am_precarga`:
+```
+{ "<código del proveedor>": { marca, modelo, costo, precio } }
+```
+- `_amPrecarga` + `amCargarPrecarga()` (se lee en `amInit`, al abrir la vista).
+- `amPrecargaLookup()` normaliza a MAYÚSCULAS sin símbolos → tolera que la etiqueta venga en minúsculas (`caftc1533`).
+- `amRqAutoDetect`: si el código está precargado llena marca+modelo+costo+precio y hace `return`. Como `amRqConfirmar` solo exige marca+modelo+precio, **el Enter que manda la pistola guarda e imprime**: cero tecleo.
+- Aviso verde "N modelos precargados" + botón Limpiar. Si el código no está precargado, el flujo sigue igual que antes.
+
+⚠️ `app_config.value` es **TEXT** (no jsonb) → el JSON se guarda como string, igual que `folio_ventas`/`asesores`, y el loader hace `JSON.parse` si viene string.
+⛔ No se tocó ninguna función ZPL (solo cambian los datos que recibe).
+
+**Verificación**: los 6 modelos resuelven a marca + modelo limpio; empatan EXACTO con los que ya existían (`CAFFDY-TC1527`, `CAFFDY-TC157`, `CAFFDY-6028`, `CAFFDY-8028`); SEIMA/ZABDI/HASHTAG/HP quedan idénticos; el tecleo letra por letra converge a `TC1533`; `CAF`/`CA`/`TC1533`/`MA2501` no se transforman; y contra la precarga real de la base, 8/8 escaneos (incluidas minúsculas) quedan listos para imprimir. index.html 5 bloques JS, 0 errores. sw.js v561→v562.
+
+**Datos registrados**: gasto id 375 ($2,105, 6-ago, Proveedores/materiales › Armazones, sucursal General, Efectivo) y los 6 modelos CAFFDY a $300 de venta.
+
+⚠️ **Angel escaneó ~30 min ANTES de que la precarga estuviera desplegada** (14:37–14:39 vs deploy 15:12), así que le tocó v561: marca y modelo salieron bien, el precio se llenó de rebote porque el sistema lo sugiere desde los CAFFDY existentes en $300, pero el **costo quedó en $0** y hubo que corregirlo a mano ($39 el 4015, $49 los cinco TC). 0 duplicados contra los 32 previos.
+
+📦 **NO llevan inventario**: al escanear varias piezas del mismo modelo, la primera crea el producto y las siguientes se detectan como existentes sin sumar stock, así que los 6 modelos quedaron en stock 1 pese a haberse escaneado 45 piezas. Angel: *"no tenemos inventario, ese dato está innecesario"* → **es esperado, no es bug**. Lo que importa de cada escaneo es que salga la etiqueta.
+
+**Lecciones**: (i) un "prefijo de proveedor" tiene DOS semánticas y confundirlas duplica catálogo — (a) el código **es** el modelo (SEIMA), (b) el código es marca+modelo y hay que **separarlo** (CAFFDY); antes de mapear una marca nueva, revisar cómo están guardados sus productos EXISTENTES en la base; (ii) para "dejar todo listo antes de escanear", la precarga debe ser PERSISTENTE en `app_config` — un OCR en memoria no sobrevive ni una recarga; (iii) al desplegar algo que el usuario va a usar de inmediato, avisarle que recargue **antes** de que empiece, no después.
+
 Cambios v560 (Lista de Precios en vivo): **la Lista de Precios del sistema ya lee los precios reales de `reglas_materiales` — dejaron de estar escritos a mano.**
 
 Angel avisó "subí precios" y pidió comprobar antes de tocar nada, porque él ya veía los precios nuevos en la página.
