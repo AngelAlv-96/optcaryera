@@ -572,7 +572,7 @@ El changelog detallado de v138 a v259 vive en [`CHANGELOG.md`](CHANGELOG.md) (no
 **NUNCA escribir código que contenga expresiones regulares usando heredoc de Bash** (`node <<'EOF'`): en este entorno se come un nivel de backslashes y el regex llega mutilado y **silenciosamente incorrecto** (`/\(S\d\)/` quedó como `/(Sd)/` en v541; el `\1` de un `regexp_replace` quedó como el carácter de control 0x01 en v540). Usar las herramientas de edición de archivos (Write/Edit). Si hay que generar el texto por script, construir la barra invertida con `String.fromCharCode(92)`. **Auditar los regex de cada bloque nuevo antes de cerrar** (existe un auditor en el scratchpad). Aplica igual a `perl`/`sed`.
 
 ## 💲 DÓNDE VIVEN LOS PRECIOS DE MICAS (3 lugares — un aumento toca los TRES)
-1. **`reglas_materiales` (Supabase)** — la ÚNICA que cobra. Fila por `material + tratamiento + serie` (~105, 4 `tipo_vision`: VS / Bif F/T / Bif Semi-invisible / Progresivo). ⛔ NO están en `productos.precio_venta`.
+1. **`reglas_materiales` (Supabase)** — la ÚNICA que cobra. Fila por `material + tratamiento + serie` (~106, 4 `tipo_vision`: VS / Bif F/T / Bif Semi-invisible / Progresivo). ⛔ NO están en `productos.precio_venta`. Los **dropdowns del POS se derivan de esta tabla** (`cascadeMaterial`/`cascadeTratamiento` en `js/mod-catalogo.js`) → **dar de alta un material/tratamiento nuevo es solo un INSERT, sin cambio de código**; `_reglasCache` cachea por sesión, así que los navegadores abiertos necesitan RECARGAR para verlo. La UNIQUE es `(material, tipo_vision, tratamiento, serie, nota)` — incluye `nota`, por eso conviven los rangos de Ultra-thin con el mismo material+tratamiento.
 2. **`lista-precios.html`** — objeto `DATA` (93 precios: campo `p:` en `rows[]` + `[label, precio]` en `lines[]`). Es la lista del sistema; el personal aún no la usa de cabecera.
 3. **Canva `DAG9BCv557c`** (*"lista de precios 2025"*, 16 págs) — la que el personal cotiza hoy; es la que abre el botón "📄 Lista de Precios" del dashboard (index.html). **Editable por API** vía el MCP de Canva: los precios son celdas de tabla con `locator_id` estable (no imágenes) → `read-design` con `open_transaction:true` para ver los ids, `replace_text` por celda, verificar thumbnail, `commit`.
 
@@ -793,7 +793,7 @@ Bloque "CONVENIOS EMPRESARIALES" en DEFAULT_KNOWLEDGE (wa-webhook + meta-webhook
 
 ## ⚠️ PENDIENTES
 0. ~~`_cobrarYEntregar` cobra el dólar en PESOS~~ ✅ **Resuelto en v559** — las DOS rutas que registran un abono (modal de abono del Historial + "Cobrar y entregar" de Entrega) ya capturan los dólares en USD.
-0b. **Polarizado Xperio 1.59 (Essilor) no existe en `reglas_materiales`** — aparece en las listas (Canva + `lista-precios.html`, $5,799 tras el aumento v558) pero no hay fila en la tabla que cobra el POS, así que no se puede cotizar por material. Decidir si se da de alta.
+0b. ~~Polarizado Xperio 1.59 (Essilor) no existe en `reglas_materiales`~~ ✅ **Resuelto en v559** — alta como `VS · Hi Index · Polarizado Xperio 1.59 · serie 1 · $5,799` (id 106), archivado junto al Polarizado 1.56 para que la cajera encuentre los dos en la misma rama. Sin cambio de código (los dropdowns se derivan de la tabla).
 1. ~~Migrar WA#1 Clari a Twilio~~ ✅ Completado — WA#1 deprecated, WA#2 único vigente
 2. SICAR migración completa
 3. Landing pages bug
