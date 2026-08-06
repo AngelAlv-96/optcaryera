@@ -963,6 +963,7 @@ body.pb-swap .cat-nav,body.pb-swap .serie-sub{opacity:0}
       <button id="btn-s2" onclick="setSerie(2)">Serie 2</button>
     </div>
     <div class="serie-sub reveal" id="serie-sub"></div>
+    <div id="precios-sello" style="text-align:center;font-size:11px;letter-spacing:.04em;opacity:0;transition:opacity .4s;margin:-2px 0 10px"></div>
 
     <div class="tipo-filter reveal" id="tipofilter"></div>
 
@@ -1394,6 +1395,153 @@ const CATALOG = {
   ]
 };
 
+/* ===================== 💲 PRECIOS EN VIVO (v560) =====================
+   Los precios de esta página vivían ESCRITOS A MANO. Al subirlos en el sistema
+   (tabla reglas_materiales) la página quedaba desfasada y el personal cotizaba
+   de menos — pasó el 6-ago-2026: la pantalla "Precios" se actualizó pero el
+   asesor "Cotizar" se quedó $300 abajo en sus 25 opciones.
+   Ahora los precios se LEEN de la base al abrir la página. Los números escritos
+   quedan solo como respaldo por si la consulta falla (la página nunca se rompe). */
+const SUPA_URL = 'https://icsnlgeereepesbrdjhf.supabase.co';
+const SUPA_KEY = 'sb_publishable_iCOmrbSO_EaZuv7fVUVxEA_AtHSPTKm';
+
+/* etiqueta de la página → [material, tratamiento] de reglas_materiales.
+   El tipo de visión sale del contexto (sencilla=VS, bifFT, bifSI, prog). */
+const MAP_CAT = {   // asesor "Cotizar" — clave: 'seccion|nombre'
+  'sencilla|Básico CR-39':                  ['CR-39','Blanco'],
+  'sencilla|Resistencia Policarbonato':     ['Policarbonato','Blanco'],
+  'sencilla|Hi-Index Antirreflejante':      ['Hi Index','AR'],
+  'sencilla|Policarbonato Antirreflejante': ['Policarbonato','AR'],
+  'sencilla|Anti-Blue AR':                  ['Hi Index','Anti-Blue AR'],
+  'sencilla|Blue Light':                    ['Hi Index','Blue Light'],
+  'sencilla|Policarbonato Anti-Blue AR':    ['Policarbonato','Anti-Blue AR'],
+  'sencilla|Fotocromático Policarbonato':   ['Policarbonato','Foto AR'],
+  'sencilla|Fotocromático Blue Light':      ['Hi Index','Foto Blue Light'],
+  'sencilla|Fotocromático Gen 9':           ['Hi Index','Foto Blue Light Gen 9'],
+  'sencilla|Polarizado 1.56':               ['Hi Index','Polarizado'],
+  'sencilla|Polarizado Xperio (Essilor)':   ['Hi Index','Polarizado Xperio 1.59'],
+  'bifocal|Bifocal CR-39':                  ['CR-39','Blanco'],
+  'bifocal|Bifocal AR Hi-Index':            ['Hi Index','AR'],
+  'bifocal|Bifocal Filtro Azul':            ['Hi Index','Anti-Blue AR'],
+  'bifocal|Bifocal AR Policarbonato':       ['Policarbonato','AR'],
+  'bifocal|Bifocal Fotocromático':          ['Hi Index','Foto AR'],
+  'bifocal|Bifocal Foto Policarbonato':     ['Policarbonato','Foto AR'],
+  'progresivo|Progresivo CR-39':            ['CR-39','Blanco'],
+  'progresivo|Progresivo AR Hi-Index':      ['Hi Index','AR'],
+  // Angel (6-ago): el progresivo con filtro azul se fabrica igual que el Panoramic 360,
+  // por eso traían el mismo precio → ambos toman el MÁS CARO (Panoramic 360 Blue).
+  'progresivo|Progresivo Filtro Azul':      ['Hi Index','Panoramic 360 Blue'],
+  'progresivo|Progresivo AR Policarbonato': ['Policarbonato','AR'],
+  'progresivo|Progresivo Fotocromático':    ['Hi Index','Foto AR'],
+  'progresivo|Progresivo Panoramic 360':    ['Hi Index','Panoramic 360 Blue'],
+  'progresivo|Progresivo Foto Policarbonato':['Policarbonato','Foto AR']
+};
+const MAP_DATA = {  // pantalla "Precios" — clave: 'categoria|etiqueta' (sin el prefijo s1-/s2-)
+  'claros|Básico (CR-39)':                  ['CR-39','Blanco'],
+  'claros|Resistencia (Policarbonato)':     ['Policarbonato','Blanco'],
+  'digital|Hi-Index Antirreflejante':       ['Hi Index','AR'],
+  'digital|Policarbonato Antirreflejante':  ['Policarbonato','AR'],
+  'digital|Anti-blue AR':                   ['Hi Index','Anti-Blue AR'],
+  'digital|Blue Light':                     ['Hi Index','Blue Light'],
+  'digital|Policarbonato Anti-Blue AR':     ['Policarbonato','Anti-Blue AR'],
+  'foto|Policarbonato AR':                  ['Policarbonato','Foto AR'],
+  'foto|Anti-blue AR':                      ['Hi Index','Foto Anti-Blue AR'],
+  'foto|Anti-blue AR · Hi-Index':           ['Hi Index','Foto Anti-Blue AR'],
+  'foto|Blue Light':                        ['Hi Index','Foto Blue Light'],
+  'foto|Blue Light · Hi-Index':             ['Hi Index','Foto Blue Light'],
+  'foto|Blue Light — Generación 9':         ['Hi Index','Foto Blue Light Gen 9'],
+  'foto|Foto Colors · Hi-Index AR':         ['Hi Index','Foto Colors'],
+  'polar|Polarizado 1.56':                  ['Hi Index','Polarizado'],
+  'polar|Polarizado Xperio 1.59 (Essilor)': ['Hi Index','Polarizado Xperio 1.59'],
+  'bifFT|Esenciales › CR-39':               ['CR-39','Blanco'],
+  'bifFT|Esenciales › Policarbonato Bco.':  ['Policarbonato','Blanco'],
+  'bifFT|Esenciales › Fotocromático sin AR':['Hi Index','Foto Sin AR'],
+  'bifFT|Antirreflejante › Hi-Index':       ['Hi Index','AR'],
+  'bifFT|Antirreflejante › Policarbonato':  ['Policarbonato','AR'],
+  'bifFT|Filtro Azul · Hi-Index › Filtro Azul':   ['Hi Index','Anti-Blue AR'],
+  'bifFT|Filtro Azul · Hi-Index › Fotocromático': ['Hi Index','Foto Anti-Blue AR'],
+  'bifFT|Fotocromáticos › Hi-Index AR':     ['Hi Index','Foto AR'],
+  'bifFT|Fotocromáticos › Policarbonato AR':['Policarbonato','Foto AR'],
+  'bifSI|Esenciales › CR-39':               ['CR-39','Blanco'],
+  'bifSI|Antirreflejante › Hi-Index':       ['Hi Index','AR'],
+  'bifSI|Antirreflejante › Policarbonato':  ['Policarbonato','AR'],
+  'bifSI|Filtro Azul · Hi-Index › Filtro Azul':   ['Hi Index','Anti-Blue AR'],
+  'bifSI|Filtro Azul · Hi-Index › Fotocromático': ['Hi Index','Foto Anti-Blue AR'],
+  'bifSI|Fotocromáticos › Hi-Index':        ['Hi Index','Foto AR'],
+  'bifSI|Fotocromáticos › Policarbonato':   ['Policarbonato','Foto AR'],
+  'prog|Esenciales › CR-39':                ['CR-39','Blanco'],
+  'prog|Esenciales › Policarbonato Bco.':   ['Policarbonato','Blanco'],
+  'prog|Esenciales › Fotocromático sin AR (Poli)':['Policarbonato','Foto Sin AR'],
+  'prog|Antirreflejante › Hi-Index':        ['Hi Index','AR'],
+  'prog|Antirreflejante › Policarbonato':   ['Policarbonato','AR'],
+  'prog|Filtro Azul · Hi-Index › Filtro Azul':   ['Hi Index','Anti-Blue AR'],
+  'prog|Filtro Azul · Hi-Index › Fotocromático': ['Hi Index','Foto Anti-Blue AR'],
+  'prog|Fotocromáticos › Hi-Index':         ['Hi Index','Foto AR'],
+  'prog|Fotocromáticos › Policarbonato':    ['Policarbonato','Foto AR'],
+  'prog|★ Panoramic 360 · Hi-Index › Filtro Azul':            ['Hi Index','Panoramic 360 Blue'],
+  'prog|★ Panoramic 360 · Hi-Index › Fotocromático':          ['Hi Index','Panoramic 360 Foto'],
+  'prog|★ Panoramic 360 · Hi-Index › Fotocromático de colores':['Hi Index','Foto Colors']
+};
+/* La sección "ultra" (1.67 / 1.74) va por RANGO de graduación, no por material+tratamiento:
+   no se puede mapear 1 a 1, así que conserva sus precios escritos. */
+const VIS_DE_CAT = { claros:'VS', digital:'VS', foto:'VS', polar:'VS', bifFT:'Bif F/T', bifSI:'Bif Semi-invisible', prog:'Progresivo' };
+const VIS_DE_SEC = { sencilla:'VS', bifocal:'Bif F/T', progresivo:'Progresivo' };
+
+let PRECIOS_VIVOS = null, PRECIOS_ESTADO = 'respaldo';
+
+async function cargarPreciosVivos(){
+  const url = SUPA_URL + '/rest/v1/reglas_materiales?select=material,tratamiento,tipo_vision,serie,precio&activo=eq.true';
+  const ctl = new AbortController();
+  const corte = setTimeout(()=>ctl.abort(), 6000);   // si la red tarda, seguimos con los escritos
+  try{
+    const r = await fetch(url, { headers:{ apikey:SUPA_KEY, Authorization:'Bearer '+SUPA_KEY }, signal:ctl.signal });
+    clearTimeout(corte);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const filas = await r.json();
+    if(!Array.isArray(filas) || !filas.length) throw new Error('sin filas');
+    const idx = {};
+    filas.forEach(f=>{ idx[[f.tipo_vision,f.material,f.tratamiento,f.serie].join('|')] = Number(f.precio); });
+    PRECIOS_VIVOS = idx; PRECIOS_ESTADO = 'vivo';
+    return true;
+  }catch(e){ clearTimeout(corte); console.warn('[precios] usando respaldo:', e.message); return false; }
+}
+const precioDe = (vis,mat,tra,serie) => PRECIOS_VIVOS ? PRECIOS_VIVOS[[vis,mat,tra,serie].join('|')] : undefined;
+
+function aplicarPreciosVivos(){
+  if(!PRECIOS_VIVOS) return;
+  // 1) asesor "Cotizar"
+  Object.keys(CATALOG).forEach(sec=>{
+    const vis = VIS_DE_SEC[sec];
+    CATALOG[sec].forEach(row=>{
+      const m = MAP_CAT[sec+'|'+row.n]; if(!m) return;
+      const p1 = precioDe(vis,m[0],m[1],1), p2 = precioDe(vis,m[0],m[1],2);
+      if(p1!==undefined) row.p1 = p1;
+      if(p2!==undefined) row.p2 = p2; else if(p1!==undefined) row.p2 = p1;  // sin serie 2 = precio único
+    });
+  });
+  // 2) pantalla "Precios"
+  [1,2].forEach(serie=>{
+    (DATA[serie]?.cats||[]).forEach(cat=>{
+      const clave = String(cat.id||'').replace(/^s[12]-/,'');
+      const vis = VIS_DE_CAT[clave]; if(!vis) return;
+      (cat.items||[]).forEach(it=>{
+        if(it.mat!==undefined && it.p!==undefined){
+          const m = MAP_DATA[clave+'|'+it.mat]; if(!m) return;
+          const v = precioDe(vis,m[0],m[1],serie) ?? precioDe(vis,m[0],m[1],1);
+          if(v!==undefined) it.p = v;
+        }
+        if(Array.isArray(it.lines)){
+          it.lines.forEach(ln=>{
+            const m = MAP_DATA[clave+'|'+(it.h?it.h+' › ':'')+ln[0]]; if(!m) return;
+            const v = precioDe(vis,m[0],m[1],serie) ?? precioDe(vis,m[0],m[1],1);
+            if(v!==undefined) ln[1] = v;
+          });
+        }
+      });
+    });
+  });
+}
+
 function benefitsFor(p){
   const t=(p.tr+' '+p.mat).toLowerCase(), b=[];
   if(/antirreflej|\bar\b/.test(t)) b.push('Sin reflejos, mejor visión de noche');
@@ -1659,6 +1807,21 @@ _syncHash(true);
 })();
 
 advRender();
+
+/* 💲 Trae los precios reales del sistema y repinta. Si falla, se queda con los escritos. */
+cargarPreciosVivos().then(function(ok){
+  if(ok){
+    aplicarPreciosVivos();
+    try{ advRender(); }catch(e){}
+    try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
+  }
+  var sello = document.getElementById('precios-sello');
+  if(sello){
+    sello.textContent = ok ? 'Precios en vivo del sistema' : 'Precios de respaldo — sin conexión al sistema';
+    sello.style.color = ok ? '' : '#b3895a';
+    sello.style.opacity = '1';
+  }
+});
 
 /* ===================== DEMOS INTERACTIVAS ===================== */
 function demoPlay(id){
