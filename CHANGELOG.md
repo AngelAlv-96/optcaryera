@@ -31,6 +31,31 @@ Las **reglas operacionales activas** y **decisiones de arquitectura vigentes** v
 
 ## Historial completo (más reciente primero)
 
+Cambios v560 (Lista de Precios en vivo): **la Lista de Precios del sistema ya lee los precios reales de `reglas_materiales` — dejaron de estar escritos a mano.**
+
+Angel avisó "subí precios" y pidió comprobar antes de tocar nada, porque él ya veía los precios nuevos en la página.
+
+**Qué se encontró al comprobar.** El aumento de +$300 del 6-ago (v558) sí actualizó la página, pero `lista-precios.html` guarda los precios en **DOS estructuras separadas** y solo se tocó una:
+- **Pantalla "Precios"** (objeto `DATA`, tablas por Serie 1 / Serie 2, 93 números) → actualizada correctamente. Es la que Angel revisó.
+- **Asesor "Cotizar"** (objeto `CATALOG`, 25 opciones del flujo de 3 pasos) → **las 25 filas se quedaron $300 abajo**. Y ése es justo el bloque que usa la asesora para cotizarle al cliente, así que se estaba cotizando por debajo de lo que el POS cobra en caja.
+
+⚠️ Ojo con el método de detección: una primera pasada heurística ("precio que no existe en la base pero cuyo valor+300 sí") solo marcó 16 de los 50 números del asesor — **da falsos negativos**, porque muchos precios viejos coinciden por casualidad con el precio vigente de OTRO concepto (ej. 2499 era el Anti-Blue AR viejo y a la vez es el Bifocal AR Hi-Index S1 actual). La comprobación válida fue mapear cada fila a su combinación exacta y comparar: salieron 25/25 desfasadas.
+
+**Fix.** Los dos bloques leen la base al abrir la página:
+- `MAP_CAT` (25 entradas) y `MAP_DATA` (44) traducen la **etiqueta de la página** a `[material, tratamiento]`; el `tipo_vision` sale del contexto (`sencilla`→VS, `bifFT`→Bif F/T, `bifSI`→Bif Semi-invisible, `prog`→Progresivo). Se mapeó por **etiqueta+contexto y NO por índice de arreglo** (el índice se rompe en cuanto alguien reordena una fila).
+- `cargarPreciosVivos()` consulta `reglas_materiales?activo=eq.true` con la key publishable (la tabla ya tenía policy SELECT `{public}`, verificado antes de prometerlo) con corte a 6s vía `AbortController`.
+- `aplicarPreciosVivos()` sobrescribe `CATALOG` y `DATA` y repinta (`advRender` + `renderAll`).
+- **Respaldo**: si falla la consulta se conservan los números escritos, la página no se rompe, y un sello bajo el título dice "Precios en vivo del sistema" o "Precios de respaldo — sin conexión al sistema".
+- **La sección "ultra" (1.67/1.74) se dejó fuera a propósito**: sus filas van por RANGO de graduación (`ESF −4.00 a −12.00 · CIL hasta −2.00`), no por material+tratamiento, así que no mapean 1 a 1. Sigue escrita a mano.
+
+**Decisión de Angel**: "Progresivo Filtro Azul" y "Progresivo Panoramic 360" traían precio idéntico en el asesor porque *"se están haciendo el mismo material"* → ambos toman el **más caro** (Panoramic 360 Blue, $3,849/$4,249). En la pantalla "Precios" siguen separados con sus precios propios de la base.
+
+**Verificación** (guion en sandbox `vm` + navegador real): los **69 mapeos existen en la base** (0 huérfanos); **25/25** filas del asesor corregidas; pantalla "Precios" con **0 cambios** (confirma que ya estaba bien) y **0 entradas sin mapear** fuera de "ultra"; en navegador cargó **97 precios**, sello "Precios en vivo del sistema", **0 errores de consola**, y el único "899" visible resultó ser `$3,899` de Blue Light Gen 9 (correcto); el respaldo probado con `PRECIOS_VIVOS=null` no altera nada ni truena. 2 bloques JS, 0 errores. Standalone → **sin bump de sw.js**.
+
+**Corrección honesta al reporte inicial**: el primer aviso a Angel dijo que TODA la lista estaba vieja. Era falso — se analizó el archivo sin notar que ya existía el commit v558 de ese mismo día. El problema real era la mitad del archivo, no todo.
+
+**Lecciones**: (i) cuando un mismo dato vive escrito a mano en DOS estructuras del mismo archivo, una actualización manual casi siempre cubre una y olvida la otra, y el desfase es **invisible** porque la pantalla que uno revisa suele ser justo la que sí se actualizó → la cura no es "acordarse de las dos" sino que el archivo **lea el dato de su fuente**; (ii) antes de afirmar que algo está desactualizado, revisar `git log` del archivo — puede haber un commit del día hecho por otra sesión; (iii) para detectar precios rezagados NO sirve la heurística "valor+300 existe en la base" (falsos negativos por colisión entre conceptos) — hay que mapear y comparar 1 a 1.
+
 Cambios v559 (Entrega de Lentes — se cierra el MISMO bug del dólar que el v557 dejó abierto): **el botón "💰 Cobrar y entregar" ahora captura los dólares en USD con conversión a la vista, igual que el modal de abono y que el POS.**
 
 Pedido de Angel al ver el pendiente que dejó el v557. El v557 arregló el modal de abono del Historial de Ventas, pero `_cobrarYEntregar` (Entrega de Lentes) seguía con exactamente el mismo defecto: el campo se capturaba en PESOS aunque el método fuera Dólar (`monto_usd = montoReal / _tipoCambio`), al revés que el POS. Si una cajera cobraba el saldo en dólares desde ahí, se repetía el error del folio 16189 (teclear 180 pensando en dólares → entraban $180 MXN en vez de $2,970).
