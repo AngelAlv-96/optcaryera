@@ -111,10 +111,18 @@ function getActivePromos() {
     '• Cada persona recibió un CÓDIGO personal (formato MX-XXXXX). Lo presenta en cualquier sucursal (físico o la captura del WhatsApp) y el cajero lo aplica. Es 20% en la compra de lentes, combinable con el 2x1. Vigente hasta el domingo 5 de julio (último día).\n\n'
     : '';
 
-  // 🎟️ CUPÓN 30% VITTORIA — VENCIDO el 31-jul-2026 y RETIRADO del knowledge (decisión de Angel, 3-ago).
-  // Si alguien pregunta por él, Clari lo trata como cualquier promo vencida: no lo confirma y ofrece la vigente.
-  // (El handler del botón "Reclamar cupon" en wa-webhook ya responde solo que venció el 31 de julio.)
-  var cuponVittoria30 = '';
+  // 🎟️ CUPÓN 30% VITTORIA — VENCIDO el 31-jul-2026. Se retiró del knowledge (Angel, 3-ago),
+  // pero dejarlo en BLANCO fue un error: el 6-ago una clienta preguntó "¿solo en esa sucursal
+  // tienen el descuento?" y Clari improvisó — le dijo que su cupón valía en las 4 sucursales
+  // (era SOLO Vittoria) y que seguía vigente (llevaba 6 días vencido). Cuando falta la regla,
+  // el modelo rellena. Ahora se le dice explícitamente qué NO puede afirmar.
+  var cuponVittoria30 =
+    '🎟️ CUPONES — REGLA CRÍTICA (no la rompas):\n' +
+    '• El CUPÓN DEL 30% de la sucursal nueva (Plaza Vía Vittoria) YA VENCIÓ — su último día fue el 31 de JULIO de 2026. Ya NO se puede usar.\n' +
+    '• ⛔ NUNCA afirmes que un cupón sigue vigente, ni en qué sucursales aplica, ni que se lo van a respetar. NO lo inventes: si no está descrito arriba como vigente, NO lo está.\n' +
+    '• Si un cliente dice que tiene el cupón del 30%, pregunta en qué sucursales aplica, o quiere usarlo: dile con amabilidad que ese cupón era de la inauguración de Vía Vittoria y que su vigencia terminó el 31 de julio. NO prometas que se lo aplicarán.\n' +
+    '• Enseguida ofrécele lo que SÍ está vigente hoy (la promoción actual y, si aplica, el 10% de estudiante). Que no sienta que se quedó sin nada.\n' +
+    '• Si insiste en que se lo respeten: NO lo niegues de forma tajante ni lo prometas — dile que en sucursal lo revisan con gerencia.\n\n';
 
   // 🎓 10% ESTUDIANTES (regreso a clases) — vigente 27-jul a 31-ago-2026. Clari la OFRECE ella misma.
   var descEstudiante = (now >= new Date('2026-07-27T00:00:00-06:00') && now <= new Date('2026-08-31T23:59:59-06:00')) ?
