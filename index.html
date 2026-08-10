@@ -23425,9 +23425,22 @@ async function _procesarVentaInner() {
         var _reDet = 'Venta ' + folio + ' hecha en ' + ventaSucursal + ' se recoge en ' + sucursalEntrega
           + ' (' + _rePac + ', $' + total.toFixed(2) + (saldo > 0 ? ', saldo $' + saldo.toFixed(2) : ', liquidada')
           + ', entrega ' + _reFecha + ')';
+        // Plantilla propia de este aviso (formato completo). En cuanto Meta la apruebe entra sola;
+        // mientras tanto Twilio la rechaza y el aviso cae a la plantilla genérica aviso_panel_admin.
+        var _reTpl = {
+          sid: 'HXdc4c176cc4b0470f100d2a5c50aedf73',
+          vars: {
+            '1': folio,
+            '2': ventaSucursal,
+            '3': sucursalEntrega,
+            '4': _rePac,
+            '5': '$' + total.toFixed(2) + (saldo > 0 ? ', saldo $' + saldo.toFixed(2) : ', liquidada'),
+            '6': _reFecha
+          }
+        };
         fetch('/.netlify/functions/whatsapp', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send_admin', message: _reMsg, fallbackDetail: _reDet, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+          body: JSON.stringify({ action: 'send_admin', message: _reMsg, fallbackTemplate: _reTpl, fallbackDetail: _reDet, auth: { id: currentUser?.id, pass: currentUser?.pass } })
         }).catch(function(e) { console.warn('[Recoger otra suc] aviso WA falló:', e.message); });
       } catch (e) { console.warn('[Recoger otra suc] aviso WA:', e.message); }
     }

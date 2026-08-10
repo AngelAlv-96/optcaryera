@@ -259,7 +259,7 @@ exports.handler = async (event) => {
       }
 
       case 'send_admin': {
-        const { message: adminMsg, fallbackDetail } = body;
+        const { message: adminMsg, fallbackDetail, fallbackTemplate } = body;
         if (!adminMsg) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'message required' }) };
         const adminConfig = await getWhatsAppConfig();
         const adminPhones = adminConfig?.admin_phones || [];
@@ -275,11 +275,21 @@ exports.handler = async (event) => {
             const r = await sendTextMessage(phone, adminMsg);
             adminResults.push({ phone, ok: true, id: r.sid });
           } catch (err) {
+            // 1º respaldo: plantilla específica del aviso (formato completo), si el caller la manda
+            // y ya está aprobada por Meta. Si aún no lo está, Twilio falla y seguimos al 2º respaldo.
+            if (fallbackTemplate && fallbackTemplate.sid) {
+              try {
+                const rT = await sendTemplateMessage(phone, fallbackTemplate.sid, fallbackTemplate.vars || {});
+                adminResults.push({ phone, ok: true, id: rT.sid, via: 'template' });
+                continue;
+              } catch (errT) { console.warn('[send_admin] plantilla específica falló:', errT.message); }
+            }
+            // 2º respaldo: plantilla genérica aprobada (resumen en una línea)
             if (fallbackDetail) {
               const det = String(fallbackDetail).replace(/\s+/g, ' ').trim().slice(0, 600);
               try {
                 const r2 = await sendTemplateMessage(phone, AVISO_TPL, { '1': det });
-                adminResults.push({ phone, ok: true, id: r2.sid, via: 'template' });
+                adminResults.push({ phone, ok: true, id: r2.sid, via: 'template_generico' });
                 continue;
               } catch (err2) {
                 adminResults.push({ phone, ok: false, error: err.message + ' | tpl: ' + err2.message });
