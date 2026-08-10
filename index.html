@@ -23404,6 +23404,28 @@ async function _procesarVentaInner() {
         }
       } catch(e) { console.log('review_queue insert error:', e); }
     }
+    // ── AVISO A GERENCIA: la venta se recoge en OTRA sucursal ──
+    // Se manda AL CERRAR LA VENTA (antes el único aviso salía cuando la sucursal receptora
+    // recibía el pedido en Bitácora — v413 —, o sea días después). Non-blocking: si el WA
+    // falla, la venta ya quedó guardada y el cajero no se entera.
+    if (sucursalEntrega && !isOnline && !isTrainingMode()) {
+      try {
+        var _reFecha = fechaEntrega ? new Date(fechaEntrega + 'T12:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'long' }) : 'sin fecha';
+        var _rePac = vtaPaciente ? `${vtaPaciente.nombre || ''} ${vtaPaciente.apellidos || ''}`.trim() : 'Sin paciente';
+        var _reMsg = '📍 *Venta para recoger en otra sucursal*\n\n'
+          + 'Folio: *' + folio + '*\n'
+          + 'Vendida en: ' + ventaSucursal + '\n'
+          + 'Se recoge en: *' + sucursalEntrega + '*\n'
+          + 'Paciente: ' + _rePac + '\n'
+          + 'Total: $' + total.toFixed(2) + (saldo > 0 ? ' · Saldo: $' + saldo.toFixed(2) : ' · Liquidada') + '\n'
+          + 'Entrega: ' + _reFecha + (asesorVal ? '\nAsesor: ' + asesorVal : '') + '\n\n'
+          + sucursalEntrega + ' debe recibirlo en Bitácora de Pedidos → 📥 Recibir de otra sucursal.';
+        fetch('/.netlify/functions/whatsapp', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'send_admin', message: _reMsg, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+        }).catch(function(e) { console.warn('[Recoger otra suc] aviso WA falló:', e.message); });
+      } catch (e) { console.warn('[Recoger otra suc] aviso WA:', e.message); }
+    }
     // Auto-register LC for CRM tracking (non-blocking)
     _lcAutoRegistrar(venta.id, ventaSucursal, canalVenta).catch(e => console.warn('[LC]', e));
     // Auto-create lab orders for LC items with Rx data (non-blocking)
