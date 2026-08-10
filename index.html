@@ -23420,9 +23420,14 @@ async function _procesarVentaInner() {
           + 'Total: $' + total.toFixed(2) + (saldo > 0 ? ' · Saldo: $' + saldo.toFixed(2) : ' · Liquidada') + '\n'
           + 'Entrega: ' + _reFecha + (asesorVal ? '\nAsesor: ' + asesorVal : '') + '\n\n'
           + sucursalEntrega + ' debe recibirlo en Bitácora de Pedidos → 📥 Recibir de otra sucursal.';
+        // Respaldo por plantilla aprobada (una sola línea, sin saltos) por si la ventana de 24h
+        // de algún admin está cerrada y el texto libre no entra.
+        var _reDet = 'Venta ' + folio + ' hecha en ' + ventaSucursal + ' se recoge en ' + sucursalEntrega
+          + ' (' + _rePac + ', $' + total.toFixed(2) + (saldo > 0 ? ', saldo $' + saldo.toFixed(2) : ', liquidada')
+          + ', entrega ' + _reFecha + ')';
         fetch('/.netlify/functions/whatsapp', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'send_admin', message: _reMsg, auth: { id: currentUser?.id, pass: currentUser?.pass } })
+          body: JSON.stringify({ action: 'send_admin', message: _reMsg, fallbackDetail: _reDet, auth: { id: currentUser?.id, pass: currentUser?.pass } })
         }).catch(function(e) { console.warn('[Recoger otra suc] aviso WA falló:', e.message); });
       } catch (e) { console.warn('[Recoger otra suc] aviso WA:', e.message); }
     }

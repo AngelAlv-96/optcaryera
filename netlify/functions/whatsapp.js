@@ -259,17 +259,35 @@ exports.handler = async (event) => {
       }
 
       case 'send_admin': {
-        const { message: adminMsg } = body;
+        const { message: adminMsg, fallbackDetail } = body;
         if (!adminMsg) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'message required' }) };
         const adminConfig = await getWhatsAppConfig();
         const adminPhones = adminConfig?.admin_phones || [];
         if (!adminPhones.length) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'No admin_phones configured' }) };
+        // El texto libre SOLO entra si la ventana de 24h de ese admin está abierta. Si falla
+        // (63016 típicamente) se reintenta con la plantilla aprobada `aviso_panel_admin`
+        // (HXa076…, UTILITY, 1 variable) para que el aviso llegue igual. El detalle de la
+        // plantilla debe ir en UNA sola línea: WhatsApp rechaza variables con saltos de línea.
+        const AVISO_TPL = 'HXa076da6bd95ae70ece9545df84036f56';
         const adminResults = [];
         for (const phone of adminPhones) {
           try {
             const r = await sendTextMessage(phone, adminMsg);
             adminResults.push({ phone, ok: true, id: r.sid });
-          } catch (err) { adminResults.push({ phone, ok: false, error: err.message }); }
+          } catch (err) {
+            if (fallbackDetail) {
+              const det = String(fallbackDetail).replace(/\s+/g, ' ').trim().slice(0, 600);
+              try {
+                const r2 = await sendTemplateMessage(phone, AVISO_TPL, { '1': det });
+                adminResults.push({ phone, ok: true, id: r2.sid, via: 'template' });
+                continue;
+              } catch (err2) {
+                adminResults.push({ phone, ok: false, error: err.message + ' | tpl: ' + err2.message });
+                continue;
+              }
+            }
+            adminResults.push({ phone, ok: false, error: err.message });
+          }
         }
         const adminSent = adminResults.filter(r => r.ok).length;
         return { statusCode: 200, headers: H, body: JSON.stringify({ ok: true, sent: adminSent, total: adminPhones.length }) };
