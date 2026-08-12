@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pagar — Ópticas Car &amp; Era</title>
+<meta name="description" content="Paga tu compra en Ópticas Car &amp; Era: transferencia, CoDi o tarjeta.">
+<meta name="theme-color" content="#f6f1ea">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f1ea; --card:#fff;
+  --ink:#1c1a16; --ink2:#615b52; --ink3:#8c857a;
+  --line:#e9e0d2; --beige:#b3895a; --beige-deep:#9a7245; --beige-tint:#f7efe2;
+  --wa:#1faa53; --ok:#1f9d55;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding:22px 18px calc(30px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+.wrap{width:100%;max-width:460px}
+
+/* encabezado */
+.top{text-align:center;margin-bottom:22px}
+.top img{height:38px;width:auto;margin:0 auto 16px}
+h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-height:1.05;letter-spacing:-.01em}
+.suc{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 13px;border-radius:99px;
+  background:var(--beige-tint);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--beige-deep)}
+
+/* tarjetas */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px;
+  box-shadow:0 1px 2px rgba(28,26,22,.04)}
+.step{display:flex;align-items:center;gap:9px;margin-bottom:14px}
+.step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--beige);color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.step h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--ink2);margin-bottom:14px}
+
+/* CLABE */
+.clabe{font-family:'Outfit',sans-serif;font-size:clamp(19px,5.4vw,24px);font-weight:600;letter-spacing:.06em;
+  text-align:center;padding:14px 8px;background:var(--beige-tint);border:1px dashed var(--beige);
+  border-radius:11px;margin-bottom:12px;cursor:pointer;font-variant-numeric:tabular-nums;word-break:break-all;
+  -webkit-user-select:all;user-select:all;transition:background .15s}
+.clabe:active{background:#f0e2cd}
+
+/* botones */
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:16px;border:none;
+  border-radius:12px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;cursor:pointer;
+  transition:transform .1s,background .2s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.985)}
+.btn-main{background:var(--ink);color:#fff}
+.btn-main.done{background:var(--ok)}
+.btn-out{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
+.btn-wa{background:var(--wa);color:#fff}
+.btn svg{width:19px;height:19px;stroke-width:2;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* datos del beneficiario */
+.datos{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:14px;font-size:13px;padding:4px 0}
+.row .k{color:var(--ink3);flex:none}
+.row .v{text-align:right;font-weight:500;word-break:break-word}
+.verifica{margin-top:12px;font-size:12px;line-height:1.45;color:var(--ink2);background:var(--beige-tint);
+  border-radius:9px;padding:10px 12px}
+.verifica b{color:var(--ink)}
+
+/* CoDi */
+#codi{display:none}
+#codi img{width:min(240px,68vw);margin:0 auto;border-radius:10px}
+
+.pie{text-align:center;font-size:12px;color:var(--ink3);margin-top:20px;line-height:1.6}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,90px);background:var(--ink);color:#fff;
+  font-size:14px;font-weight:500;padding:12px 20px;border-radius:99px;transition:transform .28s cubic-bezier(.2,.9,.3,1);
+  z-index:50;box-shadow:0 8px 24px rgba(28,26,22,.22)}
+.toast.on{transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <img src="/logo-caryera-dark.svg" alt="Ópticas Car &amp; Era">
+    <h1>Paga tu compra</h1>
+    <div class="suc" id="suc-chip" style="display:none"></div>
+  </div>
+
+  <!-- CoDi: aparece solo cuando exista la imagen (codi-<sucursal>.png o codi-qr.png) -->
+  <div class="card" id="codi">
+    <div class="step"><span class="n">1</span><h2>Con CoDi</h2></div>
+    <div class="sub">Escanea este código desde la app de tu banco. No tienes que capturar nada.</div>
+    <img id="codi-img" alt="Código CoDi de Ópticas Car &amp; Era">
+  </div>
+
+  <!-- Transferencia -->
+  <div class="card">
+    <div class="step"><span class="n" id="n-transf">1</span><h2>Por transferencia</h2></div>
+    <div class="sub">Toca el botón y pega la clave en tu app del banco — así no hay riesgo de equivocarse en un dígito.</div>
+
+    <div class="clabe" id="clabe" onclick="copiar()">0121 6400 4852 2028 92</div>
+
+    <button class="btn btn-main" id="btn-copiar" onclick="copiar()">
+      <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      <span>Copiar CLABE</span>
+    </button>
+
+    <div class="datos">
+      <div class="row"><span class="k">Banco</span><span class="v">BBVA</span></div>
+      <div class="row"><span class="k">Cuenta</span><span class="v">0485220280</span></div>
+      <div class="row"><span class="k">A nombre de</span><span class="v">Ivonne Yamilez Alvidrez Flores</span></div>
+    </div>
+
+    <div class="verifica">
+      Antes de enviar, tu app debe mostrar el nombre <b>Ivonne Yamilez Alvidrez Flores</b>. Si aparece otro nombre, <b>no continúes</b> y avísale al personal.
+    </div>
+  </div>
+
+  <!-- Tarjeta -->
+  <div class="card">
+    <div class="step"><span class="n" id="n-tarj">2</span><h2>Con tarjeta</h2></div>
+    <div class="sub">Paga con crédito o débito desde tu teléfono.</div>
+    <a class="btn btn-out" id="btn-clip" href="https://clip.mx/@caryera" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      <span>Pagar con tarjeta</span>
+    </a>
+  </div>
+
+  <!-- Comprobante -->
+  <a class="btn btn-wa" id="btn-wa" href="#">
+    <svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 20.5l1.8-5.2A8.5 8.5 0 1 1 21 11.5z"/></svg>
+    <span>Enviar mi comprobante</span>
+  </a>
+
+  <div class="pie">
+    Manda tu comprobante para aplicar el pago a tu pedido.<br>
+    Ópticas Car &amp; Era · WhatsApp 656 311 0094
+  </div>
+</div>
+
+<div class="toast" id="toast">CLABE copiada ✓</div>
+
+<script>
+(function(){
+  var CLABE = '012164004852202892';
+  var WA = '5216563110094';
+
+  var SUCS = {
+    americas:  'Plaza de las Américas',
+    pinocelli: 'Plaza Pinocelli',
+    magnolia:  'Plaza Magnolia',
+    vittoria:  'Plaza Vía Vittoria'
+  };
+
+  // ── Sucursal (una etiqueta NFC por sucursal: /pagar?suc=americas) ──
+  var slug = (new URLSearchParams(location.search).get('suc') || '').toLowerCase().trim();
+  var sucNombre = SUCS[slug] || '';
+  if (sucNombre) {
+    var chip = document.getElementById('suc-chip');
+    chip.textContent = '📍 ' + sucNombre;
+    chip.style.display = '';
+  }
+
+  // ── WhatsApp con el mensaje ya escrito (incluye la sucursal para no tener que preguntarla) ──
+  var msg = 'Hola, acabo de hacer mi pago' + (sucNombre ? ' en ' + sucNombre : '') + '. Aquí les mando mi comprobante 📎';
+  document.getElementById('btn-wa').href = 'https://wa.me/' + WA + '?text=' + encodeURIComponent(msg);
+
+  // ── CoDi: se muestra SOLO si la imagen existe. Así, subiendo el archivo al repo
+  //    (codi-<sucursal>.png o codi-qr.png) aparece sola, sin tocar esta página. ──
+  var candidatos = [];
+  if (slug) candidatos.push('/codi-' + slug + '.png', '/codi-' + slug + '.jpg');
+  candidatos.push('/codi-qr.png', '/codi-qr.jpg');
+  (function probar(i){
+    if (i >= candidatos.length) return;              // sin QR todavía → la sección queda oculta
+    var img = new Image();
+    img.onload = function(){
+      document.getElementById('codi-img').src = candidatos[i];
+      document.getElementById('codi').style.display = '';
+      // CoDi pasa a ser el paso 1 y los demás se recorren
+      document.getElementById('n-transf').textContent = '2';
+      document.getElementById('n-tarj').textContent = '3';
+    };
+    img.onerror = function(){ probar(i + 1); };
+    img.src = candidatos[i];
+  })(0);
+
+  // ── Copiar la CLABE ──
+  var toast = document.getElementById('toast'), tOut;
+  function avisar(txt){
+    toast.textContent = txt;
+    toast.classList.add('on');
+    clearTimeout(tOut);
+    tOut = setTimeout(function(){ toast.classList.remove('on'); }, 2600);
+  }
+  function marcarBoton(){
+    var b = document.getElementById('btn-copiar');
+    b.classList.add('done');
+    b.querySelector('span').textContent = '¡Copiada!';
+    setTimeout(function(){
+      b.classList.remove('done');
+      b.querySelector('span').textContent = 'Copiar CLABE';
+    }, 2600);
+  }
+  // Respaldo para navegadores sin Clipboard API (o sin HTTPS)
+  function copiarViejo(txt){
+    var ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.setAttribute('readonly','');
+    ta.style.cssText = 'position:absolute;left:-9999px;top:0';
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, txt.length);
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+  window.copiar = function(){
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(CLABE).then(function(){
+        marcarBoton(); avisar('CLABE copiada ✓');
+      }).catch(function(){
+        if (copiarViejo(CLABE)) { marcarBoton(); avisar('CLABE copiada ✓'); }
+        else avisar('Mantén presionada la clave para copiarla');
+      });
+    } else if (copiarViejo(CLABE)) {
+      marcarBoton(); avisar('CLABE copiada ✓');
+    } else {
+      avisar('Mantén presionada la clave para copiarla');
+    }
+  };
+})();
+</script>
+</body>
+</html>

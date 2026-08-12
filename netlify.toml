@@ -151,6 +151,12 @@
   to = "/portal-empresa.html"
   status = 200
 
+# Pago en sucursal (etiqueta NFC + QR CoDi) — una por sucursal: /pagar?suc=americas
+[[redirects]]
+  from = "/pagar"
+  to = "/pagar.html"
+  status = 200
+
 # Aviso de Privacidad (legal)
 [[redirects]]
   from = "/aviso-privacidad"
