@@ -3353,8 +3353,10 @@ exports.handler = async function(event) {
               if (cfgData2 && cfgData2[0]) {
                 var cfg2 = typeof cfgData2[0].value === 'string' ? JSON.parse(cfgData2[0].value) : cfgData2[0].value;
                 var admPhones = cfg2.admin_phones || cfg2.recipients_corte || [];
+                var _msgConf = '✅ Cliente confirmó venta\n📋 Folio: ' + saleResult.folio + '\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 $' + custPending.total + '\n🏪 ' + custPending.sucursalEntrega + '\n📅 ' + custPending.tiempoEntrega;
+                var _detConf = 'El cliente CONFIRMO su pedido y ya se genero la venta ' + saleResult.folio + ': ' + custPending.customerName + ' — ' + custPending.productName + ' x' + custPending.qty + ' por $' + custPending.total + ', entrega en ' + custPending.sucursalEntrega + ' (' + custPending.tiempoEntrega + ').';
                 for (var ap = 0; ap < admPhones.length; ap++) {
-                  await sendWhatsAppReply(admPhones[ap], '✅ Cliente confirmó venta\n📋 Folio: ' + saleResult.folio + '\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 $' + custPending.total + '\n🏪 ' + custPending.sucursalEntrega + '\n📅 ' + custPending.tiempoEntrega);
+                  await notifyAdminWA(admPhones[ap], _msgConf, _detConf);
                 }
               }
               await deletePendingSale(from);
@@ -3371,8 +3373,9 @@ exports.handler = async function(event) {
             if (cfgData3 && cfgData3[0]) {
               var cfg3 = typeof cfgData3[0].value === 'string' ? JSON.parse(cfgData3[0].value) : cfgData3[0].value;
               var admPhones2 = cfg3.admin_phones || cfg3.recipients_corte || [];
+              var _detCanc = 'El cliente CANCELO el pedido que estaba pendiente: ' + custPending.customerName + ' — ' + custPending.productName + '. No se genero venta.';
               for (var ap2 = 0; ap2 < admPhones2.length; ap2++) {
-                await sendWhatsAppReply(admPhones2[ap2], '❌ Cliente canceló la venta\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName);
+                await notifyAdminWA(admPhones2[ap2], '❌ Cliente canceló la venta\n👤 ' + custPending.customerName + '\n👁 ' + custPending.productName, _detCanc);
               }
             }
             console.log('[LC Sale] Customer declined');

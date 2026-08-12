@@ -372,8 +372,16 @@ exports.handler = async function(event) {
         console.log('[AUDIT-CRON] DRY RUN — Mensaje WA:\n' + msg);
       } else {
         const adminPhones = await getAdminPhones();
+        // Resumen de UNA línea para la plantilla (si la ventana de 24h del admin está cerrada)
+        const detAud = 'Auditoria de pedidos: '
+          + [ entregadosSinCobrar.length ? entregadosSinCobrar.length + ' entregados sin cobrar' : null,
+              sinRevisionQC.length ? sinRevisionQC.length + ' sin revision QC' : null,
+              esperandoMucho.length ? esperandoMucho.length + ' esperando mas de ' + DIAS_ESPERA_ALERTA + ' dias' : null,
+              conteoVencido.length ? conteoVencido.length + ' sucursal(es) con conteo fisico pendiente' : null
+            ].filter(Boolean).join(', ')
+          + '. Revisa el modulo Auditoria de Pedidos en el sistema.';
         for (const phone of adminPhones) {
-          await sendWA(phone, msg);
+          await notifyAdminWA(phone, msg, detAud);
           await new Promise(r => setTimeout(r, 1000));
         }
       }
