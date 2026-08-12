@@ -89,6 +89,32 @@ async function sendTextMessage(to, text) {
   return data;
 }
 
+// ── ¿La ventana de 24h de este número está ABIERTA? ──
+// WhatsApp solo entrega texto libre si la persona nos escribió en las últimas 24h.
+// ⚠️ Twilio responde 201 "queued" y la falla llega DESPUÉS (error 63016), así que un
+// try/catch NUNCA la detecta (misma trampa que la lección v400) — por eso el respaldo
+// por plantilla del v564 nunca se disparaba y los avisos se perdían en silencio.
+// La única forma confiable es decidirlo ANTES, mirando el último mensaje entrante.
+const _waWinCache = {};
+async function waWindowOpen(phone) {
+  const num = normalizePhone(phone);
+  if (_waWinCache[num] !== undefined) return _waWinCache[num];
+  let open = false;
+  try {
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const url = `${TWILIO_API}?From=${encodeURIComponent('whatsapp:+' + num)}&PageSize=1`;
+    const res = await fetch(url, { headers: { 'Authorization': `Basic ${auth}` } });
+    if (res.ok) {
+      const d = await res.json();
+      const m = (d.messages || [])[0];
+      // 23.5h de margen: si el mensaje está justo en el filo, mejor mandar plantilla
+      if (m && m.date_created) open = (Date.now() - new Date(m.date_created).getTime()) < 23.5 * 3600 * 1000;
+    }
+  } catch (e) { console.warn('[waWindow]', e.message); }
+  _waWinCache[num] = open;
+  return open;
+}
+
 // Send template message via Twilio Content API
 async function sendTemplateMessage(to, contentSid, variables) {
   const toNum = normalizePhone(to);
@@ -264,39 +290,43 @@ exports.handler = async (event) => {
         const adminConfig = await getWhatsAppConfig();
         const adminPhones = adminConfig?.admin_phones || [];
         if (!adminPhones.length) return { statusCode: 400, headers: H, body: JSON.stringify({ error: 'No admin_phones configured' }) };
-        // El texto libre SOLO entra si la ventana de 24h de ese admin está abierta. Si falla
-        // (63016 típicamente) se reintenta con la plantilla aprobada `aviso_panel_admin`
-        // (HXa076…, UTILITY, 1 variable) para que el aviso llegue igual. El detalle de la
-        // plantilla debe ir en UNA sola línea: WhatsApp rechaza variables con saltos de línea.
+        // El texto libre SOLO llega si la ventana de 24h de ESE admin está abierta; si no,
+        // WhatsApp lo tira con 63016 y NO se entera nadie. Por eso la ventana se consulta
+        // ANTES (waWindowOpen) y, si está cerrada, el aviso sale por plantilla aprobada:
+        // primero la propia del aviso (si el caller la manda) y si no la genérica
+        // `aviso_panel_admin` (HXa076…, UTILITY, 1 variable) con el resumen en UNA sola
+        // línea — WhatsApp rechaza variables con saltos de línea.
+        // ⛔ El respaldo NO puede ir en un catch: el POST a Twilio devuelve 201 "queued"
+        // aunque el mensaje falle después (lección v400). Ese fue el hueco del v564.
         const AVISO_TPL = 'HXa076da6bd95ae70ece9545df84036f56';
+        const autoDetalle = String(fallbackDetail || adminMsg)
+          .replace(/\*/g, '')          // el negritas de WhatsApp no aporta en la plantilla
+          .replace(/\s*\n+\s*/g, ' · ') // la variable NO puede llevar saltos de línea
+          .replace(/\s+/g, ' ')
+          .trim().slice(0, 600);
         const adminResults = [];
         for (const phone of adminPhones) {
+          const abierta = await waWindowOpen(phone);
+          if (abierta) {
+            try {
+              const r = await sendTextMessage(phone, adminMsg);
+              adminResults.push({ phone, ok: true, id: r.sid, via: 'texto' });
+              continue;
+            } catch (err) { console.warn('[send_admin] texto libre falló:', err.message); }
+          }
+          // Ventana cerrada (o el texto libre reventó) → plantilla, para que el aviso NO se pierda
+          if (fallbackTemplate && fallbackTemplate.sid) {
+            try {
+              const rT = await sendTemplateMessage(phone, fallbackTemplate.sid, fallbackTemplate.vars || {});
+              adminResults.push({ phone, ok: true, id: rT.sid, via: 'template' });
+              continue;
+            } catch (errT) { console.warn('[send_admin] plantilla específica falló:', errT.message); }
+          }
           try {
-            const r = await sendTextMessage(phone, adminMsg);
-            adminResults.push({ phone, ok: true, id: r.sid });
-          } catch (err) {
-            // 1º respaldo: plantilla específica del aviso (formato completo), si el caller la manda
-            // y ya está aprobada por Meta. Si aún no lo está, Twilio falla y seguimos al 2º respaldo.
-            if (fallbackTemplate && fallbackTemplate.sid) {
-              try {
-                const rT = await sendTemplateMessage(phone, fallbackTemplate.sid, fallbackTemplate.vars || {});
-                adminResults.push({ phone, ok: true, id: rT.sid, via: 'template' });
-                continue;
-              } catch (errT) { console.warn('[send_admin] plantilla específica falló:', errT.message); }
-            }
-            // 2º respaldo: plantilla genérica aprobada (resumen en una línea)
-            if (fallbackDetail) {
-              const det = String(fallbackDetail).replace(/\s+/g, ' ').trim().slice(0, 600);
-              try {
-                const r2 = await sendTemplateMessage(phone, AVISO_TPL, { '1': det });
-                adminResults.push({ phone, ok: true, id: r2.sid, via: 'template_generico' });
-                continue;
-              } catch (err2) {
-                adminResults.push({ phone, ok: false, error: err.message + ' | tpl: ' + err2.message });
-                continue;
-              }
-            }
-            adminResults.push({ phone, ok: false, error: err.message });
+            const r2 = await sendTemplateMessage(phone, AVISO_TPL, { '1': autoDetalle });
+            adminResults.push({ phone, ok: true, id: r2.sid, via: 'template_generico' });
+          } catch (err2) {
+            adminResults.push({ phone, ok: false, error: err2.message });
           }
         }
         const adminSent = adminResults.filter(r => r.ok).length;

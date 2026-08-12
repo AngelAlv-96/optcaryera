@@ -40,6 +40,57 @@ function normalizePhone(phone) {
   return num;
 }
 
+// ── ¿La ventana de 24h de este número está ABIERTA? ──
+// El texto libre solo llega dentro de ella. ⚠️ Twilio responde 201 "queued" y la falla
+// (63016) llega DESPUÉS, así que revisar la respuesta del POST NUNCA la detecta
+// (lección v400) — se decide ANTES, mirando el último mensaje entrante de ese número.
+const _waWinCache = {};
+async function waWindowOpen(phone) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) return true;
+  const num = normalizePhone(phone);
+  if (_waWinCache[num] !== undefined) return _waWinCache[num];
+  let open = false;
+  try {
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json?From=${encodeURIComponent('whatsapp:+' + num)}&PageSize=1`;
+    const res = await fetch(url, { headers: { 'Authorization': `Basic ${auth}` } });
+    if (res.ok) {
+      const d = await res.json();
+      const m = (d.messages || [])[0];
+      if (m && m.date_created) open = (Date.now() - new Date(m.date_created).getTime()) < 23.5 * 3600 * 1000;
+    }
+  } catch (e) { console.warn('[waWindow]', e.message); }
+  _waWinCache[num] = open;
+  return open;
+}
+
+// Aviso al admin que NO se pierde: texto completo con la ventana abierta,
+// plantilla aprobada `aviso_panel_admin` (resumen de UNA línea) si está cerrada.
+const AVISO_ADMIN_TPL = 'HXa076da6bd95ae70ece9545df84036f56';
+async function notifyAdminWA(phone, richText, detalle) {
+  if (await waWindowOpen(phone)) return sendWA(phone, richText);
+  if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_WA) return false;
+  const det = String(detalle || richText).replace(/\*/g, '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim().slice(0, 600);
+  const toNum = normalizePhone(phone);
+  const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+  const fromNum = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : `whatsapp:${TWILIO_WA}`;
+  const params = new URLSearchParams();
+  params.append('From', fromNum);
+  params.append('To', `whatsapp:+${toNum}`);
+  params.append('ContentSid', AVISO_ADMIN_TPL);
+  params.append('ContentVariables', JSON.stringify({ '1': det }));
+  try {
+    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json`, {
+      method: 'POST',
+      headers: { 'Authorization': `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+    const data = await res.json();
+    if (data.error_code) { console.error(`[AUDIT-CRON] WA tpl error ${data.error_code}: ${data.message}`); return false; }
+    return true;
+  } catch (e) { console.error('[AUDIT-CRON] WA tpl failed:', e.message); return false; }
+}
+
 async function sendWA(to, message) {
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_WA) return false;
   const toNum = normalizePhone(to);

@@ -54,6 +54,39 @@ async function sendWA(to, text) {
   } catch (e) { console.warn('WA send failed:', e.message); }
 }
 
+// ── ¿La ventana de 24h de este número está ABIERTA? ──
+// El texto libre solo llega dentro de ella. ⚠️ Twilio responde 201 "queued" y la falla
+// (63016) aparece DESPUÉS, así que un try/catch NUNCA la ve (lección v400) — hay que
+// decidirlo ANTES, mirando el último mensaje entrante de ese número.
+const _waWinCache = {};
+async function waWindowOpen(phone) {
+  if (!TWILIO_SID || !TWILIO_TOKEN) return true;
+  const num = normalizePhone(phone);
+  if (_waWinCache[num] !== undefined) return _waWinCache[num];
+  let open = false;
+  try {
+    const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Messages.json?From=${encodeURIComponent('whatsapp:+' + num)}&PageSize=1`;
+    const res = await fetch(url, { headers: { 'Authorization': `Basic ${auth}` } });
+    if (res.ok) {
+      const d = await res.json();
+      const m = (d.messages || [])[0];
+      if (m && m.date_created) open = (Date.now() - new Date(m.date_created).getTime()) < 23.5 * 3600 * 1000;
+    }
+  } catch (e) { console.warn('[waWindow]', e.message); }
+  _waWinCache[num] = open;
+  return open;
+}
+
+// Aviso al admin que NO se pierde: texto completo si la ventana está abierta,
+// plantilla aprobada `aviso_panel_admin` (resumen en UNA línea) si está cerrada.
+const AVISO_ADMIN_TPL = 'HXa076da6bd95ae70ece9545df84036f56';
+async function notifyAdminWA(phone, richText, detalle) {
+  if (await waWindowOpen(phone)) return sendWA(phone, richText);
+  const det = String(detalle || richText).replace(/\*/g, '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim().slice(0, 600);
+  return sendWATemplate(phone, AVISO_ADMIN_TPL, { '1': det });
+}
+
 async function sendWATemplate(to, contentSid, vars) {
   if (!TWILIO_SID || !TWILIO_TOKEN) return;
   try {
@@ -183,7 +216,10 @@ exports.handler = async (event) => {
           const admMsg = registered
             ? `🛡️ *Visión Segura PAGADA y activada*\n\n👤 ${vsPend.nombre}\n📱 ${vsPend.phone}\n📦 Plan: ${planLabel} ($${amount.toFixed(2)})\n👓 Armazón: ${vsPend.id_armazon}\n\nProtección registrada (12 meses). Verifica que el armazón sea el correcto en el módulo Visión Segura.`
             : `⚠️ *Visión Segura — pago recibido, NO se registró*\n\n👤 ${vsPend.nombre}\n📱 ${vsPend.phone}\n📦 ${planLabel} ($${amount.toFixed(2)})\n👓 Armazón: ${vsPend.id_armazon}\n\nEse armazón YA tenía protección vigente (o falló el registro). Revísalo manualmente.`;
-          for (const ap of (waCfg.admin_phones || [])) { try { await sendWA(ap, admMsg); } catch (e) {} }
+          const detVS = registered
+            ? `Vision Segura PAGADA y activada: ${vsPend.nombre} (${vsPend.phone}), plan ${planLabel} $${amount.toFixed(2)}, armazon ${vsPend.id_armazon}. Verifica que el armazon sea el correcto.`
+            : `Vision Segura: se recibio el pago de ${vsPend.nombre} (${vsPend.phone}) plan ${planLabel} $${amount.toFixed(2)} pero NO se registro — el armazon ${vsPend.id_armazon} ya tenia proteccion vigente o fallo el registro. Revisalo manualmente.`;
+          for (const ap of (waCfg.admin_phones || [])) { try { await notifyAdminWA(ap, admMsg, detVS); } catch (e) {} }
           if (registered && vsPend.phone) {
             await sendWA(vsPend.phone, `💙 ¡Listo! Tu Visión Segura ${planLabel} quedó activada por 12 meses para tus lentes. Gracias — Ópticas Car & Era`);
           }
@@ -299,7 +335,8 @@ exports.handler = async (event) => {
       // Recipients corte (branch managers) also get notified
       (waCfg.recipients_corte || []).forEach(p => notifyPhones.add(p));
 
-      const promises = [...notifyPhones].map(phone => sendWA(phone, msg));
+      const detPago = `Pago en linea recibido: folio ${reference} · $${amount.toFixed(2)} via Clip · ${sucursal}. ${String(estadoFinal).replace(/\*/g, '')}`;
+      const promises = [...notifyPhones].map(phone => notifyAdminWA(phone, msg, detPago));
       await Promise.allSettled(promises);
       console.log(`Clip webhook: WA notifications sent to ${notifyPhones.size} recipients`);
 

@@ -7188,12 +7188,37 @@ function _cerrarEntregaScan() {
 }
 
 var _entregaPromoInfo = null; // {pares, presentes, faltan[]} del pedido de promo en curso (Entrega)
+// Ventas SIN orden de laboratorio (lentes de contacto, accesorios, soluciones, ventas Online):
+// no hay orden que marcar como entregada, pero SÍ hay que poder cobrar el saldo desde aquí.
+var _entregaItems = [];       // renglones de venta_items para mostrar qué se entrega
+var _entregaSinOrdenes = false;
+
+// Varias ventas del mismo paciente sin orden → que la cajera elija cuál cobrar
+function _renderEntregaPickerVentas(ventas, query) {
+  var results = document.getElementById('entrega-results');
+  if (!results) return;
+  var h = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Se encontraron ' + ventas.length + ' ventas de "<strong style="color:var(--white)">' + String(query||'').replace(/</g,'&lt;') + '</strong>" sin orden de laboratorio. Elige cuál vas a cobrar/entregar:</div>';
+  ventas.forEach(function(v) {
+    var saldo = Number(v.saldo) || 0;
+    var pac = v.pacientes ? ((v.pacientes.nombre||'') + ' ' + (v.pacientes.apellidos||'')).trim() : '';
+    var f = new Date(v.created_at).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'2-digit'});
+    h += '<div onclick="buscarParaEntrega(\'' + String(v.folio).replace(/'/g,"\\'") + '\')" style="padding:11px 12px;background:var(--surface2);border:1px solid rgba(255,255,255,0.07);border-radius:8px;margin-bottom:6px;cursor:pointer">';
+    h += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;font-weight:800;color:var(--beige);background:rgba(226,198,166,0.14);padding:1px 7px;border-radius:6px">' + v.folio + '</span>';
+    h += '<span style="font-size:13px;color:var(--white);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + pac + '</span>';
+    h += '<span style="font-size:12px;font-weight:700;color:' + (saldo > 0 ? '#d4b84a' : '#72c47e') + '">' + (saldo > 0 ? 'Saldo $' + saldo.toLocaleString('es-MX') : 'Liquidada') + '</span></div>';
+    h += '<div style="font-size:10px;color:var(--muted);margin-top:3px">' + _sucDisplay(v.sucursal) + (v.sucursal_entrega && v.sucursal_entrega !== v.sucursal ? ' · 📍 se recoge en ' + _sucDisplay(v.sucursal_entrega) : '') + ' · ' + f + '</div>';
+    h += '</div>';
+  });
+  results.innerHTML = h;
+}
 async function buscarParaEntrega(query) {
   if (!query || !query.trim()) return;
   query = query.trim();
   var results = document.getElementById('entrega-results');
   if (!results) return;
   results.innerHTML = '<span class="spinner-sm"></span> Buscando...';
+  _entregaSinOrdenes = false;
+  _entregaItems = [];
 
   try {
     var ordenes = [];
@@ -7201,6 +7226,7 @@ async function buscarParaEntrega(query) {
 
     // Helper: buscar órdenes por paciente_id como fallback
     var _entregaSelectOrd = 'id,estado_lab,tipo_lente,armazon,material,tratamiento,notas_laboratorio,sucursal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
+    var _entregaSelectVta = 'id,folio,total,pagado,saldo,estado,sucursal,sucursal_entrega,token_portal,created_at,paciente_id,pacientes(nombre,apellidos,telefono)';
     async function _fallbackByPaciente(pacId) {
       var { data: ords2 } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).eq('paciente_id', pacId).order('created_at',{ascending:false}).limit(30);
       return (ords2 || []).filter(function(o){ return o.estado_lab !== 'Entregado' && o.estado_lab !== 'Cancelado'; });
@@ -7210,7 +7236,7 @@ async function buscarParaEntrega(query) {
     var tokenMatch = query.match(/[?&]t=([a-z0-9]+)/i);
     if (tokenMatch) {
       var token = tokenMatch[1];
-      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('token_portal', token).single();
+      var { data: venta } = await db.from('ventas').select(_entregaSelectVta).eq('token_portal', token).single();
       if (venta) {
         ventaData = venta;
         ordenes = await buscarOrdenesPorFolio(venta.folio, { incluirEntregadas: true, select: _entregaSelectOrd });
@@ -7226,7 +7252,7 @@ async function buscarParaEntrega(query) {
       var _fBase = _folioBase(query);
       ordenes = await buscarOrdenesPorFolio(_fBase, { incluirEntregadas: true, select: _entregaSelectOrd });
       // Buscar la venta asociada por folio base (string — soporta numérico y prefijado V; folio es TEXT)
-      var { data: venta } = await db.from('ventas').select('id,folio,total,pagado,saldo,estado,sucursal,paciente_id,pacientes(nombre,apellidos,telefono)').eq('folio', _fBase).maybeSingle();
+      var { data: venta } = await db.from('ventas').select(_entregaSelectVta).eq('folio', _fBase).maybeSingle();
       if (venta) ventaData = venta;
       // Fallback: si encontramos la venta pero no órdenes, buscar por paciente_id
       if (!ordenes.length && ventaData && ventaData.paciente_id) ordenes = await _fallbackByPaciente(ventaData.paciente_id);
@@ -7234,8 +7260,10 @@ async function buscarParaEntrega(query) {
 
     // 3. Buscar por nombre O TELÉFONO (v540: antes un tel de 10 dígitos matcheaba el regex de
     //    folio y cortaba esta rama → "no se encontraron órdenes")
+    var _pacsBusq = null;
     if (!ordenes.length && !_hayFolio && !tokenMatch) {
       var pacs = await _pacientesQueMatchean(query, 10);
+      _pacsBusq = pacs;
       if (pacs && pacs.length) {
         var pacIds = pacs.map(function(p){return p.id});
         var { data: ords } = await db.from('ordenes_laboratorio').select(_entregaSelectOrd).in('paciente_id', pacIds).neq('estado_lab','Entregado').neq('estado_lab','Cancelado').order('created_at',{ascending:false}).limit(30);
@@ -7252,14 +7280,39 @@ async function buscarParaEntrega(query) {
       }
     }
 
+    // 3b. VENTAS SIN ORDEN DE LABORATORIO (lentes de contacto, accesorios, soluciones, ventas
+    //     Online): no generan orden, así que las ramas de arriba no encuentran nada. Antes eso
+    //     era "No se encontraron órdenes" y la sucursal no tenía cómo cobrar el saldo desde aquí.
+    if (!ordenes.length && !ventaData && !_hayFolio && !tokenMatch && _pacsBusq && _pacsBusq.length) {
+      var _pIds = _pacsBusq.map(function(p){ return p.id; });
+      var { data: _vSinOrd } = await db.from('ventas').select(_entregaSelectVta)
+        .in('paciente_id', _pIds).neq('estado', 'Cancelada')
+        .order('created_at', { ascending: false }).limit(12);
+      var _cands = (_vSinOrd || []).filter(function(v){ return Number(v.saldo) > 0; });
+      if (!_cands.length) _cands = (_vSinOrd || []).slice(0, 6);
+      if (_cands.length === 1) ventaData = _cands[0];
+      else if (_cands.length > 1) { _renderEntregaPickerVentas(_cands, query); return; }
+    }
+
     // NOTA: las órdenes de otras sucursales se muestran como aviso (NO se entregan aquí hasta
     // RECIBIRLAS en Bitácora de Pedidos → "📥 Recibir de otra sucursal"). El módulo Entrega es
     // solo para entregar lentes; el traslado/recepción vive en Bitácora (abrirRecibirOtraSuc).
     // El filtrado por-sucursal de la entrega normal se resuelve por orden en _renderEntregaResultados.
 
-    if (!ordenes.length) {
-      results.innerHTML = '<div style="padding:20px;text-align:center"><div style="font-size:24px;margin-bottom:8px">🔍</div><div style="color:var(--muted);font-size:13px">No se encontraron órdenes para "<strong style="color:var(--white)">' + query.replace(/</g,'&lt;') + '</strong>"</div></div>';
+    // Sin órdenes NI venta → de verdad no hay nada
+    if (!ordenes.length && !ventaData) {
+      results.innerHTML = '<div style="padding:20px;text-align:center"><div style="font-size:24px;margin-bottom:8px">🔍</div><div style="color:var(--muted);font-size:13px">No se encontró nada para "<strong style="color:var(--white)">' + query.replace(/</g,'&lt;') + '</strong>"</div></div>';
       return;
+    }
+
+    // Venta SIN órdenes de lab (LC, accesorios, soluciones, ventas Online): se cobra el saldo y
+    // se entrega el producto igual, solo que no hay orden que marcar como Entregada.
+    _entregaItems = [];
+    if (!ordenes.length && ventaData) {
+      try {
+        var { data: _vItems } = await db.from('venta_items').select('descripcion,cantidad,subtotal').eq('venta_id', ventaData.id);
+        _entregaItems = _vItems || [];
+      } catch(e) { console.warn('[Entrega] items:', e.message); }
     }
 
     _entregaVentaData = ventaData;
@@ -7289,15 +7342,18 @@ async function _renderEntregaResultados(ordenes, ventaData) {
   var results = document.getElementById('entrega-results');
   if (!results) return;
 
-  // Extraer nombre del paciente
-  var pac = ordenes[0]?.pacientes;
+  // Venta sin órdenes de lab (LC, accesorios, Online): se cobra y se entrega igual
+  _entregaSinOrdenes = !ordenes.length && !!ventaData;
+
+  // Extraer nombre del paciente (de la orden, o de la venta si no hay órdenes)
+  var pac = ordenes[0]?.pacientes || ventaData?.pacientes;
   var nombre = pac ? (pac.nombre||'') + ' ' + (pac.apellidos||'') : '';
   nombre = nombre.trim() || 'Paciente';
   var tel = pac?.telefono || '';
 
   // Extraer folio
   var folioMatch = (ordenes[0]?.notas_laboratorio||'').match(/Folio: (\S+)/);
-  var folio = folioMatch ? folioMatch[1] : '—';
+  var folio = folioMatch ? folioMatch[1] : (ventaData?.folio || '—');
 
   var h = '';
 
@@ -7359,8 +7415,30 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     else h += '<div style="font-size:11px;color:var(--muted);margin-top:3px">Verifica que tengas los ' + _pi.pares + ' pares físicamente antes de entregar.</div>';
     h += '</div>';
   }
-  h += '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">ÓRDENES (' + ordenes.length + ')</div>';
-  var _entHayPropias = false; // ¿hay al menos una orden de ESTA sucursal lista para entregar aquí?
+  // ── VENTA SIN ÓRDENES DE LAB ── se listan los productos vendidos en vez de las órdenes
+  if (_entregaSinOrdenes) {
+    var _vs = ventaData.sucursal, _ve = ventaData.sucursal_entrega, _vMi = currentUser?.sucursal;
+    h += '<div style="margin-bottom:14px">';
+    h += '<div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">PRODUCTOS DE LA VENTA</div>';
+    if (_entregaItems.length) {
+      _entregaItems.forEach(function(it) {
+        h += '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(226,198,166,0.05);border:1px solid rgba(226,198,166,0.15);border-radius:8px;margin-bottom:6px">';
+        h += '<span style="font-size:16px">📦</span><div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--white);font-weight:600">' + (it.descripcion || 'Producto') + '</div>';
+        h += '<div style="font-size:10px;color:var(--muted);margin-top:2px">Cantidad: ' + (it.cantidad || 1) + '</div></div>';
+        h += '<span style="font-size:12px;color:var(--muted);white-space:nowrap">$' + Number(it.subtotal||0).toLocaleString('es-MX',{minimumFractionDigits:2}) + '</span></div>';
+      });
+    } else {
+      h += '<div style="font-size:12px;color:var(--muted);padding:8px">Sin renglones capturados.</div>';
+    }
+    h += '<div style="margin-top:8px;font-size:11px;color:#38bdf8;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.2);border-radius:6px;padding:8px 10px">ℹ️ Esta venta <strong>no lleva orden de laboratorio</strong> (lentes de contacto, accesorios o venta en línea). Cobra aquí el saldo y entrégale el producto — no hay orden que marcar.</div>';
+    if (_ve && _vs && _ve !== _vs) {
+      h += '<div style="margin-top:6px;font-size:11px;color:#d4b84a;background:rgba(212,184,74,0.08);border:1px solid rgba(212,184,74,0.22);border-radius:6px;padding:8px 10px">📍 Vendida en <strong>' + _sucDisplay(_vs) + '</strong> · se recoge en <strong>' + _sucDisplay(_ve) + '</strong>' + (_vMi && _ve === _vMi ? ' (aquí). El pago entra a tu caja.' : '') + '</div>';
+    }
+    h += '</div>';
+  }
+
+  h += _entregaSinOrdenes ? '' : ('<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:8px">ÓRDENES (' + ordenes.length + ')</div>');
+  var _entHayPropias = _entregaSinOrdenes; // ¿hay al menos una orden de ESTA sucursal lista para entregar aquí?
   var _entHayOtra = false;    // ¿hay alguna orden de OTRA sucursal (para mostrar el hint del botón)?
   var _miSuc = currentUser?.sucursal;
   var _esSucRol = currentUser?.rol === 'sucursal' && _miSuc && _miSuc !== 'Todas';
@@ -7413,12 +7491,15 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     if (isEntregado) h += '<span style="font-size:12px">🏁</span>';
     h += '</label>';
   });
-  h += '</div>';
+  if (!_entregaSinOrdenes) h += '</div>';
   if (_entHayOtra) h += _hintHTML('recibir-otra-suc', 'Hay un pedido de OTRA sucursal. Para entregarlo aquí, primero recíbelo en Bitácora de Pedidos → 📥 Recibir de otra sucursal.');
 
   // Asesor que entrega (select con empleados de la sucursal)
   await cargarAsesoresConfig();
-  var sucEntrega = ventaData?.sucursal || ordenes[0]?.sucursal || currentUser?.sucursal || 'Todas';
+  // Para el dropdown de asesor conviene la sucursal donde SE ENTREGA (en Online, 'sucursal' es
+  // literalmente "Online" y no tiene asesores propios)
+  var sucEntrega = ordenes[0]?.sucursal || (currentUser?.sucursal && currentUser.sucursal !== 'Todas' ? currentUser.sucursal : null)
+    || ventaData?.sucursal_entrega || ventaData?.sucursal || 'Todas';
   var asesoresLista = getAsesoresPorSucursal(sucEntrega);
   var currentNombre = currentUser?.nombre || '';
   h += '<div style="margin-bottom:14px"><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Asesor que entrega</label>';
@@ -7434,13 +7515,18 @@ async function _renderEntregaResultados(ordenes, ventaData) {
     var saldo = ventaData ? (Number(ventaData.saldo) || 0) : 0;
     h += '<div style="display:flex;gap:8px">';
     if (saldo > 0) {
-      h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar $' + saldo.toLocaleString('es-MX') + ' y entregar</button>';
-    } else {
+      h += '<button id="btn-cobrar-entregar" class="btn btn-p" onclick="_cobrarYEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">💰 Cobrar $' + saldo.toLocaleString('es-MX') + (_entregaSinOrdenes ? '' : ' y entregar') + '</button>';
+    } else if (!_entregaSinOrdenes) {
       h += '<button id="btn-solo-entregar" class="btn btn-p" onclick="_soloEntregar()" style="flex:1;padding:14px;font-size:14px;font-weight:700">✅ Marcar como entregados</button>';
+    } else {
+      // Sin órdenes y sin saldo: no hay nada que registrar, solo entregar el producto
+      h += '<div style="flex:1;text-align:center;font-size:12px;color:#72c47e;padding:12px;background:rgba(114,196,126,0.08);border:1px solid rgba(114,196,126,0.2);border-radius:8px">✅ Ya está pagada — entrégale el producto</div>';
     }
     h += '</div>';
     if (saldo > 0) {
-      h += '<div style="text-align:center;font-size:11px;color:#79c47e;margin-top:8px">💡 Este botón hace todo en un paso: cobra el saldo de $' + saldo.toLocaleString('es-MX') + ' Y entrega los lentes. No necesitas otro botón.</div>';
+      h += '<div style="text-align:center;font-size:11px;color:#79c47e;margin-top:8px">💡 ' + (_entregaSinOrdenes
+        ? 'Cobra aquí el saldo de $' + saldo.toLocaleString('es-MX') + ' y entrégale el producto. El pago se registra en el folio ' + folio + ' y entra a tu caja.'
+        : 'Este botón hace todo en un paso: cobra el saldo de $' + saldo.toLocaleString('es-MX') + ' Y entrega los lentes. No necesitas otro botón.') + '</div>';
     }
   } else {
     h += '<div style="text-align:center;font-size:12px;color:#38bdf8;padding:6px">Este pedido es de otra sucursal. Recíbelo primero en Bitácora de Pedidos → 📥 Recibir de otra sucursal, y luego entrégalo aquí.</div>';
@@ -7718,11 +7804,12 @@ function _entUpdateConv() {
 async function _cobrarYEntregar() {
   if (_actionBusy['entregarLentes']) { toast('Ya se está procesando...', true); return; }
   var checks = document.querySelectorAll('.entrega-check:checked:not(:disabled)');
-  if (!checks.length) { toast('Selecciona al menos una orden para entregar', true); return; }
+  // Venta sin orden de lab (LC/accesorios/Online): no hay checkbox que marcar, solo se cobra
+  if (!checks.length && !_entregaSinOrdenes) { toast('Selecciona al menos una orden para entregar', true); return; }
 
   var asesor = (document.getElementById('entrega-asesor')?.value || '').trim();
   if (!asesor) { toast('Ingresa el nombre del asesor', true); return; }
-  if (!_confirmPromoCompleto()) return;
+  if (!_entregaSinOrdenes && !_confirmPromoCompleto()) return;
 
   var capturado = parseFloat(document.getElementById('entrega-monto')?.value);
   var metodo = document.getElementById('entrega-metodo')?.value || 'Efectivo';
@@ -7802,10 +7889,22 @@ async function _cobrarYEntregar() {
       }
     } catch(eComp) { console.warn('[comprobante cobrar-entregar]', eComp); }
 
-    // 3. Marcar como entregados
+    // 3. Marcar como entregados (si hay órdenes; en LC/accesorios/Online no hay ninguna)
     var ids = [];
     checks.forEach(function(c) { ids.push(c.value); });
-    await _marcarEntregados(ids, asesor);
+    if (ids.length) {
+      await _marcarEntregados(ids, asesor);
+    } else {
+      // Sin órdenes: el cobro ES la operación. Se deja constancia de quién entregó en la venta.
+      try {
+        var { data: _vN } = await db.from('ventas').select('notas').eq('id', v.id).single();
+        var _ahoraE = new Date().toLocaleString('es-MX', { timeZone: 'America/Chihuahua', day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', hour12:false });
+        await db.from('ventas').update({ notas: ((_vN?.notas || '') + ' | Entregó: ' + asesor + ' (' + _ahoraE + ')').trim() }).eq('id', v.id);
+      } catch(eN) { console.warn('[Entrega sin orden] nota:', eN.message); }
+      toast('✅ Producto entregado · venta ' + v.folio);
+      _entregaVentaData = null;
+      if (typeof loadDash === 'function') loadDash();
+    }
     _exito = true;
     // Cerrar el modal SÍ O SÍ (por si _marcarEntregados no alcanzó a cerrarlo) y dejar el botón en estado de éxito
     if (btn) { btn.disabled = true; btn.textContent = '✅ Cobrado y entregado'; }
@@ -24043,6 +24142,17 @@ async function cargarHistorialVentas() {
       if (hvSuc !== 'Todas') qName = qName.eq('sucursal', hvSuc);
       const { data: nd } = await qName;
       byName = nd || [];
+      // Buscar por NOMBRE también debe encontrar las ventas que se recogen/entregan en mi
+      // sucursal aunque no sean "mías" (Online de Clari o vendidas en otra sucursal): si no,
+      // la cajera busca "Mariel" y no aparece nada aunque el saldo lo tenga que cobrar ella.
+      if (hvSuc !== 'Todas') {
+        try {
+          const { data: ndEnt } = await db.from('ventas').select('*, pacientes(nombre, apellidos, telefono)')
+            .in('paciente_id', ids).eq('sucursal_entrega', hvSuc).neq('sucursal', hvSuc)
+            .order('created_at',{ascending:false}).range(0,49);
+          if (ndEnt?.length) byName = byName.concat(ndEnt);
+        } catch(e) { console.warn('Busqueda por nombre + entrega:', e); }
+      }
     }
     // Merge sin duplicados
     const seen = {};

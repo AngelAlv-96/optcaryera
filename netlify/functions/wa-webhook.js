@@ -1347,6 +1347,48 @@ async function sendWhatsAppReply(to, text) {
   }
 }
 
+// ── ¿La ventana de 24h de este número está ABIERTA? ──
+// WhatsApp solo entrega texto libre si la persona nos escribió en las últimas 24h.
+// ⚠️ Twilio responde 201 "queued" y la falla llega DESPUÉS (error 63016), así que un
+// try/catch NUNCA la detecta (misma trampa que la lección v400). Por eso se decide ANTES,
+// mirando el último mensaje ENTRANTE de ese número.
+var _waWinCache = {};
+async function waWindowOpen(phone) {
+  var num = String(phone || '').replace(/[\s\-\(\)\+]/g, '');
+  if (num.length === 10) num = '521' + num;
+  if (num.length === 12 && num.startsWith('52') && num[2] !== '1') num = '521' + num.slice(2);
+  if (_waWinCache[num] !== undefined) return _waWinCache[num];
+  var open = false;
+  try {
+    var url = TWILIO_API_URL + '?From=' + encodeURIComponent('whatsapp:+' + num) + '&PageSize=1';
+    var res = await fetch(url, { headers: { 'Authorization': twilioAuth() } });
+    if (res.ok) {
+      var d = await res.json();
+      var m = (d.messages || [])[0];
+      // 23.5h de margen: en el filo conviene mandar plantilla
+      if (m && m.date_created) open = (Date.now() - new Date(m.date_created).getTime()) < 23.5 * 3600 * 1000;
+    }
+  } catch (e) { console.warn('[waWindow] ' + e.message); }
+  _waWinCache[num] = open;
+  return open;
+}
+
+// ── AVISO AL ADMIN QUE NO SE PIERDE ──
+// Con la ventana abierta va el texto completo (con formato); cerrada, sale por plantilla
+// aprobada: la propia del aviso si se pasa, si no la genérica `aviso_panel_admin`.
+var AVISO_ADMIN_TPL = 'HXa076da6bd95ae70ece9545df84036f56';
+async function notifyAdminWA(phone, richText, detalle, tpl) {
+  try {
+    if (await waWindowOpen(phone)) { await sendWhatsAppReply(phone, richText); return true; }
+    if (tpl && tpl.sid) {
+      if (await sendWhatsAppTemplate(phone, tpl.sid, tpl.vars || {})) return true;
+    }
+    // La variable de plantilla NO admite saltos de línea
+    var det = String(detalle || richText).replace(/\*/g, '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim().slice(0, 600);
+    return await sendWhatsAppTemplate(phone, AVISO_ADMIN_TPL, { '1': det }, richText);
+  } catch (e) { console.warn('[notifyAdminWA] ' + e.message); return false; }
+}
+
 // Envía plantilla aprobada (atraviesa ventana 24h). Si falla, cae a freeform con fallbackText.
 async function sendWhatsAppTemplate(to, templateSid, vars, fallbackText) {
   var toNum = to.replace(/[\s\-\(\)\+]/g, '');
@@ -2740,8 +2782,13 @@ async function notifyAdminPendingSale(saleData, customerPhone) {
     + '✅ *APROBAR 3 dias* (o la fecha/tiempo)\n'
     + '❌ *RECHAZAR*';
   
+  // Resumen de UNA línea para la plantilla (cuando la ventana de 24h del admin está cerrada)
+  var detalle = (saleData.isRecompra ? 'RECOMPRA LC' : 'Nueva venta Clari') + ' pendiente de aprobar: '
+    + saleData.customerName + ' (tel ' + customerPhone + ') — ' + saleData.productName
+    + ' x' + saleData.qty + ' por $' + saleData.total + ', entrega en ' + saleData.sucursalEntrega
+    + '. Responde APROBAR <tiempo de entrega> o RECHAZAR por WhatsApp.';
   for (var i = 0; i < adminPhones.length; i++) {
-    await sendWhatsAppReply(adminPhones[i], msg);
+    await notifyAdminWA(adminPhones[i], msg, detalle);
   }
 }
 
@@ -2836,7 +2883,8 @@ async function notifyAdminVS(phone, vsRes) {
       + '📦 Plan: ' + vsRes.label + ' ($' + vsRes.monto + ')\n'
       + '👓 Armazón: ' + vsRes.armazon + '\n\n'
       + 'Al pagar, la protección se registra sola y se liga a ese armazón. Verifica que sea el correcto.';
-    for (var i = 0; i < adminPhones.length; i++) { try { await sendWhatsAppReply(adminPhones[i], msg); } catch(e){} }
+    var detVS = 'Vision Segura — link enviado por Clari a ' + vsRes.nombre + ' (' + phone + '): plan ' + vsRes.label + ' $' + vsRes.monto + ', armazon ' + vsRes.armazon;
+    for (var i = 0; i < adminPhones.length; i++) { try { await notifyAdminWA(adminPhones[i], msg, detVS); } catch(e){} }
   } catch (e) { console.warn('[VS] notifyAdmin error:', e.message); }
 }
 
@@ -3605,8 +3653,9 @@ exports.handler = async function(event) {
                   var cfg = typeof cfgData[0].value === 'string' ? JSON.parse(cfgData[0].value) : cfgData[0].value;
                   var adminPhones = cfg.admin_phones || [];
                   var alertMsg = '⚠️ *Opinión negativa recibida*\n\n👤 ' + (userName || from) + '\n📱 +' + from + '\n🏪 Sucursal: ' + (reviewSuc || 'N/A') + '\n\nEl cliente respondió "Podría mejorar" a la encuesta de opinión. Por favor dale seguimiento.';
+                  var detRev = 'Opinion negativa en la encuesta: ' + (userName || from) + ' (tel ' + from + '), sucursal ' + (reviewSuc || 'N/A') + '. Respondio "Podria mejorar" — dale seguimiento.';
                   for (var ap = 0; ap < adminPhones.length; ap++) {
-                    await sendWhatsAppReply(adminPhones[ap], alertMsg);
+                    await notifyAdminWA(adminPhones[ap], alertMsg, detRev);
                   }
                 }
               } catch(alertErr) { console.warn('[Review] Alert error:', alertErr.message); }
@@ -3801,7 +3850,8 @@ exports.handler = async function(event) {
               var wcfg = typeof waCfgComplaint[0].value === 'string' ? JSON.parse(waCfgComplaint[0].value) : waCfgComplaint[0].value;
               if (wcfg.auth_phones && wcfg.auth_phones.length) alertPhone = wcfg.auth_phones[0];
             }
-            await sendWhatsAppReply(alertPhone, complaintAlert);
+            var detQueja = 'QUEJA / cliente molesto: ' + complaintName + ' (tel ' + from + '). Dijo: "' + userText.substring(0, 160).replace(/"/g, "'") + '". El bot quedo desactivado para esa conversacion — revisa el panel de Clari.';
+            await notifyAdminWA(alertPhone, complaintAlert, detQueja);
             // Auto-disable bot for this conversation
             await disableBotForPhone(from);
           } catch(complaintErr) {
