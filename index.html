@@ -21350,6 +21350,9 @@ async function sicarImportar() {
 
 let gtaOrdenOriginal = null;
 let gtaNuevaOrdenId = null;
+// ¿Ya se precargó la Rx vieja en el formulario de corrección rápida? Evita que un segundo
+// clic en "Corrección rápida" borre la graduación nueva que ya capturó el optometrista.
+let _gtaRxPrefilled = false;
 
 const GTA_MOTIVOS = {
   armazon: ['Armazón roto', 'Soldadura defectuosa', 'Plaquetas dañadas', 'Varilla rota', 'Bisagra dañada', 'Defecto de fábrica', 'Color descascarado', 'Otro'],
@@ -21360,6 +21363,7 @@ const GTA_MOTIVOS = {
 function nuevaGarantia() {
   gtaOrdenOriginal = null;
   gtaNuevaOrdenId = null;
+  _gtaRxPrefilled = false;
   document.getElementById('gta-form-card').style.display = 'none';
   document.getElementById('gta-buscar-card').style.display = '';
   document.getElementById('gta-search-results').innerHTML = '';
@@ -21410,6 +21414,7 @@ async function _iniciarGarantiaManual(pacienteId) {
   if (!pac) { toast('Paciente no encontrado', true); return; }
   document.getElementById('gta-manual-overlay')?.remove();
   var nombre = (pac.nombre + ' ' + (pac.apellidos||'')).trim();
+  _gtaRxPrefilled = false;
   gtaOrdenOriginal = {
     id: null, _manual: true,
     paciente_id: pac.id, pacientes: pac,
@@ -21653,6 +21658,7 @@ async function seleccionarOrdenGarantia(ordenId) {
   const dd = document.getElementById('gta-search-dropdown');
   if (dd) dd.style.display = 'none';
 
+  _gtaRxPrefilled = false;
   gtaOrdenOriginal = o;
   const pac = o.pacientes;
   const nombre = pac ? `${pac.nombre||''} ${pac.apellidos||''}`.trim() : '—';
@@ -21748,6 +21754,7 @@ async function _confirmarGarantiaSicar(creditoId, overlay) {
 
   // Create a pseudo-orden object for the guarantee form
   var nombre = pac ? (pac.nombre + ' ' + (pac.apellidos||'')).trim() : '—';
+  _gtaRxPrefilled = false;
   gtaOrdenOriginal = {
     id: null,
     _is_sicar: true,
@@ -21818,7 +21825,12 @@ function setModoRx(modo) {
   document.getElementById('gta-rx-rapida-btn').className = modo === 'rapida' ? 'btn btn-p btn-sm' : 'btn btn-g btn-sm';
   document.getElementById('gta-rx-hc-btn').className = modo === 'hc' ? 'btn btn-p btn-sm' : 'btn btn-g btn-sm';
 
-  if (modo === 'rapida' && gtaOrdenOriginal) {
+  // ⚠️ La precarga con la Rx VIEJA se hace UNA sola vez por orden. Antes se repetía en cada
+  // clic del botón: si el optometrista ya había capturado la graduación nueva y volvía a tocar
+  // "Corrección rápida" (o iba a HC y regresaba), los 8 campos se reponían con la Rx ORIGINAL
+  // en silencio y la garantía salía impresa con la graduación vieja.
+  if (modo === 'rapida' && gtaOrdenOriginal && !_gtaRxPrefilled) {
+    _gtaRxPrefilled = true;
     const o = gtaOrdenOriginal;
     document.getElementById('gta-od-esf').value = o.od_esfera || '';
     document.getElementById('gta-od-cil').value = o.od_cilindro || '';
@@ -21857,6 +21869,7 @@ function irAHCparaGarantia() {
 
 function cancelarGarantia() {
   gtaOrdenOriginal = null;
+  _gtaRxPrefilled = false;
   document.getElementById('gta-form-card').style.display = 'none';
   document.getElementById('gta-buscar-card').style.display = '';
   document.getElementById('gta-search-results').innerHTML = '';
@@ -21898,7 +21911,29 @@ async function procesarGarantia() {
 
   const tipoLabel = { armazon: 'Armazón', lentes: 'Lentes', rx: 'Rx (graduación)' }[tipo];
 
-  if (!confirm(`¿Procesar garantía de ${tipoLabel}?\n\nFolio original: ${folio}\nNuevo folio: ${nuevoFolio}\nPaciente: ${nombre}\nMotivo: ${motivo}\nAutoriza: ${autoriza}`)) return;
+  // En garantías de Rx se MUESTRA la graduación que va a quedar, y se avisa si quedó idéntica
+  // a la vieja. Sin esto, una captura que no se guardó bien se iba al laboratorio sin que nadie
+  // lo notara hasta que el ticket salía impreso con la Rx anterior.
+  let _rxAviso = '';
+  if (tipo === 'rx') {
+    const _f = (id) => (document.getElementById(id)?.value || '').trim();
+    const _ojo = (e, c, j, a) => [e || '—', c ? c : 'sin cil', j ? 'x' + j : '', a ? 'ADD ' + a : ''].filter(Boolean).join(' ');
+    const _modoRx = document.getElementById('gta-rx-modo')?.value;
+    if (_modoRx === 'rapida') {
+      const nOD = _ojo(_f('gta-od-esf'), _f('gta-od-cil'), _f('gta-od-eje'), _f('gta-od-add'));
+      const nOI = _ojo(_f('gta-oi-esf'), _f('gta-oi-cil'), _f('gta-oi-eje'), _f('gta-oi-add'));
+      const vOD = _ojo(o.od_esfera, o.od_cilindro, o.od_eje, o.od_add);
+      const vOI = _ojo(o.oi_esfera, o.oi_cilindro, o.oi_eje, o.oi_add);
+      _rxAviso = `\n── GRADUACIÓN QUE SE VA A FABRICAR ──\nOD: ${nOD}\nOI: ${nOI}\n`;
+      if (nOD === vOD && nOI === vOI) {
+        _rxAviso += `\n⚠️ OJO: es EXACTAMENTE la misma graduación de la orden original.\nSi ibas a corregirla, cancela y captúrala antes de continuar.\n`;
+      }
+    } else if (_modoRx !== 'hc') {
+      _rxAviso = `\n⚠️ No elegiste cómo corregir la Rx — la garantía saldría con la MISMA graduación de antes.\n`;
+    }
+  }
+
+  if (!confirm(`¿Procesar garantía de ${tipoLabel}?\n\nFolio original: ${folio}\nNuevo folio: ${nuevoFolio}\nPaciente: ${nombre}\nMotivo: ${motivo}\nAutoriza: ${autoriza}\n${_rxAviso}`)) return;
 
   try {
     // Solo anotar la orden original si EXISTE en el sistema (las garantías manuales/SICAR no tienen orden real)
@@ -21922,18 +21957,24 @@ async function procesarGarantia() {
     let gtaAltura = origAltura;
 
     if (tipo === 'rx' && document.getElementById('gta-rx-modo').value === 'rapida') {
-      newRx = {
-        od_esfera: document.getElementById('gta-od-esf').value || o.od_esfera,
-        od_cilindro: document.getElementById('gta-od-cil').value || o.od_cilindro,
-        od_eje: document.getElementById('gta-od-eje').value || o.od_eje,
-        od_add: document.getElementById('gta-od-add').value || o.od_add,
-        oi_esfera: document.getElementById('gta-oi-esf').value || o.oi_esfera,
-        oi_cilindro: document.getElementById('gta-oi-cil').value || o.oi_cilindro,
-        oi_eje: document.getElementById('gta-oi-eje').value || o.oi_eje,
-        oi_add: document.getElementById('gta-oi-add').value || o.oi_add
+      // ⚠️ Lo capturado se respeta TAL CUAL, incluidos los campos que se dejan VACÍOS a
+      // propósito (ej. quitar el cilindro de un ojo). Antes cada campo vacío se rellenaba
+      // con el valor VIEJO (`|| o.od_cilindro`) → era imposible eliminar una graduación y
+      // la garantía salía impresa con la Rx anterior. El formulario ya viene precargado con
+      // la Rx original, así que es la fuente de verdad.
+      var _gv = function(id) { return (document.getElementById(id)?.value || '').trim(); };
+      var _formRx = {
+        od_esfera: _gv('gta-od-esf'), od_cilindro: _gv('gta-od-cil'),
+        od_eje: _gv('gta-od-eje'),    od_add: _gv('gta-od-add'),
+        oi_esfera: _gv('gta-oi-esf'), oi_cilindro: _gv('gta-oi-cil'),
+        oi_eje: _gv('gta-oi-eje'),    oi_add: _gv('gta-oi-add')
       };
-      gtaDip = document.getElementById('gta-dip').value || origDip;
-      gtaAltura = document.getElementById('gta-alt').value || origAltura;
+      // Red de seguridad: si el formulario está COMPLETAMENTE vacío es que nunca se precargó
+      // ni se capturó nada → se conserva la Rx original en vez de borrarla.
+      var _hayAlgo = Object.keys(_formRx).some(function(k){ return _formRx[k] !== ''; });
+      if (_hayAlgo) newRx = _formRx;
+      gtaDip = _gv('gta-dip') || origDip;
+      gtaAltura = _gv('gta-alt') || origAltura;
 
       if (document.getElementById('gta-actualizar-hc').checked && pac?.id) {
         const rxTipo = document.getElementById('gta-rx-tipo')?.value || 'final';
