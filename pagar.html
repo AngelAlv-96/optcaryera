@@ -160,7 +160,10 @@ h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-he
 
   // ── Sucursal (una etiqueta NFC por sucursal: /p/am o /pagar?suc=americas) ──
   var qs = new URLSearchParams(location.search);
-  var slug = (qs.get('suc') || qs.get('s') || '').toLowerCase().trim();
+  // Se acepta como venga: mayúsculas, espacios y acentos (las etiquetas se graban a mano
+  // y una vez bloqueadas ya NO se pueden corregir — más vale que la página perdone).
+  var slug = (qs.get('suc') || qs.get('s') || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
   var sucNombre = SUCS[slug] || '';
   slug = CANON[slug] || slug;   // normalizar para el nombre de la imagen del QR CoDi
   if (sucNombre) {
