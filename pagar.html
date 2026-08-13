@@ -147,16 +147,22 @@ h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-he
   var CLABE = '012164004852202892';
   var WA = '5216563110094';
 
+  // Códigos cortos (am/pi/ma/vi) además del nombre completo: las etiquetas NFC baratas traen
+  // muy poca memoria (36 bytes en las de Angel) y un link largo NO cabe. `caryera.mx/p/am`
+  // ocupa la mitad que `caryera.mx/pagar?suc=americas` y entra sin problema.
   var SUCS = {
-    americas:  'Plaza de las Américas',
-    pinocelli: 'Plaza Pinocelli',
-    magnolia:  'Plaza Magnolia',
-    vittoria:  'Plaza Vía Vittoria'
+    americas:  'Plaza de las Américas',  am: 'Plaza de las Américas',
+    pinocelli: 'Plaza Pinocelli',        pi: 'Plaza Pinocelli',
+    magnolia:  'Plaza Magnolia',         ma: 'Plaza Magnolia',
+    vittoria:  'Plaza Vía Vittoria',     vi: 'Plaza Vía Vittoria'
   };
+  var CANON = { am:'americas', pi:'pinocelli', ma:'magnolia', vi:'vittoria' };
 
-  // ── Sucursal (una etiqueta NFC por sucursal: /pagar?suc=americas) ──
-  var slug = (new URLSearchParams(location.search).get('suc') || '').toLowerCase().trim();
+  // ── Sucursal (una etiqueta NFC por sucursal: /p/am o /pagar?suc=americas) ──
+  var qs = new URLSearchParams(location.search);
+  var slug = (qs.get('suc') || qs.get('s') || '').toLowerCase().trim();
   var sucNombre = SUCS[slug] || '';
+  slug = CANON[slug] || slug;   // normalizar para el nombre de la imagen del QR CoDi
   if (sucNombre) {
     var chip = document.getElementById('suc-chip');
     chip.textContent = '📍 ' + sucNombre;

@@ -157,6 +157,18 @@
   to = "/pagar.html"
   status = 200
 
+# Versión CORTA para las etiquetas NFC: /p/am /p/pi /p/ma /p/vi
+# Las etiquetas baratas traen muy poca memoria (36 bytes) y el link largo no cabe.
+[[redirects]]
+  from = "/p/:suc"
+  to = "/pagar.html?suc=:suc"
+  status = 200
+
+[[redirects]]
+  from = "/p"
+  to = "/pagar.html"
+  status = 200
+
 # Aviso de Privacidad (legal)
 [[redirects]]
   from = "/aviso-privacidad"
