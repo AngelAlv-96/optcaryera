@@ -2189,34 +2189,97 @@ async function lookupLCHistory(phone) {
 }
 
 // ── LC CATALOG LOOKUP ──
-async function lookupLCCatalog(searchText) {
+// ── TIPO de un lente de contacto a partir de su NOMBRE ──
+// Un tórico jamás debe ofrecerse como esférico (ni al revés): son lentes distintos.
+function _lcTipoDe(nombre) {
+  var n = (nombre || '').toLowerCase();
+  if (/toric|astigmat/.test(n)) return 'torico';
+  // Nombre con DOS potencias o con eje (*180) = graduación tórica aunque no diga "tórico"
+  if (/-\d+\.\d{2}\s*-\d+\.\d{2}/.test(n) || /\*\s*\d{1,3}/.test(n)) return 'torico';
+  if (/multifocal|progres|presbi/.test(n)) return 'multifocal';
+  if (/color|gray|grey|blue|green|honey|hazel|brown|sterling|amber|turquesa/.test(n)) return 'color';
+  return 'esferico';
+}
+
+// Familia del producto = el nombre SIN la graduación ("AIR OPTIX HYDRAGLYDE -2.50" → "AIR OPTIX
+// HYDRAGLYDE"). Sirve para no listarle al cliente 15 renglones que son el mismo lente a distinta
+// graduación y al MISMO precio.
+function _lcFamilia(nombre) {
+  return (nombre || '').replace(/\s*[+-]\s*\d+\.\d{2}.*$/, '').replace(/\s{2,}/g, ' ').trim() || nombre;
+}
+
+// Palabras que no aportan al match (y que antes ensuciaban la búsqueda: "for astigmatism"
+// no matcheaba nada y disparaba el fallback laxo que devolvía CUALQUIER Air Optix).
+var _LC_STOPWORDS = ['for', 'de', 'the', 'con', 'y', 'lentes', 'lente', 'contacto'];
+
+async function lookupLCCatalog(searchText, tipoDeseado) {
   if (!SERVICE_KEY) return null;
-  var terms = searchText.toLowerCase().split(/\s+/).filter(function(w) { return w.length >= 2; });
-  // Build ilike filters
+  var txt = (searchText || '').toLowerCase();
+  // "for astigmatism" / "astigmatismo" = TÓRICO — se usa como filtro, no como palabra a buscar
+  if (/astigmat/.test(txt) && !tipoDeseado) tipoDeseado = 'torico';
+  var terms = txt.split(/\s+/).filter(function(w) {
+    return w.length >= 2 && _LC_STOPWORDS.indexOf(w) === -1 && !/astigmat/.test(w);
+  });
   var products = [];
   try {
-    // Search by name — get all LC products
     var all = await supaFetch('productos?categoria=eq.Lente de contacto&select=id,nombre,precio_venta,pares_por_caja,frecuencia_cambio_dias,duracion_dias,stock&order=nombre&limit=200');
-    if (all && all.length) {
-      // Filter by search terms
-      if (terms.length > 0) {
-        products = all.filter(function(p) {
+    if (!all || !all.length) return [];
+
+    // ⛔ El TIPO manda: si venimos de un tórico, NUNCA devolver esféricos (era el bug que le
+    // ofrecía "AIR OPTIX AQUA" a alguien que mandó la caja de un HydraGlyde for Astigmatism).
+    var universo = all;
+    if (tipoDeseado && tipoDeseado !== 'contacto') {
+      var delTipo = all.filter(function(p) { return _lcTipoDe(p.nombre) === tipoDeseado; });
+      if (delTipo.length) universo = delTipo;
+    }
+
+    if (terms.length > 0) {
+      products = universo.filter(function(p) {
+        var n = p.nombre.toLowerCase();
+        return terms.every(function(t) { return n.includes(t); });
+      });
+      // Sin match exacto: se relaja, pero exigiendo AL MENOS LA MITAD de los términos
+      // (antes bastaba UNO — "air" solito traía todo el catálogo de Air Optix).
+      if (!products.length) {
+        var minimo = Math.max(1, Math.ceil(terms.length / 2));
+        products = universo.filter(function(p) {
           var n = p.nombre.toLowerCase();
-          return terms.every(function(t) { return n.includes(t); });
+          var hits = terms.filter(function(t) { return n.includes(t); }).length;
+          return hits >= minimo;
+        }).sort(function(a, b) {
+          var na = a.nombre.toLowerCase(), nb = b.nombre.toLowerCase();
+          return terms.filter(function(t){return nb.includes(t)}).length - terms.filter(function(t){return na.includes(t)}).length;
         });
-        // If no exact match, try partial
-        if (!products.length) {
-          products = all.filter(function(p) {
-            var n = p.nombre.toLowerCase();
-            return terms.some(function(t) { return n.includes(t); });
-          });
-        }
-      } else {
-        products = all.slice(0, 20);
       }
+    } else {
+      products = universo.slice(0, 20);
     }
   } catch(e) { console.error('[LC Catalog]', e.message); }
   return products.slice(0, 15);
+}
+
+// Agrupa los resultados por familia+precio y devuelve las líneas ya listas para el mensaje.
+// Si un lente existe en 20 graduaciones al MISMO precio, sale UNA línea, no 20.
+function _lcLineasCatalogo(matches) {
+  var grupos = [];
+  var idx = {};
+  (matches || []).forEach(function(p) {
+    var fam = _lcFamilia(p.nombre);
+    var precio = Number(p.precio_venta).toFixed(0);
+    var key = fam + '|' + precio;
+    if (!idx[key]) { idx[key] = { fam: fam, precio: precio, pares: p.pares_por_caja, stock: 0, n: 0, uno: p.nombre }; grupos.push(idx[key]); }
+    idx[key].n++;
+    if (p.stock > 0) idx[key].stock++;
+  });
+  return grupos.map(function(g) {
+    var linea = (g.n === 1 ? g.uno : g.fam) + ' — $' + g.precio + '/caja';
+    if (g.pares) linea += ' (' + g.pares + ' pares)';
+    // ⛔ NO decir "cualquier graduación": el catálogo tiene huecos (falta la -2.50 de Aqua, todo
+    //    el rango alto, etc.). Lo que sí es cierto y es lo que importa: el precio no cambia.
+    if (g.n > 1) linea += ' · mismo precio en todas las graduaciones';
+    if (g.stock > 0) linea += ' ✅';
+    return linea;
+  });
 }
 
 function isAskingAboutLC(text) {
@@ -2418,8 +2481,13 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName, preOcr) {
   }
 
   if (ocr.ojos && ocr.ojos.length) {
-    ocr.ojos.forEach(function(o) {
-      summary += '\n' + (o.ojo || '??') + ': ';
+    // Solo se listan los ojos que TRAEN datos: si el OCR no leyó la graduación, imprimir
+    // un renglón "??:" vacío no informa nada y ensucia el mensaje.
+    var _ojosConDatos = ocr.ojos.filter(function(o) {
+      return o && (o.pwr || o.cyl || o.axis || o.add || o.bc || o.dia);
+    });
+    _ojosConDatos.forEach(function(o) {
+      summary += '\n' + (o.ojo || 'Ojo') + ': ';
       if (o.pwr) summary += 'PWR ' + o.pwr;
       if (o.cyl) summary += ' | CYL ' + o.cyl;
       if (o.axis) summary += ' | AXIS ' + o.axis;
@@ -2427,25 +2495,34 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName, preOcr) {
       if (o.bc) summary += ' | BC ' + o.bc;
       if (o.dia) summary += ' | DIA ' + o.dia;
     });
-    summary += '\n';
+    if (_ojosConDatos.length) summary += '\n';
   }
 
   if (ocr.frecuencia) summary += '⏱️ Frecuencia: ' + ocr.frecuencia + '\n';
 
   // Search catalog for matching products
   var matches;
+  // El TIPO detectado (tórico / esférico / multifocal / color) acota TODA la búsqueda:
+  // ofrecerle un esférico a quien usa tórico es venderle el lente equivocado.
+  var _tipoBuscado = (ocr.tipo || '').toLowerCase();
+  if (/astigmat|toric/.test(_tipoBuscado)) _tipoBuscado = 'torico';
+  else if (/multi|presbi/.test(_tipoBuscado)) _tipoBuscado = 'multifocal';
+  else if (/color/.test(_tipoBuscado)) _tipoBuscado = 'color';
+  else if (/esferic|spheric/.test(_tipoBuscado)) _tipoBuscado = 'esferico';
+  else _tipoBuscado = '';
+  // Con cilindro en la receta es tórico aunque el texto no lo diga
+  if (!_tipoBuscado && ocr.ojos && ocr.ojos.some(function(o){ return o && o.cyl && parseFloat(o.cyl); })) _tipoBuscado = 'torico';
+
   if (isReceta) {
-    // For prescriptions, search by type (torico/esferico/multifocal)
-    var searchType = ocr.tipo || 'contacto';
-    matches = await lookupLCCatalog(searchType);
+    matches = await lookupLCCatalog(_tipoBuscado || 'contacto', _tipoBuscado);
   } else {
     var searchTerm = ocr.marca;
     if (ocr.modelo) searchTerm += ' ' + ocr.modelo;
-    if (ocr.tipo === 'color' && ocr.color) searchTerm += ' ' + ocr.color;
-    matches = await lookupLCCatalog(searchTerm);
-    // If no exact match, try just brand
+    if (_tipoBuscado === 'color' && ocr.color) searchTerm += ' ' + ocr.color;
+    matches = await lookupLCCatalog(searchTerm, _tipoBuscado);
+    // Sin match: se reintenta solo con la marca, PERO conservando el tipo
     if ((!matches || !matches.length) && ocr.marca) {
-      matches = await lookupLCCatalog(ocr.marca);
+      matches = await lookupLCCatalog(ocr.marca, _tipoBuscado);
     }
   }
 
@@ -2453,36 +2530,34 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName, preOcr) {
   var ocrContext = '[LC-OCR] ' + JSON.stringify(ocr);
   await saveMessage(phone, 'user', ocrContext, userName);
 
-  if (matches && matches.length > 0) {
+  // Las opciones se AGRUPAN: un mismo lente en 20 graduaciones al mismo precio es UNA línea.
+  // Antes salía un mensaje larguísimo con 15 renglones idénticos salvo la graduación.
+  var _lineas = _lcLineasCatalogo(matches);
+
+  if (_lineas.length > 0) {
     if (isReceta) {
-      var hasCyl = ocr.ojos && ocr.ojos.some(function(o) { return o.cyl && parseFloat(o.cyl) !== 0; });
-      summary += '\n✅ *Opciones de LC ' + (hasCyl ? 'tóricos' : 'esféricos') + ' disponibles:*\n';
-      matches.slice(0, 6).forEach(function(p, i) {
-        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja\n';
-      });
+      var _etq = { torico: 'tóricos', multifocal: 'multifocales', color: 'de color' }[_tipoBuscado] || 'esféricos';
+      summary += '\n✅ *Opciones de LC ' + _etq + ' disponibles:*\n';
+      _lineas.slice(0, 6).forEach(function(l, i) { summary += (i + 1) + '. ' + l + '\n'; });
       summary += '\nTu graduación es compatible con estas opciones. En sucursal te hacen el ajuste fino para LC 😊\n';
       summary += '¿Cuál te interesa o quieres que te recomiende?';
     } else {
       summary += '\n✅ *Encontré en nuestro catálogo:*\n';
-      matches.forEach(function(p, i) {
-        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja';
-        if (p.pares_por_caja) summary += ' (' + p.pares_por_caja + ' pares)';
-        if (p.stock > 0) summary += ' ✅';
-        summary += '\n';
-      });
+      _lineas.slice(0, 6).forEach(function(l, i) { summary += (i + 1) + '. ' + l + '\n'; });
       summary += '\n¿Te gustaría ordenar? Dime cuántas cajas necesitas y en qué sucursal quieres recoger 😊\n';
       summary += '\n💳 Aceptamos transferencia BBVA o link de pago Clip';
     }
   } else {
-    summary += '\n⚠️ No encontré ese producto exacto en nuestro catálogo actual.\n';
-    summary += 'Pero tenemos opciones similares. ¿Quieres que te muestre alternativas? 👓';
-    // Try broader search
-    var altMatches = await lookupLCCatalog(ocr.tipo || 'contacto');
-    if (altMatches && altMatches.length > 0) {
-      summary += '\n\n📋 *Opciones disponibles:*\n';
-      altMatches.slice(0, 5).forEach(function(p, i) {
-        summary += (i + 1) + '. ' + p.nombre + ' — $' + Number(p.precio_venta).toFixed(0) + '/caja\n';
-      });
+    summary += '\n⚠️ No encontré ese lente exacto en nuestro catálogo.\n';
+    // Alternativas DEL MISMO TIPO: a quien usa tóricos no se le ofrecen esféricos
+    var altMatches = await lookupLCCatalog(_tipoBuscado || 'contacto', _tipoBuscado);
+    var _altLineas = _lcLineasCatalogo(altMatches);
+    if (_altLineas.length > 0) {
+      summary += '\n📋 *Opciones ' + ({ torico: 'para astigmatismo', multifocal: 'multifocales', color: 'de color' }[_tipoBuscado] || 'disponibles') + ':*\n';
+      _altLineas.slice(0, 5).forEach(function(l, i) { summary += (i + 1) + '. ' + l + '\n'; });
+      summary += '\n¿Te sirve alguna? También lo puedo pedir sobre pedido 😊';
+    } else {
+      summary += 'Lo podemos conseguir sobre pedido. ¿Quieres que lo cotice? 👓';
     }
   }
 
