@@ -6695,6 +6695,7 @@ function renderLabCard(o, esOptica) {
       <div class="lab-actions">
         <button class="btn btn-g btn-sm" onclick="event.stopPropagation();verTicketLab('${o.id}')" style="font-size:11px;padding:5px 10px">\ud83c\udfab</button>
         <button class="btn btn-g btn-sm" onclick="event.stopPropagation();reimprimirOrdenLab('${o.id}')" style="font-size:11px;padding:5px 10px" title="Reimprimir ticket">\ud83d\udda8</button>
+        <button class="btn btn-g btn-sm" onclick="event.stopPropagation();agregarNotaOrden('${o.id}')" style="font-size:11px;padding:5px 10px" title="Agregar una observaci\u00f3n a esta orden">\ud83d\udcdd</button>
         ${tienePermiso('del_ordenes') && puedeEliminarEnEstado(estadoReal) ? `<button class="btn btn-g btn-sm" onclick="event.stopPropagation();eliminarOrdenLab('${o.id}','${nombre.replace(/'/g,"\\\\'")}')" style="font-size:11px;padding:5px 10px;color:#e08080">\ud83d\uddd1</button>` : ''}
         ${cambiarHtml}
         ${puedeWA ? `
@@ -15505,7 +15506,10 @@ async function guardarEImprimir() {
       });
       if (_mismaPieza) {
         var _hace = Math.max(0, Math.round((Date.now() - new Date(_mismaPieza.created_at).getTime()) / 60000));
-        if (!confirm('⚠️ Ya existe una orden para el folio ' + folioFinal + ' con el armazón "' + (orderPayload.armazon || '') + '" (creada hace ' + _hace + ' min).\n\nProbablemente ya se guardó y esto sería un DUPLICADO.\n\n¿Crear otra de todos modos?')) {
+        if (!confirm('⚠️ Ya existe una orden para el folio ' + folioFinal + ' con el armazón "' + (orderPayload.armazon || '') + '" (creada hace ' + _hace + ' min).\n\nProbablemente ya se guardó y esto sería un DUPLICADO.\n\n' +
+            '👉 Si lo que querías era AGREGARLE UNA OBSERVACIÓN a esa orden (por ejemplo que el paciente aceptó el riesgo de dejar su armazón), NO la vuelvas a capturar:\n' +
+            'cancela aquí y usa el botón 📝 de la orden en la Bitácora de Pedidos.\n\n' +
+            '¿Crear otra de todos modos?')) {
           return;
         }
       }
@@ -18549,6 +18553,43 @@ async function _ejecutarEliminarOrdenProd(orderId, nombre) {
   loadLabTablero();
 }
 
+// 📝 Agrega una observación a una orden YA creada, sin recrearla.
+// Existe porque no había forma de anotar nada después de guardar: para dejar por escrito algo
+// como "el paciente aceptó el riesgo de dejar su armazón", el personal volvía a capturar la
+// orden COMPLETA y quedaba duplicada (caso real folio 16232, 14-ago-2026).
+async function agregarNotaOrden(orderId) {
+  const { data: o, error } = await db.from('ordenes_laboratorio')
+    .select('notas_laboratorio, folio, pacientes(nombre,apellidos)').eq('id', orderId).single();
+  if (error || !o) { toast('No se pudo cargar la orden', true); return; }
+
+  const folio = getFolioFromOrder(o) || '';
+  const pac = o.pacientes ? ((o.pacientes.nombre||'') + ' ' + (o.pacientes.apellidos||'')).trim() : '';
+  // Lo que ya escribió una persona (se omiten los campos que arma el sistema)
+  const previas = String(o.notas_laboratorio || '')
+    .split('|').map(s => s.trim())
+    .filter(s => s && !/^(Folio:|Urgencia:|DIP:|ALT:|LOG:|Entregó:|Biselado:|Revisado por:|GARANTÍA:|Motivo:|Responsable:|Autoriza:|Orden original:|TRASLADO desde)/i.test(s));
+
+  const txt = prompt(
+    '📝 Observación para el folio ' + folio + (pac ? ' — ' + pac : '') +
+    (previas.length ? '\n\nYa tiene anotado:\n• ' + previas.join('\n• ') : '') +
+    '\n\nEscribe la observación (se AGREGA, no reemplaza lo anterior):', '');
+  if (txt === null) return;
+  const nota = txt.trim();
+  if (!nota) return;
+
+  const quien = currentUser?.nombre || currentUser?.usuario || '';
+  const cuando = new Date().toLocaleString('es-MX', { timeZone:'America/Chihuahua', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit', hour12:false });
+  const nuevas = String(o.notas_laboratorio || '') + ' | NOTA (' + quien + ', ' + cuando + '): ' + nota;
+
+  _rtSuppressUntil = Date.now() + 5000;   // evita que Realtime pise el cambio recién hecho
+  const { error: upErr } = await db.from('ordenes_laboratorio')
+    .update({ notas_laboratorio: nuevas }).eq('id', orderId);
+  if (upErr) { toast('Error al guardar la nota: ' + upErr.message, true); return; }
+
+  toast('✓ Nota agregada al folio ' + folio + ' — reimprime el ticket para que la vea el laboratorio');
+  if (typeof loadLab === 'function') loadLab();
+}
+
 async function eliminarOrdenLab(orderId, nombre) {
   if (!tienePermiso('del_ordenes')) {
     solicitarAutorizacion('Borrar orden lab', 'Eliminar orden de ' + (nombre||'laboratorio'), function() { _ejecutarEliminarOrdenLab(orderId, nombre); });
@@ -18611,9 +18652,20 @@ async function limpiarDuplicadosLab() {
     arr.sort(function(a, b) { return new Date(a.created_at) - new Date(b.created_at); });
     var span = (new Date(arr[arr.length-1].created_at) - new Date(arr[0].created_at)) / 60000;
     if (span > 60) return; // demasiado separados → no tocar (por seguridad)
+    // ⚠️ Al empatar el estado, se conserva la que tiene MÁS información escrita a mano.
+    // Antes desempataba por la más ANTIGUA y eso borraba justo la buena: cuando el duplicado
+    // nace porque alguien recapturó la orden para agregarle una observación, la nota vive en
+    // la SEGUNDA (caso real folio 16232: "el paciente aceptó el riesgo de dejar su armazón").
+    var _peso = function(o) {
+      return String(o.notas_laboratorio || '').split('|').map(function(s){ return s.trim(); })
+        .filter(function(s){ return s && !/^(Folio:|Urgencia:|DIP:|ALT:|LOG:|Entregó:|Biselado:)/i.test(s); })
+        .join(' ').length;
+    };
     var keep = arr.slice().sort(function(a, b) {
       var pa = PRIO[a.estado_lab]||0, pb = PRIO[b.estado_lab]||0;
       if (pb !== pa) return pb - pa;
+      var wa = _peso(a), wb = _peso(b);
+      if (wb !== wa) return wb - wa;          // la que trae notas del personal gana
       return new Date(a.created_at) - new Date(b.created_at);
     })[0];
     arr.forEach(function(o) { if (o.id !== keep.id) { aBorrar.push(o.id); foliosAfectados[k.split('|||')[0]] = 1; } });
