@@ -426,11 +426,14 @@ async function notifyGerenciaIfPromisedMeta(senderId, senderName, userMessage, r
   var urlGA = 'https://api.twilio.com/2010-04-01/Accounts/' + sidGA + '/Messages.json';
   var authGA = 'Basic ' + Buffer.from(sidGA + ':' + tokGA).toString('base64');
   var txt = '📣 Caso para GERENCIA (' + channel.toUpperCase() + ') — Clari lo prometió al cliente, requiere seguimiento HUMANO\n\n👤 ' + (senderName || senderId) + '\n🆔 ' + senderId + ' (vía ' + channel + ')\n💬 Cliente: "' + String(userMessage || '').substring(0, 220) + '"\n🤖 Clari: "' + String(reply || '').substring(0, 180) + '"';
+  // ⚠️ La variable de la plantilla NO admite saltos de línea (WhatsApp la rechaza con 21656) —
+  // se manda un resumen de UNA línea; el texto completo con formato queda para el respaldo.
+  var detGA = ('Caso para GERENCIA (' + channel + '): Clari le prometio seguimiento a ' + (senderName || senderId) + '. Dijo: "' + String(userMessage || '').substring(0, 140) + '". Hay que contactarlo.').replace(/\s*\n+\s*/g, ' ').replace(/"/g, "'").slice(0, 600);
   for (var i = 0; i < admins.length; i++) {
     var toGA = encodeURIComponent('whatsapp:+' + admins[i]);
     try {
       var rGA = await fetch(urlGA, { method: 'POST', headers: { 'Authorization': authGA, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'From=' + encodeURIComponent(fromGA) + '&To=' + toGA + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': txt })) });
+        body: 'From=' + encodeURIComponent(fromGA) + '&To=' + toGA + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': detGA })) });
       if (!rGA.ok) {
         await fetch(urlGA, { method: 'POST', headers: { 'Authorization': authGA, 'Content-Type': 'application/x-www-form-urlencoded' },
           body: 'From=' + encodeURIComponent(fromGA) + '&To=' + toGA + '&Body=' + encodeURIComponent(txt) });
@@ -1430,7 +1433,7 @@ exports.handler = async function(event) {
               var _authJB = 'Basic ' + Buffer.from(_sidJB + ':' + _tokJB).toString('base64');
               // Intenta plantilla aprobada (llega fuera de la ventana 24h del admin); si falla, freeform.
               var _rJB = await fetch(_twUrlJB, { method: 'POST', headers: { 'Authorization': _authJB, 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': _jbAlertM })) });
+                body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&ContentSid=HXa076da6bd95ae70ece9545df84036f56&ContentVariables=' + encodeURIComponent(JSON.stringify({ '1': _jbAlertM.replace(/\s*\n+\s*/g, ' · ').slice(0, 600) })) });
               if (!_rJB.ok) {
                 await fetch(_twUrlJB, { method: 'POST', headers: { 'Authorization': _authJB, 'Content-Type': 'application/x-www-form-urlencoded' },
                   body: 'From=' + encodeURIComponent(_fromJB) + '&To=' + encodeURIComponent('whatsapp:+5216564269961') + '&Body=' + encodeURIComponent(_jbAlertM) });

@@ -1282,8 +1282,14 @@ async function notifyGerenciaIfPromised(phone, userName, userMessage, reply) {
   } catch (e) {}
   if (!admins.length) admins = ['5216564269961'];
   var txt = '📣 Caso para GERENCIA (Clari lo prometió al cliente — requiere seguimiento HUMANO)\n\n👤 ' + (userName || phone) + '\n📱 ' + phone + '\n💬 Cliente: "' + String(userMessage || '').substring(0, 220) + '"\n🤖 Clari: "' + String(reply || '').substring(0, 180) + '"\n\nContactar al cliente para dar seguimiento.';
+  // Va por notifyAdminWA (v566): decide texto libre vs plantilla según la ventana de 24h y
+  // COLAPSA los saltos de línea del detalle. ⚠️ Antes llamaba a sendWhatsAppTemplate con `txt`
+  // crudo como variable: WhatsApp RECHAZA variables con saltos de línea (error 21656), así que
+  // la plantilla fallaba y el respaldo en texto libre moría con 63016 fuera de la ventana →
+  // el aviso a gerencia NO llegaba, que es justo lo que este mecanismo existe para garantizar.
+  var detGA = 'Caso para GERENCIA: Clari le prometio seguimiento a ' + (userName || phone) + ' (tel ' + phone + '). Dijo: "' + String(userMessage || '').substring(0, 140).replace(/"/g, "'") + '". Hay que contactarlo.';
   for (var i = 0; i < admins.length; i++) {
-    try { await sendWhatsAppTemplate(admins[i], 'HXa076da6bd95ae70ece9545df84036f56', { '1': txt }, txt); } catch (e) { console.warn('[GerenciaAlert send]', e.message); }
+    try { await notifyAdminWA(admins[i], txt, detGA); } catch (e) { console.warn('[GerenciaAlert send]', e.message); }
   }
   try { await saveMessage(phone, 'assistant', '[Gerencia-Alerta] Aviso real enviado a gerencia/admin para seguimiento.'); } catch (e) {}
 }
@@ -3811,7 +3817,9 @@ exports.handler = async function(event) {
             }
             var _jbTxt = '🛡️ Intento de manipulación a Clari\n\n👤 ' + (userName || from) + '\n📱 ' + from + '\n💬 "' + userText.substring(0, 200) + '"\n\nClari NO obedeció (respondió neutral). Es solo un aviso.';
             // Vía plantilla aprobada (llega aunque la ventana 24h del admin esté cerrada); fallback a freeform.
-            await sendWhatsAppTemplate(_jbPhone, 'HXa076da6bd95ae70ece9545df84036f56', { '1': _jbTxt }, _jbTxt);
+            // La variable de plantilla NO admite saltos de línea (21656) → resumen de una línea
+            var _jbDet = 'Intento de manipulacion a Clari por ' + (userName || from) + ' (tel ' + from + '). Dijo: "' + userText.substring(0, 140).replace(/"/g, "'") + '". Clari NO obedecio, es solo un aviso.';
+            await notifyAdminWA(_jbPhone, _jbTxt, _jbDet);
           } catch(_jbe) { console.warn('[Jailbreak alert]', _jbe.message); }
           console.log('[Jailbreak] -> ' + from + ': "' + userText.substring(0, 80) + '"');
           await sendWhatsAppReply(from, _jbReply);
