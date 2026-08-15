@@ -3121,10 +3121,28 @@ exports.handler = async function(event) {
       var messageSid = tw.MessageSid || '';
       var numMedia = parseInt(tw.NumMedia || '0');
 
+      // ⛔ ¿El bot está APAGADO para esta conversación? Se calcula UNA vez, aquí arriba, porque
+      // el check de más abajo llega tarde: para cuando corre, un botón, una foto o una nota de
+      // voz YA contestaron. Pasó con el caso de Jerry: la conversación la llevaba Angel a mano
+      // y Clari se metió sola con "Recibí tu foto 👀".
+      // Solo aplica a rutas que responden SOLAS (botón / media / voz). El texto normal sigue
+      // usando el check de abajo, que respeta checador, comandos de admin y autorizaciones.
+      var _botOff = false;
+      if (from) {
+        try {
+          if (!(await isAdminPhone(from))) _botOff = await isBotDisabled(from);
+        } catch (e) { console.warn('[BotOff temprano]', e.message); }
+      }
+
       // ── PROMO 2X1 ABRIL — Quick Reply button handler ──
       // Twilio envía ButtonPayload con el id del botón cuando el usuario toca Quick Reply.
       // Responde canned y regresa; el siguiente mensaje del usuario va a Clari IA normal.
       var buttonPayload = (tw.ButtonPayload || '').trim();
+      if (_botOff && from && buttonPayload) {
+        await saveMessage(from, 'user', '[Botón: ' + buttonPayload + ']', userName);
+        console.log('[Bot Disabled] Botón guardado SIN responder — ' + from);
+        return { statusCode: 200, headers: H, body: '<Response></Response>' };
+      }
       if (from && (buttonPayload === 'interesa' || buttonPayload === 'mas_info' || buttonPayload === 'no_gracias')) {
         var btnLabel = '', btnReply = '';
         if (buttonPayload === 'interesa') {
@@ -3193,6 +3211,16 @@ exports.handler = async function(event) {
           // Non-admin media → LC Photo OCR (contact lens box/prescription)
           var custMediaUrl = tw.MediaUrl0 || tw['MediaUrl0'] || '';
           var custMediaType = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
+          // ⛔ Si el bot está APAGADO para esta conversación, la foto SOLO se guarda: nada de
+          // responder. El check de bot apagado vive hasta el final del handler, después de todo
+          // este bloque de media — así que sin este guard una foto brincaba el apagado y Clari
+          // contestaba en medio de una conversación que estaba llevando una persona.
+          if (custMediaUrl && _botOff) {
+            var offImg = await uploadChatMedia(custMediaUrl, custMediaType, from);
+            await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)' + (offImg ? '\n[IMG:' + offImg + ']' : ''), userName);
+            console.log('[Bot Disabled] Foto guardada SIN responder — ' + from);
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
           if (custMediaUrl && (custMediaType||'').startsWith('image/')) {
             var custImgUrl = await uploadChatMedia(custMediaUrl, custMediaType, from);
             await saveMessage(from, 'user', '📷 Foto recibida (LC/receta)' + (custImgUrl ? '\n[IMG:' + custImgUrl + ']' : ''), userName);
@@ -3222,6 +3250,13 @@ exports.handler = async function(event) {
             : otherType.indexOf('video/') === 0 ? '🎬 Video recibido'
             : '📎 Archivo recibido';
           var otherTag = otherUrl ? ('\n[' + (esAudio ? 'AUD' : 'FILE') + ':' + otherUrl + ']') : '';
+
+          // ⛔ Bot apagado: se guarda lo que mandó (voz, video, archivo) y NO se contesta
+          if (_botOff) {
+            await saveMessage(from, 'user', otherLabel + otherTag, userName);
+            console.log('[Bot Disabled] Media/voz guardada SIN responder — ' + from);
+            return { statusCode: 200, headers: H, body: '<Response></Response>' };
+          }
 
           // 🎤 Nota de voz: intentar transcribirla y contestar lo que el cliente DIJO
           if (esAudio) {
@@ -3260,6 +3295,13 @@ exports.handler = async function(event) {
         var isAdminWithMedia = await isAdminPhone(from);
         var mediaUrl2 = tw.MediaUrl0 || tw['MediaUrl0'] || '';
         var mediaType2 = tw.MediaContentType0 || tw['MediaContentType0'] || 'image/jpeg';
+        // ⛔ Mismo guard que arriba: foto CON texto tampoco debe contestar si el bot está apagado
+        if (!isAdminWithMedia && mediaUrl2 && _botOff) {
+          var offImg2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
+          await saveMessage(from, 'user', (userText ? '📸 ' + userText : '📷 Foto recibida') + (offImg2 ? '\n[IMG:' + offImg2 + ']' : ''), userName);
+          console.log('[Bot Disabled] Foto+texto guardada SIN responder — ' + from);
+          return { statusCode: 200, headers: H, body: '<Response></Response>' };
+        }
         if (isAdminWithMedia && mediaUrl2) {
           var adminImgUrl2 = await uploadChatMedia(mediaUrl2, mediaType2, from);
           await saveMessage(from, 'user', '📸 ' + userText + (adminImgUrl2 ? '\n[IMG:' + adminImgUrl2 + ']' : ''), userName);
