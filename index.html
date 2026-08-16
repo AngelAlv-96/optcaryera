@@ -9233,7 +9233,7 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
   h += _miniStat('Ventas hoy', ventasHoy.length, '#72c47e', '🛒');
   h += _miniStat('Total vendido', '$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}), '#d4b84a', '💰');
   h += _miniStat('Cobrado', '$'+totalCobradoHoy.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
-  h += _miniStat('Consultas', nHC||0, '#8ab0e8', '👁');
+  h += '<div class="stat" onclick="verConsultasHoy()" style="cursor:pointer" title="Ver las consultas de hoy y en qué sucursal se hicieron"><div class="stat-val" style="color:#8ab0e8">' + (nHC||0) + '</div><div class="stat-lbl">👁 Consultas ›</div></div>';
   h += _miniStat('Pedidos lab', ordenesLab||0, '#d4b84a', '🔧');
   h += '<div class="stat"' + (_tcEditable ? ' onclick="editarTipoCambio()" style="cursor:pointer" title="Click para editar el tipo de cambio"' : '') + '><div class="stat-val" style="color:#72c47e">' + _tcVal + '</div><div class="stat-lbl">💵 Tipo cambio' + (_tcEditable ? ' ✏' : '') + '</div></div>';
   h += '</div>';
@@ -9368,6 +9368,83 @@ async function _loadDashCajaDeferred(utcStart, utcEnd) {
 
 function _miniStat(lbl, val, color, icon) {
   return '<div class="stat"><div class="stat-val" style="color:'+color+'">'+val+'</div><div class="stat-lbl">'+icon+' '+lbl+'</div></div>';
+}
+
+// ── 👁 CONSULTAS DE HOY — quién las hizo y en qué sucursal, la más reciente arriba ──
+// La sucursal se guarda en historias_clinicas.sucursal desde el momento de la consulta.
+// Para las consultas VIEJAS (antes de que existiera la columna) se intenta deducir del
+// examinador contra la config de asesores; si no se puede, se muestra "—" en vez de adivinar.
+function _sucDeExaminador(nombre) {
+  if (!nombre) return '';
+  var limpio = String(nombre).replace(/^\s*(lic\.?|tec\.?|dr\.?|dra\.?)\s*/i, '').trim().toLowerCase();
+  if (!limpio) return '';
+  var cfg = _asesoresConfig || {};
+  var sucs = cfg.sucursales || {};
+  // Se compara por NOMBRE + PRIMER APELLIDO: en las consultas aparecen variantes
+  // ("Tec. Alejandra Alcala" vs "Alejandra Alcala", "Lic. Karen Alvidrez" vs "Karen Alv")
+  var clave = limpio.split(/\s+/).slice(0, 2).join(' ');
+  for (var s in sucs) {
+    if (!Array.isArray(sucs[s])) continue;
+    for (var i = 0; i < sucs[s].length; i++) {
+      var a = String(sucs[s][i]).replace(/^\s*(lic\.?|tec\.?)\s*/i, '').trim().toLowerCase();
+      if (a === limpio || a.split(/\s+/).slice(0, 2).join(' ') === clave) return s;
+    }
+  }
+  return '';  // globales (Karen/Ivonne/Ángel) y desconocidos: no se inventa sucursal
+}
+
+async function verConsultasHoy() {
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.style.zIndex = '9999';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = '<div class="modal" style="max-width:560px;padding:20px"><div style="text-align:center;color:var(--muted);padding:24px"><span class="spinner-sm"></span> Cargando consultas…</div></div>';
+  document.body.appendChild(ov);
+
+  try {
+    await cargarAsesoresConfig();
+    var ini = new Date(hoyLocal() + 'T00:00:00-06:00').toISOString();
+    var fin = new Date(hoyLocal() + 'T23:59:59-06:00').toISOString();
+    var { data, error } = await db.from('historias_clinicas')
+      .select('id, created_at, examinador, motivo_consulta, sucursal, tipo_lente, paciente_id, pacientes(nombre, apellidos)')
+      .gte('created_at', ini).lte('created_at', fin)
+      .order('created_at', { ascending: false });   // la más reciente primero
+    if (error) throw error;
+
+    var sucColors = { 'Américas':'#b48ad4', 'Pinocelli':'#8ab0e8', 'Magnolia':'#d4b84a', 'Plaza Vía Vittoria':'#66bb6a' };
+    var h = '<div class="modal" style="max-width:560px;padding:0;max-height:82vh;display:flex;flex-direction:column">';
+    h += '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:10px">';
+    h += '<span style="font-size:18px">👁</span><div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--beige)">Consultas de hoy</div>';
+    h += '<div style="font-size:11px;color:var(--muted)">' + (data||[]).length + ' en total · la más reciente arriba</div></div>';
+    h += '<button onclick="this.closest(\'.m-overlay\').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
+    h += '<div style="overflow-y:auto;padding:12px 16px">';
+
+    if (!data || !data.length) {
+      h += '<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px">Todavía no hay consultas hoy.</div>';
+    } else {
+      data.forEach(function(c) {
+        var pac = c.pacientes ? ((c.pacientes.nombre||'') + ' ' + (c.pacientes.apellidos||'')).trim() : 'Paciente';
+        var hora = new Date(c.created_at).toLocaleTimeString('es-MX', { timeZone:'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:true });
+        var suc = c.sucursal || _sucDeExaminador(c.examinador);
+        var col = sucColors[suc] || '#8c857a';
+        var quien = (c.examinador || '').trim();
+        h += '<div style="display:flex;align-items:center;gap:11px;padding:11px 12px;background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-left:3px solid ' + col + ';border-radius:9px;margin-bottom:7px;cursor:pointer" onclick="this.closest(\'.m-overlay\').remove();verConsultasPaciente(\'' + c.paciente_id + '\',\'' + pac.replace(/'/g,"\\\\'") + '\')">';
+        h += '<div style="flex:1;min-width:0">';
+        h += '<div style="font-size:13px;color:var(--white);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + pac + '</div>';
+        h += '<div style="font-size:11px;margin-top:2px"><span style="color:' + col + ';font-weight:700">' + (suc ? _sucDisplay(suc) : '— sin sucursal') + '</span>';
+        if (quien) h += '<span style="color:var(--muted)"> · ' + quien + '</span>';
+        h += '</div></div>';
+        h += '<div style="font-size:11px;color:var(--muted);white-space:nowrap">' + hora + '</div>';
+        h += '</div>';
+      });
+      var sinSuc = data.filter(function(c){ return !(c.sucursal || _sucDeExaminador(c.examinador)); }).length;
+      if (sinSuc) h += '<div style="font-size:10px;color:var(--muted);padding:8px 4px 2px;line-height:1.5">' + sinSuc + ' sin sucursal: son consultas guardadas antes de que el sistema la registrara, o hechas desde una cuenta sin sucursal fija. De hoy en adelante todas la traen.</div>';
+    }
+    h += '</div></div>';
+    ov.innerHTML = h;
+  } catch (e) {
+    ov.innerHTML = '<div class="modal" style="max-width:420px;padding:20px"><div style="color:#e08080;font-size:13px">No se pudieron cargar las consultas: ' + (e.message||e) + '</div><button class="btn btn-g btn-sm" style="margin-top:12px" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div>';
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -12713,6 +12790,10 @@ async function _saveHistoriaInner() {
   }
   const hcPayload = {
     paciente_id: pid,
+    // Sucursal donde se hace la consulta. Se toma de la sesión: el examinador NO sirve para
+    // deducirla (24% de las consultas van sin examinador, y Karen/Ivonne/Ángel trabajan en
+    // varias sucursales). Admin sin sucursal fija queda en null y se muestra como "—".
+    sucursal: (currentUser?.sucursal && currentUser.sucursal !== 'Todas') ? currentUser.sucursal : null,
     examinador:               document.getElementById('hc-examinador').value,
     motivo_consulta:          document.getElementById('hc-mot').value,
     tiempo_evolucion:         document.getElementById('hc-evo').value,
