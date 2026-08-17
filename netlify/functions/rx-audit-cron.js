@@ -76,17 +76,24 @@ async function waWindowOpen(phone) {
   return open;
 }
 
-async function sendWA(to, body, tplDetalle) {
+// Plantilla PROPIA de este aviso (4 variables, se lee completa aunque la ventana esté cerrada).
+// Mientras Meta no la apruebe se usa la genérica `aviso_panel_admin`, que ya está aprobada
+// pero solo cabe un resumen de una línea. Al aprobarse entra sola, sin volver a desplegar.
+const TPL_PROPIA = 'HX24a8ddd455d53a098a6f7dc2b3a95c93';   // revision_graduacion
+const TPL_GENERICA = 'HXa076da6bd95ae70ece9545df84036f56'; // aviso_panel_admin
+// ⚠️ Las variables de plantilla NO admiten saltos de línea (colapsan el mensaje entero).
+const unaLinea = (s) => String(s || '').replace(/\*/g, '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim();
+
+async function sendWA(to, body, tpl) {
   if (!TWILIO_SID || !TWILIO_TOKEN || !TWILIO_WA) return false;
   const auth = Buffer.from(`${TWILIO_SID}:${TWILIO_TOKEN}`).toString('base64');
   const from = TWILIO_WA.startsWith('whatsapp:') ? TWILIO_WA : `whatsapp:${TWILIO_WA}`;
   const p = new URLSearchParams();
   p.append('From', from);
   p.append('To', `whatsapp:+${normalizePhone(to)}`);
-  if (tplDetalle) {
-    p.append('ContentSid', 'HXa076da6bd95ae70ece9545df84036f56');   // aviso_panel_admin (aprobada)
-    // ⚠️ Las variables de plantilla NO admiten saltos de línea.
-    p.append('ContentVariables', JSON.stringify({ 1: tplDetalle.replace(/\*/g, '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim().slice(0, 600) }));
+  if (tpl) {
+    p.append('ContentSid', tpl.sid);
+    p.append('ContentVariables', JSON.stringify(tpl.vars));
   } else {
     p.append('Body', body);
   }
@@ -102,9 +109,22 @@ async function sendWA(to, body, tplDetalle) {
   } catch (e) { console.error('[RX-AUDIT] WA:', e.message); return false; }
 }
 
-async function notifyAdmin(phone, texto, resumen) {
+// Con la ventana ABIERTA va el texto completo (todos los hallazgos, con las dos graduaciones
+// lado a lado). Con la ventana CERRADA se manda un mensaje por hallazgo con la plantilla
+// propia; si esa aún no está aprobada, cae a la genérica con un resumen de una línea.
+async function notifyAdmin(phone, texto, hallazgos, resumen) {
   if (await waWindowOpen(phone)) return sendWA(phone, texto, null);
-  return sendWA(phone, null, resumen || texto);
+
+  let algo = false;
+  for (const h of hallazgos.slice(0, 3)) {
+    const ok = await sendWA(phone, null, {
+      sid: TPL_PROPIA,
+      vars: { 1: unaLinea(h.o.folio), 2: unaLinea(h.px).slice(0, 60), 3: unaLinea(h.o.sucursal || 'sin sucursal'), 4: unaLinea(h.motivo).slice(0, 300) }
+    });
+    algo = algo || ok;
+  }
+  if (algo) return true;
+  return sendWA(phone, null, { sid: TPL_GENERICA, vars: { 1: unaLinea(resumen).slice(0, 600) } });
 }
 
 // ─────────────────── comparación de graduaciones ───────────────────
@@ -213,6 +233,7 @@ exports.handler = async function (event) {
       // ── SEÑAL 1: le vamos a fabricar lentes graduados a alguien que nunca se ha examinado ──
       if (!hist.length) {
         hallazgos.push({ id: o.id, tipo: 'SIN_EXAMEN', prio: 1, o, px,
+          motivo: 'Se fabrica con graduacion (' + fmtRx(r) + ') pero este paciente no tiene NINGUN examen registrado. Casi siempre es que eligieron o crearon al paciente equivocado en el mostrador.',
           txt: '🚨 *' + o.folio + '* — ' + px + '\n' + (o.sucursal || '') +
                '\nSe está fabricando con graduación, pero este paciente *no tiene ningún examen* registrado.' +
                '\nRx de la orden: ' + fmtRx(r) +
@@ -234,6 +255,7 @@ exports.handler = async function (event) {
       }
       if (otro) {
         hallazgos.push({ id: o.id, tipo: 'OTRA_PERSONA', prio: 0, o, px,
+          motivo: 'La graduacion (' + fmtRx(r) + ') no es de esta persona: es el examen de ' + nom(otro.pacientes) + ' del ' + String(otro.created_at).slice(0, 10) + '. Revisar a quien le corresponde ese par.',
           txt: '🚨 *' + o.folio + '* — la graduación es de OTRA persona\n' + (o.sucursal || '') +
                '\nOrden a nombre de: *' + px + '*' +
                '\nPero esa Rx es el examen de: *' + nom(otro.pacientes) + '* (' + String(otro.created_at).slice(0, 10) + ')' +
@@ -254,6 +276,7 @@ exports.handler = async function (event) {
         const d = mejor.d[0];
         const signo = d.orden !== null && d.examen !== null && d.orden === -d.examen && d.orden !== 0;
         hallazgos.push({ id: o.id, tipo: signo ? 'SIGNO' : 'UN_CAMPO', prio: signo ? 0 : 2, o, px,
+          motivo: d.campo + ': la orden dice ' + d.orden + ' y su examen dice ' + d.examen + '. Todo lo demas coincide, asi que es de captura.' + (signo ? ' Con el signo al reves el lente sale inservible.' : ''),
           txt: (signo ? '🚨 *' + o.folio + '* — SIGNO INVERTIDO' : '⚠️ *' + o.folio + '* — no cuadra con su examen') +
                '\n' + px + (o.sucursal ? ' · ' + o.sucursal : '') +
                '\n' + d.campo + ':  orden *' + d.orden + '*  ·  su examen dice *' + d.examen + '*' +
@@ -275,7 +298,7 @@ exports.handler = async function (event) {
     if (dry) {
       return { statusCode: 200, body: JSON.stringify({
         dry: true, revisadas: nuevas.length, ventana_h: horas, hallazgos: hallazgos.length,
-        detalle: hallazgos.map(h => ({ folio: h.o.folio, px: h.px, tipo: h.tipo, estado: h.o.estado_lab, texto: h.txt }))
+        detalle: hallazgos.map(h => ({ folio: h.o.folio, px: h.px, tipo: h.tipo, estado: h.o.estado_lab, texto: h.txt, motivo: h.motivo }))
       }, null, 1) };
     }
 
@@ -292,7 +315,7 @@ exports.handler = async function (event) {
         '\n\n' + enviar.map(h => h.txt).join('\n\n──────────\n\n');
       const resumen = enviar.map(h => h.o.folio + ' (' + h.px + '): ' + h.tipo.replace(/_/g, ' ').toLowerCase()).join(' · ');
 
-      for (const p of phones) { if (await notifyAdmin(p, cuerpo, 'Revisión de graduaciones — ' + resumen)) enviados++; }
+      for (const p of phones) { if (await notifyAdmin(p, cuerpo, enviar, 'Revisión de graduaciones — ' + resumen)) enviados++; }
     }
 
     await supaREST('POST', 'app_config?on_conflict=id', { id: STATE_ID, value: JSON.stringify(nuevoEstado) })
