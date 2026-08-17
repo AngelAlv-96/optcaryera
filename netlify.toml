@@ -36,6 +36,12 @@
 # [functions."promo-followup"]
 #   schedule = "0,30 17 * * *"
 
+# Vigilante de graduaciones — revisa cada 10 min las órdenes de lab recién capturadas y avisa
+# si la Rx no cuadra con los exámenes del paciente (paciente sin examen, Rx de otra persona,
+# signo invertido). La función se auto-limita a 9am-9pm CST. Prueba sin enviar: ?dry=1&horas=48
+[functions."rx-audit-cron"]
+  schedule = "*/10 * * * *"
+
 # Audit Cron — inventory audit every ~5 days at 11:00 AM CST (17:00 UTC)
 [functions."audit-cron"]
   schedule = "0 17 1,6,11,16,21,26 * *"
