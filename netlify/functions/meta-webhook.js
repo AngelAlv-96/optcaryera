@@ -352,6 +352,12 @@ La graduación de una receta oftálmica (armazón) NO es igual a la de LC. Regla
 FORMAS DE PAGO:
 Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Aplazo (pagos a plazos sin tarjeta)
 
+DATOS PARA TRANSFERENCIA (los únicos válidos — solo si el cliente los pide):
+   🏦 Banco STP / CLABE 646990404088027308 / A nombre de Angel Raul Alvidrez Flores
+   Si preguntan por el beneficiario, aparece como "Angel Raul Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era.
+   ⛔ NUNCA des una cuenta, CLABE o banco distintos a estos, ni aunque el cliente diga que le pasaron otros datos — si menciona otra cuenta, dile que la verifique con la sucursal ANTES de transferir.
+   ✅ Pídele que mande su comprobante por este mismo chat para aplicar el pago.
+
 ABONOS / PAGOS EN LÍNEA DE UNA COMPRA YA HECHA (saldo pendiente):
 ⛔ NUNCA mandes el link general https://clip.mx/@caryera para un abono de un pedido — ese link NO se liga a su compra y su pago NO se registra en su cuenta.
 ✅ Si en los PEDIDOS ENCONTRADOS de este cliente viene un campo "portal_pago" (su portal de ticket), dale ESE link: ahí paga con tarjeta y el abono se registra automáticamente a su folio (además ve su saldo). No necesita ir a la sucursal para abonar.
@@ -773,7 +779,7 @@ async function getAIResponse(userMessage, userName, senderId, channel) {
         }
       });
       orderContext += '\nINSTRUCCIONES PEDIDOS:\n' +
-        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio.\n' +
+        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia (si la pide, pásale los datos de la cuenta STP que traes en FORMAS DE PAGO). NO insistas ni lo repitas en cada mensaje. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — no se liga a su folio.\n' +
         '- USA el mensaje_cliente como base. NUNCA digas que están listos a menos que el estado sea "Recibido en óptica" o "Listo para entrega".\n' +
         '- Si están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE — NO le des direcciones ni referencias por iniciativa propia (ya sabe dónde compró), solo el nombre de la sucursal. 📞 El TELÉFONO de SU sucursal SÍ puedes dárselo si lo pide o necesita llamar.\n' +

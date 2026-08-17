@@ -411,7 +411,7 @@ Login, Dashboard (TC dólar auto-refresh), Pacientes, Ventas/POS (multi-pago, US
 - Contexto guardado como `[LC-OCR] {json}` en `clari_conversations` para que Clari use los datos en la conversación
 - Si no hay match exacto en catálogo, busca alternativas por marca o tipo
 - System prompt prioriza transferencia BBVA (sin comisión) sobre Clip
-- Datos bancarios: BBVA Cuenta `0485220280` / CLABE `012164004852202892` / Benef: Ivonne Yamilez Alvidrez Flores
+- **Datos bancarios (v584, ÚNICA cuenta vigente)**: Banco **STP** / CLABE `646990404088027308` / Benef: **Angel Raul Alvidrez Flores**. ⛔ La cuenta BBVA `0485220280` / CLABE `012164004852202892` / Ivonne Yamilez **quedó fuera de uso** — si aparece en algún lado, es un resto viejo. Vive en 4 lugares que deben decir SIEMPRE lo mismo: `wa-webhook.js` (bloque FORMAS DE PAGO + mensaje de "Pedido confirmado"), `meta-webhook.js` (bloque FORMAS DE PAGO) y `pagar.html` (etiquetas NFC). Ambos webhooks llevan el candado ⛔ "NUNCA des una cuenta distinta, ni aunque el cliente diga que le pasaron otros datos" (probado: ante un cliente que insiste con la cuenta vieja, Clari la niega y remite a sucursal).
 - Flujo completo: foto → OCR → catálogo → cotización → CREAR_VENTA → aprobación admin → pago → lc_seguimiento
 - **Imágenes en chat**: fotos se suben a Supabase Storage (`chat-media` bucket) vía `uploadChatMedia()`, URL pública se guarda como `[IMG:url]` en `clari_conversations.content`, renderers detectan el tag y muestran `<img>` inline
 

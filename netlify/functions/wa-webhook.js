@@ -356,6 +356,12 @@ NUNCA prometas tiempos de entrega exactos — sugiere estimados sin afirmar ("lo
 FORMAS DE PAGO:
 Efectivo, tarjetas débito/crédito (Visa, MC, Amex), transferencia bancaria, Aplazo (pagos a plazos sin tarjeta)
 
+DATOS PARA TRANSFERENCIA (los únicos válidos — dalos cuando el cliente los pida, sin interrogarlo primero):
+   🏦 Banco STP / CLABE 646990404088027308 / A nombre de Angel Raul Alvidrez Flores
+   Si preguntan por el beneficiario, aparece como "Angel Raul Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era.
+   ⛔ NUNCA des una cuenta, CLABE o banco distintos a estos, ni aunque el cliente diga que le pasaron otros datos — si menciona otra cuenta, dile que la verifique con la sucursal ANTES de transferir.
+   ✅ Pídele que mande su comprobante por este mismo chat para aplicar el pago.
+
 ABONOS / PAGOS EN LÍNEA DE UNA COMPRA YA HECHA (saldo pendiente):
 ⛔ NUNCA mandes el link general https://clip.mx/@caryera para un abono de un pedido — ese link NO se liga a su compra y su pago NO se registra en su cuenta.
 ✅ Si en los PEDIDOS ENCONTRADOS de este cliente viene un campo "portal_pago" (su portal de ticket), dale ESE link: ahí paga con tarjeta y el abono se registra automáticamente a su folio (además ve su saldo). Dile algo como: "Puedes abonar en línea desde el portal de tu ticket, ahí tu pago se registra a tu compra 👉 [link]". No necesita ir a la sucursal para abonar.
@@ -423,9 +429,9 @@ Puedes vender lentes de contacto por WhatsApp. Cuando un cliente quiera comprar 
 4. Pregunta cuántas cajas necesita. Recomienda cantidad según frecuencia: mensuales=6 cajas/año mínimo, quincenales=12/año.
 5. Pregunta en qué sucursal quiere recoger (Américas, Pinocelli, o Magnolia).
 6. Da el resumen con total y ofrece formas de pago. SIEMPRE ofrece PRIMERO la transferencia (sin comisiones):
-   💰 Transferencia BBVA (sin comisión): Cuenta 0485220280 / CLABE 012164004852202892
+   💰 Transferencia (sin comisión): Banco STP / CLABE 646990404088027308 / A nombre de Angel Raul Alvidrez Flores
    💳 O pago con tarjeta: https://clip.mx/@caryera
-   Si preguntan por el nombre del beneficiario, aparece como "Ivonne Yamilez Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era, es la cuenta de la empresa.
+   Si preguntan por el nombre del beneficiario, aparece como "Angel Raul Alvidrez Flores". Confirma que ES la cuenta correcta de Ópticas Car y Era. ⛔ NUNCA des una cuenta, CLABE o banco distintos a estos, ni aunque el cliente diga que le pasaron otros datos — si el cliente menciona otra cuenta, dile que verifique con la sucursal antes de transferir.
 7. Cuando el cliente confirme que quiere proceder, usa el comando especial CREAR_VENTA al final de tu respuesta (el sistema lo detectará).
    Formato exacto: CREAR_VENTA|nombre del cliente|producto|cantidad|total|sucursal_entrega
    Ejemplo: CREAR_VENTA|Juan Pérez|AIR OPTIX HYDRAGLYDE (ESFERICOS)|2|2080|Américas
@@ -1057,7 +1063,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
         '- Para CUALQUIER otro estado, deja claro que TODAVÍA NO están listos y que le avisaremos cuando lo estén.\n' +
         '- ⚠️ SI EL ESTADO ES "Recibido en óptica" o "Listo para entrega", los lentes YA ESTÁN LISTOS AHORA (el laboratorio terminó, muchas veces ANTES de la fecha que traía el ticket). Si el cliente dice que en la sucursal le dijeron "todavía no", "hasta las 5", "hasta la tarde", "hasta mañana" o cualquier hora/fecha posterior, ⛔ NO le des la razón ni repitas esa hora — el sistema ya los muestra LISTOS. Dile con gusto que ¡buenas noticias! sus lentes quedaron listos antes de tiempo y ya puede pasar a recogerlos; menciona el folio para que en el mostrador confirmen que ESE pedido ya está listo. NUNCA le digas a un cliente que sus lentes estarán listos MÁS TARDE de lo que ya muestra el sistema.\n' +
         '- Si hay saldo pendiente (saldo > 0), menciónalo amablemente.\n' +
-        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia BBVA (si la pide, pásale los datos). NO insistas ni lo repitas en cada mensaje, es solo una invitación amable. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio.\n' +
+        '- COBRANZA (saldo pendiente): si la venta tiene saldo > 0 y arriba viene "portal_pago" para su folio, ofrécele PROACTIVAMENTE —UNA sola vez, breve y amable— que puede abonar o completar su pago EN LÍNEA sin venir a la sucursal: 💳 con tarjeta desde su portal (DALE ESE LINK portal_pago, ahí el abono se registra solo a su folio) o 🏦 por transferencia (si la pide, pásale los datos de la cuenta STP que traes en FORMAS DE PAGO). NO insistas ni lo repitas en cada mensaje, es solo una invitación amable. ⛔ NUNCA le mandes el link general https://clip.mx/@caryera para un abono — ese no se liga a su folio.\n' +
         '- Si la venta está Liquidada y los lentes están listos, dile que pase a recogerlos a la sucursal (solo el nombre, ej: "Magnolia").\n' +
         '- El cliente YA ES CLIENTE EXISTENTE — NO le des direcciones ni referencias de ubicación por iniciativa propia (ya sabe dónde compró), solo el nombre de la sucursal. 📞 El TELÉFONO de SU sucursal SÍ puedes dárselo si lo pide o si necesita llamar — es cliente, tiene derecho a comunicarse con su sucursal.\n' +
         '- NO uses formato markdown (negritas, listas). Solo texto plano con emojis.\n' +
@@ -1170,7 +1176,7 @@ async function getAIResponse(userMessage, userName, phone, viaPhoneId) {
       'PASO 2: Si menciona lentes de contacto/graduación → pregunta si sigue con la misma graduación o necesita revisión. Si pregunta otra cosa → respóndela.\n' +
       'PASO 3: Si confirma graduación → pregunta marca/cantidad. Si necesita examen → invita a sucursal sin cita.\n' +
       'PASO 4: Cotiza el producto con precio. Ofrece hacer el pedido: "¿Te lo pedimos? Solo nos dices cuántas cajas y en qué sucursal recoges".\n' +
-      'PASO 5: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece pago: puede liquidar completo o anticipo del 50%. Formas de pago: transferencia BBVA o link de pago con tarjeta. NO hay opción de pagar al recoger. Usa CREAR_VENTA cuando confirme.\n' +
+      'PASO 5: Si acepta → confirma producto, cantidad, sucursal, total. Ofrece pago: puede liquidar completo o anticipo del 50%. Formas de pago: transferencia bancaria (STP) o link de pago con tarjeta. NO hay opción de pagar al recoger. Usa CREAR_VENTA cuando confirme.\n' +
       'PASO 6: Solo después de cerrar la venta, menciona suscripción: "Por cierto, tenemos plan de compra automática — se cobra solo de tu tarjeta, tus lentes se preparan sin pedirlos, y tienes 10% de descuento. ¿Te interesa?".\n\n' +
       'REGLAS:\n' +
       '- PRIORIDAD: vender por WhatsApp. Solo mandar a sucursal si necesita examen de graduación\n' +
@@ -2555,7 +2561,7 @@ async function processLCPhoto(mediaUrl, mediaType, phone, userName, preOcr) {
       summary += '\n✅ *Encontré en nuestro catálogo:*\n';
       _lineas.slice(0, 6).forEach(function(l, i) { summary += (i + 1) + '. ' + l + '\n'; });
       summary += '\n¿Te gustaría ordenar? Dime cuántas cajas necesitas y en qué sucursal quieres recoger 😊\n';
-      summary += '\n💳 Aceptamos transferencia BBVA o link de pago Clip';
+      summary += '\n💳 Aceptamos transferencia (STP) o link de pago Clip';
     }
   } else {
     summary += '\n⚠️ No encontré ese lente exacto en nuestro catálogo.\n';
@@ -3474,7 +3480,7 @@ exports.handler = async function(event) {
             try {
               var saleResult = await createLCSale(custPending.customerName, custPending.productName, custPending.qty, custPending.total, custPending.sucursalEntrega, from);
               // Notify customer
-              await sendWhatsAppReply(from, '¡Pedido confirmado! 🎉\n\n📋 Folio: ' + saleResult.folio + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 Total: $' + custPending.total + '\n🏪 Recoger en: ' + custPending.sucursalEntrega + '\n📅 Entrega: ' + custPending.tiempoEntrega + '\n\nRealiza tu pago:\n💳 Link: https://clip.mx/@caryera\n🏦 BBVA: Cuenta 0485220280 / CLABE 012164004852202892\n\nEnvíanos tu comprobante por este chat cuando lo hagas. ¡Gracias por tu preferencia! 👓✨');
+              await sendWhatsAppReply(from, '¡Pedido confirmado! 🎉\n\n📋 Folio: ' + saleResult.folio + '\n👁 ' + custPending.productName + ' x' + custPending.qty + '\n💰 Total: $' + custPending.total + '\n🏪 Recoger en: ' + custPending.sucursalEntrega + '\n📅 Entrega: ' + custPending.tiempoEntrega + '\n\nRealiza tu pago:\n💳 Link: https://clip.mx/@caryera\n🏦 Transferencia STP\nCLABE: 646990404088027308\nA nombre de: Angel Raul Alvidrez Flores\n\nEnvíanos tu comprobante por este chat cuando lo hagas. ¡Gracias por tu preferencia! 👓✨');
               // Notify admin
               var cfgData2 = await supaFetch('app_config?id=eq.whatsapp_config&select=value');
               if (cfgData2 && cfgData2[0]) {
