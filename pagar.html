@@ -19,60 +19,60 @@
   --wa:#1faa53; --ok:#1f9d55;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;
-  padding:22px 18px calc(30px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+body{background:var(--paper);color:var(--ink);font-family:'Outfit',sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased;
+  padding:14px 14px calc(18px + env(safe-area-inset-bottom));display:flex;justify-content:center}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;display:block}
-.wrap{width:100%;max-width:460px}
+.wrap{width:100%;max-width:440px}
 
-/* encabezado */
-.top{text-align:center;margin-bottom:22px}
-.top img{height:38px;width:auto;margin:0 auto 16px}
-h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-height:1.05;letter-spacing:-.01em}
-.suc{display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 13px;border-radius:99px;
-  background:var(--beige-tint);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--beige-deep)}
+/* encabezado — compacto: logo y sucursal en una sola línea con el título */
+.top{text-align:center;margin-bottom:12px}
+.top img{height:26px;width:auto;margin:0 auto 8px}
+h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:25px;line-height:1.05;letter-spacing:-.01em}
+.suc{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 11px;border-radius:99px;
+  background:var(--beige-tint);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--beige-deep)}
 
 /* tarjetas */
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px;
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:9px;
   box-shadow:0 1px 2px rgba(28,26,22,.04)}
-.step{display:flex;align-items:center;gap:9px;margin-bottom:14px}
-.step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--beige);color:#fff;
-  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
-.step h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
-.sub{font-size:13px;color:var(--ink2);margin-bottom:14px}
+.step{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.step .n{flex:none;width:19px;height:19px;border-radius:50%;background:var(--beige);color:#fff;
+  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.step h2{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.sub{font-size:12.5px;color:var(--ink2);margin-bottom:9px;line-height:1.4}
 
 /* CLABE */
-.clabe{font-family:'Outfit',sans-serif;font-size:clamp(19px,5.4vw,24px);font-weight:600;letter-spacing:.06em;
-  text-align:center;padding:14px 8px;background:var(--beige-tint);border:1px dashed var(--beige);
-  border-radius:11px;margin-bottom:12px;cursor:pointer;font-variant-numeric:tabular-nums;word-break:break-all;
+.clabe{font-family:'Outfit',sans-serif;font-size:clamp(18px,5.2vw,23px);font-weight:600;letter-spacing:.05em;
+  text-align:center;padding:11px 8px;background:var(--beige-tint);border:1px dashed var(--beige);
+  border-radius:10px;margin-bottom:9px;cursor:pointer;font-variant-numeric:tabular-nums;word-break:break-all;
   -webkit-user-select:all;user-select:all;transition:background .15s}
 .clabe:active{background:#f0e2cd}
 
 /* botones */
-.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:16px;border:none;
-  border-radius:12px;font-family:'Outfit',sans-serif;font-size:16px;font-weight:600;cursor:pointer;
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:13px;border:none;
+  border-radius:11px;font-family:'Outfit',sans-serif;font-size:15.5px;font-weight:600;cursor:pointer;
   transition:transform .1s,background .2s;-webkit-tap-highlight-color:transparent}
 .btn:active{transform:scale(.985)}
 .btn-main{background:var(--ink);color:#fff}
 .btn-main.done{background:var(--ok)}
 .btn-out{background:#fff;color:var(--ink);border:1.5px solid var(--line)}
 .btn-wa{background:var(--wa);color:#fff}
-.btn svg{width:19px;height:19px;stroke-width:2;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn svg{width:18px;height:18px;stroke-width:2;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
 /* datos del beneficiario */
-.datos{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
-.row{display:flex;justify-content:space-between;gap:14px;font-size:13px;padding:4px 0}
+.datos{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:2px 0}
 .row .k{color:var(--ink3);flex:none}
 .row .v{text-align:right;font-weight:500;word-break:break-word}
-.verifica{margin-top:12px;font-size:12px;line-height:1.45;color:var(--ink2);background:var(--beige-tint);
-  border-radius:9px;padding:10px 12px}
+.verifica{margin-top:9px;font-size:11.5px;line-height:1.4;color:var(--ink2);background:var(--beige-tint);
+  border-radius:8px;padding:8px 10px}
 .verifica b{color:var(--ink)}
 
 /* CoDi */
 #codi{display:none}
-#codi img{width:min(240px,68vw);margin:0 auto;border-radius:10px}
+#codi img{width:min(210px,60vw);margin:0 auto;border-radius:10px}
 
-.pie{text-align:center;font-size:12px;color:var(--ink3);margin-top:20px;line-height:1.6}
+.pie{text-align:center;font-size:11.5px;color:var(--ink3);margin-top:12px;line-height:1.5}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,90px);background:var(--ink);color:#fff;
   font-size:14px;font-weight:500;padding:12px 20px;border-radius:99px;transition:transform .28s cubic-bezier(.2,.9,.3,1);
   z-index:50;box-shadow:0 8px 24px rgba(28,26,22,.22)}
@@ -98,7 +98,7 @@ h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-he
   <!-- Transferencia -->
   <div class="card">
     <div class="step"><span class="n" id="n-transf">1</span><h2>Por transferencia</h2></div>
-    <div class="sub">Toca el botón y pega la clave en tu app del banco — así no hay riesgo de equivocarse en un dígito.</div>
+    <div class="sub">Cópiala y pégala en tu app del banco: así no hay riesgo de equivocarse en un dígito.</div>
 
     <div class="clabe" id="clabe" onclick="copiar()">0121 6400 4852 2028 92</div>
 
@@ -114,14 +114,13 @@ h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-he
     </div>
 
     <div class="verifica">
-      Antes de enviar, tu app debe mostrar el nombre <b>Ivonne Yamilez Alvidrez Flores</b>. Si aparece otro nombre, <b>no continúes</b> y avísale al personal.
+      Tu app debe mostrar el nombre <b>Ivonne Yamilez Alvidrez Flores</b>. Si aparece otro, <b>no continúes</b> y avísale al personal.
     </div>
   </div>
 
   <!-- Tarjeta -->
   <div class="card">
     <div class="step"><span class="n" id="n-tarj">2</span><h2>Con tarjeta</h2></div>
-    <div class="sub">Paga con crédito o débito desde tu teléfono.</div>
     <a class="btn btn-out" id="btn-clip" href="https://clip.mx/@caryera" target="_blank" rel="noopener">
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
       <span>Pagar con tarjeta</span>
@@ -147,23 +146,32 @@ h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:34px;line-he
   var CLABE = '012164004852202892';
   var WA = '5216563110094';
 
-  // Se aceptan también códigos cortos (am/pi/ma/vi) por si alguna etiqueta se grabó así.
   var SUCS = {
-    americas:  'Plaza de las Américas',  am: 'Plaza de las Américas',
-    pinocelli: 'Plaza Pinocelli',        pi: 'Plaza Pinocelli',
-    magnolia:  'Plaza Magnolia',         ma: 'Plaza Magnolia',
-    vittoria:  'Plaza Vía Vittoria',     vi: 'Plaza Vía Vittoria'
+    americas:  'Plaza de las Américas',
+    pinocelli: 'Plaza Pinocelli',
+    magnolia:  'Plaza Magnolia',
+    vittoria:  'Plaza Vía Vittoria'
   };
-  var CANON = { am:'americas', pi:'pinocelli', ma:'magnolia', vi:'vittoria' };
 
   // ── Sucursal: la trae el link de la etiqueta (/pagar?suc=americas) ──
-  // Se acepta como venga escrita: mayúsculas, espacios y acentos. Las etiquetas se graban a
-  // mano y una vez bloqueadas ya NO se pueden corregir, así que la página perdona el formato.
+  // ⚠️ Las etiquetas NFC se graban a mano y una vez BLOQUEADAS ya no se pueden corregir,
+  // así que aquí se reconoce la sucursal por una raíz del nombre, no por texto exacto:
+  // sirven "vittoria", "vitoria", "via vittoria", "Plaza de las Américas", "pino", "ma"...
+  // Si mañana se graba una etiqueta con otra variante, lo más probable es que ya funcione.
   var qs = new URLSearchParams(location.search);
-  var slug = (qs.get('suc') || qs.get('s') || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+  var crudo = (qs.get('suc') || qs.get('s') || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+
+  var slug = '';
+  if (crudo === 'am' || crudo.indexOf('americ') >= 0)      slug = 'americas';
+  else if (crudo === 'pi' || crudo.indexOf('pino') >= 0)   slug = 'pinocelli';
+  else if (crudo === 'ma' || crudo.indexOf('magno') >= 0)  slug = 'magnolia';
+  else if (crudo === 'vi' || crudo.indexOf('vit') >= 0)    slug = 'vittoria';
+  // La etiqueta de Américas se grabó y bloqueó SIN el parámetro, así que un /pagar pelón
+  // se toma como Américas. ⚠️ Si algún día se regraba esa etiqueta, quitar esta línea.
+  else if (!crudo) slug = 'americas';
+
   var sucNombre = SUCS[slug] || '';
-  slug = CANON[slug] || slug;   // normalizar para el nombre de la imagen del QR CoDi
   if (sucNombre) {
     var chip = document.getElementById('suc-chip');
     chip.textContent = '📍 ' + sucNombre;
