@@ -1266,6 +1266,75 @@ async function asistReenviarFirma(firmaId) {
 // TAB: CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════
 
+// Empareja el nombre de un asesor (lista de comisiones) con su registro del checador.
+// Tolera acentos, títulos y variantes de escritura: "Monserrat Carrillo" ↔ "MONSERRATH CARRILLO CHAIREZ".
+// Misma lógica que _msUidsDeAsesor en index.html — si cambia una, cambiar la otra.
+function _asistTokensNombre(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\b(lic|tec|dr|dra|sr|sra)\.?\b/g, '').replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(function(t){ return t.length >= 3; });
+}
+
+function _asistBuscarExtraDe(nombreAsesor, extras) {
+  var tk = _asistTokensNombre(nombreAsesor);
+  if (tk.length < 2) return null;
+  var hallado = null;
+  Object.keys(extras || {}).forEach(function(uid) {
+    if (hallado) return;
+    var et = _asistTokensNombre((extras[uid] || {}).nombre || '');
+    var todos = tk.every(function(t) {
+      return et.some(function(e){ return e === t || e.indexOf(t) === 0 || t.indexOf(e) === 0; });
+    });
+    if (todos) hallado = uid;
+  });
+  return hallado;
+}
+
+// Asciende a un empleado del checador a VENDEDOR, usando su nombre EXACTO del checador
+// para que las dos listas queden enlazadas (el problema de Edna/Monserrat nació de
+// escribir el nombre a mano en comisiones).
+async function asistHacerVendedor(uid) {
+  var extras = (_asistHorarios && _asistHorarios.empleados_extra) || {};
+  var ex = extras[uid];
+  if (!ex) { if (typeof toast === 'function') toast('Empleado no encontrado','error'); return; }
+  var suc = ex.sucursal || '';
+  if (!suc || suc === 'Laboratorio') { if (typeof toast === 'function') toast('Un vendedor debe estar en una sucursal, no en Laboratorio','error'); return; }
+
+  var pctTxt = prompt('¿Con qué % de comisión entra ' + ex.nombre + '?\n\n(las altas nuevas se han hecho al 1%)', '1');
+  if (pctTxt === null) return;
+  var pct = parseFloat(pctTxt);
+  if (isNaN(pct) || pct < 0 || pct > 100) { if (typeof toast === 'function') toast('Porcentaje inválido','error'); return; }
+  if (!confirm('Dar de alta a ' + ex.nombre + ' como vendedor de ' + suc + ' al ' + pct + '%.\n\nEmpieza a generar comisión desde hoy y aparece en el POS para asignarle ventas.')) return;
+
+  try {
+    // Releer la config MÁS RECIENTE para no pisar otras sucursales/divisores
+    var aCfg;
+    try {
+      var fresh = await db.from('app_config').select('value').eq('id', 'asesores').single();
+      aCfg = fresh && fresh.data ? (typeof fresh.data.value === 'string' ? JSON.parse(fresh.data.value) : fresh.data.value) : (_asistAsesores || {});
+    } catch(_e) { aCfg = _asistAsesores || {}; }
+
+    if (!aCfg.sucursales) aCfg.sucursales = {};
+    if (!aCfg.sucursales[suc]) aCfg.sucursales[suc] = [];
+    if (aCfg.sucursales[suc].indexOf(ex.nombre) === -1) aCfg.sucursales[suc].push(ex.nombre);
+    if (!aCfg.comisiones) aCfg.comisiones = {};
+    aCfg.comisiones[ex.nombre] = pct;
+    if (!aCfg.fecha_inicio) aCfg.fecha_inicio = {};
+    aCfg.fecha_inicio[ex.nombre] = _asistHoyLocal();
+
+    var r = await db.from('app_config').upsert({ id: 'asesores', value: JSON.stringify(aCfg) }, { onConflict: 'id' });
+    if (r && r.error) throw new Error(r.error.message || r.error);
+
+    _asistAsesores = aCfg;
+    try { if (typeof _asesoresConfig !== 'undefined') _asesoresConfig = aCfg; } catch(_){}
+    asistRenderConfig();
+    if (typeof toast === 'function') toast(ex.nombre + ' ya es vendedor al ' + pct + '%');
+  } catch(e) {
+    console.error('[RH] hacer vendedor', e);
+    if (typeof toast === 'function') toast('Error: ' + (e.message || e),'error');
+  }
+}
+
 function _asistGetAllAsesores() {
   // Build flat list of asesores from asesores config (by sucursal)
   var list = [];
@@ -1339,15 +1408,43 @@ function asistRenderConfig() {
   var uidToPhone = {};
   for (var ph in _asistPhoneMap) { uidToPhone[_asistPhoneMap[ph]] = ph; }
 
-  var allEmps = [];
-  asesores.forEach(function(a) {
-    allEmps.push({ uid: 'asesor_' + a.nombre.toLowerCase().replace(/\s+/g, '_'), nombre: a.nombre, suc: a.sucursal, isExtra: false });
-  });
   var extras = (_asistHorarios && _asistHorarios.empleados_extra) || {};
+  var comPcts = (_asistAsesores && _asistAsesores.comisiones) || {};
+  var comDef = (_asistAsesores && _asistAsesores.comision_default) || 2;
+
+  // Una persona puede estar en el checador como extra_ y en comisiones con su nombre escrito
+  // distinto (Monserrat / Monserrath). Se emparejan para mostrar UNA sola fila y para
+  // detectar a los asesores que no tienen registro de asistencia.
+  var allEmps = [];
+  var extraDeAsesor = {};   // nombre de asesor -> uid del extra que es la misma persona
+  asesores.forEach(function(a) {
+    var euid = _asistBuscarExtraDe(a.nombre, extras);
+    if (euid) { extraDeAsesor[a.nombre] = euid; return; }  // se muestra en la fila del extra
+    allEmps.push({ uid: 'asesor_' + a.nombre.toLowerCase().replace(/\s+/g, '_'), nombre: a.nombre, suc: a.sucursal, isExtra: false, esVendedor: true, pct: (comPcts[a.nombre] !== undefined ? comPcts[a.nombre] : comDef) });
+  });
+  var asesorDeExtra = {};
+  Object.keys(extraDeAsesor).forEach(function(nom){ asesorDeExtra[extraDeAsesor[nom]] = nom; });
   Object.keys(extras).forEach(function(euid) {
     var ex = extras[euid];
-    allEmps.push({ uid: euid, nombre: ex.nombre, suc: ex.sucursal || 'Laboratorio', isExtra: true });
+    var nomAsesor = asesorDeExtra[euid];
+    allEmps.push({
+      uid: euid, nombre: ex.nombre, suc: ex.sucursal || 'Laboratorio', isExtra: true,
+      esVendedor: !!nomAsesor,
+      nombreComision: nomAsesor || null,
+      pct: nomAsesor ? (comPcts[nomAsesor] !== undefined ? comPcts[nomAsesor] : comDef) : null
+    });
   });
+
+  // ⚠️ Asesores SIN registro en el checador: no fichan asistencia, así que ni se les marcan
+  // faltas ni les llegan actas — y el bloqueo del sobre por acta sin firmar no los vería.
+  var huerfanos = allEmps.filter(function(e){ return !e.isExtra && e.esVendedor && !uidToPhone[e.uid]; });
+  if (huerfanos.length) {
+    html += '<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
+    html += '<div style="font-size:11px;font-weight:700;color:#e88">⚠️ ' + huerfanos.length + (huerfanos.length === 1 ? ' asesor sin registro en el checador' : ' asesores sin registro en el checador') + '</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-top:4px;line-height:1.5">Cobran comisión pero no fichan asistencia: no se les marcan faltas ni se les generan actas. Agrégales su teléfono aquí abajo, o si ya checan con otro nombre, corrige el nombre para que empaten.</div>';
+    html += '<div style="font-size:10px;color:#e8a84a;margin-top:6px">' + huerfanos.map(function(e){ return e.nombre + ' (' + e.suc + ')'; }).join(' · ') + '</div>';
+    html += '</div>';
+  }
 
   // Group by sucursal
   var bySuc = {};
@@ -1385,7 +1482,15 @@ function asistRenderConfig() {
       html += '<div class="asist-emp-row" style="border-bottom:1px solid rgba(255,255,255,0.03)">';
       html += '<div style="display:flex;align-items:center;gap:6px;padding:4px 6px;cursor:pointer" onclick="_asistToggleSection(\'' + secId + '\')">';
       html += '<span id="' + secId + '-arrow" style="font-size:8px;color:var(--muted)">▸</span>';
-      html += '<span style="font-weight:500;font-size:11px;flex:1">' + emp.nombre + '</span>';
+      html += '<span style="font-weight:500;font-size:11px;flex:1">' + emp.nombre;
+      if (emp.esVendedor) {
+        html += ' <span style="font-size:8px;color:#4af0c8;background:rgba(74,240,200,0.1);padding:1px 5px;border-radius:3px;white-space:nowrap">💰 ' + emp.pct + '%</span>';
+        // Si en comisiones está con otro nombre, mostrarlo — así se ve de dónde sale su sobre.
+        if (emp.nombreComision && emp.nombreComision !== emp.nombre) {
+          html += ' <span style="font-size:8px;color:var(--muted)" title="Nombre con el que aparece en comisiones">(' + emp.nombreComision + ')</span>';
+        }
+      }
+      html += '</span>';
       if (hasCustom) html += '<span style="font-size:8px;color:var(--beige);background:var(--beige-dim);padding:1px 5px;border-radius:3px">Custom</span>';
       html += '<span style="font-family:monospace;font-size:10px;color:var(--muted);width:110px;text-align:right">';
       if (phone) {
@@ -1394,11 +1499,14 @@ function asistRenderConfig() {
         html += '<input type="text" placeholder="Teléfono" maxlength="15" id="asist-ph-' + emp.uid + '" onclick="event.stopPropagation()" style="width:100px;' + monoInputS + '">';
       }
       html += '</span>';
-      html += '<span style="white-space:nowrap;width:50px;text-align:right">';
+      html += '<span style="white-space:nowrap;min-width:50px;text-align:right">';
       if (phone) {
         html += '<button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#e74c3c" onclick="event.stopPropagation();asistDarDeBaja(\'' + phone + '\',\'' + emp.nombre.replace(/'/g,"\\'") + '\')">Baja</button>';
       } else {
         html += '<button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#4af0c8" onclick="event.stopPropagation();asistGuardarPhoneAsesor(\'' + emp.uid + '\')">✓</button>';
+      }
+      if (emp.isExtra && !emp.esVendedor && emp.suc !== 'Laboratorio') {
+        html += ' <button class="btn btn-g" style="padding:1px 5px;font-size:9px;color:#4af0c8" onclick="event.stopPropagation();asistHacerVendedor(\'' + emp.uid + '\')" title="Darlo de alta en comisiones con este mismo nombre">💰</button>';
       }
       if (emp.isExtra) {
         html += ' <button class="btn btn-g" style="padding:1px 4px;font-size:9px;color:#e74c3c" onclick="event.stopPropagation();asistEliminarExtra(\'' + emp.uid + '\')" title="Eliminar">✕</button>';
