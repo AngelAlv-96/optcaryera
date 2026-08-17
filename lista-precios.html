@@ -1080,18 +1080,18 @@ const DATA = {
     ], note:'Foto Colors +$700 en policarbonato'},
     {id:'s2-ultra', tipo:'sencilla', icon:'ultra', title:'Ultra Ligeros', desc:'Más delgados y ligeros para graduaciones altas · con Anti-Blue AR.', combo:[
       {h:'Ultra-thin 1.67', s:'', lines:[
-        ['ESF −4.00 a −12.00 · CIL hasta −2.00',4399],
-        ['ESF −4.00 a −10.00 · CIL hasta −4.00',4999],
-        ['ESF −2.25 a −6.00 · CIL hasta −6.00',5299],
-        ['ESF −12.00 a −15.00 (sin CIL)',4999],
-        ['Positivos y cilindro, o fuera de rango',6299]]},
+        ['ESF −4.00 a −12.00 · CIL hasta −2.00',4599],
+        ['ESF −4.00 a −10.00 · CIL hasta −4.00',5199],
+        ['ESF −2.25 a −6.00 · CIL hasta −6.00',5499],
+        ['ESF −12.00 a −15.00 (sin CIL)',5199],
+        ['Positivos y cilindro, o fuera de rango',6499]]},
       {h:'Super Ultra-thin 1.74', s:'', lines:[
-        ['ESF −6.00 a −13.00 · CIL hasta −2.00',4999],
-        ['ESF −13.50 a −20.00 · CIL hasta −2.00',6699],
-        ['ESF −4.00 a −12.00 · CIL hasta −4.00',5799],
-        ['ESF +6.00 a +12.00 (sin CIL)',6699],
-        ['Positivos y cilindro, o fuera de rango',9299]]},
-      {h:'Ultra-thin 1.67 + Fotocromático', s:'', lines:[['Esféricos ± y combinados (CIL)',6799]]},
+        ['ESF −6.00 a −13.00 · CIL hasta −2.00',5199],
+        ['ESF −13.50 a −20.00 · CIL hasta −2.00',6899],
+        ['ESF −4.00 a −12.00 · CIL hasta −4.00',5999],
+        ['ESF +6.00 a +12.00 (sin CIL)',6899],
+        ['Positivos y cilindro, o fuera de rango',9499]]},
+      {h:'Ultra-thin 1.67 + Fotocromático', s:'', lines:[['Esféricos ± y combinados (CIL)',6999]]},
     ]},
     {id:'s2-bifFT', tipo:'bifocal', icon:'bifocal', title:'Bifocales F/T', desc:'Lejos y cerca con línea visible. (Esfera/Cilindro)', combo:[
       {h:'Esenciales', s:'Funcional y económico', lines:[['CR-39',1699],['Policarbonato Bco.',3299],['Fotocromático sin AR',3999]]},
@@ -1524,7 +1524,9 @@ function aplicarPreciosVivos(){
     (DATA[serie]?.cats||[]).forEach(cat=>{
       const clave = String(cat.id||'').replace(/^s[12]-/,'');
       const vis = VIS_DE_CAT[clave]; if(!vis) return;
-      (cat.items||[]).forEach(it=>{
+      // Las categorias guardan sus precios en 'rows' (fila suelta con p) y en 'combo' (grupo con lines).
+      // 'items' se conserva por si alguna categoria futura lo usa.
+      [].concat(cat.rows||[], cat.combo||[], cat.items||[]).forEach(it=>{
         if(it.mat!==undefined && it.p!==undefined){
           const m = MAP_DATA[clave+'|'+it.mat]; if(!m) return;
           const v = precioDe(vis,m[0],m[1],serie) ?? precioDe(vis,m[0],m[1],1);
