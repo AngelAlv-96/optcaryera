@@ -28782,6 +28782,111 @@ async function _msTareasBloqueantes(suc) {
   return tareas;
 }
 
+// ── Actas de falta SIN FIRMAR: bloquean el cobro del sobre (pedido de Angel) ──
+// Solo bloquean las ACTAS DE FALTA, no los reportes periódicos de asistencia.
+// ⚠️ Algunos registros viejos se guardaron con tipo=null (el flujo automático del checador
+// no lo escribía), así que un registro sin tipo cuenta como acta SOLO si dentro de su
+// periodo hay una falta real — si no, es un reporte y no bloquea.
+// ⚠️ El mismo asesor puede estar en el checador con OTRO uid: los que se dieron de alta
+// primero como empleado quedaron como 'extra_<nombre completo>' (Edna Karina →
+// extra_edna_karina_rodriguez_garcia) y a veces con el nombre escrito distinto
+// (Monserrat en comisiones / Monserrath en el checador). Por eso se buscan TODOS sus uids
+// posibles: con el uid calculado a secas, a Edna no se le detectaría el acta.
+function _msNormNombre(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\b(lic|tec|dr|dra|sr|sra)\.?\b/g, '').replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(function(t){ return t.length >= 3; });
+}
+
+async function _msUidsDeAsesor(nombre) {
+  var uids = ['asesor_' + String(nombre || '').toLowerCase().replace(/\s+/g, '_')];
+  try {
+    var cfg = await db.from('app_config').select('value').eq('id', 'horarios_asistencia').single();
+    var H = (cfg.data && cfg.data.value) ? (typeof cfg.data.value === 'string' ? JSON.parse(cfg.data.value) : cfg.data.value) : {};
+    var extras = H.empleados_extra || {};
+    var tk = _msNormNombre(nombre);
+    if (tk.length >= 2) {
+      Object.keys(extras).forEach(function(uid) {
+        var et = _msNormNombre((extras[uid] && extras[uid].nombre) || '');
+        // todos los tokens del asesor deben aparecer en el nombre del empleado
+        // (tolerando variantes tipo Monserrat / Monserrath)
+        var todos = tk.every(function(t) {
+          return et.some(function(e){ return e === t || e.indexOf(t) === 0 || t.indexOf(e) === 0; });
+        });
+        if (todos && uids.indexOf(uid) < 0) uids.push(uid);
+      });
+    }
+  } catch(e) { console.warn('[Mi sobre] uids:', e); }
+  return uids;
+}
+
+async function _msActasSinFirmar(asesorNombre) {
+  try {
+    var uids = await _msUidsDeAsesor(asesorNombre);
+    var res = await db.from('asistencia_firmas')
+      .select('id,uid,tipo,periodo_inicio,periodo_fin,token_expires,firmado_at')
+      .in('uid', uids).is('firmado_at', null).order('periodo_inicio', { ascending: false });
+    if (res.error) { console.warn('[Mi sobre] actas:', res.error.message); return []; }
+    var pendientes = res.data || [];
+    if (!pendientes.length) return [];
+
+    var actas = [];
+    for (var i = 0; i < pendientes.length; i++) {
+      var f = pendientes[i];
+      var faltas = [];
+      if (f.tipo === 'acta' || !f.tipo) {
+        var fr = await db.from('asistencia').select('fecha')
+          .eq('uid', f.uid).eq('es_falta', true)
+          .gte('fecha', f.periodo_inicio).lte('fecha', f.periodo_fin).order('fecha');
+        faltas = (fr.data || []).map(function(r){ return r.fecha; });
+      }
+      // tipo 'acta' explícito, o sin tipo pero con falta real dentro del periodo
+      if (f.tipo === 'acta' || (!f.tipo && faltas.length)) {
+        actas.push({
+          id: f.id, inicio: f.periodo_inicio, fin: f.periodo_fin, faltas: faltas,
+          expirado: f.token_expires ? (new Date(f.token_expires).getTime() < Date.now()) : true
+        });
+      }
+    }
+    return actas;
+  } catch(e) { console.warn('[Mi sobre] actas error:', e); return []; }
+}
+
+function _msBloqueoActas(asesor, actas) {
+  var total = actas.reduce(function(n,a){ return n + (a.faltas.length || 1); }, 0);
+  document.getElementById('ms-sub').textContent = 'Tienes un acta pendiente de firmar';
+  document.getElementById('ms-tareas-list').innerHTML =
+    '<div style="padding:12px 14px;background:var(--surface2);border:1px solid rgba(239,68,68,0.3);border-radius:10px">'
+    + '<div style="font-size:13px;font-weight:700;color:var(--white);margin-bottom:8px">📋 '
+    + (actas.length === 1 ? 'Acta de falta sin firmar' : actas.length + ' actas de falta sin firmar')
+    + '</div>'
+    + actas.map(function(a){
+        var fechas = a.faltas.length
+          ? a.faltas.map(function(d){ return _msFmtFechaCorta(d); }).join(', ')
+          : (_msFmtFechaCorta(a.inicio) + ' al ' + _msFmtFechaCorta(a.fin));
+        return '<div style="padding:8px 0;border-top:1px solid rgba(255,255,255,0.06)">'
+          + '<div style="font-size:12px;color:#e8a84a;font-weight:600">Falta: ' + fechas + '</div>'
+          + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (a.expirado ? 'El link que te llegó ya venció' : 'El link sigue vigente en tu WhatsApp') + '</div>'
+          + '</div>';
+      }).join('')
+    + '<div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">'
+    + 'Para cobrar tu sobre primero tienes que firmar ' + (total === 1 ? 'el acta' : 'las actas') + '. '
+    + 'Si ya no tienes el link, pídele a gerencia que te lo reenvíe.'
+    + '</div>'
+    + '</div>'
+    + '<div style="text-align:center;margin-top:10px"><a href="#" onclick="event.preventDefault();_msVolverAStep1()" style="font-size:11px;color:var(--muted)">← No soy ' + asesor + '</a></div>';
+  document.getElementById('ms-step-1').style.display = 'none';
+  document.getElementById('ms-step-2').style.display = 'none';
+  document.getElementById('ms-step-tareas').style.display = '';
+}
+
+function _msVolverAStep1() {
+  document.getElementById('ms-step-tareas').style.display = 'none';
+  document.getElementById('ms-step-1').style.display = '';
+  document.getElementById('ms-sub').textContent = 'Identifícate para ver tu sobre';
+  var sel = document.getElementById('ms-asesor'); if (sel) sel.value = '';
+}
+
 async function abrirMiSobre() {
   if (currentUser?.rol !== 'sucursal') { toast('Solo empleados de sucursal', true); return; }
   await _msLoadOverride();
@@ -28869,6 +28974,10 @@ async function _miSobreStep1Continuar() {
   if (!asesor) { toast('Selecciona tu nombre', true); return; }
   _msState.asesor = asesor;
   document.getElementById('ms-emp-nombre').textContent = asesor;
+
+  // ⛔ Bloqueo: no se cobra el sobre con actas de falta sin firmar
+  var actasPend = await _msActasSinFirmar(asesor);
+  if (actasPend.length > 0) { _msBloqueoActas(asesor, actasPend); return; }
 
   // Detectar si el asesor ya tiene PIN o necesita crearlo
   var pins = await _msGetPins();
@@ -29458,6 +29567,15 @@ async function _ptCargarLista() {
 }
 
 async function _ptPagarAsesor(suc, asesor, periodo, monto) {
+  // El sobre en sucursal se BLOQUEA con actas sin firmar; aquí solo se avisa —
+  // el admin decide, porque a veces se paga aparte por una razón que el sistema no sabe.
+  var _actas = await _msActasSinFirmar(asesor);
+  if (_actas.length > 0) {
+    var _det = _actas.map(function(a){
+      return '· ' + (a.faltas.length ? a.faltas.join(', ') : (a.inicio + ' al ' + a.fin));
+    }).join('\n');
+    if (!confirm('⚠️ ' + asesor + ' tiene ' + (_actas.length === 1 ? 'un acta de falta SIN FIRMAR' : _actas.length + ' actas de falta SIN FIRMAR') + ':\n\n' + _det + '\n\nEn sucursal no podría cobrar su sobre hasta firmar.\n\n¿Aun así registrar el pago?')) return;
+  }
   if (!confirm('¿Marcar $' + monto.toFixed(2) + ' como pagado por transferencia a ' + asesor + ' (' + suc + ')?\n\nEsto NO descuenta de caja — solo registra que ya pagaste fuera del sistema.')) return;
   try {
     // Verificar que no esté pagado ya
