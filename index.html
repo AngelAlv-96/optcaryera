@@ -24525,6 +24525,31 @@ function irAlChatVenta(phone) {
 
 let vtaDetalleId=null,vtaDetalleData=null,abonoMetodo='Efectivo',abonoMSI=3;
 
+// Marca/desmarca una venta como "no comisiona". No toca caja, ni el total, ni las
+// estadísticas — solo la saca del ingreso con el que se calcula la comisión de esa sucursal.
+// ⚠️ Si la quincena YA se cobró, el monto pagado no se recalcula (queda como está).
+async function _toggleComisionVenta(ventaId, folio, excluir) {
+  if (!['admin','gerencia'].includes(currentUser?.rol)) { toast('Solo admin o gerencia', true); return; }
+  var motivo = null;
+  if (excluir) {
+    motivo = prompt('¿Por qué esta venta no debe comisionar?\n\nEj: se rehizo por error de graduación\n\n(queda registrado)', '');
+    if (motivo === null) return;
+    motivo = (motivo || '').trim();
+    if (!confirm('El folio ' + folio + ' dejará de contar para la comisión de su sucursal.\n\nLa venta NO se cancela: sigue igual en caja, en el total y en las estadísticas.\n\n¿Continuar?')) return;
+  } else {
+    if (!confirm('Volver a contar el folio ' + folio + ' para la comisión de su sucursal.\n\n¿Continuar?')) return;
+  }
+  try {
+    var payload = { excluir_comision: !!excluir, excluir_comision_motivo: excluir ? (motivo || 'Sin motivo') : null };
+    var { error } = await db.from('ventas').update(payload).eq('id', ventaId);
+    if (error) throw new Error(error.message || error);
+    toast(excluir ? ('Folio ' + folio + ' ya no comisiona') : ('Folio ' + folio + ' vuelve a comisionar'));
+    await verDetalleVenta(ventaId);
+  } catch(e) {
+    toast('Error: ' + (e.message || e), true);
+  }
+}
+
 async function verDetalleVenta(ventaId) {
   vtaDetalleId=ventaId;
   document.getElementById('m-vta-detalle').classList.add('open');
@@ -24686,6 +24711,13 @@ function renderDetalleVenta() {
   if (v.estado!=='Cancelada') {
     acts.push(`<button class="btn btn-g btn-sm" onclick="contSolicitarFactura('${v.folio}','${v.id}')" style="display:flex;align-items:center;gap:4px">🧾 Factura</button>`);
     acts.push(`<button class="btn btn-g btn-sm" onclick="cancelarVentaRegistrada('${v.id}','${v.folio}')" style="color:#e08080">🚫 Cancelar</button>`);
+    // Sacar una venta de la bolsa de comisión (ej. pedido rehecho por error nuestro).
+    // La venta sigue contando para caja y estadísticas: lo único que cambia es la comisión.
+    if (['admin','gerencia'].includes(currentUser?.rol)) {
+      acts.push(v.excluir_comision
+        ? `<button class="btn btn-sm" onclick="_toggleComisionVenta('${v.id}','${v.folio}',false)" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.35);color:#e8a84a;display:flex;align-items:center;gap:4px" title="${(v.excluir_comision_motivo||'Sin motivo').replace(/"/g,'&quot;')}">🚫 No comisiona · devolver</button>`
+        : `<button class="btn btn-g btn-sm" onclick="_toggleComisionVenta('${v.id}','${v.folio}',true)" style="display:flex;align-items:center;gap:4px">💸 Quitar de comisión</button>`);
+    }
   }
   // Check for pending promo pairs
   var _pendingPairs = [];
@@ -28738,8 +28770,9 @@ async function _msCalcComisionAsesor(suc, periodoStr, asesorNombre) {
   var fechaInicios = cfg.fecha_inicio || {};
   var numAsesores = divisoresFijos[suc] || asesoresSuc.length;
 
-  var { data: pagos } = await db.from('venta_pagos').select('*, ventas(sucursal, estado, asesor)').gte('created_at', utcStart).lte('created_at', utcEnd);
-  pagos = (pagos || []).filter(function(p){ return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada'; });
+  var { data: pagos } = await db.from('venta_pagos').select('*, ventas(sucursal, estado, asesor, excluir_comision)').gte('created_at', utcStart).lte('created_at', utcEnd);
+  // Mismo criterio que la tabla de Comisiones: lo marcado como "no comisiona" no entra a la bolsa.
+  pagos = (pagos || []).filter(function(p){ return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada' && !p.ventas.excluir_comision; });
   var { data: credAb } = await db.from('creditos_abonos').select('*').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
   credAb = credAb || [];
 
@@ -29655,8 +29688,10 @@ async function calcularComisiones() {
   var numAsesores = divisoresFijos[suc] || asesoresSuc.length;
 
   // Fetch pagos de ventas de esta sucursal en el período
-  var { data: pagos } = await db.from('venta_pagos').select('*, ventas(folio, sucursal, estado, asesor, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd);
-  pagos = (pagos || []).filter(function(p) { return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada'; });
+  var { data: pagos } = await db.from('venta_pagos').select('*, ventas(folio, sucursal, estado, asesor, excluir_comision, paciente_id, pacientes(nombre, apellidos))').gte('created_at', utcStart).lte('created_at', utcEnd);
+  // Las ventas marcadas como "no comisiona" (ej. un pedido que se rehizo por error nuestro)
+  // salen de la bolsa: no suman al ingreso del que se reparte la comisión.
+  pagos = (pagos || []).filter(function(p) { return p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada' && !p.ventas.excluir_comision; });
 
   // Fetch abonos créditos
   var { data: credAb } = await db.from('creditos_abonos').select('*').gte('created_at', utcStart).lte('created_at', utcEnd).eq('sucursal', suc);
