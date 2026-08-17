@@ -88,6 +88,75 @@ async function getCustomUsers() {
   return {};
 }
 
+// ── Actas de falta sin firmar de un asesor (espejo de _msActasSinFirmar del index) ──
+// ⚠️ La MISMA persona puede vivir con DOS identificadores: el calculado del nombre
+// (`asesor_<nombre>`) y el del checador (`extra_<nombre completo>`), a veces con el nombre
+// escrito distinto (Monserrat / Monserrath, Edna Karina / Edna Karina ... Garcia). Si solo se
+// busca por el uid calculado, el acta de quien se dio de alta primero como empleado NO se
+// encuentra — que es justo a quien hay que atrapar (lección v574).
+function normNombre(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\b(lic|tec|dr|dra|sr|sra)\.?\b/g, '').replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/).filter(t => t.length >= 3);
+}
+
+async function uidsDeAsesor(nombre) {
+  const uids = ['asesor_' + String(nombre || '').toLowerCase().replace(/\s+/g, '_')];
+  try {
+    const { data } = await supaREST('GET', 'app_config?id=eq.horarios_asistencia&select=value', null, {});
+    const raw = data && data[0] && data[0].value;
+    const Hor = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+    const extras = Hor.empleados_extra || {};
+    const tk = normNombre(nombre);
+    if (tk.length >= 2) {
+      Object.keys(extras).forEach(uid => {
+        const et = normNombre((extras[uid] && extras[uid].nombre) || '');
+        const todos = tk.every(t => et.some(e => e === t || e.indexOf(t) === 0 || t.indexOf(e) === 0));
+        if (todos && uids.indexOf(uid) < 0) uids.push(uid);
+      });
+    }
+  } catch (e) { /* se queda con el uid calculado */ }
+  return uids;
+}
+
+// Nombres de asesor válidos HOY (sucursales + globales, menos los pausados).
+// Devuelve [] si no se puede leer la config, para no bloquear por un problema de la base.
+async function asesoresVigentes() {
+  try {
+    const { data } = await supaREST('GET', 'app_config?id=eq.asesores&select=value', null, {});
+    const raw = data && data[0] && data[0].value;
+    const c = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
+    const inact = c.inactivos || [];
+    const todos = [].concat(...Object.values(c.sucursales || {}), c.globales || []);
+    return todos.filter(n => !inact.includes(n));
+  } catch (e) { return []; }
+}
+
+async function actasSinFirmar(asesorNombre) {
+  if (!asesorNombre) return [];
+  const uids = await uidsDeAsesor(asesorNombre);
+  const lista = uids.map(u => '"' + u + '"').join(',');
+  const { data } = await supaREST('GET',
+    'asistencia_firmas?uid=in.(' + lista + ')&firmado_at=is.null&select=id,uid,tipo,periodo_inicio,periodo_fin', null, {});
+  const pend = data || [];
+  const actas = [];
+  for (const f of pend) {
+    let faltas = [];
+    // ⚠️ El flujo automático del checador guarda el acta SIN escribir `tipo`, así que un
+    // registro sin tipo cuenta como acta si dentro de su periodo hay una falta real.
+    if (f.tipo === 'acta' || !f.tipo) {
+      const r = await supaREST('GET',
+        'asistencia?uid=eq.' + encodeURIComponent(f.uid) + '&es_falta=is.true' +
+        '&fecha=gte.' + f.periodo_inicio + '&fecha=lte.' + f.periodo_fin + '&select=fecha&order=fecha', null, {});
+      faltas = (r.data || []).map(x => x.fecha);
+    }
+    if (f.tipo === 'acta' || (!f.tipo && faltas.length)) {
+      actas.push({ id: f.id, inicio: f.periodo_inicio, fin: f.periodo_fin, faltas });
+    }
+  }
+  return actas;
+}
+
 exports.handler = async (event) => {
   const H = {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -154,6 +223,48 @@ exports.handler = async (event) => {
   const user = allUsers[auth.id];
   if (!user || user.pass !== auth.pass)
     return { statusCode: 401, headers: H, body: JSON.stringify({ error: 'Autenticación fallida' }) };
+  }
+
+  // ── Candado del sobre: no se cobra con actas de falta SIN FIRMAR ──
+  // El bloqueo del v574 vive en index.html, y el 17-ago se lo saltaron dos asesoras: sus
+  // navegadores tenían la página cargada de la mañana (antes del deploy de las 10:18) y
+  // nunca le dieron a "Actualizar". Se comprobó porque el sobre de Elva quedó grabado con
+  // su nombre VIEJO, que ya no existía en la base a esa hora. Cualquier regla que solo viva
+  // en el navegador se salta así. Aquí ya no.
+  // ⚠️ Solo bloquea el autoservicio (metodo 'caja'). La transferencia la registra el admin
+  // a mano y ahí sí decide él (decisión de Angel en v574): esa sigue pasando.
+  if (table === 'comisiones_pagadas' && action === 'insert') {
+    const filas = Array.isArray(data) ? data : [data];
+    for (const fila of filas) {
+      if (!fila || (fila.metodo && fila.metodo !== 'caja')) continue;
+      try {
+        // (a) El nombre tiene que existir HOY en la configuración de asesores. Si no existe,
+        // la pestaña está vieja: el 17-ago el sobre de Elva se grabó como "Lic. Elva Rosa"
+        // 50 minutos DESPUÉS de que ese nombre dejara de existir — señal inequívoca de que
+        // esa página se cargó antes del cambio, y por eso tampoco traía el bloqueo.
+        const vigentes = await asesoresVigentes();
+        if (vigentes.length && !vigentes.includes(fila.asesor)) {
+          return { statusCode: 403, headers: H, body: JSON.stringify({
+            error: 'Esta pestaña está desactualizada: "' + fila.asesor + '" ya no aparece en la lista de asesores. ' +
+                   'Recarga la página (botón Actualizar) y vuelve a intentarlo.'
+          }) };
+        }
+
+        const actas = await actasSinFirmar(fila.asesor);
+        if (actas.length) {
+          const det = actas.map(a => a.faltas.length ? a.faltas.join(', ') : (a.inicio + ' a ' + a.fin)).join(' · ');
+          return { statusCode: 403, headers: H, body: JSON.stringify({
+            error: 'No se puede cobrar el sobre: ' + fila.asesor + ' tiene ' + actas.length +
+                   (actas.length === 1 ? ' acta de falta sin firmar' : ' actas de falta sin firmar') +
+                   ' (' + det + '). Pide a gerencia que te reenvíe el acta desde RH → Faltas.'
+          }) };
+        }
+      } catch (e) {
+        // Fail-open a propósito: si la consulta falla, no se le niega su dinero a nadie
+        // por un problema de la base. El bloqueo del navegador sigue en pie.
+        console.warn('[dbwrite] candado sobre no verificable:', e.message);
+      }
+    }
   }
 
   // ── Execute write operation ──
