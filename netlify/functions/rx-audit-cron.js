@@ -304,10 +304,12 @@ exports.handler = async function (event) {
 
     let enviados = 0;
     if (enviar.length) {
+      // Va a admin_phones (los 4 de gerencia), no solo al dueño: quien puede detener un
+      // lente antes de que salga al laboratorio es quien está en la sucursal (pedido de Angel).
       let phones = ADMIN_PHONES_DEFAULT;
       try {
         const cfg = await supaREST('GET', 'app_config?id=eq.whatsapp_config&select=value');
-        if (cfg && cfg[0]) phones = JSON.parse(cfg[0].value).auth_phones || ADMIN_PHONES_DEFAULT;
+        if (cfg && cfg[0]) phones = JSON.parse(cfg[0].value).admin_phones || ADMIN_PHONES_DEFAULT;
       } catch (e) { /* default */ }
 
       const cuerpo = '👓 *Revisión de graduaciones*\n' +
