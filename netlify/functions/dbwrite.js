@@ -157,6 +157,89 @@ async function actasSinFirmar(asesorNombre) {
   return actas;
 }
 
+// ── Cuánto le toca REALMENTE a un asesor en ese periodo ──
+// Espejo de _msCalcComisionAsesor (index.html). Se recalcula en el servidor porque el
+// navegador manda el monto ya calculado: el 17-ago dos asesoras cobraron $860 con una
+// pestaña vieja cuando les tocaban $840 y $810.
+// Devuelve null si no se puede calcular (entonces NO se bloquea nada).
+const diaLocal = (ts) => new Date(ts).toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+const redondear5 = (x) => Math.round((Number(x) || 0) / 5) * 5;
+
+async function comisionEsperada(suc, periodo, asesor) {
+  const m0 = String(periodo || '').split('-');
+  if (m0.length < 3) return null;
+  const y = parseInt(m0[0], 10), mes = parseInt(m0[1], 10), q = m0[2];
+  if (!y || !mes) return null;
+  const ultimo = new Date(y, mes, 0).getDate();
+  const mm = String(mes).padStart(2, '0');
+  const desde = q === 'Q1' ? `${y}-${mm}-01` : `${y}-${mm}-16`;
+  const hasta = q === 'Q1' ? `${y}-${mm}-15` : `${y}-${mm}-${ultimo}`;
+  const ini = new Date(desde + 'T00:00:00-06:00').toISOString();
+  const fin = new Date(hasta + 'T23:59:59.999-06:00').toISOString();
+
+  const { data: cfgRow } = await supaREST('GET', 'app_config?id=eq.asesores&select=value', null, {});
+  const rawCfg = cfgRow && cfgRow[0] && cfgRow[0].value;
+  if (!rawCfg) return null;
+  const cfg = typeof rawCfg === 'string' ? JSON.parse(rawCfg) : rawCfg;
+  const activos = ((cfg.sucursales || {})[suc] || []).filter(n => !(cfg.inactivos || []).includes(n));
+  const divisor = (cfg.divisores || {})[suc] || activos.length;
+  if (!divisor) return null;
+  const pct = (cfg.comisiones || {})[asesor] !== undefined ? (cfg.comisiones || {})[asesor] : (cfg.comision_default || 2);
+  const fIni = (cfg.fecha_inicio || {})[asesor];
+  const fIniMs = fIni ? new Date(fIni + 'T00:00:00-06:00').getTime() : 0;
+
+  // Bolsa de la sucursal: pagos + abonos, sin canceladas y sin lo marcado "no comisiona"
+  const { data: pagos } = await supaREST('GET',
+    'venta_pagos?created_at=gte.' + ini + '&created_at=lte.' + fin +
+    '&select=monto,created_at,ventas(sucursal,estado,excluir_comision)&limit=5000', null, {});
+  const { data: abonos } = await supaREST('GET',
+    'creditos_abonos?created_at=gte.' + ini + '&created_at=lte.' + fin +
+    '&sucursal=eq.' + encodeURIComponent(suc) + '&select=monto,created_at&limit=5000', null, {});
+
+  // Sus días de falta/incapacidad — resolviendo TODOS sus uids (asesor_ y extra_)
+  const uids = await uidsDeAsesor(asesor);
+  const { data: asis } = await supaREST('GET',
+    'asistencia?uid=in.(' + uids.map(u => '"' + u + '"').join(',') + ')' +
+    '&fecha=gte.' + desde + '&fecha=lte.' + hasta + '&select=fecha,es_falta,nota&limit=200', null, {});
+  const malos = {};
+  (asis || []).forEach(r => { if (r.es_falta === true || /incapacidad/i.test(r.nota || '')) malos[r.fecha] = true; });
+
+  const suma = (arr, ok) => (arr || []).reduce((s, r) => {
+    if (!ok(r)) return s;
+    if (fIniMs && new Date(r.created_at).getTime() < fIniMs) return s;
+    if (malos[diaLocal(r.created_at)]) return s;
+    return s + Number(r.monto || 0);
+  }, 0);
+
+  const ingreso =
+    suma(pagos, p => p.ventas && p.ventas.sucursal === suc && p.ventas.estado !== 'Cancelada' && !p.ventas.excluir_comision) +
+    suma(abonos, () => true);
+
+  return { comision: redondear5((ingreso / divisor) * (pct / 100)), ingreso, divisor, pct, diasMalos: Object.keys(malos) };
+}
+
+// Aviso al dueño cuando alguien intenta cobrar de más (fail-soft: nunca tumba la operación)
+async function avisarIntentoCobro(texto) {
+  try {
+    const SID = process.env.TWILIO_ACCOUNT_SID, TOK = process.env.TWILIO_AUTH_TOKEN, WA = process.env.TWILIO_WA_NUMBER;
+    if (!SID || !TOK || !WA) return;
+    const { data } = await supaREST('GET', 'app_config?id=eq.whatsapp_config&select=value', null, {});
+    const wc = data && data[0] ? JSON.parse(data[0].value) : {};
+    const phones = wc.auth_phones || [];
+    const from = WA.startsWith('whatsapp:') ? WA : 'whatsapp:' + WA;
+    const auth = 'Basic ' + Buffer.from(SID + ':' + TOK).toString('base64');
+    for (const ph of phones) {
+      const p = new URLSearchParams();
+      p.append('From', from);
+      p.append('To', 'whatsapp:+' + ph);
+      p.append('Body', texto);
+      await fetch('https://api.twilio.com/2010-04-01/Accounts/' + SID + '/Messages.json', {
+        method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/x-www-form-urlencoded' }, body: p.toString()
+      });
+    }
+  } catch (e) { console.warn('[dbwrite] aviso cobro:', e.message); }
+}
+
 exports.handler = async (event) => {
   const H = {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -247,6 +330,22 @@ exports.handler = async (event) => {
           return { statusCode: 403, headers: H, body: JSON.stringify({
             error: 'Esta pestaña está desactualizada: "' + fila.asesor + '" ya no aparece en la lista de asesores. ' +
                    'Recarga la página (botón Actualizar) y vuelve a intentarlo.'
+          }) };
+        }
+
+        // (b) El monto no puede pasar de lo que le toca. El navegador manda la cifra ya
+        // calculada, y una pestaña vieja calcula con datos viejos: así se pagaron $70 de más
+        // el 17-ago. Se recalcula aquí y se compara.
+        const esp = await comisionEsperada(fila.sucursal, fila.periodo, fila.asesor);
+        if (esp && Number(fila.monto) > esp.comision + 0.01) {
+          const extra = (Number(fila.monto) - esp.comision).toFixed(2);
+          await avisarIntentoCobro(
+            '⚠️ *Cobro de sobre detenido*\n\n' + fila.asesor + ' · ' + fila.sucursal + ' · ' + fila.periodo +
+            '\nIntentó cobrar $' + Number(fila.monto).toFixed(2) + ' y le tocan $' + esp.comision.toFixed(2) +
+            ' ($' + extra + ' de más).\n\nCasi siempre es una pestaña sin actualizar. Que recargue la página.');
+          return { statusCode: 403, headers: H, body: JSON.stringify({
+            error: 'El monto no coincide: te tocan $' + esp.comision.toFixed(2) + ' y se intentó cobrar $' +
+                   Number(fila.monto).toFixed(2) + '. Recarga la página (botón Actualizar) para ver la cifra correcta.'
           }) };
         }
 

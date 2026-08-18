@@ -28719,7 +28719,26 @@ async function _comDiasSinComision(nombres, desde, hasta) {
   var out = {};
   try {
     var uidMap = {};
-    var uids = (nombres || []).map(function(n){ var u = 'asesor_' + n.toLowerCase().replace(/\s+/g, '_'); uidMap[u] = n; return u; });
+    var uids = [];
+    (nombres || []).forEach(function(n){ var u = 'asesor_' + n.toLowerCase().replace(/\s+/g, '_'); uidMap[u] = n; uids.push(u); });
+    // ⚠️ Quien se dio de alta primero como empleado vive en el checador como `extra_<nombre
+    // completo>` (Edna Karina, Andrea, Monserrat). Buscando solo por `asesor_<nombre>` sus
+    // faltas NO se encontraban y su comisión salía completa — el mismo enredo de identidad
+    // del bloqueo de actas (v574). Se resuelven TODOS sus uids.
+    try {
+      var cfgH = await db.from('app_config').select('value').eq('id', 'horarios_asistencia').single();
+      var Hh = (cfgH.data && cfgH.data.value) ? (typeof cfgH.data.value === 'string' ? JSON.parse(cfgH.data.value) : cfgH.data.value) : {};
+      var extras = Hh.empleados_extra || {};
+      (nombres || []).forEach(function(n){
+        var tk = _msNormNombre(n);
+        if (tk.length < 2) return;
+        Object.keys(extras).forEach(function(uid){
+          var et = _msNormNombre((extras[uid] && extras[uid].nombre) || '');
+          var todos = tk.every(function(t){ return et.some(function(e){ return e === t || e.indexOf(t) === 0 || t.indexOf(e) === 0; }); });
+          if (todos && uids.indexOf(uid) < 0) { uids.push(uid); uidMap[uid] = n; }
+        });
+      });
+    } catch(e) { console.warn('[Comisiones] uids extra:', e && e.message); }
     if (!uids.length) return out;
     var { data } = await db.from('asistencia').select('uid,fecha,es_falta,nota').in('uid', uids).gte('fecha', desde).lte('fecha', hasta);
     (data || []).forEach(function(r){
