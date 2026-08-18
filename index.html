@@ -18620,7 +18620,11 @@ async function confirmarRevisionQC(orderId, nombre, tel) {
   document.getElementById('qc-review-overlay').style.display = 'none';
   toast('✓ Aprobado por ' + revisor + ' — Listo para entrega');
   if (tel && confirm('¿Enviar notificación de WhatsApp al paciente?')) {
-    enviarWA(tel, nombre);
+    // ⚠️ Va el orderId: sin él, ejecutarEnvioWA no puede leer el nombre del paciente y la
+    // plantilla sale con "cliente". Como éste es el camino normal (aprobar QC → listo →
+    // avisar), TODOS los avisos del día salían impersonales. También endereza el candado
+    // anti-duplicado, que se llavea con el folio.
+    enviarWA(tel, nombre, null, orderId);
   }
   loadLab();
 }
