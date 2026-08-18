@@ -8924,6 +8924,10 @@ async function _loadDashTrasladosEntrantes(suc, cardExists) {
 // Admin puede forzar ABRIR o CERRAR por N días vía app_config id=sobre_override.
 
 var _msOverride = null; // { tipo:'open'|'close', hasta:'YYYY-MM-DD' } o null=auto
+// Sucursales con el autoservicio SUSPENDIDO hasta nuevo aviso (no lleva fecha de vencimiento:
+// se quita a mano). Va aparte del override de ventana, que sí caduca solo.
+var _msSucBloqueadas = [];
+function _msSucBloqueada(suc) { return _msSucBloqueadas.indexOf(suc) >= 0; }
 
 async function _msLoadOverride() {
   try {
@@ -8931,11 +8935,12 @@ async function _msLoadOverride() {
     if (data && data.value) {
       var v = typeof data.value === 'string' ? JSON.parse(data.value) : data.value;
       var hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chihuahua' });
+      _msSucBloqueadas = (v && Array.isArray(v.sucursales_bloqueadas)) ? v.sucursales_bloqueadas : [];
       // Auto-expira: si la fecha hasta ya pasó, ignorar el override
       if (v && v.tipo && v.hasta && v.hasta >= hoy) _msOverride = v;
       else _msOverride = null;
-    } else _msOverride = null;
-  } catch(e) { _msOverride = null; }
+    } else { _msOverride = null; _msSucBloqueadas = []; }
+  } catch(e) { _msOverride = null; _msSucBloqueadas = []; }
   return _msOverride;
 }
 
@@ -8984,6 +8989,7 @@ async function _loadDashMiSobre(suc) {
     // Solo rol sucursal, dentro de ventana, y empleado existe en config
     if (currentUser?.rol !== 'sucursal') return;
     await _msLoadOverride();
+    if (_msSucBloqueada(suc)) return;   // autoservicio suspendido en esa sucursal
     if (!_msEsVentana()) return;
     var periodo = _msPeriodoActivo();
     if (!periodo) return;
@@ -28942,6 +28948,7 @@ function _msVolverAStep1() {
 async function abrirMiSobre() {
   if (currentUser?.rol !== 'sucursal') { toast('Solo empleados de sucursal', true); return; }
   await _msLoadOverride();
+  if (_msSucBloqueada(currentUser?.sucursal)) { toast('El cobro por autoservicio está suspendido en esta sucursal. Gerencia les paga el sobre directamente.'); return; }
   if (!_msEsVentana()) { toast('La ventana de cobro está cerrada hoy', true); return; }
   var periodo = _msPeriodoActivo();
   if (!periodo) return;

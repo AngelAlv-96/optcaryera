@@ -321,6 +321,19 @@ exports.handler = async (event) => {
     for (const fila of filas) {
       if (!fila || (fila.metodo && fila.metodo !== 'caja')) continue;
       try {
+        // (0) Sucursal con el autoservicio suspendido: no se cobra solo, gerencia les paga.
+        // Va también aquí y no solo en la pantalla, porque una pestaña vieja no ve el bloqueo.
+        try {
+          const { data: ov } = await supaREST('GET', 'app_config?id=eq.sobre_override&select=value', null, {});
+          const rawOv = ov && ov[0] && ov[0].value;
+          const cfgOv = rawOv ? (typeof rawOv === 'string' ? JSON.parse(rawOv) : rawOv) : {};
+          if (Array.isArray(cfgOv.sucursales_bloqueadas) && cfgOv.sucursales_bloqueadas.includes(fila.sucursal)) {
+            return { statusCode: 403, headers: H, body: JSON.stringify({
+              error: 'El cobro por autoservicio está suspendido en ' + fila.sucursal + '. Gerencia les entrega el sobre directamente.'
+            }) };
+          }
+        } catch (e) { /* si no se puede leer, no se bloquea */ }
+
         // (a) El nombre tiene que existir HOY en la configuración de asesores. Si no existe,
         // la pestaña está vieja: el 17-ago el sobre de Elva se grabó como "Lic. Elva Rosa"
         // 50 minutos DESPUÉS de que ese nombre dejara de existir — señal inequívoca de que
