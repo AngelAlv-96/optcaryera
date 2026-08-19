@@ -1361,7 +1361,19 @@ function pideCuponExplicito(text) {
   return pide;
 }
 
-async function darCuponClari(phone, userName) {
+// Rescate: "ya fui pero se me hizo caro" (pedido de Angel). Necesita las DOS señales —
+// que ya fue/le cotizaron Y que el precio se le hizo alto. Solo con "está caro" NO se manda:
+// eso lo dice medio mundo antes de cotizar y regalaríamos el 10% a todos.
+function objecionPrecioTrasVisita(text) {
+  var t = (text || '').toLowerCase()
+    .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+    .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u');
+  var yaFue = /\b(ya )?(fui|acudi|pase|estuve|vine|asisti)\b|\bme cotizaron\b|\bme dieron (el )?precio\b|\bpregunte (ahi|en la (optica|sucursal))\b|\bme dijeron que costaba\b|\bfui a (la )?(optica|sucursal)\b|\bestuve en (la )?(optica|sucursal)\b/.test(t);
+  var seLeHizoCaro = /\bcaro\b|\bcarisimo\b|\bcara\b|\bcaros\b|\bcaras\b|\bmuy elevado\b|\bse me pasa\b|\bno me alcanza\b|\bfuera de mi presupuesto\b|\bmuy alto el precio\b|\bmas barato\b|\bno me alcanzo\b/.test(t);
+  return yaFue && seLeHizoCaro;
+}
+
+async function darCuponClari(phone, userName, motivo) {
   var prev = await supaFetch('cupones?campana=eq.' + CUPON_CLARI_CAMPANA + '&telefono=eq.' + phone + '&select=codigo,usado,vigencia&limit=1');
   var hoy = new Date().toISOString().slice(0, 10);
   if (prev && prev[0]) {
@@ -1369,7 +1381,7 @@ async function darCuponClari(phone, userName) {
     if (prev[0].vigencia && prev[0].vigencia < hoy) {
       return 'Tu cupón ' + prev[0].codigo + ' venció el ' + _cuponFechaTxt(prev[0].vigencia) + ' 🙁 Pero la promoción de 3x1 sigue vigente — pregúntame y con gusto te cuento 👓';
     }
-    return _cuponClariMsg(prev[0].codigo, prev[0].vigencia);
+    return _cuponClariMsg(prev[0].codigo, prev[0].vigencia, motivo);
   }
   var vig = new Date(Date.now() + CUPON_CLARI_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   var codigo = null;
@@ -1377,14 +1389,14 @@ async function darCuponClari(phone, userName) {
     var cand = 'CL-' + require('crypto').randomBytes(2).toString('hex').toUpperCase();
     var ins = await supaFetch('cupones', { method: 'POST', body: JSON.stringify({
       codigo: cand, campana: CUPON_CLARI_CAMPANA, beneficio_tipo: 'desc_pct', beneficio_valor: CUPON_CLARI_PCT,
-      descripcion: '10% de descuento en lentes completos (solicitado por el cliente)',
+      descripcion: '10% de descuento en lentes completos (' + (motivo === 'precio' ? 'rescate por precio' : 'solicitado por el cliente') + ')',
       telefono: phone, nombre: userName || null, vigencia: vig,
       aplica_a: 'lentes_completos', enviado_at: new Date().toISOString()
     }) });
     if (ins && ins[0] && ins[0].codigo) codigo = ins[0].codigo; // choque de UNIQUE → reintenta
   }
   if (!codigo) throw new Error('No se pudo generar el código');
-  return _cuponClariMsg(codigo, vig);
+  return _cuponClariMsg(codigo, vig, motivo);
 }
 
 function _cuponFechaTxt(iso) {
@@ -1393,8 +1405,11 @@ function _cuponFechaTxt(iso) {
   return parseInt(p[2], 10) + ' de ' + m[parseInt(p[1], 10) - 1];
 }
 
-function _cuponClariMsg(codigo, vigencia) {
-  return '🎟️ ¡Claro que sí! Te generé tu cupón personal.\n\nTu código: *' + codigo + '*\n\n'
+function _cuponClariMsg(codigo, vigencia, motivo) {
+  var intro = motivo === 'precio'
+    ? '🎟️ Te entiendo. Déjame ayudarte con esto: te generé un cupón personal.'
+    : '🎟️ ¡Claro que sí! Te generé tu cupón personal.';
+  return intro + '\n\nTu código: *' + codigo + '*\n\n'
     + '✅ 10% de descuento en lentes completos\n'
     + '✅ Se suma a la promoción vigente (el 3x1)\n'
     + '📅 Válido hasta el ' + _cuponFechaTxt(vigencia) + ' — un solo uso\n\n'
@@ -3256,10 +3271,11 @@ exports.handler = async function(event) {
 
       // ── 🎟️ CUPÓN 10% A PETICIÓN (v592) — SOLO si lo pide explícitamente ──
       // Determinista a propósito: el modelo NUNCA acuña códigos ni decide a quién dárselo.
-      if (from && userText && !_botOff && pideCuponExplicito(userText) && !(await isAdminPhone(from))) {
+      var _cupMotivo = userText ? (pideCuponExplicito(userText) ? 'peticion' : (objecionPrecioTrasVisita(userText) ? 'precio' : null)) : null;
+      if (from && userText && !_botOff && _cupMotivo && !(await isAdminPhone(from))) {
         await saveMessage(from, 'user', userText, userName);
         var cupReply;
-        try { cupReply = await darCuponClari(from, userName); }
+        try { cupReply = await darCuponClari(from, userName, _cupMotivo); }
         catch (eCup) {
           console.error('[CuponClari]', eCup.message);
           cupReply = 'Claro que sí 🎟️ Tuve un detalle técnico generando tu código — escríbeme de nuevo en un momento y te lo mando.';
