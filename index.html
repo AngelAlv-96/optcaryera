@@ -1942,6 +1942,7 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
             <!-- TICKET PREVIEW -->
             <div class="ticket-80" id="ticket">
               <div class="t-logo" id="t-sucursal">&mdash;</div>
+              <div id="t-traslado"></div>
               <hr class="t-hr">
               <div class="t-row"><span>Folio:</span><span id="t-folio"></span></div>
               <div id="t-barcode" style="text-align:center;padding:4px 0"></div>
@@ -13630,6 +13631,7 @@ function limpiarOrden() {
    'lc-adaptacion','lc-vigencia'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('o-urg').value = 'Normal';
+  _ordDestinoTraslado = null; // que la banda "ENVIAR A X" no se herede a la siguiente orden
   var _fcolorWrap = document.getElementById('o-fcolor-wrap'); if(_fcolorWrap) _fcolorWrap.style.display = 'none';
   var _aroPxCb = document.getElementById('o-aro-px'); if(_aroPxCb) { _aroPxCb.checked = false; }
   var _armazonEl = document.getElementById('o-armazon'); if(_armazonEl) { _armazonEl.readOnly=false; _armazonEl.style.background=''; _armazonEl.style.color=''; }
@@ -14279,6 +14281,22 @@ IMPORTANTE: Responde en español, conciso, formato texto plano sin markdown.`;
   }
 }
 
+// ── TICKET DE LAB: banda "ENVIAR A <sucursal>" cuando el pedido se recoge en OTRA sucursal ──
+// El personal lo escribía a mano ("Mandar Pinocelli") porque el ticket no lo decía: el
+// encabezado imprime la sucursal de QUIEN CAPTURA, no a dónde va el pedido.
+// `_ordDestinoTraslado` la llena _prefillOrderFromVenta (vista previa) y guardarEImprimir
+// (garantiza que la COPIA IMPRESA la lleve aunque la vista previa no se haya refrescado).
+// ⛔ Sin emojis: el ticket va a impresora térmica y se imprime en monoespaciado.
+var _ordDestinoTraslado = null;
+
+function _trasladoBandaHTML(origen, destino) {
+  if (!destino || !origen) return '';
+  if (String(destino).trim().toLowerCase() === String(origen).trim().toLowerCase()) return '';
+  return '<div style="border:2px solid #000;border-radius:4px;padding:6px;margin:5px 0;text-align:center;font-weight:700;font-size:18px;letter-spacing:.04em;line-height:1.25">'
+    + 'ENVIAR A ' + String(destino).toUpperCase()
+    + '</div>';
+}
+
 function syncTicket() {
   const gv = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const isLC = gv('ord-tipo') === 'lc';
@@ -14287,6 +14305,9 @@ function syncTicket() {
   const row = (l,v) => v ? `<div class="t-row"><span>${l}:</span><span>${v}</span></div>` : '';
 
   document.getElementById('t-sucursal').textContent = currentUser?.sucursal || 'Car & Era';
+  const _tTras = document.getElementById('t-traslado');
+  if (_tTras) _tTras.innerHTML = _ordDestinoTraslado
+    ? _trasladoBandaHTML(_ordDestinoTraslado.origen, _ordDestinoTraslado.destino) : '';
   document.getElementById('t-folio').textContent = gv('ord-folio');
   const entrega = document.getElementById('ord-entrega')?.value;
   const horaEntrega = document.getElementById('ord-hora-entrega')?.value || '';
@@ -15183,6 +15204,8 @@ window.abrirOrdenDesdeFolio = abrirOrdenDesdeFolio;
 
 // Precarga armazón + material + tinte en orden lab desde venta o sub-folio promo
 async function _prefillOrderFromVenta(folio, opts) {
+  // Se limpia SIEMPRE: si no, un folio sin traslado hereda la banda del folio anterior.
+  _ordDestinoTraslado = null;
   if (!folio) return;
   opts = opts || {};
   try {
@@ -15196,6 +15219,11 @@ async function _prefillOrderFromVenta(folio, opts) {
       .eq('folio', folioBase).limit(1);
     if (!ventas || !ventas.length) return;
     var venta = ventas[0];
+    // Banda "ENVIAR A X" en la vista previa del ticket (la copia impresa la reasegura guardarEImprimir)
+    if (venta.sucursal_entrega && venta.sucursal_entrega !== venta.sucursal) {
+      _ordDestinoTraslado = { origen: venta.sucursal, destino: venta.sucursal_entrega };
+      try { syncTicket(); } catch (e) {}
+    }
     var miSuc = currentUser && currentUser.sucursal;
     if (miSuc && miSuc !== 'Todas' && miSuc !== 'Laboratorio' && venta.sucursal !== miSuc) {
       toast(venta.sucursal_entrega === miSuc
@@ -15500,12 +15528,17 @@ async function guardarEImprimir() {
   var _ordTraslado = '';
   if (folioFinal) {
     try {
-      var _fb = String(folioFinal).replace(/-\d+$/, '');
+      // _folioBase (v540): `replace(/-\d+$/,'')` destruye los prefijos con guion (GTA-16242 -> GTA)
+      var _fb = _folioBase(folioFinal);
       var { data: _vEnt } = await db.from('ventas').select('sucursal,sucursal_entrega').eq('folio', _fb).limit(1);
       var _ve = _vEnt && _vEnt[0];
       if (_ve && _ve.sucursal_entrega && _ve.sucursal_entrega !== _ve.sucursal) {
         _ordSuc = _ve.sucursal_entrega;
         _ordTraslado = ' | TRASLADO desde ' + (_ve.sucursal || _ordSuc);
+        // La COPIA IMPRESA siempre lleva la banda, aunque la vista previa no se haya refrescado
+        _ordDestinoTraslado = { origen: _ve.sucursal || '', destino: _ordSuc };
+      } else {
+        _ordDestinoTraslado = null;
       }
     } catch(e) {}
   }
@@ -29951,7 +29984,7 @@ async function _loadRescateAudit(suc, utcStart, utcEnd) {
 
 <!-- Extracted JS modules -->
 <script src="js/mod-auth.js?v=126"></script>
-<script src="js/mod-scanner.js?v=126"></script>
+<script src="js/mod-scanner.js?v=127"></script>
 <script src="js/mod-tickets.js?v=126"></script>
 <script src="js/mod-clari.js?v=126"></script>
 <script src="js/mod-catalogo.js?v=125"></script>

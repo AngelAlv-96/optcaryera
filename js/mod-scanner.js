@@ -128,12 +128,19 @@ async function reimprimirOrdenLab(orderId) {
   const folio = notasRaw.match(/Folio: ([^\s|]+)/)?.[1] || '';
   const entrega = o.fecha_entrega ? new Date(o.fecha_entrega+'T12:00').toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'}) : '\u2014';
   const hora = o.hora_entrega || '';
-  const suc = o.sucursal || 'CAR & ERA';
+  // Pedido que se recoge en OTRA sucursal: el encabezado debe ser la sucursal de ORIGEN
+  // (la que vendió) y la banda dice a dónde se envía. Antes el encabezado ponía o.sucursal
+  // (el destino), así que la MISMA orden se imprimía distinto al crearla que al reimprimirla.
+  const trasladoDesde = (notasRaw.match(/TRASLADO desde ([^|]+)/) || [])[1];
+  const origenTras = trasladoDesde ? trasladoDesde.trim() : '';
+  const destinoTras = o.sucursal || '';
+  const suc = origenTras || o.sucursal || 'CAR & ERA';
   const isLC = o.tipo_lente === 'Lente de Contacto';
 
   const row = (l,v) => v ? `<div class="t-row"><span>${l}:</span><span>${v}</span></div>` : '';
 
-  let t = `<div class="t-logo">${suc}</div><hr class="t-hr">`;
+  const banda = (typeof _trasladoBandaHTML === 'function') ? _trasladoBandaHTML(origenTras, destinoTras) : '';
+  let t = `<div class="t-logo">${suc}</div>${banda}<hr class="t-hr">`;
 
   const qrLabel = folio || orderId.slice(0,8).toUpperCase();
   t += `<div style="text-align:center;padding:6px 0">${qrToSVG(qrLabel, 5)}</div>`;
@@ -179,7 +186,8 @@ async function reimprimirOrdenLab(orderId) {
 
   if (o.armazon) t += row('Armaz\u00f3n', o.armazon);
 
-  const notasClean = notasRaw.replace(/\|\s*(Folio|Urgencia|DIP|ALT|LC_TIPO|LC_MISMA_RX|LC_OD|LC_OI|LC_REEMPLAZO|LC_VIGENCIA|LC_ADAPTACION):[^|]*/g, '').replace(/\|\s*LOG:\[[^\]]*\][^|]*/g, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim();
+  // "TRASLADO desde X" ya sale en la banda de arriba — no repetirlo dentro de Notas
+  const notasClean = notasRaw.replace(/\|\s*(Folio|Urgencia|DIP|ALT|LC_TIPO|LC_MISMA_RX|LC_OD|LC_OI|LC_REEMPLAZO|LC_VIGENCIA|LC_ADAPTACION):[^|]*/g, '').replace(/\|\s*TRASLADO desde[^|]*/g, '').replace(/\|\s*LOG:\[[^\]]*\][^|]*/g, '').replace(/^\s*\|\s*/, '').replace(/\s*\|\s*$/, '').trim();
   if (notasClean) t += `<hr class="t-hr"><div class="t-row t-notas"><span>Notas:</span><span>${notasClean}</span></div>`;
 
   t += `<div style="text-align:center;margin-top:8px;font-size:11px;color:#999">REIMPRESION</div>`;
