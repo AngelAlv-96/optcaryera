@@ -122,7 +122,9 @@ function getActivePromos() {
     '• ⛔ NUNCA afirmes que un cupón sigue vigente, ni en qué sucursales aplica, ni que se lo van a respetar. NO lo inventes: si no está descrito arriba como vigente, NO lo está.\n' +
     '• Si un cliente dice que tiene el cupón del 30%, pregunta en qué sucursales aplica, o quiere usarlo: dile con amabilidad que ese cupón era de la inauguración de Vía Vittoria y que su vigencia terminó el 31 de julio. NO prometas que se lo aplicarán.\n' +
     '• Enseguida ofrécele lo que SÍ está vigente hoy (la promoción actual y, si aplica, el 10% de estudiante). Que no sienta que se quedó sin nada.\n' +
-    '• Si insiste en que se lo respeten: NO lo niegues de forma tajante ni lo prometas — dile que en sucursal lo revisan con gerencia.\n\n';
+    '• Si insiste en que se lo respeten: NO lo niegues de forma tajante ni lo prometas — dile que en sucursal lo revisan con gerencia.\n' +
+    '• ⛔ TÚ NUNCA escribes ni inventas un código de cupón. Los códigos los emite el sistema solo, cuando el cliente pide un cupón explícitamente. Si alguien te pide uno y no le llegó su código, dile que en un momento le llega — NUNCA te inventes uno.\n' +
+    '• ⛔ NUNCA ofrezcas un cupón por tu cuenta ni digas que "puedes darle" uno: solo se entrega a quien lo pide.\n\n';
 
   // 🎓 10% ESTUDIANTES (regreso a clases) — vigente 27-jul a 31-ago-2026. Clari la OFRECE ella misma.
   var descEstudiante = (now >= new Date('2026-07-27T00:00:00-06:00') && now <= new Date('2026-08-31T23:59:59-06:00')) ?
@@ -1333,6 +1335,70 @@ async function reclamarCuponVittoria(phone, userName) {
   }
   if (!codigo) throw new Error('No se pudo generar el código');
   return '🎟️ ¡Listo! Tu cupón queda reclamado.\n\nTu código personal: *' + codigo + '*\n\n✅ 30% de descuento ADICIONAL sobre el total de cualquiera de nuestras promociones\n📍 Solo en Plaza Vía Vittoria — Av. Ejército Nacional 12946, esq. Neptuno\n📅 Válido hasta el 31 de julio (un solo uso)\n\nPreséntalo al pagar (este mensaje con tu código) 👓 ¡Te esperamos!';
+}
+
+// ── 🎟️ CUPÓN 10% A PETICIÓN (v592) ──
+// Regla de Angel: SOLO si el cliente lo pide explícitamente. Nunca se ofrece.
+// El código lo acuña el SISTEMA (no el modelo): así no puede inventarse uno ni regalarlo
+// a quien no lo pidió (mismo patrón determinista que el cupón de Vittoria, v528).
+var CUPON_CLARI_CAMPANA = 'Cupon-Clari-10';
+var CUPON_CLARI_PCT = 10;
+var CUPON_CLARI_DIAS = 7;
+
+// Pide un cupón DE VERDAD: necesita la palabra (cupón / código de descuento) + intención de
+// obtenerlo. Se excluye a quien habla de un cupón que YA tiene o pregunta por otro.
+function pideCuponExplicito(text) {
+  var t = (text || '').toLowerCase()
+    .replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e').replace(/[íìï]/g, 'i')
+    .replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u');
+  var mencionaCupon = /\bcupon(es)?\b|\bcodigos? (de )?(descuento|promocional)\b|\bvale de descuento\b/.test(t);
+  if (!mencionaCupon) return false;
+  // Habla de OTRO cupón (uno que ya tiene, el de cumpleaños, el vencido de Vittoria)
+  if (/\b(tengo|traigo|me llego|me mandaron|mi)\b[^.]{0,30}\bcupon/.test(t)) return false;
+  if (/cupon[^.]{0,20}(de cumple|cumpleanos|del 30|de vittoria|que me)/.test(t)) return false;
+  if (/\bya (lo )?(use|canjee|ocupe)\b/.test(t)) return false;
+  var pide = /\b(dame|damelo|me das|me daria|me darias|me puedes dar|puedes darme|me podrias dar|podrias darme|regalame|regalenme|me regalas|me regala|me obsequias|quiero|quisiera|me gustaria|necesito|hay|tienen|tendran|manejan|dan\b|me mandas|me manda|me envias|me pasas|puedo (tener|pedir|obtener)|como (obtengo|consigo|puedo obtener)|consigo|aplica algun|tienes)\b/.test(t);
+  return pide;
+}
+
+async function darCuponClari(phone, userName) {
+  var prev = await supaFetch('cupones?campana=eq.' + CUPON_CLARI_CAMPANA + '&telefono=eq.' + phone + '&select=codigo,usado,vigencia&limit=1');
+  var hoy = new Date().toISOString().slice(0, 10);
+  if (prev && prev[0]) {
+    if (prev[0].usado) return 'Tu cupón ' + prev[0].codigo + ' ya fue canjeado 😊 ¡Gracias por tu compra! Si necesitas algo más, aquí estoy 👓';
+    if (prev[0].vigencia && prev[0].vigencia < hoy) {
+      return 'Tu cupón ' + prev[0].codigo + ' venció el ' + _cuponFechaTxt(prev[0].vigencia) + ' 🙁 Pero la promoción de 3x1 sigue vigente — pregúntame y con gusto te cuento 👓';
+    }
+    return _cuponClariMsg(prev[0].codigo, prev[0].vigencia);
+  }
+  var vig = new Date(Date.now() + CUPON_CLARI_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  var codigo = null;
+  for (var intento = 0; intento < 3 && !codigo; intento++) {
+    var cand = 'CL-' + require('crypto').randomBytes(2).toString('hex').toUpperCase();
+    var ins = await supaFetch('cupones', { method: 'POST', body: JSON.stringify({
+      codigo: cand, campana: CUPON_CLARI_CAMPANA, beneficio_tipo: 'desc_pct', beneficio_valor: CUPON_CLARI_PCT,
+      descripcion: '10% de descuento en lentes completos (solicitado por el cliente)',
+      telefono: phone, nombre: userName || null, vigencia: vig,
+      aplica_a: 'lentes_completos', enviado_at: new Date().toISOString()
+    }) });
+    if (ins && ins[0] && ins[0].codigo) codigo = ins[0].codigo; // choque de UNIQUE → reintenta
+  }
+  if (!codigo) throw new Error('No se pudo generar el código');
+  return _cuponClariMsg(codigo, vig);
+}
+
+function _cuponFechaTxt(iso) {
+  var m = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var p = String(iso).split('-');
+  return parseInt(p[2], 10) + ' de ' + m[parseInt(p[1], 10) - 1];
+}
+
+function _cuponClariMsg(codigo, vigencia) {
+  return '🎟️ ¡Claro que sí! Te generé tu cupón personal.\n\nTu código: *' + codigo + '*\n\n'
+    + '✅ 10% de descuento en lentes completos\n'
+    + '✅ Se suma a la promoción vigente (el 3x1)\n'
+    + '📅 Válido hasta el ' + _cuponFechaTxt(vigencia) + ' — un solo uso\n\n'
+    + 'Solo muestra este mensaje con tu código al pagar, en cualquiera de nuestras 4 sucursales 👓';
 }
 
 // ── SEND REPLY VIA TWILIO ──
@@ -3185,6 +3251,21 @@ exports.handler = async function(event) {
         }
         await sendWhatsAppReply(from, vitReply);
         await saveMessage(from, 'assistant', vitReply);
+        return { statusCode: 200, headers: H, body: '<Response></Response>' };
+      }
+
+      // ── 🎟️ CUPÓN 10% A PETICIÓN (v592) — SOLO si lo pide explícitamente ──
+      // Determinista a propósito: el modelo NUNCA acuña códigos ni decide a quién dárselo.
+      if (from && userText && !_botOff && pideCuponExplicito(userText) && !(await isAdminPhone(from))) {
+        await saveMessage(from, 'user', userText, userName);
+        var cupReply;
+        try { cupReply = await darCuponClari(from, userName); }
+        catch (eCup) {
+          console.error('[CuponClari]', eCup.message);
+          cupReply = 'Claro que sí 🎟️ Tuve un detalle técnico generando tu código — escríbeme de nuevo en un momento y te lo mando.';
+        }
+        await sendWhatsAppReply(from, cupReply);
+        await saveMessage(from, 'assistant', '[Cupon-Clari-10] ' + cupReply);
         return { statusCode: 200, headers: H, body: '<Response></Response>' };
       }
 
