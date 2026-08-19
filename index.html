@@ -3532,12 +3532,12 @@ tbody td { padding: 11px 16px; color: rgba(245,242,238,0.8); }
                     </div>
                     <div id="vta-cfg-tinte-fields" style="display:none;grid-template-columns:1fr 1fr;gap:8px">
                       <div><label style="font-size:10px;color:var(--muted)">Color</label>
-                        <select id="vta-cfg-tinte-color" style="width:100%;padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white)">
+                        <select id="vta-cfg-tinte-color" onchange="vtaShowPrecio()" style="width:100%;padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white)">
                           <option value="">Sin tinte</option><option>NEGRO</option><option>CAFE</option><option>G-15</option><option>NARANJA</option><option>AZUL</option><option>AMARILLO</option><option>MORADO</option><option>ROSA</option><option>ROJO</option><option>DE TEMPORADA</option>
                         </select>
                       </div>
                       <div><label style="font-size:10px;color:var(--muted)">Tono</label>
-                        <select id="vta-cfg-tinte-tono" style="width:100%;padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white)">
+                        <select id="vta-cfg-tinte-tono" onchange="vtaShowPrecio()" style="width:100%;padding:7px 10px;font-size:12px;background:var(--surface);border:1px solid rgba(255,255,255,0.09);border-radius:6px;color:var(--white)">
                           <option value="">—</option><option>25%</option><option>50%</option><option>75%</option><option>100%</option><option>DESVANECIDO</option>
                         </select>
                       </div>
@@ -28025,7 +28025,9 @@ function setPfFoliosConfig(arr) {
 
 // Helper: filtra items por categorías y filtros_material de la promo
 function _filtrarItemsPromo(promo, items) {
-  let filtered = items.filter(i => !i.es_addon_promo);
+  // _fueraPromo: cargos que NO forman parte de la promoción y por tanto no se regalan
+  // (hoy: el tinte solar — v595). Sin esto el 2x1 los da gratis junto con la mica.
+  let filtered = items.filter(i => !i.es_addon_promo && !i._fueraPromo);
   if (promo.categorias?.length) filtered = filtered.filter(i => promo.categorias.some(c => (i.categoria || '').includes(c)));
   if (promo.filtros_material) {
     const fm = promo.filtros_material;
@@ -28742,18 +28744,34 @@ async function vtaShowPrecio() {
     }
     var desc = mat+' '+tra+' (S'+serie+') '+tv+tinteTxt;
     document.getElementById('vta-cfg-desc').textContent = desc;
-    document.getElementById('vta-cfg-nota').textContent = matches[0].nota || '';
     var basePrice = Number(matches[0].precio);
+    // 🎨 TINTE SOLAR (v595): antes se capturaba el color pero NO se cobraba — el precio se
+    // quedaba en el de la mica pelona. El precio vive en reglas_materiales como fila "Addon"
+    // (tratamiento 'Tinte Solar', sin material, por tipo_vision + serie).
+    // ⛔ NO toca el solar de la promo 3x1: ese entra por _aplicarAddon con su propio precio.
+    var tintePrecio = 0;
+    if (document.getElementById('vta-cfg-tinte-check')?.checked && tinteColor) {
+      var addonTinte = reglas.find(function(r){ return r.tratamiento === 'Tinte Solar' && r.tipo_vision === tv && r.serie === serie; })
+                    || reglas.find(function(r){ return r.tratamiento === 'Tinte Solar'; });
+      tintePrecio = addonTinte ? Number(addonTinte.precio) || 0 : 0;
+    }
+    var notaBase = matches[0].nota || '';
+    document.getElementById('vta-cfg-nota').textContent = tintePrecio
+      ? (notaBase ? notaBase + ' · ' : '') + 'Mica $' + basePrice.toLocaleString('es-MX') + ' + tinte $' + tintePrecio.toLocaleString('es-MX')
+      : notaBase;
     if (matches.length > 1) {
       var precios = matches.map(function(x){return Number(x.precio);});
-      document.getElementById('vta-cfg-precio').textContent = '$'+Math.min.apply(null,precios).toLocaleString('es-MX')+' - $'+Math.max.apply(null,precios).toLocaleString('es-MX');
+      document.getElementById('vta-cfg-precio').textContent = '$'+(Math.min.apply(null,precios)+tintePrecio).toLocaleString('es-MX')+' - $'+(Math.max.apply(null,precios)+tintePrecio).toLocaleString('es-MX');
     } else {
-      document.getElementById('vta-cfg-precio').textContent = '$'+basePrice.toLocaleString('es-MX');
+      document.getElementById('vta-cfg-precio').textContent = '$'+(basePrice+tintePrecio).toLocaleString('es-MX');
     }
     result.style.display = '';
+    // La mica se cobra a su precio; el tinte va en su PROPIO renglón (ver
+    // agregarMaterialConfigVta) para que la promo no se lo lleve gratis.
     window._vtaCfgPrecio = basePrice;
+    window._vtaCfgTinte = tintePrecio ? { precio: tintePrecio, texto: 'Tinte solar ' + tinteColor + (tinteTono ? ' ' + tinteTono : '') } : null;
     window._vtaCfgDesc = desc;
-    window._vtaCfgMeta = { tipo_vision: tv, material: mat, tratamiento: tra, serie: serie, tinte_color: tinteColor || null, tinte_tono: tinteTono || null, foto_color: fotoColor || null };
+    window._vtaCfgMeta = { tipo_vision: tv, material: mat, tratamiento: tra, serie: serie, tinte_color: tinteColor || null, tinte_tono: tinteTono || null, foto_color: fotoColor || null, tinte_precio: tintePrecio || null };
   } else { result.style.display='none'; }
 }
 
@@ -28791,6 +28809,14 @@ function agregarMaterialConfigVta() {
   }
   var isAroPx = document.getElementById('vta-cfg-aro-px')?.checked || false;
   vtaItems.push({producto_id:null, descripcion:window._vtaCfgDesc, cantidad:1, precio_unitario:window._vtaCfgPrecio, descuento_item:0, subtotal:window._vtaCfgPrecio, categoria:'Material', material_meta: window._vtaCfgMeta || null, aro_px: isAroPx});
+  // 🎨 El tinte solar entra como RENGLÓN APARTE y FUERA de la promo (v595).
+  // Si fuera parte del precio de la mica, el 3x1 se lo llevaría gratis junto con ella
+  // (medido: 90% de los tintes ocurren dentro de una venta con promo).
+  if (window._vtaCfgTinte) {
+    vtaItems.push({ producto_id:null, descripcion:'🎨 ' + window._vtaCfgTinte.texto, cantidad:1,
+      precio_unitario: window._vtaCfgTinte.precio, descuento_item:0, subtotal: window._vtaCfgTinte.precio,
+      categoria:'Servicio', _fueraPromo: true });
+  }
   renderVtaItems();
   document.getElementById('vta-config-mat').style.display = 'none';
   document.getElementById('vta-cfg-tipo').value = '';
@@ -28806,8 +28832,10 @@ function agregarMaterialConfigVta() {
   document.getElementById('vta-cfg-aro-px').checked = false;
   document.getElementById('vta-cfg-fcolor-wrap').style.display = 'none';
   document.getElementById('vta-cfg-fcolor').value = '';
+  var _tinteAgregado = !!window._vtaCfgTinte;
   window._vtaCfgMeta = null;
-  toast('Material agregado a la venta' + (isAroPx ? ' (ARO PX)' : ''));
+  window._vtaCfgTinte = null;
+  toast('Material agregado a la venta' + (isAroPx ? ' (ARO PX)' : '') + (_tinteAgregado ? ' + tinte' : ''));
 }
 
 // ── MÓDULO COMISIONES ──
