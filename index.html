@@ -9238,8 +9238,9 @@ async function renderDashAdmin(orders, urgentes, demorados, today, utcStart, utc
 
   var h = '<div class="stats">';
   h += _miniStat('Ventas hoy', ventasHoy.length, '#72c47e', '🛒');
-  h += _miniStat('Total vendido', '$'+totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}), '#d4b84a', '💰');
-  h += _miniStat('Cobrado', '$'+totalCobradoHoy.toLocaleString('es-MX',{minimumFractionDigits:0}), '#72c47e', '✅');
+  // Vendido y Cobrado se abren al tocarlos (v594) — mismo patrón que Consultas
+  h += '<div class="stat" onclick="verVentasHoy()" style="cursor:pointer" title="Ver las ventas de hoy, de qué sucursal y quién las hizo"><div class="stat-val" style="color:#d4b84a">$' + totalVentas.toLocaleString('es-MX',{minimumFractionDigits:0}) + '</div><div class="stat-lbl">💰 Total vendido ›</div></div>';
+  h += '<div class="stat" onclick="verCobradoHoy()" style="cursor:pointer" title="Ver cada cobro de hoy: método, sucursal y hora"><div class="stat-val" style="color:#72c47e">$' + totalCobradoHoy.toLocaleString('es-MX',{minimumFractionDigits:0}) + '</div><div class="stat-lbl">✅ Cobrado ›</div></div>';
   h += '<div class="stat" onclick="verConsultasHoy()" style="cursor:pointer" title="Ver las consultas de hoy y en qué sucursal se hicieron"><div class="stat-val" style="color:#8ab0e8">' + (nHC||0) + '</div><div class="stat-lbl">👁 Consultas ›</div></div>';
   h += _miniStat('Pedidos lab', ordenesLab||0, '#d4b84a', '🔧');
   h += '<div class="stat"' + (_tcEditable ? ' onclick="editarTipoCambio()" style="cursor:pointer" title="Click para editar el tipo de cambio"' : '') + '><div class="stat-val" style="color:#72c47e">' + _tcVal + '</div><div class="stat-lbl">💵 Tipo cambio' + (_tcEditable ? ' ✏' : '') + '</div></div>';
@@ -9451,6 +9452,143 @@ async function verConsultasHoy() {
     ov.innerHTML = h;
   } catch (e) {
     ov.innerHTML = '<div class="modal" style="max-width:420px;padding:20px"><div style="color:#e08080;font-size:13px">No se pudieron cargar las consultas: ' + (e.message||e) + '</div><button class="btn btn-g btn-sm" style="margin-top:12px" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div>';
+  }
+}
+
+// ── 💰 TOTAL VENDIDO / ✅ COBRADO: abrir el detalle desde el recuadro (v594) ──
+// Mismo patrón que "Consultas" (v572): el número solo no dice de dónde sale; al tocarlo
+// se ve el desglose real. Solo admin/gerencia (son los únicos que ven estos recuadros).
+var _dashSucColors = { 'Américas':'#b48ad4', 'Pinocelli':'#8ab0e8', 'Magnolia':'#d4b84a', 'Plaza Vía Vittoria':'#66bb6a', 'Online':'#38bdf8' };
+
+function _dashModalShell(icono, titulo, sub, cuerpo) {
+  var h = '<div class="modal" style="max-width:600px;padding:0;max-height:82vh;display:flex;flex-direction:column">';
+  h += '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:10px">';
+  h += '<span style="font-size:18px">' + icono + '</span><div style="flex:1"><div style="font-size:15px;font-weight:700;color:var(--beige)">' + titulo + '</div>';
+  h += '<div style="font-size:11px;color:var(--muted)">' + sub + '</div></div>';
+  h += '<button onclick="this.closest(\'.m-overlay\').remove()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">×</button></div>';
+  h += '<div style="overflow-y:auto;padding:12px 16px">' + cuerpo + '</div></div>';
+  return h;
+}
+
+function _dashModalAbrir() {
+  var ov = document.createElement('div');
+  ov.className = 'm-overlay open';
+  ov.style.zIndex = '9999';
+  ov.onclick = function(e) { if (e.target === ov) ov.remove(); };
+  ov.innerHTML = '<div class="modal" style="max-width:600px;padding:20px"><div style="text-align:center;color:var(--muted);padding:24px"><span class="spinner-sm"></span> Cargando…</div></div>';
+  document.body.appendChild(ov);
+  return ov;
+}
+
+function _dashHora(ts) {
+  return new Date(ts).toLocaleTimeString('es-MX', { timeZone:'America/Chihuahua', hour:'2-digit', minute:'2-digit', hour12:true });
+}
+
+async function verVentasHoy() {
+  var ov = _dashModalAbrir();
+  try {
+    var ini = new Date(hoyLocal() + 'T00:00:00-06:00').toISOString();
+    var fin = new Date(hoyLocal() + 'T23:59:59-06:00').toISOString();
+    var { data, error } = await db.from('ventas')
+      .select('id, folio, sucursal, total, pagado, saldo, estado, created_at, asesor, pacientes(nombre, apellidos)')
+      .gte('created_at', ini).lte('created_at', fin)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    // El recuadro del dashboard NO cuenta las canceladas — la lista tiene que dar el MISMO
+    // número, o parece que no cuadra. Las canceladas se reportan aparte, en una nota.
+    var todas = data || [];
+    var canceladas = todas.filter(function(v){ return v.estado === 'Cancelada'; });
+    data = todas.filter(function(v){ return v.estado !== 'Cancelada'; });
+    var suma = data.reduce(function(s,v){ return s + Number(v.total||0); }, 0);
+    var cuerpo = '';
+    if (!data.length) {
+      cuerpo = '<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px">Todavía no hay ventas hoy.</div>';
+    } else {
+      // Resumen por sucursal (de dónde viene el total)
+      var porSuc = {};
+      data.forEach(function(v){ var s = v.sucursal || '—'; porSuc[s] = (porSuc[s]||0) + Number(v.total||0); });
+      cuerpo += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+      Object.keys(porSuc).forEach(function(s){
+        var col = _dashSucColors[s] || '#8c857a';
+        cuerpo += '<span style="font-size:10px;font-weight:700;color:' + col + ';background:rgba(255,255,255,0.04);border:1px solid ' + col + '33;border-radius:20px;padding:4px 9px">' + _sucDisplay(s) + ' $' + Math.round(porSuc[s]).toLocaleString('es-MX') + '</span>';
+      });
+      cuerpo += '</div>';
+      data.forEach(function(v) {
+        var pac = v.pacientes ? ((v.pacientes.nombre||'') + ' ' + (v.pacientes.apellidos||'')).trim() : 'Sin paciente';
+        var col = _dashSucColors[v.sucursal] || '#8c857a';
+        var cancelada = v.estado === 'Cancelada';
+        var saldo = Number(v.saldo||0);
+        cuerpo += '<div style="display:flex;align-items:center;gap:11px;padding:11px 12px;background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-left:3px solid ' + (cancelada ? '#e08080' : col) + ';border-radius:9px;margin-bottom:7px;cursor:pointer' + (cancelada ? ';opacity:.55' : '') + '" onclick="this.closest(\'.m-overlay\').remove();verDetalleVenta(\'' + v.id + '\')">';
+        cuerpo += '<div style="flex:1;min-width:0">';
+        cuerpo += '<div style="font-size:13px;color:var(--white);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + pac + (cancelada ? ' <span style="color:#e08080;font-size:10px">CANCELADA</span>' : '') + '</div>';
+        cuerpo += '<div style="font-size:11px;margin-top:2px"><span style="color:' + col + ';font-weight:700">' + _sucDisplay(v.sucursal||'—') + '</span><span style="color:var(--muted)"> · ' + (v.folio||'') + (v.asesor ? ' · ' + v.asesor : '') + '</span></div>';
+        cuerpo += '</div>';
+        cuerpo += '<div style="text-align:right;white-space:nowrap"><div style="font-size:13px;font-weight:700;color:#d4b84a">$' + Number(v.total||0).toLocaleString('es-MX',{minimumFractionDigits:2}) + '</div>';
+        cuerpo += '<div style="font-size:10px;color:' + (saldo > 0 ? '#e0a080' : 'var(--muted)') + '">' + (saldo > 0 ? 'debe $' + saldo.toLocaleString('es-MX') : 'liquidada') + ' · ' + _dashHora(v.created_at) + '</div></div>';
+        cuerpo += '</div>';
+      });
+    }
+    if (canceladas.length) {
+      cuerpo += '<div style="font-size:10px;color:var(--muted);padding:8px 4px 2px;line-height:1.5">Además hubo ' + canceladas.length + ' venta' + (canceladas.length>1?'s':'') + ' cancelada' + (canceladas.length>1?'s':'') + ' hoy ($' + canceladas.reduce(function(s,v){return s+Number(v.total||0);},0).toLocaleString('es-MX') + '). No se cuentan en el total, igual que en el recuadro.</div>';
+    }
+    ov.innerHTML = _dashModalShell('💰', 'Ventas de hoy', data.length + ' ventas · $' + suma.toLocaleString('es-MX',{minimumFractionDigits:2}) + ' · la más reciente arriba', cuerpo);
+  } catch (e) {
+    ov.innerHTML = '<div class="modal" style="max-width:420px;padding:20px"><div style="color:#e08080;font-size:13px">No se pudieron cargar las ventas: ' + (e.message||e) + '</div><button class="btn btn-g btn-sm" style="margin-top:12px" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div>';
+  }
+}
+
+async function verCobradoHoy() {
+  var ov = _dashModalAbrir();
+  try {
+    var ini = new Date(hoyLocal() + 'T00:00:00-06:00').toISOString();
+    var fin = new Date(hoyLocal() + 'T23:59:59-06:00').toISOString();
+    var [{ data: pagos }, { data: abonos }] = await Promise.all([
+      db.from('venta_pagos').select('id, monto, metodo_pago, created_at, sucursal, ventas(folio, sucursal, estado, pacientes(nombre, apellidos))')
+        .gte('created_at', ini).lte('created_at', fin),
+      db.from('creditos_abonos').select('id, monto, metodo_pago, created_at, sucursal, registrado_por')
+        .gte('created_at', ini).lte('created_at', fin)
+    ]);
+    // Mismo criterio que el recuadro: los pagos de ventas canceladas NO cuentan (se devolvieron)
+    var lista = (pagos||[]).filter(function(p){ return p.ventas?.estado !== 'Cancelada'; }).map(function(p){
+      return { monto: Number(p.monto||0), metodo: p.metodo_pago || '—', ts: p.created_at,
+               suc: p.sucursal || p.ventas?.sucursal || '—',
+               quien: p.ventas ? ((p.ventas.pacientes ? ((p.ventas.pacientes.nombre||'') + ' ' + (p.ventas.pacientes.apellidos||'')).trim() : 'Sin paciente')) : 'Sin paciente',
+               ref: p.ventas?.folio || '', abono: false };
+    }).concat((abonos||[]).map(function(a){
+      return { monto: Number(a.monto||0), metodo: a.metodo_pago || '—', ts: a.created_at,
+               suc: a.sucursal || '—', quien: a.registrado_por || 'Abono a crédito', ref: 'crédito SICAR', abono: true };
+    })).sort(function(x,y){ return new Date(y.ts) - new Date(x.ts); });
+
+    var suma = lista.reduce(function(s,p){ return s + p.monto; }, 0);
+    var cuerpo = '';
+    if (!lista.length) {
+      cuerpo = '<div style="text-align:center;color:var(--muted);padding:28px;font-size:13px">Todavía no se ha cobrado nada hoy.</div>';
+    } else {
+      var porMetodo = {};
+      lista.forEach(function(p){ porMetodo[p.metodo] = (porMetodo[p.metodo]||0) + p.monto; });
+      var metColors = { 'Efectivo':'#72c47e', 'Tarjeta':'#8ab0e8', 'Transferencia':'#b48ad4', 'Dólar':'#d4b84a', 'Link de pago':'#38bdf8' };
+      cuerpo += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
+      Object.keys(porMetodo).sort(function(a,b){ return porMetodo[b]-porMetodo[a]; }).forEach(function(m){
+        var col = metColors[m] || '#8c857a';
+        cuerpo += '<span style="font-size:10px;font-weight:700;color:' + col + ';background:rgba(255,255,255,0.04);border:1px solid ' + col + '33;border-radius:20px;padding:4px 9px">' + m + ' $' + Math.round(porMetodo[m]).toLocaleString('es-MX') + '</span>';
+      });
+      cuerpo += '</div>';
+      lista.forEach(function(p) {
+        var col = _dashSucColors[p.suc] || '#8c857a';
+        var mcol = metColors[p.metodo] || '#8c857a';
+        cuerpo += '<div style="display:flex;align-items:center;gap:11px;padding:11px 12px;background:var(--surface);border:1px solid rgba(255,255,255,0.05);border-left:3px solid ' + col + ';border-radius:9px;margin-bottom:7px">';
+        cuerpo += '<div style="flex:1;min-width:0">';
+        cuerpo += '<div style="font-size:13px;color:var(--white);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + p.quien + (p.abono ? ' <span style="color:#d4b84a;font-size:10px">ABONO</span>' : '') + '</div>';
+        cuerpo += '<div style="font-size:11px;margin-top:2px"><span style="color:' + col + ';font-weight:700">' + _sucDisplay(p.suc) + '</span><span style="color:var(--muted)"> · ' + p.ref + '</span></div>';
+        cuerpo += '</div>';
+        cuerpo += '<div style="text-align:right;white-space:nowrap"><div style="font-size:13px;font-weight:700;color:#72c47e">$' + p.monto.toLocaleString('es-MX',{minimumFractionDigits:2}) + '</div>';
+        cuerpo += '<div style="font-size:10px;color:' + mcol + '">' + p.metodo + ' · <span style="color:var(--muted)">' + _dashHora(p.ts) + '</span></div></div>';
+        cuerpo += '</div>';
+      });
+    }
+    ov.innerHTML = _dashModalShell('✅', 'Cobrado hoy', lista.length + ' movimientos · $' + suma.toLocaleString('es-MX',{minimumFractionDigits:2}) + ' · incluye abonos', cuerpo);
+  } catch (e) {
+    ov.innerHTML = '<div class="modal" style="max-width:420px;padding:20px"><div style="color:#e08080;font-size:13px">No se pudo cargar lo cobrado: ' + (e.message||e) + '</div><button class="btn btn-g btn-sm" style="margin-top:12px" onclick="this.closest(\'.m-overlay\').remove()">Cerrar</button></div>';
   }
 }
 
