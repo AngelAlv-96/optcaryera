@@ -365,7 +365,9 @@ async function _estLoadHistDB() {
     if (!data) return;
 
     // Group by sucursal → year → month
-    var sucMap = { 'americas': true, 'pinocelli': true, 'magnolia': true };
+    // ⚠️ Sin Vittoria aquí, sus ventas se DESCARTABAN del histórico y su meta automática
+    // siempre daba 0 (mismo tipo de lista hardcodeada que el bug del v331).
+    var sucMap = { 'americas': true, 'pinocelli': true, 'magnolia': true, 'plaza via vittoria': true };
     data.forEach(function(v) {
       var vs = (v.sucursal || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
       if (!sucMap[vs] && vs === 'todas') vs = 'americas';
@@ -423,6 +425,27 @@ function _estCalcMeta(sucKey, mesIdx, anio) {
       wTotal += weights[i];
     }
   });
+
+  // SUCURSAL NUEVA (sin ventas en años anteriores): no hay contra qué comparar, así que la
+  // meta sale de SUS PROPIOS meses recientes. Antes devolvía 0, y una sucursal con meta 0
+  // suma sus ventas al avance general sin exigir nada — el % del mes salía inflado.
+  // Vía Vittoria abrió el 30-may-2026: usa esta rama hasta que tenga un año de historia.
+  if (wTotal === 0) {
+    var meses = [];               // los 3 meses anteriores con venta (el actual NO cuenta: va a medias)
+    var yy = anio, mm = mesIdx;
+    for (var back = 0; back < 12 && meses.length < 3; back++) {
+      mm--; if (mm < 0) { mm = 11; yy--; }
+      var v = _estGetMonthVal(sucKey, yy, mm);
+      if (v > 0) meses.push(v);
+    }
+    if (!meses.length) return 0;
+    // El mes de apertura suele traer solo unos días: se descarta si es muy bajo frente al mejor
+    var mejor = Math.max.apply(null, meses);
+    meses = meses.filter(function(v2) { return v2 >= mejor * 0.4; });
+    var s2 = 0, w2 = 0;
+    meses.forEach(function(v3, i) { var peso = meses.length - i; s2 += v3 * peso; w2 += peso; }); // el más reciente pesa más
+    return Math.round((s2 / w2) * (1 + grow / 100));
+  }
 
   var promPonderado = wTotal > 0 ? sum / wTotal : 0;
   return Math.round(promPonderado * (1 + grow / 100));
