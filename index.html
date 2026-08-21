@@ -14605,6 +14605,11 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
               armazon: fd.armazon || null,
               material: fd.material || null,
               material_meta: fd.material_meta || null,
+              // v597: sin estos campos el folio del SOLAR llegaba sin su tinte (y el ARO PX
+              // sin marcar), así que la orden se capturaba a mano aunque el dato ya existía.
+              aro_px: !!fd.aro_px,
+              es_addon: !!fd.es_addon,
+              addon_tinte: fd.addon_tinte || null,
               usado: false
             });
           }
@@ -14642,6 +14647,7 @@ async function checkPendingPromoFolios(pacienteId, pacienteNombre) {
                 armazon: fd.armazon || null,
                 material: fd.material || null,
                 material_meta: fd.material_meta || null,
+                aro_px: !!fd.aro_px, es_addon: !!fd.es_addon, addon_tinte: fd.addon_tinte || null,
                 usado: false
               });
             }
@@ -14695,7 +14701,8 @@ async function mostrarFoliosPendientesVenta(ventaId, fallbackNombre) {
         promo_nombre: vp.nombre_promo, slot_label: fd.slot_label, item_desc: fd.item_desc,
         paciente_id: fd.paciente_id || null, paciente_nombre: fd.paciente_nombre || fallbackNombre,
         fecha_entrega: vp.ventas?.fecha_entrega, hora_entrega: vp.ventas?.hora_entrega || null,
-        armazon: fd.armazon || null, material: fd.material || null, material_meta: fd.material_meta || null, usado: false
+        armazon: fd.armazon || null, material: fd.material || null, material_meta: fd.material_meta || null,
+        aro_px: !!fd.aro_px, es_addon: !!fd.es_addon, addon_tinte: fd.addon_tinte || null, usado: false
       });
     }
   }
@@ -14757,16 +14764,21 @@ function _setSelectSeguro(sel, valor) {
 }
 // "… + Tinte DE TEMPORADA 50%" → antes /(\S+)(\S+)?/ partía los colores de 2 palabras
 // en color="DE" / tono="TEMPORADA". Ahora hace longest-match contra el catálogo real.
-function _parseTinteDesc(desc) {
-  var m = String(desc || '').match(/\+\s*Tinte\s+(.+)$/i);
-  if (!m) return null;
-  var resto = m[1].trim().toUpperCase();
+// "NEGRO 50%" / "DE TEMPORADA 100%" → {color, tono}. El color puede ser de VARIAS palabras,
+// por eso se buscan las opciones del catálogo de la más larga a la más corta (v541).
+function _parseTinteTexto(txt) {
+  var resto = String(txt || '').trim().toUpperCase();
+  if (!resto) return null;
   var porLargo = function (a, b) { return b.length - a.length; };
   var color = _optValues('o-tin-color').sort(porLargo).find(function (c) { return resto.indexOf(c.toUpperCase()) === 0; });
   if (!color) return null;
   var tonoStr = resto.slice(color.length).trim();
   var tono = _optValues('o-tin-tono').sort(porLargo).find(function (t) { return tonoStr.indexOf(t.toUpperCase()) === 0; }) || null;
   return { color: color, tono: tono };
+}
+function _parseTinteDesc(desc) {
+  var m = String(desc || '').match(/\+\s*Tinte\s+(.+)$/i);
+  return m ? _parseTinteTexto(m[1]) : null;
 }
 // El color de Foto Colors se serializa como " (Verde)" al final de la descripción y
 // ANTES NUNCA se reparseaba → o-fcolor quedaba vacío y guardarEImprimir BLOQUEABA
@@ -14847,6 +14859,23 @@ async function _ordAplicarPrecarga(ctx, opts) {
     if (armTxt && armEl && (force || !armEl.value.trim())) {
       armEl.value = armTxt.trim();
       algo = true;
+    }
+  }
+
+  // ── Folio ADDON (el lente solar del 3x1): NO trae material capturado —lo elige el
+  // personal, v467— pero SÍ trae el tinte y tono que el cliente pidió en el POS. Va ANTES
+  // del bloque de material porque ese termina en `if (!meta) return` y el tinte se perdía.
+  if (ctx.addon_tinte) {
+    var _tAd = _parseTinteTexto(ctx.addon_tinte);
+    var _tcAd = document.getElementById('o-tin-color'), _ttAd = document.getElementById('o-tin-tono');
+    if (_tAd && _tcAd) {
+      _setSelectSeguro(_tcAd, _tAd.color);
+      if (typeof syncTinte === 'function') syncTinte();   // habilita el select de tono
+      if (_tAd.tono && _ttAd) _setSelectSeguro(_ttAd, _tAd.tono);
+      if (typeof syncTinte === 'function') syncTinte();
+      algo = true;
+    } else {
+      _ordAvisoPrecarga('Tinte vendido: «' + ctx.addon_tinte + '» — selecciónalo a mano');
     }
   }
 
@@ -14939,7 +14968,8 @@ async function selPromoFolio(idx) {
   // v541: aplicador único (antes este bloque estaba duplicado con _prefillOrderFromVenta,
   // con setTimeout(50) entre cascadas y sin manejar Foto Colors ni tinte multi-palabra)
   await _ordAplicarPrecarga({
-    armazon: f.armazon, aro_px: f.aro_px, material: f.material, material_meta: f.material_meta
+    armazon: f.armazon, aro_px: f.aro_px, material: f.material, material_meta: f.material_meta,
+    es_addon: f.es_addon, addon_tinte: f.addon_tinte
   }, { force: true });
   const extraInfo = [f.promo_nombre, f.slot_label, f.armazon ? '🔲 '+f.armazon : '', f.material ? '🔬 '+f.material : '', f.fecha_entrega ? 'Entrega: '+f.fecha_entrega : ''].filter(Boolean).join(' · ');
   document.getElementById('folio-promo-banner').innerHTML = `
@@ -15380,9 +15410,25 @@ async function _prefillOrderFromVenta(folio, opts) {
 
     var ctx = null;
     if (slot) {
+      // El folio puede ser de OTRA persona (2x1 compartido entre dos pacientes). Si se teclea
+      // el folio a mano en vez de tocarlo en el banner, antes NO se cambiaba de paciente: se
+      // fabricaba con la Rx de quien estuviera seleccionado. Ahora se cambia aquí también.
+      if (slot.paciente_id && slot.paciente_id !== (document.getElementById('ord-pid') || {}).value) {
+        try {
+          var { data: _pSlot } = await db.from('pacientes').select('id, nombre, apellidos, telefono').eq('id', slot.paciente_id).single();
+          if (_pSlot) {
+            var _nomSlot = (_pSlot.nombre + ' ' + (_pSlot.apellidos || '')).trim();
+            _suppressPromoCheck = true;
+            try { await selPacienteOrden(_pSlot.id, _nomSlot, _pSlot.telefono || '', ''); }
+            finally { _suppressPromoCheck = false; }
+            toast('👤 Este folio es de ' + _nomSlot + ' — se cargó su graduación');
+          }
+        } catch (e) { console.warn('[prefill] cambio de paciente del folio:', e.message); }
+      }
       ctx = {
         armazon: slot.armazon || '', aro_px: !!slot.aro_px,
-        material: slot.material || '', material_meta: slot.material_meta || null
+        material: slot.material || '', material_meta: slot.material_meta || null,
+        es_addon: !!slot.es_addon, addon_tinte: slot.addon_tinte || null
       };
     } else {
       // 2) Venta sin promo -> venta_items (desde v541 ya traen material_meta/categoria/aro_px)
@@ -15514,6 +15560,19 @@ function aplicarFolioConsecutivo(folio) {
 async function selSubFolioEnOrden(ventaId, subFolio, pacienteId) {
   document.getElementById('ord-search-res').style.display = 'none';
   document.getElementById('ord-search').value = '';
+  // ⚠️ El folio puede ser de OTRA persona (2x1 compartido). `abrirOrdenDesdeFolio` siempre
+  // llama con pacienteId null, así que antes se cargaba al TITULAR de la venta y la orden
+  // salía con la graduación equivocada (v597). Primero se busca el dueño real del folio.
+  if (!pacienteId) {
+    try {
+      var { data: _vp0 } = await db.from('venta_promociones').select('folios_detalle').eq('venta_id', ventaId);
+      (_vp0 || []).forEach(function (p0) {
+        if (pacienteId) return;
+        var hit0 = _fdParse(p0.folios_detalle).find(function (fd) { return _folioNorm(fd.folio) === _folioNorm(subFolio); });
+        if (hit0 && hit0.paciente_id) pacienteId = hit0.paciente_id;
+      });
+    } catch (e) { console.warn('[selSubFolio] dueño del folio:', e.message); }
+  }
   // v540: si el folio no trae paciente propio (venta sin promo), usar el titular de la venta
   if (!pacienteId) {
     var { data: _v0 } = await db.from('ventas').select('paciente_id').eq('id', ventaId).maybeSingle();
